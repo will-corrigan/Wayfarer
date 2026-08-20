@@ -10,40 +10,22 @@ namespace Wayfarer.Modules;
 /// with teleport and city-aethernet routing. Exposes <see cref="Navigator"/> so
 /// <see cref="UnlockChecklistModule"/> can route the arrow to unlock-quest pickups
 /// (task-5-brief.md delta 3).</summary>
-public sealed class QuestHelperModule : IModule
+internal sealed class QuestHelperModule(
+    IFramework framework,
+    WindowSystem windows,
+    ICommandManager commands,
+    QuestHelperConfig cfg,
+    Action saveConfig,
+    QuestNavigator navigator,
+    ArrowWindow arrowWindow) : IModule
 {
-    private readonly IFramework framework;
-    private readonly WindowSystem windows;
-    private readonly ICommandManager commands;
-    private readonly QuestHelperConfig cfg;
-    private readonly Action saveConfig;
-    private readonly ArrowWindow arrowWindow;
-
-    internal QuestHelperModule(
-        IFramework framework,
-        WindowSystem windows,
-        ICommandManager commands,
-        QuestHelperConfig cfg,
-        Action saveConfig,
-        QuestNavigator navigator,
-        ArrowWindow arrowWindow)
-    {
-        this.framework = framework;
-        this.windows = windows;
-        this.commands = commands;
-        this.cfg = cfg;
-        this.saveConfig = saveConfig;
-        Navigator = navigator;
-        this.arrowWindow = arrowWindow;
-    }
-
     public string Name => "Quest Helper";
 
     public string Description => "An on-screen arrow that guides you to your quest objective, with teleport and aethernet routing.";
 
     public bool Enabled { get; private set; }
 
-    internal QuestNavigator Navigator { get; }
+    internal QuestNavigator Navigator { get; } = navigator;
 
     public void Enable()
     {

@@ -177,6 +177,12 @@ dotnet_diagnostic.SA1200.severity = none
 # Modern C# idioms (task-2c-brief.md) - raised from the default "suggestion"
 # to "warning" so EnforceCodeStyleInBuild + TreatWarningsAsErrors make them
 # hard build gates instead of IDE-only hints.
+# NOTE (IDE0290 blind spot, verified empirically task-2c): the analyzer does
+# NOT fire when the constructor itself is declared `internal` - regardless of
+# the class's own accessibility - so plugin-internal DI classes with an
+# `internal` constructor on an otherwise-public class silently keep their
+# classic constructor even at this severity. Future sweeps must check for
+# `internal` constructors by hand; this rule alone will not catch them.
 csharp_style_prefer_primary_constructors = true:warning
 csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
 dotnet_style_prefer_collection_expression = when_types_loosely_match:warning

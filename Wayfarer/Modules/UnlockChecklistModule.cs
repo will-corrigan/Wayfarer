@@ -8,35 +8,22 @@ namespace Wayfarer.Modules;
 /// <summary>Tracks every quest-unlockable feature, mount and dungeon the player can pick up
 /// right now, and lets the checklist route <see cref="QuestHelperModule"/>'s arrow to the
 /// quest givers (task-5-brief.md delta 3).</summary>
-public sealed class UnlockChecklistModule : IModule
+internal sealed class UnlockChecklistModule(
+    IFramework framework,
+    WindowSystem windows,
+    ModuleRegistry modules,
+    UnlockService unlocks,
+    UnlockWindow unlockWindow) : IModule
 {
-    private readonly IFramework framework;
-    private readonly WindowSystem windows;
-    private readonly ModuleRegistry modules;
-
-    internal UnlockChecklistModule(
-        IFramework framework,
-        WindowSystem windows,
-        ModuleRegistry modules,
-        UnlockService unlocks,
-        UnlockWindow unlockWindow)
-    {
-        this.framework = framework;
-        this.windows = windows;
-        this.modules = modules;
-        Unlocks = unlocks;
-        Window = unlockWindow;
-    }
-
     public string Name => "Unlock Checklist";
 
     public string Description => "Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.";
 
     public bool Enabled { get; private set; }
 
-    internal UnlockService Unlocks { get; }
+    internal UnlockService Unlocks { get; } = unlocks;
 
-    internal UnlockWindow Window { get; }
+    internal UnlockWindow Window { get; } = unlockWindow;
 
     public void Enable()
     {
