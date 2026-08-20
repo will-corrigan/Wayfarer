@@ -70,7 +70,7 @@ jobs:
           $repo[0].DownloadLinkInstall = $downloadUrl
           $repo[0].DownloadLinkUpdate = $downloadUrl
 
-          ConvertTo-Json -InputObject $repo -Depth 10 | Set-Content -Path repo.json -NoNewline
+          ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json -NoNewline
 
       - name: Commit repo.json
         shell: pwsh
