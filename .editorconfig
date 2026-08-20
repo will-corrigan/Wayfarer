@@ -257,3 +257,17 @@ dotnet_diagnostic.MA0016.severity = none
 # what is plugin-wide persisted state (task-5-brief.md delta 1).
 dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer/INavigationProvider.cs]
+# OnPickupAdvanced mirrors QuestNavigator's own plain no-argument notification
+# (task-2b-brief.md seam interface) - there is no event data to carry, so the
+# standard EventHandler<T> shape would just be a discarded, meaningless argument.
+dotnet_diagnostic.MA0046.severity = none
+
+[Wayfarer/Windows/UnlockWindow.cs]
+# navigator is intentionally typed as the consumer-shaped INavigationProvider seam
+# (task-2b-brief.md) rather than the concrete QuestNavigator it happens to always
+# be assigned from today - the field exists to depend on the narrow contract, not
+# on QuestNavigator's full surface, so narrowing it back to the concrete type for
+# devirtualization would defeat the interface segregation this file demonstrates.
+dotnet_diagnostic.CA1859.severity = none

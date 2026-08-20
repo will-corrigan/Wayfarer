@@ -14,7 +14,7 @@ internal sealed unsafe class ArrowWindow : Window
         ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize
         | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing;
 
-    private readonly QuestNavigator navigator;
+    private readonly INavigationProvider navigator;
     private readonly ModuleRegistry modules;
     private readonly QuestHelperConfig cfg;
     private readonly IObjectTable objects;
@@ -22,7 +22,7 @@ internal sealed unsafe class ArrowWindow : Window
     private readonly IPluginLog log;
 
     public ArrowWindow(
-        QuestNavigator navigator,
+        INavigationProvider navigator,
         ModuleRegistry modules,
         QuestHelperConfig cfg,
         IObjectTable objects,

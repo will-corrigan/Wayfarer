@@ -21,7 +21,7 @@ public sealed record PickupTarget(
 /// <see cref="Modules.QuestHelperModule"/>, which subscribes <see cref="OnUpdate"/>
 /// to <c>Framework.Update</c> in <c>Enable()</c> and unsubscribes in <c>Disable()</c> —
 /// this class runs only while that module is enabled.</summary>
-internal sealed unsafe class QuestNavigator
+internal sealed unsafe class QuestNavigator : INavigationProvider
 {
     private const uint QuestRowIdOffset = 65536;
 

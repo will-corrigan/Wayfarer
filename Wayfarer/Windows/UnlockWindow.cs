@@ -16,7 +16,7 @@ internal sealed class UnlockWindow : Window
     private static readonly (string Key, string Label)[] PriorityChips =
         [("essential", "Essential"), ("nice", "Nice"), ("optional", "Optional")];
 
-    private readonly UnlockService unlocks;
+    private readonly IUnlockProvider unlocks;
     private readonly ModuleRegistry modules;
     private readonly IObjectTable objects;
     private readonly IClientState clientState;
@@ -28,9 +28,9 @@ internal sealed class UnlockWindow : Window
     /// the player clicks a pickup, or null when <see cref="QuestHelperModule"/> isn't registered
     /// or is disabled (task-5-brief.md delta 3) — in which case rows and the route button fall
     /// back to a non-clickable "enable Quest Helper to navigate" state.</summary>
-    private QuestNavigator? navigator;
+    private INavigationProvider? navigator;
 
-    public UnlockWindow(UnlockService unlocks, ModuleRegistry modules, IObjectTable objects, IClientState clientState)
+    public UnlockWindow(IUnlockProvider unlocks, ModuleRegistry modules, IObjectTable objects, IClientState clientState)
         : base("Unlocks###WayfarerUnlocks")
     {
         this.unlocks = unlocks;
@@ -177,7 +177,7 @@ internal sealed class UnlockWindow : Window
                 clientState.TerritoryType,
                 player?.Position.X ?? 0,
                 player?.Position.Z ?? 0);
-            var targets = ordered.Select(UnlockService.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
+            var targets = ordered.Select(unlocks.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
             if (targets.Count > 0)
             {
                 navigator.SetRoute(targets);
@@ -270,7 +270,7 @@ internal sealed class UnlockWindow : Window
             ImGui.EndTooltip();
         }
 
-        if (clicked && u.Status == UnlockStatus.Available && navigator != null && UnlockService.ToPickupTarget(u) is { } target)
+        if (clicked && u.Status == UnlockStatus.Available && navigator != null && unlocks.ToPickupTarget(u) is { } target)
         {
             navigator.SetPickup(target);
         }

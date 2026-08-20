@@ -11,7 +11,7 @@ namespace Wayfarer;
 /// thread only except where noted. Owned by <see cref="Modules.UnlockChecklistModule"/>,
 /// which subscribes <see cref="OnFrameworkUpdate"/> and <see cref="OnPickupAdvanced"/> in
 /// <c>Enable()</c> and unsubscribes them in <c>Disable()</c>.</summary>
-internal sealed unsafe class UnlockService
+internal sealed unsafe class UnlockService : IUnlockProvider
 {
     private const uint QuestRowIdOffset = 65536;
 
@@ -56,7 +56,7 @@ internal sealed unsafe class UnlockService
 
     public int AvailableHereCount { get; private set; }
 
-    public static PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
+    public PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
         u.QuestRowId is { } rowId && u.GiverTerritory is { } t && u.GiverMap is { } m
             ? new PickupTarget(u.Def.Unlock, u.Def.Quest ?? "?", rowId, t, m, u.GiverX, u.GiverY, u.GiverZ)
             : null;
