@@ -4,4 +4,4 @@ local.props
 .plans/
 *.user
 TestResults/
-scripts/hygiene.local.txt
+.env

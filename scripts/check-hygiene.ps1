@@ -1,17 +1,22 @@
 # Scans tracked files and commit messages for disallowed content.
-# The pattern list is intentionally NOT stored in this repository. Supply it via:
-#   - the WAYFARER_HYGIENE_PATTERNS environment variable (semicolon-separated regexes), or
-#   - a git-ignored scripts/hygiene.local.txt (one regex per line).
+# The pattern list is intentionally NOT stored in this repository. Supply it via
+# the WAYFARER_HYGIENE_PATTERNS environment variable (semicolon-separated regexes),
+# set either in the process environment (CI uses a repository secret) or in a
+# git-ignored .env file at the repository root (dotenv format).
 # Matched patterns are never echoed; output shows only file locations.
-$sources = @()
-if ($env:WAYFARER_HYGIENE_PATTERNS) {
-    $sources += ($env:WAYFARER_HYGIENE_PATTERNS -split ';')
+$value = $env:WAYFARER_HYGIENE_PATTERNS
+if (-not $value) {
+    $envFile = Join-Path (Split-Path $PSScriptRoot -Parent) '.env'
+    if (Test-Path $envFile) {
+        foreach ($line in Get-Content $envFile) {
+            if ($line -match '^\s*WAYFARER_HYGIENE_PATTERNS\s*=\s*(.+)$') {
+                $value = $Matches[1].Trim().Trim('"')
+                break
+            }
+        }
+    }
 }
-$localFile = Join-Path $PSScriptRoot 'hygiene.local.txt'
-if (Test-Path $localFile) {
-    $sources += Get-Content $localFile
-}
-$patterns = $sources | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim() } | Select-Object -Unique
+$patterns = ($value -split ';') | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim() } | Select-Object -Unique
 if (-not $patterns) {
     Write-Host 'hygiene: no pattern source available, skipping'
     exit 0
