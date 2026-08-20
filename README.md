@@ -1,0 +1,102 @@
+# Wayfarer
+
+[![CI](https://github.com/will-corrigan/Wayfarer/actions/workflows/ci.yml/badge.svg)](https://github.com/will-corrigan/Wayfarer/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/will-corrigan/Wayfarer)](https://github.com/will-corrigan/Wayfarer/releases/latest)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+
+A quest arrow that knows the way: teleports, doors and aethernet included — plus an unlock checklist.
+
+Wayfarer is a [Dalamud](https://github.com/goatcorp/Dalamud) plugin for FINAL FANTASY XIV. It draws an
+on-screen arrow that points at your current quest objective, and it plans the trip for you — aetheryte
+teleports, building entrances, city aethernet — instead of just pointing at a dot on the map. Alongside
+that, it keeps a running checklist of every quest-unlockable feature, mount and dungeon you're eligible
+to pick up right now, and can route the arrow straight to the quest giver.
+
+## Install
+
+1. Open `/xlsettings` in-game, go to **Experimental**, and add this URL under **Custom Plugin Repositories**:
+
+   ```
+   https://raw.githubusercontent.com/will-corrigan/Wayfarer/main/repo.json
+   ```
+
+2. Open `/xlplugins` and install **Wayfarer** from the plugin list.
+
+## Modules
+
+### Quest Helper — the arrow
+
+Follow a quest as normal and Wayfarer draws an arrow that points at the objective. It doesn't just
+aim at map coordinates — it understands how you actually get there:
+
+- **Teleports.** If the objective is far enough away that flying an aetheryte beats the run, the arrow
+  points you to the nearest attuned aetheryte first.
+- **Building entrances.** Objectives inside instanced housing, inns or other interior maps get routed
+  through the correct entrance rather than pointing through a wall.
+- **City aethernet.** Inside the big cities, the arrow uses aethernet shards for the same kind of
+  detour it uses aetherytes for out in the field.
+- **One click, one teleport.** Click the arrow when it's pointing at an aetheryte and Wayfarer casts
+  that teleport for you — it's the only action the plugin ever takes on your behalf. Everything else
+  it does is read-only.
+
+`/way` toggles the arrow widget. Lock its position, resize it, and hide it in combat or duties from
+its settings panel.
+
+> Screenshot coming soon: `docs/screenshots/quest-helper.png`
+
+### Unlock Checklist
+
+A living list of every feature, mount, dungeon and system you can unlock at your current level and
+quest progress — hunting logs, chocobo, jobs, dungeons, glamour plates, all of it — cross-referenced
+against your actual quest log so it only shows what's realistically available to you right now.
+
+- **Filter by zone, level range or type**, or search by name.
+- **Chip filters** for category (content, systems, cosmetics, zones) and priority (essential, nice to
+  have, optional), so you can focus on what matters to you.
+- **Route me** chains the Quest Helper arrow through every available pickup currently shown, ordered
+  by distance from your position, so you can clear a run of unlock quests back to back.
+- Locked entries show why — level-gated, quest-gated, or already done — right in the tooltip.
+
+> Screenshot coming soon: `docs/screenshots/unlock-checklist.png`
+
+## A note on the arrow
+
+The arrow points in a straight line to its next waypoint — it does not path around terrain, walls or
+collision geometry. In open zones and along the routes above (aetherytes, entrances, aethernet) that's
+almost always the right answer; you may still need to eyeball your way around an obstacle here and there.
+
+## Data
+
+Unlock data (levels, quest names, prerequisites) is compiled from the
+[Gamer Escape](https://ffxiv.gamerescape.com/wiki/Guide:Progression_and_Level_Locked_Content) community
+wiki. Thanks to the Gamer Escape contributors for maintaining it.
+
+## Building from source
+
+Requires the [.NET SDK](https://dotnet.microsoft.com/) version pinned in `global.json` and a local
+Dalamud dev environment. Point the `DALAMUD_HOME` environment variable at your Dalamud dev hooks
+directory before building:
+
+```bash
+export DALAMUD_HOME=/path/to/XIVLauncher/addon/Hooks/dev
+dotnet build -c Release
+```
+
+### Testing
+
+```bash
+dotnet test
+```
+
+### Contributing
+
+Issues and pull requests are welcome. Please run `dotnet format` and the hygiene check before submitting:
+
+```bash
+dotnet format
+pwsh -NoProfile -File scripts/check-hygiene.ps1
+```
+
+## License
+
+Wayfarer is licensed under the [GNU Affero General Public License v3.0](LICENSE).

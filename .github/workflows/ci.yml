@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DALAMUD_HOME: ${{ github.workspace }}\.dalamud
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.DALAMUD_HOME }}" | Out-Null
+          Invoke-WebRequest -Uri "https://goatcorp.github.io/dalamud-distrib/latest.zip" -OutFile "$env:TEMP\dalamud-latest.zip"
+          Expand-Archive -Path "$env:TEMP\dalamud-latest.zip" -DestinationPath "${{ env.DALAMUD_HOME }}" -Force
+
+      - name: Restore
+        run: dotnet restore --locked-mode
+
+      - name: Format check
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release
+
+      - name: Hygiene check
+        shell: pwsh
+        env:
+          WAYFARER_HYGIENE_PATTERNS: ${{ secrets.HYGIENE_PATTERNS }}
+        run: pwsh scripts/check-hygiene.ps1

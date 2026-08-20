@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  DALAMUD_HOME: ${{ github.workspace }}\.dalamud
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.DALAMUD_HOME }}" | Out-Null
+          Invoke-WebRequest -Uri "https://goatcorp.github.io/dalamud-distrib/latest.zip" -OutFile "$env:TEMP\dalamud-latest.zip"
+          Expand-Archive -Path "$env:TEMP\dalamud-latest.zip" -DestinationPath "${{ env.DALAMUD_HOME }}" -Force
+
+      - name: Restore
+        run: dotnet restore --locked-mode
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Package release asset
+        shell: pwsh
+        run: Copy-Item -Path "Wayfarer/bin/Release/Wayfarer/latest.zip" -Destination "Wayfarer.zip"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: Wayfarer.zip
+          generate_release_notes: true
+
+      - name: Update repo.json
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $tag = "${{ github.ref_name }}"
+          $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/Wayfarer.zip"
+
+          $repo = Get-Content repo.json -Raw | ConvertFrom-Json
+          $repo[0].AssemblyVersion = $version
+          $repo[0].DownloadLinkInstall = $downloadUrl
+          $repo[0].DownloadLinkUpdate = $downloadUrl
+
+          ConvertTo-Json -InputObject $repo -Depth 10 | Set-Content -Path repo.json -NoNewline
+
+      - name: Commit repo.json
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repo.json
+          $status = git status --porcelain -- repo.json
+          if ($status) {
+            git commit -m "chore: publish repo.json for ${{ github.ref_name }}"
+            git push origin HEAD:main
+          } else {
+            Write-Host "repo.json unchanged, skipping commit"
+          }

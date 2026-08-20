@@ -1,0 +1,10 @@
+{
+  "tasks": [
+    { "name": "format-check", "group": "pre-commit", "command": "dotnet",
+      "args": ["format", "--no-restore", "--verify-no-changes", "--include", "${staged}"], "include": ["**/*.cs"] },
+    { "name": "hygiene", "group": "pre-commit", "command": "pwsh",
+      "args": ["-NoProfile", "-File", "scripts/check-hygiene.ps1"] },
+    { "name": "hygiene-push-gate", "group": "pre-push", "command": "pwsh",
+      "args": ["-NoProfile", "-File", "scripts/check-hygiene.ps1"] }
+  ]
+}

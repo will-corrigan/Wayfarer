@@ -1,0 +1,38 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <!-- Dalamud.NET.Sdk pins its own transitive package versions (DalamudPackager,
+         DotNet.ReproducibleBuilds); Central Package Management would otherwise
+         require a matching PackageVersion entry for those. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <Version>0.1.0</Version>
+    <Author>Will Corrigan</Author>
+    <Name>Wayfarer</Name>
+    <Punchline>A quest arrow that knows the way: teleports, doors and aethernet included — plus an unlock checklist.</Punchline>
+    <Description>Guides you to your quest objective with an on-screen arrow that understands teleports, building entrances and city aethernet routing. Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.</Description>
+    <RepoUrl>https://github.com/will-corrigan/Wayfarer</RepoUrl>
+    <Tags>quest;navigation;unlocks;qol</Tags>
+    <IconUrl>https://raw.githubusercontent.com/will-corrigan/Wayfarer/main/images/icon.png</IconUrl>
+    <CanUnloadAsync>true</CanUnloadAsync>
+  </PropertyGroup>
+  <Import Project="../local.props" Condition="Exists('../local.props')" />
+  <ItemGroup>
+    <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj" />
+    <ProjectReference Include="../Wayfarer.Api/Wayfarer.Api.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../data/unlocks-by-level.json" Link="unlocks-by-level.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- CPM is disabled above, so the analyzer references from Directory.Build.props
+       need explicit versions here (kept in sync with Directory.Packages.props). -->
+  <ItemGroup>
+    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.556" />
+    <PackageReference Update="Meziantou.Analyzer" Version="3.0.174" />
+  </ItemGroup>
+
+  <!-- Re-installs the Husky.Net git hooks on restore, since .husky/_ is gitignored
+       and must be regenerated locally after a fresh clone. -->
+  <Target Name="husky" BeforeTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != '0'">
+    <Exec Command="dotnet tool restore" StandardOutputImportance="Low" StandardErrorImportance="Low" WorkingDirectory=".." />
+    <Exec Command="dotnet husky install" StandardOutputImportance="Low" StandardErrorImportance="Low" WorkingDirectory=".." />
+  </Target>
+</Project>

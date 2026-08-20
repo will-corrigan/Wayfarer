@@ -1,0 +1,7 @@
+bin/
+obj/
+local.props
+.plans/
+*.user
+TestResults/
+scripts/hygiene.local.txt

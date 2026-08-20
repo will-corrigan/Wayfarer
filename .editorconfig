@@ -1,0 +1,259 @@
+root = true
+# top-most EditorConfig file
+
+[*]
+charset = utf-8
+
+end_of_line = lf
+insert_final_newline = true
+
+# 4 space indentation
+indent_style = space
+indent_size = 4
+
+# disable redundant style warnings
+
+# Microsoft .NET properties
+csharp_indent_braces = false
+csharp_new_line_before_catch = true
+csharp_new_line_before_else = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = false
+csharp_new_line_before_open_brace = all
+csharp_preferred_modifier_order = public, private, protected, internal, new, abstract, virtual, sealed, override, static, readonly, extern, unsafe, volatile, async:suggestion
+csharp_style_var_elsewhere = true:suggestion
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_code_quality_unused_parameters = non_public
+dotnet_naming_rule.event_rule.severity = warning
+dotnet_naming_rule.event_rule.style = on_upper_camel_case_style
+dotnet_naming_rule.event_rule.symbols = event_symbols
+dotnet_naming_rule.private_constants_rule.severity = warning
+dotnet_naming_rule.private_constants_rule.style = upper_camel_case_style
+dotnet_naming_rule.private_constants_rule.symbols = private_constants_symbols
+dotnet_naming_rule.private_instance_fields_rule.severity = warning
+dotnet_naming_rule.private_instance_fields_rule.style = lower_camel_case_style
+dotnet_naming_rule.private_instance_fields_rule.symbols = private_instance_fields_symbols
+dotnet_naming_rule.private_static_fields_rule.severity = warning
+dotnet_naming_rule.private_static_fields_rule.style = upper_camel_case_style
+dotnet_naming_rule.private_static_fields_rule.symbols = private_static_fields_symbols
+dotnet_naming_rule.private_static_readonly_rule.severity = warning
+dotnet_naming_rule.private_static_readonly_rule.style = upper_camel_case_style
+dotnet_naming_rule.private_static_readonly_rule.symbols = private_static_readonly_symbols
+dotnet_naming_style.lower_camel_case_style.capitalization = camel_case
+dotnet_naming_style.on_upper_camel_case_style.capitalization = pascal_case
+dotnet_naming_style.on_upper_camel_case_style.required_prefix = On
+dotnet_naming_style.upper_camel_case_style.capitalization = pascal_case
+dotnet_naming_symbols.event_symbols.applicable_accessibilities = *
+dotnet_naming_symbols.event_symbols.applicable_kinds = event
+dotnet_naming_symbols.private_constants_symbols.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_constants_symbols.required_modifiers = const
+dotnet_naming_symbols.private_instance_fields_symbols.applicable_accessibilities = private
+dotnet_naming_symbols.private_instance_fields_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields_symbols.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields_symbols.required_modifiers = static
+dotnet_naming_symbols.private_static_readonly_symbols.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_readonly_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_symbols.required_modifiers = static,readonly
+dotnet_style_parentheses_in_arithmetic_binary_operators =always_for_clarity:suggestion
+dotnet_style_parentheses_in_other_binary_operators =always_for_clarity:suggestion
+dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:suggestion
+dotnet_style_predefined_type_for_member_access = true:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+dotnet_style_parentheses_in_other_operators=always_for_clarity:silent
+dotnet_style_object_initializer = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_before_open_square_brackets = false
+csharp_space_before_comma = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_after_comma = true
+csharp_space_after_cast = false
+csharp_space_around_binary_operators  = before_and_after
+csharp_space_between_method_declaration_name_and_open_parenthesis = false
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_parentheses = none
+csharp_space_between_square_brackets = false
+
+# ReSharper properties
+resharper_align_linq_query = true
+resharper_align_multiline_argument = true
+resharper_align_multiline_calls_chain = true
+resharper_align_multiline_expression = true
+resharper_align_multiline_extends_list = true
+resharper_align_multiline_for_stmt = true
+resharper_align_multline_type_parameter_constrains = true
+resharper_align_multline_type_parameter_list = true
+resharper_apply_on_completion = true
+resharper_auto_property_can_be_made_get_only_global_highlighting = none
+resharper_auto_property_can_be_made_get_only_local_highlighting = none
+resharper_autodetect_indent_settings = true
+resharper_braces_for_ifelse = required_for_multiline
+resharper_can_use_global_alias = false
+resharper_csharp_align_multiline_parameter = true
+resharper_csharp_align_multiple_declaration = true
+resharper_csharp_empty_block_style = together_same_line
+resharper_csharp_int_align_comments = true
+resharper_csharp_new_line_before_while = true
+resharper_csharp_wrap_after_declaration_lpar = true
+resharper_enforce_line_ending_style = true
+resharper_member_can_be_private_global_highlighting = none
+resharper_member_can_be_private_local_highlighting = none
+resharper_new_line_before_finally = false
+resharper_place_accessorholder_attribute_on_same_line = false
+resharper_place_field_attribute_on_same_line = false
+resharper_show_autodetect_configure_formatting_tip = false
+resharper_use_indent_from_vs = false
+
+# ReSharper inspection severities
+resharper_arrange_missing_parentheses_highlighting = hint
+resharper_arrange_redundant_parentheses_highlighting = hint
+resharper_arrange_this_qualifier_highlighting = hint
+resharper_arrange_type_member_modifiers_highlighting = hint
+resharper_arrange_type_modifiers_highlighting = hint
+resharper_built_in_type_reference_style_for_member_access_highlighting = hint
+resharper_built_in_type_reference_style_highlighting = none
+resharper_foreach_can_be_converted_to_query_using_another_get_enumerator_highlighting = none
+resharper_foreach_can_be_partly_converted_to_query_using_another_get_enumerator_highlighting = none
+resharper_invert_if_highlighting = none
+resharper_loop_can_be_converted_to_query_highlighting = none
+resharper_method_has_async_overload_highlighting = none
+resharper_private_field_can_be_converted_to_local_variable_highlighting = none
+resharper_redundant_base_qualifier_highlighting = none
+resharper_suggest_var_or_type_built_in_types_highlighting = hint
+resharper_suggest_var_or_type_elsewhere_highlighting = hint
+resharper_suggest_var_or_type_simple_types_highlighting = hint
+resharper_unused_auto_property_accessor_global_highlighting = none
+csharp_style_deconstructed_variable_declaration=true:silent
+
+[*.{appxmanifest,asax,ascx,aspx,axaml,axml,build,c,c++,cc,cginc,compute,config,cp,cpp,cs,cshtml,csproj,css,cu,cuh,cxx,dbml,discomap,dtd,h,hh,hlsl,hlsli,hlslinc,hpp,htm,html,hxx,inc,inl,ino,ipp,js,json,jsproj,jsx,lsproj,master,mpp,mq4,mq5,mqh,njsproj,nuspec,paml,proj,props,proto,razor,resjson,resw,resx,skin,StyleCop,targets,tasks,tpp,ts,tsx,usf,ush,vb,vbproj,xaml,xamlx,xml,xoml,xsd}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+dotnet_style_parentheses_in_other_operators=always_for_clarity:silent
+
+# Pragmatic StyleCop severity downgrades so the analyzer doesn't fight the
+# ported code style. Correctness rules stay on.
+[*.cs]
+# Documentation rules - not enforcing XML doc comments repo-wide. `dotnet
+# format` runs the documentation-content analyzers regardless of the
+# project's GenerateDocumentationFile setting (unlike a plain build), so the
+# specific content rules need explicit downgrades too, not just SA1600/SA1601.
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1601.severity = none
+dotnet_diagnostic.SA1602.severity = none
+dotnet_diagnostic.SA1611.severity = none
+dotnet_diagnostic.SA1615.severity = none
+dotnet_diagnostic.SA1623.severity = none
+dotnet_diagnostic.SA1629.severity = none
+dotnet_diagnostic.SA1633.severity = none
+
+# this. prefix - not required.
+dotnet_diagnostic.SA1101.severity = none
+
+# Underscore-prefixed field names - not required.
+dotnet_diagnostic.SA1309.severity = none
+
+# File header rules - not enforcing file headers.
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1636.severity = none
+dotnet_diagnostic.SA1638.severity = none
+dotnet_diagnostic.SA1640.severity = none
+dotnet_diagnostic.SA1641.severity = none
+
+# XML comment analysis is disabled repo-wide (no GenerateDocumentationFile) -
+# stop StyleCop from complaining that it can't analyze what we've turned off.
+dotnet_diagnostic.SA0001.severity = none
+
+# Usings at the top of the file, outside the namespace - matches the ported
+# code style (file-scoped namespaces with top-of-file usings).
+dotnet_diagnostic.SA1200.severity = none
+
+[Wayfarer.Tests/**.cs]
+# xUnit test naming convention (Method_Scenario_Expected) intentionally uses
+# underscores for readability.
+dotnet_diagnostic.CA1707.severity = none
+
+[Wayfarer.Core/**.cs]
+# Ported Core types expose List<T>/HashSet<T> on properties and method
+# signatures by design (callers build and mutate them via object
+# initializers, e.g. ResolvedUnlock.PrereqRowIds). Reworking the public
+# surface to abstract collection interfaces would force churn on
+# already-tested, ported logic for a style preference only - see
+# task-2-brief.md port map.
+dotnet_diagnostic.MA0016.severity = none
+
+[Wayfarer.Core/Navigation/AetherytePicker.cs]
+# Ported as a single file with its companion AetherytePoint record, matching
+# the source repo's port map (task-2-brief.md) exactly.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Unlocks/UnlockFilters.cs]
+# Ported as a single file with its companion FilterState class, matching the
+# source repo's port map (task-2-brief.md) exactly.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Unlocks/ResolvedUnlock.cs]
+# Ported as a single file with its companion UnlockStatus enum, matching the
+# source repo's port map (task-2-brief.md) exactly.
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer/QuestNavigator.cs]
+# Ported as a single file with its companion PickupTarget record, matching the
+# source repo's port map (task-5-brief.md) exactly.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+# OnPickupAdvanced is a plain no-argument notification (matches the source's
+# `event System.Action?`) - there is no event data to carry, so the standard
+# EventHandler<T> shape would just be a discarded, meaningless argument.
+dotnet_diagnostic.MA0046.severity = none
+# Compute()/OtherZone() are direct ports of the source's navigation resolution
+# logic (task-5-brief.md port map) - each is one sequential decision tree with
+# no natural sub-steps that would extract cleanly, and splitting them up for a
+# line-count rule risks introducing bugs in reviewed, ported game-data logic.
+dotnet_diagnostic.MA0051.severity = none
+
+[Wayfarer/**.cs]
+# Internal readonly fields (rather than properties) for injected Dalamud
+# services and shared plugin state - matches the source repo's Plugin.cs/
+# ConfigWindow.cs idiom (task-3-brief.md), which every module and window in
+# this project follows to reach the plugin's services.
+dotnet_diagnostic.SA1401.severity = none
+
+[Wayfarer.Api/WayfarerClient.cs]
+# GetUnlocks returns List<UnlockRowDto> by design (task-4-brief.md): it is JSON-
+# deserialized directly off the wire and handed straight to callers with no further
+# mutation, so a concrete List is the simplest honest shape for this contract method.
+dotnet_diagnostic.MA0016.severity = none
+dotnet_diagnostic.CA1002.severity = none
+
+[Wayfarer/UnlockService.cs]
+# Load() is a direct port of the source's single-pass dataset/sheet matcher
+# (task-5-brief.md port map) - it is one linear pass with no natural
+# sub-steps that would extract cleanly without adding indirection to
+# already-reviewed, ported logic.
+dotnet_diagnostic.MA0051.severity = none
+
+[Wayfarer/Configuration.cs]
+# Dalamud's IPluginConfiguration is serialized by a JSON serializer that
+# needs the concrete Dictionary<TKey,TValue> shape to round-trip; an
+# IDictionary/IReadOnlyDictionary property wouldn't deserialize back into a
+# mutable instance. This is the same "port map exactness" rationale as the
+# Wayfarer.Core MA0016 downgrade above, applied to plugin config instead.
+dotnet_diagnostic.MA0016.severity = none
+# The per-module config classes (QuestHelperConfig, UnlockChecklistConfig) are
+# small and only ever referenced from Configuration - keeping them alongside
+# the root Configuration class avoids a proliferation of one-liner files for
+# what is plugin-wide persisted state (task-5-brief.md delta 1).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.MA0048.severity = none
