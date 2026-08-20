@@ -1,3 +1,4 @@
+using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.Sheets;
@@ -14,7 +15,11 @@ internal sealed unsafe class UnlockService
 {
     private const uint QuestRowIdOffset = 65536;
 
-    private readonly Plugin plugin;
+    private readonly IPluginLog log;
+    private readonly IObjectTable objects;
+    private readonly IClientState clientState;
+    private readonly IDalamudPluginInterface pluginInterface;
+    private readonly IDataManager dataManager;
     private readonly List<ResolvedUnlock> entries = [];
 
     /// <summary>(level, territory) as of the last time a recompute was triggered from the
@@ -22,9 +27,18 @@ internal sealed unsafe class UnlockService
     /// construction/hot-reload, so the very first tick with a player present always recomputes.</summary>
     private (int Level, uint Territory)? lastChecked;
 
-    public UnlockService(Plugin plugin)
+    public UnlockService(
+        IPluginLog log,
+        IObjectTable objects,
+        IClientState clientState,
+        IDalamudPluginInterface pluginInterface,
+        IDataManager dataManager)
     {
-        this.plugin = plugin;
+        this.log = log;
+        this.objects = objects;
+        this.clientState = clientState;
+        this.pluginInterface = pluginInterface;
+        this.dataManager = dataManager;
         try
         {
             Load();
@@ -32,7 +46,7 @@ internal sealed unsafe class UnlockService
         }
         catch (Exception ex)
         {
-            plugin.Log.Error(ex, "UnlockService: dataset load failed — unlocks feature disabled");
+            log.Error(ex, "UnlockService: dataset load failed — unlocks feature disabled");
         }
     }
 
@@ -54,8 +68,8 @@ internal sealed unsafe class UnlockService
     /// (the initial null baseline forces a recompute on the first tick a player exists).</summary>
     public void OnFrameworkUpdate(IFramework framework)
     {
-        var level = (int)(plugin.Objects.LocalPlayer?.Level ?? 0);
-        var territory = plugin.ClientState.TerritoryType;
+        var level = (int)(objects.LocalPlayer?.Level ?? 0);
+        var territory = clientState.TerritoryType;
         var current = (level, territory);
         if (lastChecked is { } last && last == current)
         {
@@ -76,7 +90,7 @@ internal sealed unsafe class UnlockService
             return;
         }
 
-        var level = (int)(plugin.Objects.LocalPlayer?.Level ?? 0);
+        var level = (int)(objects.LocalPlayer?.Level ?? 0);
         if (level == 0)
         {
             return;
@@ -88,34 +102,34 @@ internal sealed unsafe class UnlockService
             level,
             QuestManager.IsQuestComplete,
             id => qm != null && qm->IsQuestAccepted((ushort)(id - QuestRowIdOffset)));
-        AvailableHereCount = UnlockStatusCalculator.CountAvailableIn(entries, plugin.ClientState.TerritoryType);
+        AvailableHereCount = UnlockStatusCalculator.CountAvailableIn(entries, clientState.TerritoryType);
     }
 
     private void RecomputeSafe()
     {
         try
         {
-            if (Loaded && plugin.ClientState.IsLoggedIn)
+            if (Loaded && clientState.IsLoggedIn)
             {
                 Recompute();
             }
         }
         catch (Exception ex)
         {
-            plugin.Log.Error(ex, "UnlockService: recompute failed");
+            log.Error(ex, "UnlockService: recompute failed");
         }
     }
 
     private void Load()
     {
-        var dir = plugin.PluginInterface.AssemblyLocation.DirectoryName
+        var dir = pluginInterface.AssemblyLocation.DirectoryName
             ?? throw new InvalidOperationException("no assembly directory");
         var json = File.ReadAllText(Path.Combine(dir, "unlocks-by-level.json"));
         var defs = UnlockDataset.Parse(json);
 
         // One pass over the Quest sheet: name (lowercase) → row facts.
         var byName = new Dictionary<string, (uint RowId, int Level, List<uint> Prereqs, List<string> PrereqNames, uint? Territory, uint? Map, float X, float Y, float Z, string? Zone)>(StringComparer.Ordinal);
-        var sheet = plugin.DataManager.GetExcelSheet<Quest>();
+        var sheet = dataManager.GetExcelSheet<Quest>();
         foreach (var q in sheet)
         {
             var name = q.Name.ExtractText();

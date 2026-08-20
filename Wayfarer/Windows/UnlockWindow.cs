@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using Dalamud.Plugin.Services;
 using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
 
@@ -15,8 +16,10 @@ internal sealed class UnlockWindow : Window
     private static readonly (string Key, string Label)[] PriorityChips =
         [("essential", "Essential"), ("nice", "Nice"), ("optional", "Optional")];
 
-    private readonly Plugin plugin;
     private readonly UnlockService unlocks;
+    private readonly ModuleRegistry modules;
+    private readonly IObjectTable objects;
+    private readonly IClientState clientState;
     private readonly FilterState filter = new();
     private int groupMode; // index into GroupModes
     private string search = string.Empty;
@@ -27,11 +30,13 @@ internal sealed class UnlockWindow : Window
     /// back to a non-clickable "enable Quest Helper to navigate" state.</summary>
     private QuestNavigator? navigator;
 
-    public UnlockWindow(Plugin plugin, UnlockService unlocks)
+    public UnlockWindow(UnlockService unlocks, ModuleRegistry modules, IObjectTable objects, IClientState clientState)
         : base("Unlocks###WayfarerUnlocks")
     {
-        this.plugin = plugin;
         this.unlocks = unlocks;
+        this.modules = modules;
+        this.objects = objects;
+        this.clientState = clientState;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(430, 300) };
     }
 
@@ -47,7 +52,7 @@ internal sealed class UnlockWindow : Window
             return;
         }
 
-        navigator = plugin.Modules.Get<QuestHelperModule>() is { Enabled: true } questHelper
+        navigator = modules.Get<QuestHelperModule>() is { Enabled: true } questHelper
             ? questHelper.Navigator
             : null;
 
@@ -166,10 +171,10 @@ internal sealed class UnlockWindow : Window
 
         if (ImGui.Button($"Route me ({routable.Count})") && routable.Count > 0)
         {
-            var player = plugin.Objects.LocalPlayer;
+            var player = objects.LocalPlayer;
             var ordered = RoutePlanner.Order(
                 routable,
-                plugin.ClientState.TerritoryType,
+                clientState.TerritoryType,
                 player?.Position.X ?? 0,
                 player?.Position.Z ?? 0);
             var targets = ordered.Select(UnlockService.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
@@ -204,7 +209,7 @@ internal sealed class UnlockWindow : Window
 
     private string? CurrentZoneName()
     {
-        var here = plugin.ClientState.TerritoryType;
+        var here = clientState.TerritoryType;
         return unlocks.Entries.FirstOrDefault(u => u.GiverTerritory == here)?.ZoneName;
     }
 

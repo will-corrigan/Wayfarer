@@ -25,7 +25,12 @@ internal sealed unsafe class QuestNavigator
 {
     private const uint QuestRowIdOffset = 65536;
 
-    private readonly Plugin plugin;
+    private readonly IPluginLog log;
+    private readonly QuestHelperConfig cfg;
+    private readonly IClientState clientState;
+    private readonly ICondition condition;
+    private readonly IObjectTable objects;
+    private readonly IDataManager dataManager;
     private readonly Dictionary<uint, List<AetherytePoint>> aetheryteCache = [];
     private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
     private readonly Queue<PickupTarget> routeQueue = new();
@@ -33,9 +38,20 @@ internal sealed unsafe class QuestNavigator
     private volatile NavigationState current = new();
     private bool errorLogged;
 
-    public QuestNavigator(Plugin plugin)
+    public QuestNavigator(
+        IPluginLog log,
+        QuestHelperConfig cfg,
+        IClientState clientState,
+        ICondition condition,
+        IObjectTable objects,
+        IDataManager dataManager)
     {
-        this.plugin = plugin;
+        this.log = log;
+        this.cfg = cfg;
+        this.clientState = clientState;
+        this.condition = condition;
+        this.objects = objects;
+        this.dataManager = dataManager;
     }
 
     public event System.Action? OnPickupAdvanced;
@@ -80,7 +96,7 @@ internal sealed unsafe class QuestNavigator
         {
             if (!errorLogged)
             {
-                plugin.Log.Error(ex, "QuestNavigator: compute failed");
+                log.Error(ex, "QuestNavigator: compute failed");
                 errorLogged = true;
             }
 
@@ -114,13 +130,12 @@ internal sealed unsafe class QuestNavigator
 
     private NavigationState Compute()
     {
-        var cfg = plugin.Config.QuestHelper;
-        if (!plugin.ClientState.IsLoggedIn)
+        if (!clientState.IsLoggedIn)
         {
             return new NavigationState();
         }
 
-        var cond = plugin.Condition;
+        var cond = condition;
         if (cond[ConditionFlag.OccupiedInCutSceneEvent] || cond[ConditionFlag.WatchingCutscene]
             || cond[ConditionFlag.WatchingCutscene78] || cond[ConditionFlag.BetweenAreas])
         {
@@ -137,14 +152,14 @@ internal sealed unsafe class QuestNavigator
             return new NavigationState();
         }
 
-        var player = plugin.Objects.LocalPlayer;
+        var player = objects.LocalPlayer;
         if (player == null)
         {
             return new NavigationState();
         }
 
-        var territory = plugin.ClientState.TerritoryType;
-        var mapId = plugin.ClientState.MapId;
+        var territory = clientState.TerritoryType;
+        var mapId = clientState.MapId;
         var pos = player.Position;
 
         if (Pickup is { } pickup)
@@ -239,7 +254,7 @@ internal sealed unsafe class QuestNavigator
 
         // 2) Static sheet fallback: quest ToDo location for the current sequence.
         var seq = QuestManager.GetQuestSequence(questId);
-        if (plugin.DataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset) is { } q)
+        if (dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset) is { } q)
         {
             foreach (var p in q.TodoParams)
             {
@@ -356,7 +371,7 @@ internal sealed unsafe class QuestNavigator
         float pz,
         bool isPickup = false)
     {
-        var territorySheet = plugin.DataManager.GetExcelSheet<TerritoryType>();
+        var territorySheet = dataManager.GetExcelSheet<TerritoryType>();
         var zoneName = territorySheet.GetRowOrDefault(targetTerritory)?.PlaceName.ValueNullable?.Name.ExtractText();
 
         // Teleport recommendation — skipped when the objective is in the current
@@ -364,7 +379,7 @@ internal sealed unsafe class QuestNavigator
         uint? aetheryteId = null;
         string? aetheryteName = null;
         var aetheryteUnlocked = false;
-        if (targetTerritory != plugin.ClientState.TerritoryType)
+        if (targetTerritory != clientState.TerritoryType)
         {
             var all = GetAetherytePoints(targetTerritory, aethernet: false);
             var ui = UIState.Instance();
@@ -400,14 +415,14 @@ internal sealed unsafe class QuestNavigator
             }
         }
 
-        var entrance = FindEntrance(plugin.ClientState.MapId, targetMapId);
+        var entrance = FindEntrance(clientState.MapId, targetMapId);
 
         string? aethernetEntry = null;
         string? aethernetExit = null;
         if (entrance is { } e)
         {
             var directDist = NavMath.Distance(e.X - px, 0, e.Z - pz);
-            if (AethernetRoute(plugin.ClientState.TerritoryType, px, pz, e.X, e.Z, directDist) is { } route)
+            if (AethernetRoute(clientState.TerritoryType, px, pz, e.X, e.Z, directDist) is { } route)
             {
                 aethernetEntry = route.Entry.Name;
                 aethernetExit = route.Exit.Name;
@@ -447,10 +462,10 @@ internal sealed unsafe class QuestNavigator
         }
 
         (string Name, float X, float Z)? found = null;
-        var mapSheet = plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
+        var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
         if (fromMapId != toMapId && mapSheet.GetRowOrDefault(fromMapId) is { } from)
         {
-            var markerSheet = plugin.DataManager.GetSubrowExcelSheet<MapMarker>();
+            var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
             if (markerSheet.HasRow(from.MapMarkerRange))
             {
                 foreach (var m in markerSheet[from.MapMarkerRange])
@@ -514,7 +529,7 @@ internal sealed unsafe class QuestNavigator
     }
 
     private string QuestName(ushort id) =>
-        plugin.DataManager.GetExcelSheet<Quest>().GetRowOrDefault(id + QuestRowIdOffset)?.Name.ExtractText()
+        dataManager.GetExcelSheet<Quest>().GetRowOrDefault(id + QuestRowIdOffset)?.Name.ExtractText()
         ?? $"Quest {id}";
 
     private List<AetherytePoint> GetAetherytePoints(uint territory, bool aethernet)
@@ -526,7 +541,7 @@ internal sealed unsafe class QuestNavigator
         }
 
         var list = new List<AetherytePoint>();
-        foreach (var a in plugin.DataManager.GetExcelSheet<Aetheryte>())
+        foreach (var a in dataManager.GetExcelSheet<Aetheryte>())
         {
             if (a.Territory.RowId != territory)
             {
@@ -576,7 +591,7 @@ internal sealed unsafe class QuestNavigator
 
         if (a.Map.ValueNullable is { } map)
         {
-            var markerSheet = plugin.DataManager.GetSubrowExcelSheet<MapMarker>();
+            var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
             if (markerSheet.HasRow(map.MapMarkerRange))
             {
                 foreach (var m in markerSheet[map.MapMarkerRange])

@@ -1,4 +1,6 @@
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Windowing;
+using Dalamud.Plugin.Services;
 using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
@@ -8,14 +10,23 @@ namespace Wayfarer.Modules;
 /// quest givers (task-5-brief.md delta 3).</summary>
 public sealed class UnlockChecklistModule : IModule
 {
-    private readonly Plugin plugin;
+    private readonly IFramework framework;
+    private readonly WindowSystem windows;
+    private readonly ModuleRegistry modules;
     private readonly UnlockWindow unlockWindow;
 
-    public UnlockChecklistModule(Plugin plugin)
+    internal UnlockChecklistModule(
+        IFramework framework,
+        WindowSystem windows,
+        ModuleRegistry modules,
+        UnlockService unlocks,
+        UnlockWindow unlockWindow)
     {
-        this.plugin = plugin;
-        Unlocks = new UnlockService(plugin);
-        unlockWindow = new UnlockWindow(plugin, Unlocks);
+        this.framework = framework;
+        this.windows = windows;
+        this.modules = modules;
+        Unlocks = unlocks;
+        this.unlockWindow = unlockWindow;
     }
 
     public string Name => "Unlock Checklist";
@@ -31,25 +42,25 @@ public sealed class UnlockChecklistModule : IModule
     public void Enable()
     {
         Enabled = true;
-        plugin.Framework.Update += Unlocks.OnFrameworkUpdate;
-        if (plugin.Modules.Get<QuestHelperModule>() is { } questHelper)
+        framework.Update += Unlocks.OnFrameworkUpdate;
+        if (modules.Get<QuestHelperModule>() is { } questHelper)
         {
             questHelper.Navigator.OnPickupAdvanced += Unlocks.OnPickupAdvanced;
         }
 
-        plugin.Windows.AddWindow(unlockWindow);
+        windows.AddWindow(unlockWindow);
     }
 
     public void Disable()
     {
         Enabled = false;
-        plugin.Windows.RemoveWindow(unlockWindow);
-        if (plugin.Modules.Get<QuestHelperModule>() is { } questHelper)
+        windows.RemoveWindow(unlockWindow);
+        if (modules.Get<QuestHelperModule>() is { } questHelper)
         {
             questHelper.Navigator.OnPickupAdvanced -= Unlocks.OnPickupAdvanced;
         }
 
-        plugin.Framework.Update -= Unlocks.OnFrameworkUpdate;
+        framework.Update -= Unlocks.OnFrameworkUpdate;
     }
 
     public void DrawConfig()

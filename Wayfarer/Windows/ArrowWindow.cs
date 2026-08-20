@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Modules;
@@ -13,24 +14,38 @@ internal sealed unsafe class ArrowWindow : Window
         ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize
         | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing;
 
-    private readonly Plugin plugin;
     private readonly QuestNavigator navigator;
+    private readonly ModuleRegistry modules;
+    private readonly QuestHelperConfig cfg;
+    private readonly IObjectTable objects;
+    private readonly IClientState clientState;
+    private readonly IPluginLog log;
 
-    public ArrowWindow(Plugin plugin, QuestNavigator navigator)
+    public ArrowWindow(
+        QuestNavigator navigator,
+        ModuleRegistry modules,
+        QuestHelperConfig cfg,
+        IObjectTable objects,
+        IClientState clientState,
+        IPluginLog log)
         : base("###WayfarerArrow")
     {
-        this.plugin = plugin;
         this.navigator = navigator;
+        this.modules = modules;
+        this.cfg = cfg;
+        this.objects = objects;
+        this.clientState = clientState;
+        this.log = log;
         RespectCloseHotkey = false; // Esc must not close a HUD widget
         IsOpen = true;              // visibility is governed by DrawConditions
         Flags = BaseFlags;
     }
 
     public override bool DrawConditions() =>
-        !plugin.Config.QuestHelper.WidgetHidden && !string.Equals(navigator.Current.Mode, NavigationState.Modes.Hidden, StringComparison.Ordinal);
+        !cfg.WidgetHidden && !string.Equals(navigator.Current.Mode, NavigationState.Modes.Hidden, StringComparison.Ordinal);
 
     public override void PreDraw() =>
-        Flags = plugin.Config.QuestHelper.ArrowLocked ? BaseFlags | ImGuiWindowFlags.NoMove : BaseFlags;
+        Flags = cfg.ArrowLocked ? BaseFlags | ImGuiWindowFlags.NoMove : BaseFlags;
 
     public override void Draw()
     {
@@ -85,7 +100,7 @@ internal sealed unsafe class ArrowWindow : Window
 
     private void DrawArrowTo(float tx, float? ty, float tz)
     {
-        var player = plugin.Objects.LocalPlayer;
+        var player = objects.LocalPlayer;
         if (player == null)
         {
             return;
@@ -104,7 +119,7 @@ internal sealed unsafe class ArrowWindow : Window
 
         var angle = NavMath.ArrowAngle(NavMath.Bearing(dx, dz), yaw);
 
-        var size = 48f * plugin.Config.QuestHelper.ArrowScale;
+        var size = 48f * cfg.ArrowScale;
         var width = MathF.Max(ImGui.CalcTextSize(navigator.Current.QuestName ?? string.Empty).X, size + 16f);
         ImGui.Dummy(new Vector2(width, size));
         var min = ImGui.GetItemRectMin();
@@ -161,12 +176,12 @@ internal sealed unsafe class ArrowWindow : Window
         }
         else
         {
-            var label = plugin.Config.QuestHelper.ClickTeleportEnabled
+            var label = cfg.ClickTeleportEnabled
                 ? $"Teleport to {state.AetheryteName} first (click)"
                 : $"Teleport to {state.AetheryteName} first";
-            if (ImGui.Selectable(label) && plugin.Config.QuestHelper.ClickTeleportEnabled && state.AetheryteId is { } id)
+            if (ImGui.Selectable(label) && cfg.ClickTeleportEnabled && state.AetheryteId is { } id)
             {
-                TeleportAction.Execute(id, plugin);
+                TeleportAction.Execute(id, cfg, clientState, log);
             }
         }
 
@@ -216,7 +231,7 @@ internal sealed unsafe class ArrowWindow : Window
     /// registered or is disabled (task-5-brief.md delta 3).</summary>
     private void DrawUnlocksButton()
     {
-        if (plugin.Modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule)
+        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule)
         {
             return;
         }

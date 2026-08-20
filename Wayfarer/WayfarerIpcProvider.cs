@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
+using Dalamud.Plugin.Services;
 using Wayfarer.Api;
 using Wayfarer.Api.Dto;
 using Wayfarer.Core.Navigation;
@@ -21,22 +23,24 @@ internal sealed class WayfarerIpcProvider : IDisposable
         WriteIndented = true,
     };
 
-    private readonly Plugin plugin;
+    private readonly ModuleRegistry modules;
+    private readonly IClientState clientState;
     private readonly ICallGateProvider<int> versionGate;
     private readonly ICallGateProvider<string> navigationGate;
     private readonly ICallGateProvider<string, int, string> unlocksGate;
 
-    public WayfarerIpcProvider(Plugin plugin)
+    public WayfarerIpcProvider(IDalamudPluginInterface pluginInterface, ModuleRegistry modules, IClientState clientState)
     {
-        this.plugin = plugin;
+        this.modules = modules;
+        this.clientState = clientState;
 
-        versionGate = plugin.PluginInterface.GetIpcProvider<int>(WayfarerIpc.VersionGate);
+        versionGate = pluginInterface.GetIpcProvider<int>(WayfarerIpc.VersionGate);
         versionGate.RegisterFunc(() => WayfarerIpc.ApiVersion);
 
-        navigationGate = plugin.PluginInterface.GetIpcProvider<string>(WayfarerIpc.NavigationGate);
+        navigationGate = pluginInterface.GetIpcProvider<string>(WayfarerIpc.NavigationGate);
         navigationGate.RegisterFunc(GetNavigationJson);
 
-        unlocksGate = plugin.PluginInterface.GetIpcProvider<string, int, string>(WayfarerIpc.UnlocksGate);
+        unlocksGate = pluginInterface.GetIpcProvider<string, int, string>(WayfarerIpc.UnlocksGate);
         unlocksGate.RegisterFunc(GetUnlocksJson);
     }
 
@@ -49,7 +53,7 @@ internal sealed class WayfarerIpcProvider : IDisposable
 
     private string GetNavigationJson()
     {
-        var module = plugin.Modules.Get<QuestHelperModule>();
+        var module = modules.Get<QuestHelperModule>();
         var state = module is { Enabled: true } ? module.Navigator.Current : new NavigationState();
         return JsonSerializer.Serialize(state, Options);
     }
@@ -62,12 +66,12 @@ internal sealed class WayfarerIpcProvider : IDisposable
     /// call that can surface a validation error to the caller.</summary>
     private string GetUnlocksJson(string scope, int maxLevel)
     {
-        if (plugin.Modules.Get<UnlockChecklistModule>() is not { Enabled: true } module)
+        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } module)
         {
             return JsonSerializer.Serialize(Array.Empty<UnlockRowDto>(), Options);
         }
 
-        var here = plugin.ClientState.TerritoryType;
+        var here = clientState.TerritoryType;
         var rows = new List<UnlockRowDto>();
         foreach (var u in module.Unlocks.Entries)
         {

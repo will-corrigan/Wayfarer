@@ -1,5 +1,7 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Command;
+using Dalamud.Interface.Windowing;
+using Dalamud.Plugin.Services;
 using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
@@ -10,14 +12,29 @@ namespace Wayfarer.Modules;
 /// (task-5-brief.md delta 3).</summary>
 public sealed class QuestHelperModule : IModule
 {
-    private readonly Plugin plugin;
+    private readonly IFramework framework;
+    private readonly WindowSystem windows;
+    private readonly ICommandManager commands;
+    private readonly QuestHelperConfig cfg;
+    private readonly Action saveConfig;
     private readonly ArrowWindow arrowWindow;
 
-    public QuestHelperModule(Plugin plugin)
+    internal QuestHelperModule(
+        IFramework framework,
+        WindowSystem windows,
+        ICommandManager commands,
+        QuestHelperConfig cfg,
+        Action saveConfig,
+        QuestNavigator navigator,
+        ArrowWindow arrowWindow)
     {
-        this.plugin = plugin;
-        Navigator = new QuestNavigator(plugin);
-        arrowWindow = new ArrowWindow(plugin, Navigator);
+        this.framework = framework;
+        this.windows = windows;
+        this.commands = commands;
+        this.cfg = cfg;
+        this.saveConfig = saveConfig;
+        Navigator = navigator;
+        this.arrowWindow = arrowWindow;
     }
 
     public string Name => "Quest Helper";
@@ -31,12 +48,12 @@ public sealed class QuestHelperModule : IModule
     public void Enable()
     {
         Enabled = true;
-        plugin.Framework.Update += Navigator.OnUpdate;
-        plugin.Windows.AddWindow(arrowWindow);
-        plugin.Commands.AddHandler("/way", new CommandInfo((_, _) =>
+        framework.Update += Navigator.OnUpdate;
+        windows.AddWindow(arrowWindow);
+        commands.AddHandler("/way", new CommandInfo((_, _) =>
         {
-            plugin.Config.QuestHelper.WidgetHidden = !plugin.Config.QuestHelper.WidgetHidden;
-            plugin.SaveConfig();
+            cfg.WidgetHidden = !cfg.WidgetHidden;
+            saveConfig();
         })
         { HelpMessage = "Toggle the quest arrow widget" });
     }
@@ -44,20 +61,18 @@ public sealed class QuestHelperModule : IModule
     public void Disable()
     {
         Enabled = false;
-        plugin.Commands.RemoveHandler("/way");
-        plugin.Windows.RemoveWindow(arrowWindow);
-        plugin.Framework.Update -= Navigator.OnUpdate;
+        commands.RemoveHandler("/way");
+        windows.RemoveWindow(arrowWindow);
+        framework.Update -= Navigator.OnUpdate;
     }
 
     public void DrawConfig()
     {
-        var cfg = plugin.Config.QuestHelper;
-
         var arrowLocked = cfg.ArrowLocked;
         if (ImGui.Checkbox("Lock widget position", ref arrowLocked))
         {
             cfg.ArrowLocked = arrowLocked;
-            plugin.SaveConfig();
+            saveConfig();
         }
 
         var scale = cfg.ArrowScale;
@@ -69,28 +84,28 @@ public sealed class QuestHelperModule : IModule
 
         if (ImGui.IsItemDeactivatedAfterEdit())
         {
-            plugin.SaveConfig();
+            saveConfig();
         }
 
         var hideCombat = cfg.ArrowHideInCombat;
         if (ImGui.Checkbox("Hide in combat", ref hideCombat))
         {
             cfg.ArrowHideInCombat = hideCombat;
-            plugin.SaveConfig();
+            saveConfig();
         }
 
         var hideDuty = cfg.ArrowHideInDuty;
         if (ImGui.Checkbox("Hide in duties", ref hideDuty))
         {
             cfg.ArrowHideInDuty = hideDuty;
-            plugin.SaveConfig();
+            saveConfig();
         }
 
         var clickTp = cfg.ClickTeleportEnabled;
         if (ImGui.Checkbox("Click-to-teleport (the plugin's only game action)", ref clickTp))
         {
             cfg.ClickTeleportEnabled = clickTp;
-            plugin.SaveConfig();
+            saveConfig();
         }
     }
 

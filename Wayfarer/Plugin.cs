@@ -7,20 +7,16 @@ using Wayfarer.Windows;
 
 namespace Wayfarer;
 
+/// <summary>Composition root: the only class allowed to hold Dalamud services or a
+/// <see cref="Configuration"/> instance directly. Acquires services, loads config, builds
+/// the object graph via constructor injection, registers modules, wires IPC, and disposes
+/// everything in exact reverse of construction order.</summary>
 public sealed class Plugin : IDalamudPlugin
 {
-    internal readonly IDalamudPluginInterface PluginInterface;
-    internal readonly IFramework Framework;
-    internal readonly IDataManager DataManager;
-    internal readonly IClientState ClientState;
-    internal readonly IObjectTable Objects;
-    internal readonly ICondition Condition;
-    internal readonly ICommandManager Commands;
-    internal readonly IPluginLog Log;
-    internal readonly Configuration Config;
-    internal readonly ModuleRegistry Modules;
-    internal readonly WindowSystem Windows = new("Wayfarer");
-
+    private readonly IDalamudPluginInterface pluginInterface;
+    private readonly ICommandManager commands;
+    private readonly WindowSystem windows = new("Wayfarer");
+    private readonly ModuleRegistry modules;
     private readonly ConfigWindow configWindow;
     private readonly WayfarerIpcProvider ipcProvider;
 
@@ -34,48 +30,50 @@ public sealed class Plugin : IDalamudPlugin
         ICommandManager commands,
         IPluginLog log)
     {
-        PluginInterface = pluginInterface;
-        Framework = framework;
-        DataManager = dataManager;
-        ClientState = clientState;
-        Objects = objects;
-        Condition = condition;
-        Commands = commands;
-        Log = log;
+        this.pluginInterface = pluginInterface;
+        this.commands = commands;
 
-        Config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        void SaveConfig() => pluginInterface.SavePluginConfig(config);
 
-        Modules = new ModuleRegistry(Log, Config);
-        Modules.Register(new QuestHelperModule(this), enabledByDefault: true);
-        Modules.Register(new UnlockChecklistModule(this), enabledByDefault: true);
-        ipcProvider = new WayfarerIpcProvider(this);
+        modules = new ModuleRegistry(log, config);
 
-        configWindow = new ConfigWindow(this);
-        Windows.AddWindow(configWindow);
-        pluginInterface.UiBuilder.Draw += Windows.Draw;
+        var navigator = new QuestNavigator(log, config.QuestHelper, clientState, condition, objects, dataManager);
+        var arrowWindow = new ArrowWindow(navigator, modules, config.QuestHelper, objects, clientState, log);
+        var questHelperModule = new QuestHelperModule(framework, windows, commands, config.QuestHelper, SaveConfig, navigator, arrowWindow);
+        modules.Register(questHelperModule, enabledByDefault: true);
+
+        var unlocks = new UnlockService(log, objects, clientState, pluginInterface, dataManager);
+        var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState);
+        var unlockChecklistModule = new UnlockChecklistModule(framework, windows, modules, unlocks, unlockWindow);
+        modules.Register(unlockChecklistModule, enabledByDefault: true);
+
+        ipcProvider = new WayfarerIpcProvider(pluginInterface, modules, clientState);
+
+        configWindow = new ConfigWindow(modules, config, SaveConfig);
+        windows.AddWindow(configWindow);
+        pluginInterface.UiBuilder.Draw += windows.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi += OpenConfig;
         commands.AddHandler("/wayfarer", new CommandInfo((_, _) => configWindow.IsOpen = true)
         { HelpMessage = "Open Wayfarer settings" });
 
-        Log.Information("Wayfarer loaded");
+        log.Information("Wayfarer loaded");
     }
 
     public void Dispose()
     {
-        Commands.RemoveHandler("/wayfarer");
-        PluginInterface.UiBuilder.Draw -= Windows.Draw;
-        PluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
-        PluginInterface.UiBuilder.OpenMainUi -= OpenConfig;
+        commands.RemoveHandler("/wayfarer");
+        pluginInterface.UiBuilder.Draw -= windows.Draw;
+        pluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
+        pluginInterface.UiBuilder.OpenMainUi -= OpenConfig;
 
         ipcProvider.Dispose();
 
         // Modules are disposed before the windows they may still reference are torn down.
-        Modules.Dispose();
-        Windows.RemoveAllWindows();
+        modules.Dispose();
+        windows.RemoveAllWindows();
     }
-
-    internal void SaveConfig() => PluginInterface.SavePluginConfig(Config);
 
     private void OpenConfig() => configWindow.IsOpen = true;
 }

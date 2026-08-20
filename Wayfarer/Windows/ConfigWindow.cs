@@ -1,20 +1,21 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using Wayfarer.Modules;
 
 namespace Wayfarer.Windows;
 
-public sealed class ConfigWindow(Plugin plugin) : Window("Wayfarer")
+public sealed class ConfigWindow(ModuleRegistry modules, Configuration config, Action saveConfig) : Window("Wayfarer")
 {
     public override void Draw()
     {
-        foreach (var module in plugin.Modules.Modules)
+        foreach (var module in modules.Modules)
         {
             var enabled = module.Enabled;
             if (ImGui.Checkbox(module.Name, ref enabled))
             {
-                plugin.Modules.SetEnabled(module, enabled);
-                plugin.Config.ModuleEnabled[module.Name] = enabled;
-                plugin.SaveConfig();
+                modules.SetEnabled(module, enabled);
+                config.ModuleEnabled[module.Name] = enabled;
+                saveConfig();
             }
 
             ImGui.TextDisabled(module.Description);

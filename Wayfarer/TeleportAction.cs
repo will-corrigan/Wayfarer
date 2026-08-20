@@ -1,3 +1,4 @@
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
 namespace Wayfarer;
@@ -6,9 +7,9 @@ namespace Wayfarer;
 /// One deliberate user click = one teleport cast. Called only from ArrowWindow.</summary>
 internal static unsafe class TeleportAction
 {
-    public static void Execute(uint aetheryteId, Plugin plugin)
+    public static void Execute(uint aetheryteId, QuestHelperConfig cfg, IClientState clientState, IPluginLog log)
     {
-        if (!plugin.Config.QuestHelper.ClickTeleportEnabled || !plugin.ClientState.IsLoggedIn)
+        if (!cfg.ClickTeleportEnabled || !clientState.IsLoggedIn)
         {
             return;
         }
@@ -16,7 +17,7 @@ internal static unsafe class TeleportAction
         var ui = UIState.Instance();
         if (ui == null || !ui->IsAetheryteUnlocked(aetheryteId))
         {
-            plugin.Log.Warning($"Teleport refused: aetheryte {aetheryteId} is not attuned");
+            log.Warning($"Teleport refused: aetheryte {aetheryteId} is not attuned");
             return;
         }
 
@@ -29,7 +30,7 @@ internal static unsafe class TeleportAction
         telepo->UpdateAetheryteList();
         if (!telepo->Teleport(aetheryteId, 0))
         {
-            plugin.Log.Warning($"Teleport to aetheryte {aetheryteId} was rejected by the game");
+            log.Warning($"Teleport to aetheryte {aetheryteId} was rejected by the game");
         }
     }
 }
