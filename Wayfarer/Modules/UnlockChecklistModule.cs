@@ -13,7 +13,6 @@ public sealed class UnlockChecklistModule : IModule
     private readonly IFramework framework;
     private readonly WindowSystem windows;
     private readonly ModuleRegistry modules;
-    private readonly UnlockWindow unlockWindow;
 
     internal UnlockChecklistModule(
         IFramework framework,
@@ -26,7 +25,7 @@ public sealed class UnlockChecklistModule : IModule
         this.windows = windows;
         this.modules = modules;
         Unlocks = unlocks;
-        this.unlockWindow = unlockWindow;
+        Window = unlockWindow;
     }
 
     public string Name => "Unlock Checklist";
@@ -37,7 +36,7 @@ public sealed class UnlockChecklistModule : IModule
 
     internal UnlockService Unlocks { get; }
 
-    internal UnlockWindow Window => unlockWindow;
+    internal UnlockWindow Window { get; }
 
     public void Enable()
     {
@@ -48,13 +47,13 @@ public sealed class UnlockChecklistModule : IModule
             questHelper.Navigator.OnPickupAdvanced += Unlocks.OnPickupAdvanced;
         }
 
-        windows.AddWindow(unlockWindow);
+        windows.AddWindow(Window);
     }
 
     public void Disable()
     {
         Enabled = false;
-        windows.RemoveWindow(unlockWindow);
+        windows.RemoveWindow(Window);
         if (modules.Get<QuestHelperModule>() is { } questHelper)
         {
             questHelper.Navigator.OnPickupAdvanced -= Unlocks.OnPickupAdvanced;
@@ -67,7 +66,7 @@ public sealed class UnlockChecklistModule : IModule
     {
         if (ImGui.Button("Open checklist"))
         {
-            unlockWindow.IsOpen = true;
+            Window.IsOpen = true;
         }
     }
 

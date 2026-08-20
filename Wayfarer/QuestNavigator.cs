@@ -21,38 +21,22 @@ public sealed record PickupTarget(
 /// <see cref="Modules.QuestHelperModule"/>, which subscribes <see cref="OnUpdate"/>
 /// to <c>Framework.Update</c> in <c>Enable()</c> and unsubscribes in <c>Disable()</c> —
 /// this class runs only while that module is enabled.</summary>
-internal sealed unsafe class QuestNavigator : INavigationProvider
+internal sealed unsafe class QuestNavigator(
+    IPluginLog log,
+    QuestHelperConfig cfg,
+    IClientState clientState,
+    ICondition condition,
+    IObjectTable objects,
+    IDataManager dataManager) : INavigationProvider
 {
     private const uint QuestRowIdOffset = 65536;
 
-    private readonly IPluginLog log;
-    private readonly QuestHelperConfig cfg;
-    private readonly IClientState clientState;
-    private readonly ICondition condition;
-    private readonly IObjectTable objects;
-    private readonly IDataManager dataManager;
     private readonly Dictionary<uint, List<AetherytePoint>> aetheryteCache = [];
     private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
     private readonly Queue<PickupTarget> routeQueue = new();
     private readonly Dictionary<(uint FromMap, uint ToMap), (string Name, float X, float Z)?> entranceCache = [];
     private volatile NavigationState current = new();
     private bool errorLogged;
-
-    public QuestNavigator(
-        IPluginLog log,
-        QuestHelperConfig cfg,
-        IClientState clientState,
-        ICondition condition,
-        IObjectTable objects,
-        IDataManager dataManager)
-    {
-        this.log = log;
-        this.cfg = cfg;
-        this.clientState = clientState;
-        this.condition = condition;
-        this.objects = objects;
-        this.dataManager = dataManager;
-    }
 
     public event System.Action? OnPickupAdvanced;
 

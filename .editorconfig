@@ -174,6 +174,21 @@ dotnet_diagnostic.SA0001.severity = none
 # code style (file-scoped namespaces with top-of-file usings).
 dotnet_diagnostic.SA1200.severity = none
 
+# Modern C# idioms (task-2c-brief.md) - raised from the default "suggestion"
+# to "warning" so EnforceCodeStyleInBuild + TreatWarningsAsErrors make them
+# hard build gates instead of IDE-only hints.
+csharp_style_prefer_primary_constructors = true:warning
+csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
+dotnet_style_prefer_collection_expression = when_types_loosely_match:warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_pattern_matching_over_as_with_null_check = true:warning
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+csharp_style_prefer_switch_expression = true:warning
+csharp_style_prefer_pattern_matching = true:warning
+csharp_style_prefer_not_pattern = true:warning
+dotnet_style_prefer_auto_properties = true:warning
+dotnet_diagnostic.CA1510.severity = warning
+
 [Wayfarer.Tests/**.cs]
 # xUnit test naming convention (Method_Scenario_Expected) intentionally uses
 # underscores for readability.
