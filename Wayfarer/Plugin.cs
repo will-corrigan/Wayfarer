@@ -36,7 +36,7 @@ public sealed class Plugin : IDalamudPlugin
         var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         void SaveConfig() => pluginInterface.SavePluginConfig(config);
 
-        modules = new ModuleRegistry(log, config);
+        modules = new(log, config);
 
         var navigator = new QuestNavigator(log, config.QuestHelper, clientState, condition, objects, dataManager);
         var arrowWindow = new ArrowWindow(navigator, modules, config.QuestHelper, objects, clientState, log);
@@ -48,14 +48,14 @@ public sealed class Plugin : IDalamudPlugin
         var unlockChecklistModule = new UnlockChecklistModule(framework, windows, modules, unlocks, unlockWindow);
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
-        ipcProvider = new WayfarerIpcProvider(pluginInterface, modules, clientState);
+        ipcProvider = new(pluginInterface, modules, clientState);
 
-        configWindow = new ConfigWindow(modules, config, SaveConfig);
+        configWindow = new(modules, config, SaveConfig);
         windows.AddWindow(configWindow);
         pluginInterface.UiBuilder.Draw += windows.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi += OpenConfig;
-        commands.AddHandler("/wayfarer", new CommandInfo((_, _) => configWindow.IsOpen = true)
+        commands.AddHandler("/wayfarer", new((_, _) => configWindow.IsOpen = true)
         { HelpMessage = "Open Wayfarer settings" });
 
         log.Information("Wayfarer loaded");

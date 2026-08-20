@@ -58,7 +58,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
     public PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
         u.QuestRowId is { } rowId && u.GiverTerritory is { } t && u.GiverMap is { } m
-            ? new PickupTarget(u.Def.Unlock, u.Def.Quest ?? "?", rowId, t, m, u.GiverX, u.GiverY, u.GiverZ)
+            ? new(u.Def.Unlock, u.Def.Quest ?? "?", rowId, t, m, u.GiverX, u.GiverY, u.GiverZ)
             : null;
 
     /// <summary>Lightweight per-tick change detector: two field reads and a tuple comparison,

@@ -84,7 +84,7 @@ internal sealed unsafe class QuestNavigator(
                 errorLogged = true;
             }
 
-            current = new NavigationState { Mode = NavigationState.Modes.NoLocation, Reason = "no location data" };
+            current = new() { Mode = NavigationState.Modes.NoLocation, Reason = "no location data" };
         }
     }
 
@@ -116,30 +116,30 @@ internal sealed unsafe class QuestNavigator(
     {
         if (!clientState.IsLoggedIn)
         {
-            return new NavigationState();
+            return new();
         }
 
         var cond = condition;
         if (cond[ConditionFlag.OccupiedInCutSceneEvent] || cond[ConditionFlag.WatchingCutscene]
             || cond[ConditionFlag.WatchingCutscene78] || cond[ConditionFlag.BetweenAreas])
         {
-            return new NavigationState();
+            return new();
         }
 
         if (cfg.ArrowHideInCombat && cond[ConditionFlag.InCombat])
         {
-            return new NavigationState();
+            return new();
         }
 
         if (cfg.ArrowHideInDuty && cond[ConditionFlag.BoundByDuty])
         {
-            return new NavigationState();
+            return new();
         }
 
         var player = objects.LocalPlayer;
         if (player == null)
         {
-            return new NavigationState();
+            return new();
         }
 
         var territory = clientState.TerritoryType;
@@ -173,7 +173,7 @@ internal sealed unsafe class QuestNavigator(
         var followed = ResolveFollowedQuest();
         if (followed == null)
         {
-            return new NavigationState { Mode = NavigationState.Modes.Idle };
+            return new() { Mode = NavigationState.Modes.Idle };
         }
 
         var (questId, questName) = followed.Value;
@@ -267,7 +267,7 @@ internal sealed unsafe class QuestNavigator(
             }
         }
 
-        return new NavigationState
+        return new()
         {
             Mode = NavigationState.Modes.NoLocation,
             QuestId = questId + QuestRowIdOffset,
@@ -296,7 +296,7 @@ internal sealed unsafe class QuestNavigator(
         if (AethernetRoute(territory, px, pz, tx, tz, dist) is { } route)
         {
             var playerToEntry = NavMath.Distance(route.Entry.X - px, 0, route.Entry.Z - pz);
-            return new NavigationState
+            return new()
             {
                 Mode = NavigationState.Modes.SameZone,
                 QuestId = displayQuestId,
@@ -310,7 +310,7 @@ internal sealed unsafe class QuestNavigator(
             };
         }
 
-        return new NavigationState
+        return new()
         {
             Mode = NavigationState.Modes.SameZone,
             QuestId = displayQuestId,
@@ -414,7 +414,7 @@ internal sealed unsafe class QuestNavigator(
             }
         }
 
-        return new NavigationState
+        return new()
         {
             Mode = NavigationState.Modes.OtherZone,
             QuestId = displayQuestId,

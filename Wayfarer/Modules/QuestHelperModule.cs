@@ -32,7 +32,7 @@ internal sealed class QuestHelperModule(
         Enabled = true;
         framework.Update += Navigator.OnUpdate;
         windows.AddWindow(arrowWindow);
-        commands.AddHandler("/way", new CommandInfo((_, _) =>
+        commands.AddHandler("/way", new((_, _) =>
         {
             cfg.WidgetHidden = !cfg.WidgetHidden;
             saveConfig();

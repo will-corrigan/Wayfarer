@@ -121,7 +121,7 @@ internal sealed unsafe class ArrowWindow : Window
 
         var size = 48f * cfg.ArrowScale;
         var width = MathF.Max(ImGui.CalcTextSize(navigator.Current.QuestName ?? string.Empty).X, size + 16f);
-        ImGui.Dummy(new Vector2(width, size));
+        ImGui.Dummy(new(width, size));
         var min = ImGui.GetItemRectMin();
         var c = new Vector2(min.X + (width / 2f), min.Y + (size / 2f));
         var sin = MathF.Sin(angle);

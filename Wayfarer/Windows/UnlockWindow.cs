@@ -37,7 +37,7 @@ internal sealed class UnlockWindow : Window
         this.modules = modules;
         this.objects = objects;
         this.clientState = clientState;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(430, 300) };
+        SizeConstraints = new() { MinimumSize = new(430, 300) };
     }
 
     // OnOpen already runs on the framework thread in Dalamud's window system, so a
@@ -188,19 +188,17 @@ internal sealed class UnlockWindow : Window
         ImGui.TextDisabled("chains the arrow through every available pickup shown");
     }
 
-    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupEntries(List<ResolvedUnlock> visible)
+    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupEntries(List<ResolvedUnlock> visible) =>
+        GroupModes[groupMode] switch
+        {
+            "Level" => visible.GroupBy(u => $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}", StringComparer.Ordinal)
+                               .OrderBy(g => g.Min(u => u.QuestLevel)),
+            "Type" => visible.GroupBy(u => UnlockFilters.Category(u.Def), StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal),
+            _ => GroupByZone(visible),
+        };
+
+    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupByZone(List<ResolvedUnlock> visible)
     {
-        if (string.Equals(GroupModes[groupMode], "Level", StringComparison.Ordinal))
-        {
-            return visible.GroupBy(u => $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}", StringComparer.Ordinal)
-                          .OrderBy(g => g.Min(u => u.QuestLevel));
-        }
-
-        if (string.Equals(GroupModes[groupMode], "Type", StringComparison.Ordinal))
-        {
-            return visible.GroupBy(u => UnlockFilters.Category(u.Def), StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal);
-        }
-
         var currentZone = CurrentZoneName(); // hoisted: one scan of Entries per Draw, not per zone group
         return visible.GroupBy(u => u.ZoneName ?? "Unknown location", StringComparer.Ordinal)
                       .OrderByDescending(g => string.Equals(g.Key, currentZone, StringComparison.Ordinal))
