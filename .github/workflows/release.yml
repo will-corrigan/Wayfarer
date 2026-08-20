@@ -62,11 +62,16 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
+          # Dalamud requires the repo version to EXACTLY match the built manifest version,
+          # which .NET always emits as four parts (e.g. 0.1.0.0 from <Version>0.1.0</Version>).
+          if (($version -split "\.").Count -eq 3) { $version = "$version.0" }
+          $repoTesting = $version
           $tag = "${{ github.ref_name }}"
           $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/Wayfarer.zip"
 
           $repo = Get-Content repo.json -Raw | ConvertFrom-Json
           $repo[0].AssemblyVersion = $version
+          $repo[0].TestingAssemblyVersion = $repoTesting
           $repo[0].DownloadLinkInstall = $downloadUrl
           $repo[0].DownloadLinkUpdate = $downloadUrl
 
