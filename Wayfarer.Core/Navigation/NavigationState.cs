@@ -72,5 +72,11 @@ public sealed class NavigationState
         public const string SameZone = "sameZone";
         public const string OtherZone = "otherZone";
         public const string NoLocation = "noLocation";
+
+        /// <summary>The objective's territory is instanced duty content (a dungeon,
+        /// trial, raid, etc.) rather than an ordinary zone — there is no route to draw
+        /// since duty territories have no aetherytes or entrances; <see cref="Reason"/>
+        /// carries the "complete the duty" / "unlock and complete the duty" message.</summary>
+        public const string DutyObjective = "dutyObjective";
     }
 }
