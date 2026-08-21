@@ -1,15 +1,20 @@
 namespace Wayfarer.Core.Navigation;
 
-public sealed record AetherytePoint(uint Id, string Name, float X, float Z);
+/// <summary>Territory and Group default to 0 (unknown/no-aethernet-network) so existing
+/// same-zone call sites that only care about Id/Name/X/Z keep compiling unchanged;
+/// cross-zone route costing (<see cref="RouteCosting"/>) requires both to be populated
+/// from the source Aetheryte sheet row (Territory.RowId, AethernetGroup).</summary>
+public sealed record AetherytePoint(uint Id, string Name, float X, float Z, uint Territory = 0, uint Group = 0);
 
 public static class AetherytePicker
 {
+    // The combined walking legs must beat the direct run by at least this (covers the
+    // travel-menu interaction and loading hop). Also reused by RouteCosting as the
+    // cross-zone aethernet candidate's menu-overhead slack.
+    public const float RouteSlack = 60f;
+
     // Route via the aethernet only for real detours: objective further than this…
     private const float MinPlayerDistance = 120f;
-
-    // …and the combined walking legs must beat the direct run by at least this
-    // (covers the travel-menu interaction and loading hop).
-    private const float RouteSlack = 60f;
 
     public static AetherytePoint? Nearest(IReadOnlyList<AetherytePoint> candidates, float x, float z)
     {

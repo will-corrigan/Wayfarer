@@ -28,20 +28,28 @@ public sealed class NavigationState
 
     public bool AetheryteUnlocked { get; init; }
 
-    // Set when the same-zone target has been retargeted to an aethernet entry shard:
-    // the arrow points at the entry (nearest the player); the exit (nearest the
-    // objective) is what the user picks in the shard's travel menu.
+    // Set when the same-zone target has been retargeted to an aethernet entry shard,
+    // OR (OtherZone mode) when RouteCosting picked the aethernet candidate as the
+    // cheapest way to reach a cross-territory objective: the arrow points at the entry
+    // (nearest the player); the exit (nearest the objective, possibly in a different
+    // territory's coordinate space) is what the user picks in the shard's travel menu.
     public string? AethernetEntryName { get; init; }
 
     public string? AethernetExitName { get; init; }
 
-    // Set when a map-link marker on the CURRENT map leads toward the objective's map:
-    // the widget draws an arrow to this entrance (door / zone exit).
+    // OtherZone mode only, set when RouteCosting picked the entrance candidate (walk
+    // through a physical map-link door) as the cheapest route: the widget draws an
+    // arrow to this door. Null when the aethernet or teleport candidate won instead.
     public string? EntranceName { get; init; }
 
     public float? EntranceX { get; init; }
 
     public float? EntranceZ { get; init; }
+
+    // OtherZone mode only: the remaining walk after the aethernet exit shard or the
+    // entrance door — i.e. RouteCandidate.RemainingYalms for whichever mode won. Null
+    // for teleport mode (no post-arrival distance is tracked).
+    public float? RemainingYalms { get; init; }
 
     /// <summary>true when the arrow is guiding to an unlock-quest pickup rather than a followed quest</summary>
     public bool IsPickup { get; init; }

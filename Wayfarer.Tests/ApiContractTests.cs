@@ -37,6 +37,7 @@ public class ApiContractTests
             EntranceName = "Zone Entrance",
             EntranceX = 4.5f,
             EntranceZ = 5.5f,
+            RemainingYalms = 12.5f,
             IsPickup = true,
             Reason = "unlock quest pickup",
         };
@@ -62,6 +63,7 @@ public class ApiContractTests
         Assert.Equal(state.EntranceName, dto.EntranceName);
         Assert.Equal(state.EntranceX, dto.EntranceX);
         Assert.Equal(state.EntranceZ, dto.EntranceZ);
+        Assert.Equal(state.RemainingYalms, dto.RemainingYalms);
         Assert.Equal(state.IsPickup, dto.IsPickup);
         Assert.Equal(state.Reason, dto.Reason);
     }

@@ -40,6 +40,8 @@ public sealed class NavigationDto
 
     public float? EntranceZ { get; init; }
 
+    public float? RemainingYalms { get; init; }
+
     public bool IsPickup { get; init; }
 
     public string? Reason { get; init; }

@@ -34,7 +34,7 @@ internal sealed unsafe class QuestNavigator(
     private readonly Dictionary<uint, List<AetherytePoint>> aetheryteCache = [];
     private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
     private readonly Queue<PickupTarget> routeQueue = new();
-    private readonly Dictionary<(uint FromMap, uint ToMap), (string Name, float X, float Z)?> entranceCache = [];
+    private readonly Dictionary<(uint FromMap, uint ToMap), List<MapLinkPoint>> entranceCache = [];
     private volatile NavigationState current = new();
     private bool errorLogged;
 
@@ -357,62 +357,25 @@ internal sealed unsafe class QuestNavigator(
     {
         var territorySheet = dataManager.GetExcelSheet<TerritoryType>();
         var zoneName = territorySheet.GetRowOrDefault(targetTerritory)?.PlaceName.ValueNullable?.Name.ExtractText();
+        var currentTerritory = clientState.TerritoryType;
 
-        // Teleport recommendation — skipped when the objective is in the current
-        // territory (another map layer of the zone you are already standing in).
-        uint? aetheryteId = null;
-        string? aetheryteName = null;
-        var aetheryteUnlocked = false;
-        if (targetTerritory != clientState.TerritoryType)
-        {
-            var all = GetAetherytePoints(targetTerritory, aethernet: false);
-            var ui = UIState.Instance();
-            var unlockedPts = new List<AetherytePoint>();
-            if (ui != null)
-            {
-                foreach (var a in all)
-                {
-                    if (ui->IsAetheryteUnlocked(a.Id))
-                    {
-                        unlockedPts.Add(a);
-                    }
-                }
-            }
+        var aethernet = RouteCosting.AethernetCandidate(
+            GetAetherytePoints(currentTerritory, aethernet: true),
+            GetAetherytePoints(targetTerritory, aethernet: true),
+            px,
+            pz,
+            tx,
+            tz);
 
-            var pick = AetherytePicker.Nearest(unlockedPts.Count > 0 ? unlockedPts : all, tx, tz);
-            if (pick != null)
-            {
-                aetheryteId = pick.Id;
-                aetheryteName = pick.Name;
-                aetheryteUnlocked = unlockedPts.Count > 0;
-            }
-            else if (territorySheet.GetRowOrDefault(targetTerritory) is { } tt
-                     && tt.Aetheryte.RowId != 0
-                     && tt.Aetheryte.ValueNullable is { } fallback)
-            {
-                // Interiors own no aetheryte; the TerritoryType fallback names the
-                // parent city's aetheryte (verified against live game data).
-                aetheryteId = tt.Aetheryte.RowId;
-                aetheryteName = fallback.PlaceName.ValueNullable?.Name.ExtractText();
-                var ui2 = UIState.Instance();
-                aetheryteUnlocked = ui2 != null && ui2->IsAetheryteUnlocked(tt.Aetheryte.RowId);
-            }
-        }
+        var sourceLinks = FindEntrances(clientState.MapId, targetMapId);
+        var targetLinks = FindEntrances(targetMapId, clientState.MapId);
+        var entrance = RouteCosting.EntranceCandidate(sourceLinks, targetLinks, px, pz, tx, tz);
 
-        var entrance = FindEntrance(clientState.MapId, targetMapId);
+        var (aetheryte, aetheryteTerritory, unlocked) = ResolveTargetAetheryte(targetTerritory, tx, tz);
+        var teleport = RouteCosting.TeleportCandidate(
+            aetheryte, aetheryteTerritory, targetTerritory, currentTerritory, tx, tz, unlocked);
 
-        string? aethernetEntry = null;
-        string? aethernetExit = null;
-        if (entrance is { } e)
-        {
-            var directDist = NavMath.Distance(e.X - px, 0, e.Z - pz);
-            if (AethernetRoute(clientState.TerritoryType, px, pz, e.X, e.Z, directDist) is { } route)
-            {
-                aethernetEntry = route.Entry.Name;
-                aethernetExit = route.Exit.Name;
-                entrance = (e.Name, route.Entry.X, route.Entry.Z); // arrow → entry shard
-            }
-        }
+        var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
 
         return new()
         {
@@ -422,22 +385,70 @@ internal sealed unsafe class QuestNavigator(
             StepLabel = stepLabel,
             ZoneName = zoneName,
             TargetX = tx, TargetZ = tz,
-            AetheryteId = aetheryteId,
-            AetheryteName = aetheryteName,
-            AetheryteUnlocked = aetheryteUnlocked,
-            EntranceName = entrance?.Name,
-            EntranceX = entrance?.X,
-            EntranceZ = entrance?.Z,
-            AethernetEntryName = aethernetEntry,
-            AethernetExitName = aethernetExit,
+            AetheryteId = chosen?.AetheryteId,
+            AetheryteName = chosen?.AetheryteName,
+            AetheryteUnlocked = chosen?.AetheryteUnlocked ?? false,
+            EntranceName = chosen?.EntranceName,
+            EntranceX = chosen?.ArrowX,
+            EntranceZ = chosen?.ArrowZ,
+            AethernetEntryName = chosen?.AethernetEntryName,
+            AethernetExitName = chosen?.AethernetExitName,
+            RemainingYalms = chosen?.RemainingYalms,
             IsPickup = isPickup,
         };
     }
 
-    /// <summary>Finds a map-link marker (door / zone exit) on the current map that
-    /// leads to the objective's map. DataType 1 = adjacent map, 2 = interior sub-map;
-    /// DataKey is the destination Map row for both (verified against live game data).</summary>
-    private (string Name, float X, float Z)? FindEntrance(uint fromMapId, uint toMapId)
+    /// <summary>Resolves the aetheryte to recommend teleporting to for an objective in
+    /// <paramref name="targetTerritory"/>: that territory's own nearest (unlocked
+    /// preferred) aetheryte, or — for territories that own none, e.g. instanced
+    /// interiors — the TerritoryType fallback aetheryte, whose OWN territory can differ
+    /// from <paramref name="targetTerritory"/> (verified live: both Ishgard territories'
+    /// fallback resolves to the Foundation aetheryte). RouteCosting.TeleportCandidate is
+    /// responsible for rejecting a fallback that lands back in the player's own
+    /// territory; this method only resolves candidates, it doesn't filter them.</summary>
+    private (AetherytePoint? Aetheryte, uint Territory, bool Unlocked) ResolveTargetAetheryte(
+        uint targetTerritory, float tx, float tz)
+    {
+        var all = GetAetherytePoints(targetTerritory, aethernet: false);
+        var ui = UIState.Instance();
+        var unlockedPts = new List<AetherytePoint>();
+        if (ui != null)
+        {
+            foreach (var a in all)
+            {
+                if (ui->IsAetheryteUnlocked(a.Id))
+                {
+                    unlockedPts.Add(a);
+                }
+            }
+        }
+
+        if (AetherytePicker.Nearest(unlockedPts.Count > 0 ? unlockedPts : all, tx, tz) is { } pick)
+        {
+            return (pick, pick.Territory, unlockedPts.Count > 0);
+        }
+
+        if (dataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(targetTerritory) is { } tt
+            && tt.Aetheryte.RowId != 0
+            && tt.Aetheryte.ValueNullable is { } fallback)
+        {
+            var name = fallback.PlaceName.ValueNullable?.Name.ExtractText() ?? string.Empty;
+            TryGetAetherytePosition(fallback, out var fx, out var fz);
+            var point = new AetherytePoint(tt.Aetheryte.RowId, name, fx, fz, fallback.Territory.RowId);
+            var ui2 = UIState.Instance();
+            var fallbackUnlocked = ui2 != null && ui2->IsAetheryteUnlocked(tt.Aetheryte.RowId);
+            return (point, fallback.Territory.RowId, fallbackUnlocked);
+        }
+
+        return (null, 0, false);
+    }
+
+    /// <summary>Finds every map-link marker (door / zone exit) on <paramref
+    /// name="fromMapId"/> that leads to <paramref name="toMapId"/>. DataType 1 =
+    /// adjacent map, 2 = interior sub-map; DataKey is the destination Map row for both
+    /// (verified against live game data). Split cities have several such doors between
+    /// their two maps — all are returned so route costing can pick the nearest.</summary>
+    private List<MapLinkPoint> FindEntrances(uint fromMapId, uint toMapId)
     {
         var key = (fromMapId, toMapId);
         if (entranceCache.TryGetValue(key, out var cached))
@@ -445,7 +456,7 @@ internal sealed unsafe class QuestNavigator(
             return cached;
         }
 
-        (string Name, float X, float Z)? found = null;
+        var found = new List<MapLinkPoint>();
         var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
         if (fromMapId != toMapId && mapSheet.GetRowOrDefault(fromMapId) is { } from)
         {
@@ -466,8 +477,7 @@ internal sealed unsafe class QuestNavigator(
                         name = mapSheet.GetRowOrDefault(toMapId)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "entrance";
                     }
 
-                    found = (name!, x, z);
-                    break;
+                    found.Add(new(name!, x, z));
                 }
             }
         }
@@ -550,7 +560,7 @@ internal sealed unsafe class QuestNavigator(
 
             if (TryGetAetherytePosition(a, out var x, out var z))
             {
-                list.Add(new(a.RowId, name, x, z));
+                list.Add(new(a.RowId, name, x, z, a.Territory.RowId, a.AethernetGroup));
             }
         }
 

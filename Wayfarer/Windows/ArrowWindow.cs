@@ -81,6 +81,12 @@ internal sealed unsafe class ArrowWindow : Window
         ImGui.Text(text);
     }
 
+    // "Aethernet to X, then 40 yalms" / "Through Y, then 40 yalms" — RemainingYalms is
+    // the walk after the shard hop or door crossing (RouteCosting's per-candidate
+    // second leg); absent for candidates where it wasn't computed.
+    private static string RemainingSuffix(NavigationState state) =>
+        state.RemainingYalms is { } r ? $", then {NavMath.FormatDistance(r)}" : string.Empty;
+
     private void DrawArrow(NavigationState state)
     {
         if (state.TargetX is null || state.TargetZ is null)
@@ -162,12 +168,11 @@ internal sealed unsafe class ArrowWindow : Window
             if (state.AethernetExitName is { } exitName)
             {
                 CenteredText($"→ {state.AethernetEntryName} shard");
-                CenteredText($"Aethernet to: {exitName}");
-                CenteredText($"then: {state.EntranceName}");
+                CenteredText($"Aethernet to: {exitName}{RemainingSuffix(state)}");
             }
             else
             {
-                CenteredText($"Entrance: {state.EntranceName}");
+                CenteredText($"Through: {state.EntranceName}{RemainingSuffix(state)}");
             }
         }
 
