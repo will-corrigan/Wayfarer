@@ -266,7 +266,9 @@ internal sealed class UnlockWindow : Window
         ImGui.TextUnformatted(u.Def.Description ?? u.Def.Unlock);
         if (u.Def.Quest is { } q)
         {
-            ImGui.TextDisabled($"Quest: {q}");
+            ImGui.TextDisabled(u.GiverName is { Length: > 0 } giver
+                ? $"Quest: {q} (from {giver})"
+                : $"Quest: {q}");
         }
 
         if (u.LockReason is { } reason)

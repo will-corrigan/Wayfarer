@@ -96,6 +96,7 @@ internal sealed class WayfarerIpcProvider : IDisposable
                 Status = u.Status.ToString(),
                 LockReason = u.LockReason,
                 Quest = u.Def.Quest,
+                Giver = u.GiverName,
                 Level = u.QuestLevel,
                 Zone = u.ZoneName,
                 Priority = u.Def.Priority,

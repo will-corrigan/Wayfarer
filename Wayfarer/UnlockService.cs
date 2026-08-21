@@ -60,7 +60,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
     public PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
         u.QuestRowId is { } rowId && u.GiverTerritory is { } t && u.GiverMap is { } m
-            ? new(u.Def.Unlock, u.Def.Quest ?? "?", rowId, t, m, u.GiverX, u.GiverY, u.GiverZ)
+            ? new(u.Def.Unlock, u.Def.Quest ?? "?", rowId, t, m, u.GiverX, u.GiverY, u.GiverZ, u.GiverName)
             : null;
 
     /// <summary>Lightweight per-tick change detector: two field reads and a tuple comparison,
@@ -236,6 +236,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var defs = UnlockDataset.Parse(json);
 
         var classJobs = LoadClassJobs(dataManager);
+        var enpcSheet = dataManager.GetExcelSheet<ENpcResident>();
         var byName = new Dictionary<string, QuestFacts>(StringComparer.Ordinal);
         var sheet = dataManager.GetExcelSheet<Quest>();
         foreach (var q in sheet)
@@ -252,7 +253,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 continue; // first wins; duplicates are rare and equivalent for our purpose
             }
 
-            byName[key] = QuestFacts.From(q, classJobs);
+            byName[key] = QuestFacts.From(q, classJobs, enpcSheet);
         }
 
         entries.Clear();
@@ -302,9 +303,13 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         float X,
         float Y,
         float Z,
-        string? Zone)
+        string? Zone,
+        string? GiverName)
     {
-        public static QuestFacts From(Quest q, List<(uint RowId, string Abbr, string Name)> classJobs)
+        public static QuestFacts From(
+            Quest q,
+            List<(uint RowId, string Abbr, string Name)> classJobs,
+            ExcelSheet<ENpcResident> enpcSheet)
         {
             var prereqs = new List<uint>();
             var prereqNames = new List<string>();
@@ -392,6 +397,16 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 CollectAllowedJobs(q.ClassJobCategory1, classJobs, altJobRowIds, altJobNames);
             }
 
+            // IssuerStart is an untyped RowRef: some quests are issued by objects/eobjects
+            // rather than an ENpcResident, so a miss here is expected, not an error — degrade
+            // silently to null rather than logging.
+            string? giverName = null;
+            if (q.IssuerStart.RowId != 0
+                && enpcSheet.GetRowOrDefault(q.IssuerStart.RowId)?.Singular.ExtractText() is { Length: > 0 } gn)
+            {
+                giverName = gn;
+            }
+
             return new QuestFacts(
                 RowId: q.RowId,
                 Level: lvl0,
@@ -424,7 +439,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 X: x,
                 Y: y,
                 Z: z,
-                Zone: zone);
+                Zone: zone,
+                GiverName: giverName);
         }
 
         public void ApplyTo(ResolvedUnlock r, int fallbackLevel)
@@ -461,6 +477,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.GiverY = Y;
             r.GiverZ = Z;
             r.ZoneName = Zone;
+            r.GiverName = GiverName;
         }
     }
 }

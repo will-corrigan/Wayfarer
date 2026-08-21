@@ -124,6 +124,11 @@ public sealed class ResolvedUnlock
 
     public string? ZoneName { get; set; }
 
+    /// <summary><c>IssuerStart</c> resolved against the ENpcResident sheet's
+    /// <c>Singular</c> name. Null when the issuer isn't an ENpcResident (some quests are
+    /// issued by objects/eobjects) or has no name — degrades silently, no logging.</summary>
+    public string? GiverName { get; set; }
+
     public UnlockStatus Status { get; set; }
 
     public string? LockReason { get; set; }
@@ -168,6 +173,7 @@ public sealed class ResolvedUnlock
         GiverY = GiverY,
         GiverZ = GiverZ,
         ZoneName = ZoneName,
+        GiverName = GiverName,
         Status = Status,
         LockReason = LockReason,
     };

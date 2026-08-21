@@ -163,7 +163,7 @@ public class ApiContractTests
     {
         const string json = """
             [{"unlock":"Glamours","status":"Available","lockReason":null,"quest":"A Self-improving Man",
-              "level":15,"zone":"Ul'dah","priority":"essential","category":"system",
+              "giver":"Mahenne","level":15,"zone":"Ul'dah","priority":"essential","category":"system",
               "description":"Change how gear looks."}]
             """;
         var client = new WayfarerClient(() => WayfarerIpc.ApiVersion, () => "{}", (_, _) => json);
@@ -175,11 +175,28 @@ public class ApiContractTests
         Assert.Equal("Available", row.Status);
         Assert.Null(row.LockReason);
         Assert.Equal("A Self-improving Man", row.Quest);
+        Assert.Equal("Mahenne", row.Giver);
         Assert.Equal(15, row.Level);
         Assert.Equal("Ul'dah", row.Zone);
         Assert.Equal("essential", row.Priority);
         Assert.Equal("system", row.Category);
         Assert.Equal("Change how gear looks.", row.Description);
+    }
+
+    [Fact]
+    public void GetUnlocks_Deserializes_NullGiver()
+    {
+        const string json = """
+            [{"unlock":"Chocobo Issuance","status":"Available","lockReason":null,"quest":"My Feisty Little Chocobo",
+              "giver":null,"level":20,"zone":null,"priority":"essential","category":"system",
+              "description":null}]
+            """;
+        var client = new WayfarerClient(() => WayfarerIpc.ApiVersion, () => "{}", (_, _) => json);
+
+        var rows = client.GetUnlocks();
+
+        var row = Assert.Single(rows);
+        Assert.Null(row.Giver);
     }
 
     [Fact]

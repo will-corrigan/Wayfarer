@@ -12,6 +12,8 @@ public sealed class UnlockRowDto
 
     public string? Quest { get; init; }
 
+    public string? Giver { get; init; }
+
     public int Level { get; init; }
 
     public string? Zone { get; init; }

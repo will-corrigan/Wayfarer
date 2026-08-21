@@ -13,7 +13,7 @@ namespace Wayfarer;
 /// walk to in order to accept the quest that unlocks something.</summary>
 public sealed record PickupTarget(
     string UnlockName, string QuestName, uint QuestRowId,
-    uint Territory, uint MapId, float X, float Y, float Z);
+    uint Territory, uint MapId, float X, float Y, float Z, string? GiverName = null);
 
 /// <summary>Resolves the followed quest's objective once per framework tick and
 /// publishes an immutable NavigationState (read by ArrowWindow and get_navigation;
@@ -189,7 +189,9 @@ internal sealed unsafe class QuestNavigator(
 
             if (Pickup is { } p)
             {
-                var label = $"Pick up: {p.QuestName}";
+                var label = p.GiverName is { Length: > 0 } giver
+                    ? $"Pick up: {p.QuestName} from {giver}"
+                    : $"Pick up: {p.QuestName}";
                 var (rs, rt) = routeTotal is { } t ? (routeStop, t) : ((int?)null, (int?)null);
                 if (p.Territory == territory && p.MapId == mapId)
                 {
