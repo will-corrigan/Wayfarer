@@ -11,13 +11,15 @@ on:
         type: string
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release-please:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -36,6 +38,8 @@ jobs:
       ((github.event_name == 'push' && needs.release-please.result == 'success' && needs.release-please.outputs.release_created == 'true') ||
       (github.event_name == 'workflow_dispatch' && inputs.tag != ''))
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     env:
       DALAMUD_HOME: ${{ github.workspace }}\.dalamud
@@ -100,7 +104,7 @@ jobs:
           $repo[0].DownloadLinkInstall = $downloadUrl
           $repo[0].DownloadLinkUpdate = $downloadUrl
 
-          ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json -NoNewline
+          ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json
 
       - name: Commit repo.json
         shell: pwsh

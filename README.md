@@ -108,9 +108,13 @@ type drives the version bump:
 - a `!` after the type (or a `BREAKING CHANGE:` footer) bumps the major version
 
 release-please keeps an up-to-date pull request open with the next version bump and a generated
-`CHANGELOG.md`. Merging that pull request tags the release, which triggers the packaging workflow: it
-builds the plugin, attaches `Wayfarer.zip` to the GitHub release, and publishes the updated `repo.json`
-so the in-game plugin installer picks up the new version. There is no manual tagging step.
+`CHANGELOG.md`. Before merging it, check the pull request's checks: because it's authored by
+`github-actions[bot]`, GitHub usually holds its CI run for manual approval (a banner reading
+**"Approve and run"** on the pull request) — click that first so the checks actually run. Once it's
+green, merge the pull request. Merging tags the release and, in the same workflow run, chains straight
+into a packaging job: it builds the plugin, attaches `Wayfarer.zip` to the GitHub release, and publishes
+the updated `repo.json` so the in-game plugin installer picks up the new version. There is no manual
+tagging step.
 
 ## License
 
