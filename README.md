@@ -97,6 +97,21 @@ dotnet format
 pwsh -NoProfile -File scripts/check-hygiene.ps1
 ```
 
+## Releases
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please). Commits to
+`main` are expected to follow [Conventional Commits](https://www.conventionalcommits.org/); the commit
+type drives the version bump:
+
+- `fix:` bumps the patch version
+- `feat:` bumps the minor version
+- a `!` after the type (or a `BREAKING CHANGE:` footer) bumps the major version
+
+release-please keeps an up-to-date pull request open with the next version bump and a generated
+`CHANGELOG.md`. Merging that pull request tags the release, which triggers the packaging workflow: it
+builds the plugin, attaches `Wayfarer.zip` to the GitHub release, and publishes the updated `repo.json`
+so the in-game plugin installer picks up the new version. There is no manual tagging step.
+
 ## License
 
 Wayfarer is licensed under the [GNU Affero General Public License v3.0](LICENSE).
