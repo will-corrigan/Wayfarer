@@ -190,6 +190,11 @@ internal sealed class UnlockWindow : Window
             }
         }
 
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Guides you through picking up every quest shown above, nearest first. The arrow advances automatically as you accept each one.");
+        }
+
         ImGui.SameLine();
         ImGui.TextDisabled("chains the arrow through every available pickup shown");
     }

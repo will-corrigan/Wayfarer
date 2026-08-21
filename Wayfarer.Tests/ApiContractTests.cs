@@ -39,6 +39,8 @@ public class ApiContractTests
             EntranceZ = 5.5f,
             RemainingYalms = 12.5f,
             IsPickup = true,
+            RouteStop = 2,
+            RouteTotal = 5,
             Reason = "unlock quest pickup",
         };
 
@@ -65,6 +67,8 @@ public class ApiContractTests
         Assert.Equal(state.EntranceZ, dto.EntranceZ);
         Assert.Equal(state.RemainingYalms, dto.RemainingYalms);
         Assert.Equal(state.IsPickup, dto.IsPickup);
+        Assert.Equal(state.RouteStop, dto.RouteStop);
+        Assert.Equal(state.RouteTotal, dto.RouteTotal);
         Assert.Equal(state.Reason, dto.Reason);
     }
 
@@ -82,6 +86,8 @@ public class ApiContractTests
         Assert.Null(dto.QuestName);
         Assert.False(dto.AetheryteUnlocked);
         Assert.False(dto.IsPickup);
+        Assert.Null(dto.RouteStop);
+        Assert.Null(dto.RouteTotal);
     }
 
     [Fact]

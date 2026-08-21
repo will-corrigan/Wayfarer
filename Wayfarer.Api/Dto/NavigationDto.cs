@@ -44,5 +44,9 @@ public sealed class NavigationDto
 
     public bool IsPickup { get; init; }
 
+    public int? RouteStop { get; init; }
+
+    public int? RouteTotal { get; init; }
+
     public string? Reason { get; init; }
 }

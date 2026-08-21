@@ -207,6 +207,11 @@ internal sealed unsafe class ArrowWindow : Window
     private void DrawQuestLine(NavigationState state)
     {
         ImGui.Separator();
+        if (state.RouteStop is { } stop && state.RouteTotal is { } total)
+        {
+            CenteredText($"Stop {stop} of {total}");
+        }
+
         if (ImGui.Selectable(state.QuestName ?? "(no quest)"))
         {
             ImGui.OpenPopup("questpicker");
@@ -224,6 +229,11 @@ internal sealed unsafe class ArrowWindow : Window
             {
                 navigator.ClearPickup();
                 navigator.FollowedOverride = null;
+            }
+
+            if (state.RouteTotal is not null && ImGui.MenuItem("Cancel route"))
+            {
+                navigator.ClearPickup();
             }
 
             ImGui.Separator();

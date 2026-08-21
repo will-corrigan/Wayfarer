@@ -38,6 +38,12 @@ internal sealed unsafe class QuestNavigator(
     private volatile NavigationState current = new();
     private bool errorLogged;
 
+    // Route progress (Step 4): set together in SetRoute, advanced together in the
+    // pickup-advance path in Compute(), cleared together by SetPickup/ClearPickup/route
+    // exhaustion. Null total means "no route active" — including a single SetPickup.
+    private int? routeTotal;
+    private int routeStop;
+
     public event System.Action? OnPickupAdvanced;
 
     public ushort? FollowedOverride { get; set; }
@@ -49,6 +55,7 @@ internal sealed unsafe class QuestNavigator(
     public void SetPickup(PickupTarget t)
     {
         routeQueue.Clear();
+        routeTotal = null;
         Pickup = t;
     }
 
@@ -60,12 +67,23 @@ internal sealed unsafe class QuestNavigator(
             routeQueue.Enqueue(t);
         }
 
-        Pickup = routeQueue.Count > 0 ? routeQueue.Dequeue() : null;
+        if (routeQueue.Count > 0)
+        {
+            routeTotal = routeQueue.Count;
+            routeStop = 1;
+            Pickup = routeQueue.Dequeue();
+        }
+        else
+        {
+            routeTotal = null;
+            Pickup = null;
+        }
     }
 
     public void ClearPickup()
     {
         routeQueue.Clear();
+        routeTotal = null;
         Pickup = null;
     }
 
@@ -154,19 +172,32 @@ internal sealed unsafe class QuestNavigator(
             {
                 // Picked up (or already done) — advance the route or resume quests.
                 Pickup = routeQueue.Count > 0 ? routeQueue.Dequeue() : null;
+                if (routeTotal is not null)
+                {
+                    if (Pickup is not null)
+                    {
+                        routeStop++;
+                    }
+                    else
+                    {
+                        routeTotal = null; // route exhausted
+                    }
+                }
+
                 OnPickupAdvanced?.Invoke();
             }
 
             if (Pickup is { } p)
             {
                 var label = $"Pick up: {p.QuestName}";
+                var (rs, rt) = routeTotal is { } t ? (routeStop, t) : ((int?)null, (int?)null);
                 if (p.Territory == territory && p.MapId == mapId)
                 {
                     var d = NavMath.Distance(p.X - pos.X, p.Y - pos.Y, p.Z - pos.Z);
-                    return SameZone(p.QuestRowId, $"Unlocks: {p.UnlockName}", label, p.X, p.Y, p.Z, d, territory, pos.X, pos.Z, isPickup: true);
+                    return SameZone(p.QuestRowId, $"Unlocks: {p.UnlockName}", label, p.X, p.Y, p.Z, d, territory, pos.X, pos.Z, isPickup: true, routeStop: rs, routeTotal: rt);
                 }
 
-                return OtherZone(p.QuestRowId, $"Unlocks: {p.UnlockName}", label, p.Territory, p.MapId, p.X, p.Z, pos.X, pos.Z, isPickup: true);
+                return OtherZone(p.QuestRowId, $"Unlocks: {p.UnlockName}", label, p.Territory, p.MapId, p.X, p.Z, pos.X, pos.Z, isPickup: true, routeStop: rs, routeTotal: rt);
             }
         }
 
@@ -288,7 +319,9 @@ internal sealed unsafe class QuestNavigator(
         uint territory,
         float px,
         float pz,
-        bool isPickup = false)
+        bool isPickup = false,
+        int? routeStop = null,
+        int? routeTotal = null)
     {
         // City aethernet routing: if hopping the entry shard nearest the player and
         // out of the shard nearest the objective beats the direct run, retarget the
@@ -307,6 +340,8 @@ internal sealed unsafe class QuestNavigator(
                 AethernetEntryName = route.Entry.Name,
                 AethernetExitName = route.Exit.Name,
                 IsPickup = isPickup,
+                RouteStop = routeStop,
+                RouteTotal = routeTotal,
             };
         }
 
@@ -319,6 +354,8 @@ internal sealed unsafe class QuestNavigator(
             TargetX = tx, TargetY = ty, TargetZ = tz,
             DistanceYalms = dist,
             IsPickup = isPickup,
+            RouteStop = routeStop,
+            RouteTotal = routeTotal,
         };
     }
 
@@ -353,7 +390,9 @@ internal sealed unsafe class QuestNavigator(
         float tz,
         float px,
         float pz,
-        bool isPickup = false)
+        bool isPickup = false,
+        int? routeStop = null,
+        int? routeTotal = null)
     {
         var territorySheet = dataManager.GetExcelSheet<TerritoryType>();
         var zoneName = territorySheet.GetRowOrDefault(targetTerritory)?.PlaceName.ValueNullable?.Name.ExtractText();
@@ -395,6 +434,8 @@ internal sealed unsafe class QuestNavigator(
             AethernetExitName = chosen?.AethernetExitName,
             RemainingYalms = chosen?.RemainingYalms,
             IsPickup = isPickup,
+            RouteStop = routeStop,
+            RouteTotal = routeTotal,
         };
     }
 

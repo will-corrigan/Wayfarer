@@ -54,6 +54,13 @@ public sealed class NavigationState
     /// <summary>true when the arrow is guiding to an unlock-quest pickup rather than a followed quest</summary>
     public bool IsPickup { get; init; }
 
+    /// <summary>1-based position of the current pickup within an active multi-stop route
+    /// (SetRoute), null when no route is active — including single pickups via SetPickup.</summary>
+    public int? RouteStop { get; init; }
+
+    /// <summary>Total stops in the active route, null when no route is active.</summary>
+    public int? RouteTotal { get; init; }
+
     public string? Reason { get; init; }
 
     public static class Modes
