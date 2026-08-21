@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0](https://github.com/will-corrigan/Wayfarer/compare/v0.1.1...v0.2.0) (2026-08-21)
+
+
+### Features
+
+* route progress display and cancellation ([10e0c3e](https://github.com/will-corrigan/Wayfarer/commit/10e0c3eaacfd7a6032a658e8a0f7e8e6e6c3a8c6))
+* show quest giver names in unlock list and pickup guidance ([3efb270](https://github.com/will-corrigan/Wayfarer/commit/3efb2701946f837f97ff6e5f0ef15a77501e8e52))
+
+
+### Bug Fixes
+
+* correct camera rotation sign and add arrival state ([#7](https://github.com/will-corrigan/Wayfarer/issues/7)) ([806819d](https://github.com/will-corrigan/Wayfarer/commit/806819d821f9eedd3dba113966f7360da023d092))
+* enforce full quest acceptance gates in unlock checklist ([afe2afa](https://github.com/will-corrigan/Wayfarer/commit/afe2afac4bb3486ff79f222c448fa5a6503b7842))
+* ignore sentinel second job category unless its level gate is real ([55128f5](https://github.com/will-corrigan/Wayfarer/commit/55128f555717d62471b3f7c968258e073222892f))
+* route intra-city travel via aethernet groups, entrances and honest costs ([0da1ede](https://github.com/will-corrigan/Wayfarer/commit/0da1ede10ff95f7a7ad56d58dfc6e48270f107e7))
+
 ## [0.1.1](https://github.com/will-corrigan/Wayfarer/compare/v0.1.0...v0.1.1) (2026-08-21)
 
 
