@@ -130,6 +130,36 @@ internal sealed unsafe class QuestNavigator(
         return result;
     }
 
+    /// <summary>Live current-objective label for any accepted quest, keyed by its raw id. Same
+    /// scan as the followed-quest StepLabel computation in <see cref="Compute"/> — see that
+    /// method's "1) The game's own live quest markers" step — but standalone so
+    /// <see cref="Windows.UnlockWindow"/> can look up an accepted row's objective without
+    /// following it first. Framework thread only (called from Draw).</summary>
+    public string? GetAcceptedQuestObjective(uint rawQuestId)
+    {
+        var gameMap = GameMap.Instance();
+        if (gameMap == null)
+        {
+            return null;
+        }
+
+        foreach (ref var mi in gameMap->QuestMarkers)
+        {
+            if ((mi.ObjectiveId & 0xFFFF) != rawQuestId)
+            {
+                continue;
+            }
+
+            var label = mi.Label.ToString();
+            if (label.Length > 0)
+            {
+                return label;
+            }
+        }
+
+        return null;
+    }
+
     private NavigationState Compute()
     {
         if (!clientState.IsLoggedIn)

@@ -9,6 +9,11 @@ namespace Wayfarer.Windows;
 
 internal sealed class UnlockWindow : Window
 {
+    // Lumina's Quest sheet offsets row ids by this amount; QuestNavigator.FollowedOverride
+    // and GetAcceptedQuests() both work in the raw (unoffset) ushort id space — see
+    // QuestNavigator/UnlockService, which redeclare the same constant for the same reason.
+    private const uint QuestRowIdOffset = 65536;
+
     private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
     private static readonly (string Key, string Label)[] CategoryChips =
         [("content", "Content"), ("system", "Systems"), ("cosmetic", "Cosmetics"), ("zone", "Zones")];
@@ -141,6 +146,19 @@ internal sealed class UnlockWindow : Window
             _ => 10,
         }).ThenBy(u => u.QuestLevel);
 
+    /// <summary>One-line explanation for each status tag icon ("[grab]"/"[accepted]"/"[locked]"/
+    /// "[done]"); every other locked-flavor status shares the same "[locked]" icon in
+    /// <see cref="DrawRow"/>, so it shares this text too.</summary>
+    private static string StatusTagTooltip(UnlockStatus status) => status switch
+    {
+        UnlockStatus.Available => "Ready to pick up from the quest giver.",
+        UnlockStatus.Accepted => "Picked up but not finished — check your Journal for the next step.",
+        UnlockStatus.Done => "Completed.",
+        UnlockStatus.LockedOut => "No longer obtainable — a quest that locks it out was completed.",
+        UnlockStatus.UnknownGate => "Gated behind something this plugin can't check (e.g. a festival window or housing).",
+        _ => "Locked — requirements not yet met.",
+    };
+
     private void DrawFilterBar()
     {
         ImGui.SetNextItemWidth(90);
@@ -240,8 +258,20 @@ internal sealed class UnlockWindow : Window
         }
 
         ImGui.TextColored(color, icon);
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(StatusTagTooltip(u.Status));
+        }
+
         ImGui.SameLine();
-        var label = $"{u.Def.Unlock}  (lv{u.QuestLevel}{(u.ZoneName is { } z ? $", {z}" : string.Empty)})##{u.QuestRowId}_{u.Def.Unlock}";
+
+        // Accepted rows carry the quest name on the row itself — the player needs to know which
+        // quest to finish without hovering. Every other status keeps its quest in the tooltip
+        // only, to avoid cluttering the list.
+        var questSuffix = u.Status == UnlockStatus.Accepted && u.Def.Quest is { Length: > 0 } quest
+            ? $" — {quest}"
+            : string.Empty;
+        var label = $"{u.Def.Unlock}{questSuffix}  (lv{u.QuestLevel}{(u.ZoneName is { } z ? $", {z}" : string.Empty)})##{u.QuestRowId}_{u.Def.Unlock}";
         var clicked = ImGui.Selectable(label);
         if (greyed)
         {
@@ -253,9 +283,19 @@ internal sealed class UnlockWindow : Window
             DrawRowTooltip(u);
         }
 
-        if (clicked && u.Status == UnlockStatus.Available && navigator != null && unlocks.ToPickupTarget(u) is { } target)
+        if (!clicked || navigator == null)
+        {
+            return;
+        }
+
+        if (u.Status == UnlockStatus.Available && unlocks.ToPickupTarget(u) is { } target)
         {
             navigator.SetPickup(target);
+        }
+        else if (u.Status == UnlockStatus.Accepted && u.QuestRowId is { } questRowId)
+        {
+            navigator.ClearPickup();
+            navigator.FollowedOverride = (ushort)(questRowId - QuestRowIdOffset);
         }
     }
 
@@ -288,6 +328,21 @@ internal sealed class UnlockWindow : Window
                 : navigator != null
                     ? "Click to have the arrow guide you there."
                     : "Enable Quest Helper to navigate.");
+        }
+        else if (u.Status == UnlockStatus.Accepted)
+        {
+            ImGui.TextDisabled(navigator != null
+                ? "In your journal — click to follow it with the arrow."
+                : "In your journal — enable Quest Helper to follow it with the arrow.");
+
+            // Live objective: only available while Quest Helper is enabled
+            // (navigator != null) and only once the game has published a marker for this step.
+            if (navigator != null
+                && u.QuestRowId is { } questRowId
+                && navigator.GetAcceptedQuestObjective(questRowId - QuestRowIdOffset) is { Length: > 0 } objective)
+            {
+                ImGui.TextDisabled($"Next: {objective}");
+            }
         }
 
         ImGui.PopTextWrapPos();

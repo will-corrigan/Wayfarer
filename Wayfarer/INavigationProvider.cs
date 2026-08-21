@@ -39,4 +39,12 @@ internal interface INavigationProvider
 
     /// <summary>Accepted quests for the quest picker popup. Framework thread only.</summary>
     List<(ushort Id, string Name)> GetAcceptedQuests();
+
+    /// <summary>Live current-objective label for an accepted quest, keyed by its raw (unoffset)
+    /// quest id — the same <c>Map.Instance()-&gt;QuestMarkers</c> scan <see cref="QuestNavigator"/>
+    /// uses internally to compute the followed quest's step label, but callable for any accepted
+    /// quest rather than only the followed one. Framework thread only. Null when the game has no
+    /// marker for this quest right now (not every step/zone has one) or the marker's label text
+    /// is empty.</summary>
+    string? GetAcceptedQuestObjective(uint rawQuestId);
 }
