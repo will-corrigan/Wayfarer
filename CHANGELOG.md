@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/will-corrigan/Wayfarer/compare/v0.2.0...v0.2.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* keep testing channel in sync and tidy review findings ([#9](https://github.com/will-corrigan/Wayfarer/issues/9)) ([c2d8a0e](https://github.com/will-corrigan/Wayfarer/commit/c2d8a0e13e440c5d357b59d66b1a6e04a6413471))
+
 ## [0.2.0](https://github.com/will-corrigan/Wayfarer/compare/v0.1.1...v0.2.0) (2026-08-21)
 
 
