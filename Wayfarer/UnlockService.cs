@@ -1,6 +1,8 @@
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Wayfarer.Core.Unlocks;
 
@@ -97,12 +99,117 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         }
 
         var qm = QuestManager.Instance();
-        UnlockStatusCalculator.Compute(
-            entries,
-            level,
-            QuestManager.IsQuestComplete,
-            id => qm != null && qm->IsQuestAccepted((ushort)(id - QuestRowIdOffset)));
+        var ps = PlayerState.Instance();
+        var ctx = new UnlockGateContext(
+            PlayerLevel: level,
+            PlayerGrandCompany: ps != null ? ps->GrandCompany : (byte)0,
+            PlayerGrandCompanyRank: ps != null ? ps->GetGrandCompanyRank() : 0,
+            IsQuestComplete: QuestManager.IsQuestComplete,
+            IsQuestAccepted: id => qm != null && qm->IsQuestAccepted((ushort)(id - QuestRowIdOffset)),
+            GetClassJobLevel: jobId => ps != null ? ps->GetClassJobLevel((int)jobId, false) : 0,
+            IsInstanceContentCompleted: UIState.IsInstanceContentCompleted,
+            IsInstanceContentUnlocked: UIState.IsInstanceContentUnlocked,
+            GetBeastTribeRank: tribeId => ps != null ? ps->GetBeastTribeRank(tribeId) : (byte)0,
+            IsMountUnlocked: mountId => ps != null && ps->IsMountUnlocked(mountId));
+
+        UnlockStatusCalculator.Compute(entries, ctx);
         AvailableHereCount = UnlockStatusCalculator.CountAvailableIn(entries, clientState.TerritoryType);
+    }
+
+    /// <summary>Which ClassJob abbreviations a <see cref="ClassJobCategory"/> row flags: Lumina
+    /// generates one bool property per abbreviation on that struct, so there's no reflection-free
+    /// way to look one up by string other than switching on it.</summary>
+    private static bool CategoryAllows(ClassJobCategory cat, string abbr) => abbr switch
+    {
+        "ADV" => cat.ADV,
+        "GLA" => cat.GLA,
+        "PGL" => cat.PGL,
+        "MRD" => cat.MRD,
+        "LNC" => cat.LNC,
+        "ARC" => cat.ARC,
+        "CNJ" => cat.CNJ,
+        "THM" => cat.THM,
+        "CRP" => cat.CRP,
+        "BSM" => cat.BSM,
+        "ARM" => cat.ARM,
+        "GSM" => cat.GSM,
+        "LTW" => cat.LTW,
+        "WVR" => cat.WVR,
+        "ALC" => cat.ALC,
+        "CUL" => cat.CUL,
+        "MIN" => cat.MIN,
+        "BTN" => cat.BTN,
+        "FSH" => cat.FSH,
+        "PLD" => cat.PLD,
+        "MNK" => cat.MNK,
+        "WAR" => cat.WAR,
+        "DRG" => cat.DRG,
+        "BRD" => cat.BRD,
+        "WHM" => cat.WHM,
+        "BLM" => cat.BLM,
+        "ACN" => cat.ACN,
+        "SMN" => cat.SMN,
+        "SCH" => cat.SCH,
+        "ROG" => cat.ROG,
+        "NIN" => cat.NIN,
+        "MCH" => cat.MCH,
+        "DRK" => cat.DRK,
+        "AST" => cat.AST,
+        "SAM" => cat.SAM,
+        "RDM" => cat.RDM,
+        "BLU" => cat.BLU,
+        "GNB" => cat.GNB,
+        "DNC" => cat.DNC,
+        "RPR" => cat.RPR,
+        "SGE" => cat.SGE,
+        "VPR" => cat.VPR,
+        "PCT" => cat.PCT,
+        _ => false,
+    };
+
+    /// <summary>Adds the ClassJob row ids/names a category flags into <paramref name="rowIds"/>/
+    /// <paramref name="names"/>, deduplicated against what's already there (row 0 means
+    /// unrestricted — nothing to add). Called once per <see cref="Quest.ClassJobCategory0"/>/
+    /// <see cref="Quest.ClassJobCategory1"/> so a quest open to jobs from either category ends up
+    /// with the union.</summary>
+    private static void CollectAllowedJobs(
+        RowRef<ClassJobCategory> categoryRef,
+        List<(uint RowId, string Abbr, string Name)> classJobs,
+        List<uint> rowIds,
+        List<string> names)
+    {
+        if (categoryRef.RowId == 0 || categoryRef.ValueNullable is not { } cat)
+        {
+            return;
+        }
+
+        foreach (var (jobRowId, abbr, name) in classJobs)
+        {
+            if (!CategoryAllows(cat, abbr) || rowIds.Contains(jobRowId))
+            {
+                continue;
+            }
+
+            rowIds.Add(jobRowId);
+            names.Add(name);
+        }
+    }
+
+    private static List<(uint RowId, string Abbr, string Name)> LoadClassJobs(IDataManager dataManager)
+    {
+        var classJobs = new List<(uint RowId, string Abbr, string Name)>();
+        foreach (var cj in dataManager.GetExcelSheet<ClassJob>())
+        {
+            var abbr = cj.Abbreviation.ExtractText();
+            if (abbr.Length == 0)
+            {
+                continue;
+            }
+
+            classJobs.Add((cj.RowId, abbr, cj.Name.ExtractText()));
+        }
+
+        return classJobs;
     }
 
     private void RecomputeSafe()
@@ -127,8 +234,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var json = File.ReadAllText(Path.Combine(dir, "unlocks-by-level.json"));
         var defs = UnlockDataset.Parse(json);
 
-        // One pass over the Quest sheet: name (lowercase) → row facts.
-        var byName = new Dictionary<string, (uint RowId, int Level, List<uint> Prereqs, List<string> PrereqNames, uint? Territory, uint? Map, float X, float Y, float Z, string? Zone)>(StringComparer.Ordinal);
+        var classJobs = LoadClassJobs(dataManager);
+        var byName = new Dictionary<string, QuestFacts>(StringComparer.Ordinal);
         var sheet = dataManager.GetExcelSheet<Quest>();
         foreach (var q in sheet)
         {
@@ -144,6 +251,57 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 continue; // first wins; duplicates are rare and equivalent for our purpose
             }
 
+            byName[key] = QuestFacts.From(q, classJobs);
+        }
+
+        entries.Clear();
+        foreach (var def in defs)
+        {
+            var r = new ResolvedUnlock { Def = def };
+            if (def.Quest is { } questName && byName.TryGetValue(questName.ToLowerInvariant(), out var facts))
+            {
+                facts.ApplyTo(r, def.Level);
+            }
+
+            entries.Add(r);
+        }
+    }
+
+    /// <summary>Everything pulled from a <see cref="Quest"/> sheet row, in one place so
+    /// <see cref="Load"/> stays a plain "match by name, apply facts" loop.</summary>
+    private sealed record QuestFacts(
+        uint RowId,
+        int Level,
+        List<uint> Prereqs,
+        List<string> PrereqNames,
+        byte PrereqJoin,
+        List<uint> LockoutQuestRowIds,
+        List<string> LockoutQuestNames,
+        byte LockoutJoin,
+        List<uint> RequiredJobRowIds,
+        List<string> RequiredJobNames,
+        List<uint> InstanceContentRowIds,
+        List<string> InstanceContentNames,
+        byte InstanceContentJoin,
+        uint? RequiredGrandCompanyId,
+        string? RequiredGrandCompanyName,
+        uint? RequiredGrandCompanyRank,
+        byte? RequiredBeastTribeId,
+        string? RequiredBeastTribeName,
+        uint? RequiredBeastTribeRank,
+        string? RequiredBeastTribeRankName,
+        uint? RequiredMountId,
+        string? RequiredMountName,
+        bool HasUnmodeledGate,
+        uint? Territory,
+        uint? Map,
+        float X,
+        float Y,
+        float Z,
+        string? Zone)
+    {
+        public static QuestFacts From(Quest q, List<(uint RowId, string Abbr, string Name)> classJobs)
+        {
             var prereqs = new List<uint>();
             var prereqNames = new List<string>();
             foreach (var prev in q.PreviousQuest)
@@ -155,6 +313,39 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
                 prereqs.Add(prev.RowId);
                 prereqNames.Add(prev.ValueNullable?.Name.ExtractText() ?? $"Quest {prev.RowId}");
+            }
+
+            var lockoutIds = new List<uint>();
+            var lockoutNames = new List<string>();
+            foreach (var locked in q.QuestLock)
+            {
+                if (locked.RowId == 0)
+                {
+                    continue;
+                }
+
+                lockoutIds.Add(locked.RowId);
+                lockoutNames.Add(locked.ValueNullable?.Name.ExtractText() ?? $"Quest {locked.RowId}");
+            }
+
+            var jobRowIds = new List<uint>();
+            var jobNames = new List<string>();
+            CollectAllowedJobs(q.ClassJobCategory0, classJobs, jobRowIds, jobNames);
+            CollectAllowedJobs(q.ClassJobCategory1, classJobs, jobRowIds, jobNames);
+
+            var icIds = new List<uint>();
+            var icNames = new List<string>();
+            foreach (var ic in q.InstanceContent)
+            {
+                if (ic.RowId == 0)
+                {
+                    continue;
+                }
+
+                icIds.Add(ic.RowId);
+                icNames.Add(ic.ValueNullable?.ContentFinderCondition.ValueNullable?.Name.ExtractText() is { Length: > 0 } n
+                    ? n
+                    : $"duty {ic.RowId}");
             }
 
             uint? territory = null, map = null;
@@ -178,28 +369,69 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 break;
             }
 
-            byName[key] = (q.RowId, lvl, prereqs, prereqNames, territory, map, x, y, z, zone);
+            return new QuestFacts(
+                RowId: q.RowId,
+                Level: lvl,
+                Prereqs: prereqs,
+                PrereqNames: prereqNames,
+                PrereqJoin: q.PreviousQuestJoin,
+                LockoutQuestRowIds: lockoutIds,
+                LockoutQuestNames: lockoutNames,
+                LockoutJoin: q.QuestLockJoin,
+                RequiredJobRowIds: jobRowIds,
+                RequiredJobNames: jobNames,
+                InstanceContentRowIds: icIds,
+                InstanceContentNames: icNames,
+                InstanceContentJoin: q.InstanceContentJoin,
+                RequiredGrandCompanyId: q.GrandCompany.RowId != 0 ? q.GrandCompany.RowId : null,
+                RequiredGrandCompanyName: q.GrandCompany.RowId != 0 ? q.GrandCompany.ValueNullable?.Name.ExtractText() : null,
+                RequiredGrandCompanyRank: q.GrandCompanyRank.RowId != 0 ? q.GrandCompanyRank.RowId : null,
+                RequiredBeastTribeId: q.BeastTribe.RowId != 0 ? (byte)q.BeastTribe.RowId : null,
+                RequiredBeastTribeName: q.BeastTribe.RowId != 0 ? q.BeastTribe.ValueNullable?.Name.ExtractText() : null,
+                RequiredBeastTribeRank: q.BeastReputationRank.RowId != 0 ? q.BeastReputationRank.RowId : null,
+                RequiredBeastTribeRankName: q.BeastReputationRank.RowId != 0 ? q.BeastReputationRank.ValueNullable?.Name.ExtractText() : null,
+                RequiredMountId: q.MountRequired.RowId != 0 ? q.MountRequired.RowId : null,
+                RequiredMountName: q.MountRequired.RowId != 0 ? q.MountRequired.ValueNullable?.Singular.ExtractText() : null,
+                HasUnmodeledGate: q.Festival.RowId != 0 || q.IsHouseRequired,
+                Territory: territory,
+                Map: map,
+                X: x,
+                Y: y,
+                Z: z,
+                Zone: zone);
         }
 
-        entries.Clear();
-        foreach (var def in defs)
+        public void ApplyTo(ResolvedUnlock r, int fallbackLevel)
         {
-            var r = new ResolvedUnlock { Def = def };
-            if (def.Quest is { } questName && byName.TryGetValue(questName.ToLowerInvariant(), out var m))
-            {
-                r.QuestRowId = m.RowId;
-                r.QuestLevel = m.Level > 0 ? m.Level : def.Level;
-                r.PrereqRowIds = m.Prereqs;
-                r.PrereqNames = m.PrereqNames;
-                r.GiverTerritory = m.Territory;
-                r.GiverMap = m.Map;
-                r.GiverX = m.X;
-                r.GiverY = m.Y;
-                r.GiverZ = m.Z;
-                r.ZoneName = m.Zone;
-            }
-
-            entries.Add(r);
+            r.QuestRowId = RowId;
+            r.QuestLevel = Level > 0 ? Level : fallbackLevel;
+            r.PrereqRowIds = Prereqs;
+            r.PrereqNames = PrereqNames;
+            r.PrereqJoin = PrereqJoin;
+            r.LockoutQuestRowIds = LockoutQuestRowIds;
+            r.LockoutQuestNames = LockoutQuestNames;
+            r.LockoutJoin = LockoutJoin;
+            r.RequiredJobRowIds = RequiredJobRowIds;
+            r.RequiredJobNames = RequiredJobNames;
+            r.InstanceContentRowIds = InstanceContentRowIds;
+            r.InstanceContentNames = InstanceContentNames;
+            r.InstanceContentJoin = InstanceContentJoin;
+            r.RequiredGrandCompanyId = RequiredGrandCompanyId;
+            r.RequiredGrandCompanyName = RequiredGrandCompanyName;
+            r.RequiredGrandCompanyRank = RequiredGrandCompanyRank;
+            r.RequiredBeastTribeId = RequiredBeastTribeId;
+            r.RequiredBeastTribeName = RequiredBeastTribeName;
+            r.RequiredBeastTribeRank = RequiredBeastTribeRank;
+            r.RequiredBeastTribeRankName = RequiredBeastTribeRankName;
+            r.RequiredMountId = RequiredMountId;
+            r.RequiredMountName = RequiredMountName;
+            r.HasUnmodeledGate = HasUnmodeledGate;
+            r.GiverTerritory = Territory;
+            r.GiverMap = Map;
+            r.GiverX = X;
+            r.GiverY = Y;
+            r.GiverZ = Z;
+            r.ZoneName = Zone;
         }
     }
 }

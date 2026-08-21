@@ -132,7 +132,13 @@ internal sealed class UnlockWindow : Window
             UnlockStatus.Accepted => 1,
             UnlockStatus.QuestLocked => 2,
             UnlockStatus.LevelLocked => 3,
-            _ => 4,
+            UnlockStatus.InstanceLocked => 4,
+            UnlockStatus.GrandCompanyLocked => 5,
+            UnlockStatus.BeastTribeLocked => 6,
+            UnlockStatus.MountLocked => 7,
+            UnlockStatus.UnknownGate => 8,
+            UnlockStatus.LockedOut => 9,
+            _ => 10,
         }).ThenBy(u => u.QuestLevel);
 
     private void DrawFilterBar()
@@ -218,9 +224,11 @@ internal sealed class UnlockWindow : Window
             UnlockStatus.Done => ("[done]", new Vector4(0.5f, 0.8f, 0.5f, 1f)),
             UnlockStatus.Accepted => ("[accepted]", new Vector4(0.6f, 0.8f, 1f, 1f)),
             UnlockStatus.Available => ("[grab]", new Vector4(1f, 0.82f, 0.25f, 1f)),
+            UnlockStatus.LockedOut => ("[gone]", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
+            UnlockStatus.UnknownGate => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
             _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
         };
-        var greyed = u.Status is UnlockStatus.LevelLocked or UnlockStatus.QuestLocked or UnlockStatus.Done;
+        var greyed = u.Status is not (UnlockStatus.Available or UnlockStatus.Accepted);
         if (greyed)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.55f, 0.55f, 0.55f, 1f));
@@ -237,41 +245,46 @@ internal sealed class UnlockWindow : Window
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.BeginTooltip();
-            ImGui.PushTextWrapPos(320);
-            ImGui.TextUnformatted(u.Def.Description ?? u.Def.Unlock);
-            if (u.Def.Quest is { } q)
-            {
-                ImGui.TextDisabled($"Quest: {q}");
-            }
-
-            if (u.LockReason is { } reason)
-            {
-                ImGui.TextDisabled(reason);
-            }
-
-            if (u.Def.Notes is { } notes)
-            {
-                ImGui.TextDisabled(notes);
-            }
-
-            if (u.Status == UnlockStatus.Available)
-            {
-                ImGui.TextDisabled(u.GiverTerritory == null
-                    ? "Location unknown — find the quest giver manually."
-                    : navigator != null
-                        ? "Click to have the arrow guide you there."
-                        : "Enable Quest Helper to navigate.");
-            }
-
-            ImGui.PopTextWrapPos();
-            ImGui.EndTooltip();
+            DrawRowTooltip(u);
         }
 
         if (clicked && u.Status == UnlockStatus.Available && navigator != null && unlocks.ToPickupTarget(u) is { } target)
         {
             navigator.SetPickup(target);
         }
+    }
+
+    private void DrawRowTooltip(ResolvedUnlock u)
+    {
+        ImGui.BeginTooltip();
+        ImGui.PushTextWrapPos(320);
+        ImGui.TextUnformatted(u.Def.Description ?? u.Def.Unlock);
+        if (u.Def.Quest is { } q)
+        {
+            ImGui.TextDisabled($"Quest: {q}");
+        }
+
+        if (u.LockReason is { } reason)
+        {
+            ImGui.TextDisabled(reason);
+        }
+
+        if (u.Def.Notes is { } notes)
+        {
+            ImGui.TextDisabled(notes);
+        }
+
+        if (u.Status == UnlockStatus.Available)
+        {
+            ImGui.TextDisabled(u.GiverTerritory == null
+                ? "Location unknown — find the quest giver manually."
+                : navigator != null
+                    ? "Click to have the arrow guide you there."
+                    : "Enable Quest Helper to navigate.");
+        }
+
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
     }
 
     private void DrawUnverified()
