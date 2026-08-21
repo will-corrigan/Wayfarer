@@ -57,12 +57,28 @@ public sealed class ResolvedUnlock
     /// 2 = OR (any one suffices). Only 2 has been observed in game data.</summary>
     public byte LockoutJoin { get; set; }
 
-    /// <summary>Union of the ClassJob row ids allowed by <c>ClassJobCategory0</c>/<c>1</c>.
-    /// Empty means unrestricted — any job qualifies and <see cref="QuestLevel"/> is checked
-    /// against the player's currently active job instead.</summary>
+    /// <summary>ClassJob row ids allowed by <c>ClassJobCategory0</c>, checked against
+    /// <see cref="QuestLevel"/> (<c>ClassJobLevel[0]</c>). Empty means unrestricted — any job
+    /// qualifies and <see cref="QuestLevel"/> is checked against the player's currently active
+    /// job instead. This is the primary, always-real job/level gate.</summary>
     public List<uint> RequiredJobRowIds { get; set; } = [];
 
     public List<string> RequiredJobNames { get; set; } = [];
+
+    /// <summary>ClassJob row ids allowed by <c>ClassJobCategory1</c> — a genuine alternative to
+    /// <see cref="RequiredJobRowIds"/>, checked against <see cref="AltRequiredJobLevel"/>
+    /// (<c>ClassJobLevel[1]</c>). Populated only when <see cref="AltRequiredJobLevel"/> is
+    /// nonzero: the game reuses <c>ClassJobCategory1</c> as an "every job" sentinel mask on
+    /// ordinary single-category quests, always paired with <c>ClassJobLevel[1] == 0</c> — that
+    /// sentinel must never be treated as an eligible job set, or every job-restricted quest that
+    /// carries it becomes wrongly available to every job.</summary>
+    public List<uint> AltRequiredJobRowIds { get; set; } = [];
+
+    public List<string> AltRequiredJobNames { get; set; } = [];
+
+    /// <summary><c>ClassJobLevel[1]</c>. Zero means <see cref="AltRequiredJobRowIds"/> is empty/
+    /// unused — there is no genuine category1 alternative for this quest.</summary>
+    public int AltRequiredJobLevel { get; set; }
 
     /// <summary><c>InstanceContent</c> row ids this quest requires progress on.</summary>
     public List<uint> InstanceContentRowIds { get; set; } = [];
@@ -130,6 +146,9 @@ public sealed class ResolvedUnlock
         LockoutJoin = LockoutJoin,
         RequiredJobRowIds = RequiredJobRowIds,
         RequiredJobNames = RequiredJobNames,
+        AltRequiredJobRowIds = AltRequiredJobRowIds,
+        AltRequiredJobNames = AltRequiredJobNames,
+        AltRequiredJobLevel = AltRequiredJobLevel,
         InstanceContentRowIds = InstanceContentRowIds,
         InstanceContentNames = InstanceContentNames,
         InstanceContentJoin = InstanceContentJoin,

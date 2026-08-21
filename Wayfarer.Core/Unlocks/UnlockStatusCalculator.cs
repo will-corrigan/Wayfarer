@@ -172,28 +172,40 @@ public static class UnlockStatusCalculator
         return true;
     }
 
-    /// <summary><c>ClassJobCategory0</c>/<c>1</c> + <c>ClassJobLevel[0]</c>. Empty
-    /// <see cref="ResolvedUnlock.RequiredJobRowIds"/> means unrestricted: fall back to the
-    /// player's currently active job level, matching the original behavior. Otherwise the
-    /// requirement is checked against the highest of the player's levels in the specific
-    /// allowed job(s) — never the active job's level — which is the fix for jobs at very
-    /// different levels reporting each other's quests as available.</summary>
+    /// <summary><c>ClassJobCategory0</c> (+ <c>ClassJobLevel[0]</c>) is the primary, always-real
+    /// job/level gate; empty <see cref="ResolvedUnlock.RequiredJobRowIds"/> means unrestricted,
+    /// checked against the player's currently active job level instead. <c>ClassJobCategory1</c>
+    /// is a genuine independent alternative — checked against its own <c>ClassJobLevel[1]</c> —
+    /// only when <see cref="ResolvedUnlock.AltRequiredJobLevel"/> is nonzero. Live sheet data
+    /// (5,533 quest rows scanned) shows <c>ClassJobLevel[1] != 0</c> never co-occurs with
+    /// <c>ClassJobCategory1</c> being the "every job" sentinel mask, and the sentinel always
+    /// pairs with <c>ClassJobLevel[1] == 0</c>: the zero level is exactly the "category1 isn't
+    /// real" flag. Eligible iff cat0 is met OR the real cat1 alternative (when present) is met —
+    /// never a flat union of both categories' job sets, which would silently reopen every
+    /// sentinel-carrying job quest (most single-job storyline quests) to every job.</summary>
     private static bool JobLevelMet(ResolvedUnlock u, UnlockGateContext ctx, out string? reason)
     {
         reason = null;
-        if (u.RequiredJobRowIds.Count == 0)
+        var cat0Met = Cat0Met(u, ctx);
+        var cat1Real = u.AltRequiredJobRowIds.Count > 0 && u.AltRequiredJobLevel != 0;
+        if (cat0Met || (cat1Real && MaxJobLevel(u.AltRequiredJobRowIds, ctx) >= u.AltRequiredJobLevel))
         {
-            if (ctx.PlayerLevel >= u.QuestLevel)
-            {
-                return true;
-            }
-
-            reason = $"needs level {u.QuestLevel}";
-            return false;
+            return true;
         }
 
+        reason = BuildJobLevelReason(u, cat1Real);
+        return false;
+    }
+
+    private static bool Cat0Met(ResolvedUnlock u, UnlockGateContext ctx) =>
+        u.RequiredJobRowIds.Count == 0
+            ? ctx.PlayerLevel >= u.QuestLevel
+            : MaxJobLevel(u.RequiredJobRowIds, ctx) >= u.QuestLevel;
+
+    private static int MaxJobLevel(List<uint> jobRowIds, UnlockGateContext ctx)
+    {
         var maxLevel = 0;
-        foreach (var jobId in u.RequiredJobRowIds)
+        foreach (var jobId in jobRowIds)
         {
             var level = ctx.GetClassJobLevel(jobId);
             if (level > maxLevel)
@@ -202,14 +214,22 @@ public static class UnlockStatusCalculator
             }
         }
 
-        if (maxLevel >= u.QuestLevel)
+        return maxLevel;
+    }
+
+    private static string BuildJobLevelReason(ResolvedUnlock u, bool cat1Real)
+    {
+        var cat0Reason = u.RequiredJobRowIds.Count == 0
+            ? $"needs level {u.QuestLevel}"
+            : $"needs {string.Join(" or ", u.RequiredJobNames)} {u.QuestLevel}";
+
+        if (!cat1Real)
         {
-            return true;
+            return cat0Reason;
         }
 
-        var jobLabel = u.RequiredJobNames.Count > 0 ? string.Join(" or ", u.RequiredJobNames) : "the required job";
-        reason = $"needs {jobLabel} {u.QuestLevel}";
-        return false;
+        var cat1Label = u.AltRequiredJobNames.Count > 0 ? string.Join(" or ", u.AltRequiredJobNames) : "an alternate job";
+        return $"{cat0Reason} or {cat1Label} {u.AltRequiredJobLevel}";
     }
 
     /// <summary><c>PreviousQuest</c> + <c>PreviousQuestJoin</c>: 2 = OR (blocked only if none are

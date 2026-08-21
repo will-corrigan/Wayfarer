@@ -6,7 +6,11 @@ public class UnlockStatusTests
 {
     private const uint WeaverJobRowId = 44;
     private const uint CulinarianJobRowId = 45;
+    private const uint BotanistJobRowId = 46;
+    private const uint WarriorJobRowId = 47;
+    private const uint MinerJobRowId = 48;
     private const uint DungeonInstanceContentId = 3000;
+    private static readonly uint[] DisciplesOfTheHandJobRowIds = [50, 51, 52, 53, 54, 55, 56, 57];
 
     [Fact]
     public void UnmatchedIsUnverified()
@@ -204,6 +208,67 @@ public class UnlockStatusTests
 
         Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
         Assert.Equal("needs Weaver or Culinarian 50", all[0].LockReason);
+    }
+
+    [Fact]
+    public void LiveBug_SentinelCategory1_IgnoredWhenLevel1IsZero_IsLevelLocked_NotAvailable()
+    {
+        // Live-data-verified shape ("Seeds of Hope", a BTN job quest, confirmed by a full scan of
+        // the live Quest sheet): ClassJobCategory0 = {BTN} at ClassJobLevel[0] = 50,
+        // ClassJobCategory1 = the "every job" sentinel mask (every job flagged true, including
+        // Warrior) at ClassJobLevel[1] = 0. An earlier version of this fix unioned category0 and
+        // category1's allowed-job sets, which folded that sentinel into the primary gate and
+        // wrongly reopened this quest to every job (reproduced and proven red against the shipped
+        // calculator before this fixture was corrected). ClassJobLevel[1] == 0 means category1
+        // must be ignored entirely regardless of its content, so a Warrior-90/Botanist-1 player
+        // must still be LevelLocked against Botanist alone.
+        var u = Make("Seeds of Hope", 12345, 50);
+        u.RequiredJobRowIds = [BotanistJobRowId];
+        u.RequiredJobNames = ["Botanist"];
+        u.AltRequiredJobRowIds = [.. DisciplesOfTheHandJobRowIds, BotanistJobRowId, WarriorJobRowId]; // the sentinel: every job, including Warrior
+        u.AltRequiredJobNames = ["every job"];
+        u.AltRequiredJobLevel = 0; // the "category1 isn't real" flag
+        var all = new List<ResolvedUnlock> { u };
+
+        var ctx = Ctx(
+            playerLevel: 90,
+            getClassJobLevel: jobId => jobId switch
+            {
+                WarriorJobRowId => 90,
+                BotanistJobRowId => 1,
+                _ => 0,
+            });
+        UnlockStatusCalculator.Compute(all, ctx);
+
+        Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
+        Assert.Equal("needs Botanist 50", all[0].LockReason);
+    }
+
+    [Fact]
+    public void RealCategory1Alternative_EitherCategoryMetSuffices()
+    {
+        // Live-data-verified shape ("Reach for the Starboard"-style crafter/gatherer chain):
+        // ClassJobCategory0 = {8 Disciples of the Hand} at ClassJobLevel[0] = 1, ClassJobCategory1
+        // = {Miner} at ClassJobLevel[1] = 1 — a genuine independent alternative, not a sentinel.
+        var u = Make("Reach for the Starboard", 12345, 1);
+        u.RequiredJobRowIds = [.. DisciplesOfTheHandJobRowIds];
+        u.RequiredJobNames = ["Carpenter", "Blacksmith", "Armorer", "Goldsmith", "Leatherworker", "Weaver", "Alchemist", "Culinarian"];
+        u.AltRequiredJobRowIds = [MinerJobRowId];
+        u.AltRequiredJobNames = ["Miner"];
+        u.AltRequiredJobLevel = 1;
+
+        // A player with only Miner at level 1 (no Disciple of the Hand levels at all) qualifies
+        // via the real category1 alternative.
+        var minerOnly = new List<ResolvedUnlock> { u };
+        var minerCtx = Ctx(playerLevel: 90, getClassJobLevel: jobId => jobId == MinerJobRowId ? 1 : 0);
+        UnlockStatusCalculator.Compute(minerOnly, minerCtx);
+        Assert.Equal(UnlockStatus.Available, minerOnly[0].Status);
+
+        // A player with only Warrior at level 90 (neither category) is locked out of both.
+        var warriorOnly = new List<ResolvedUnlock> { u };
+        var warriorCtx = Ctx(playerLevel: 90, getClassJobLevel: jobId => jobId == WarriorJobRowId ? 90 : 0);
+        UnlockStatusCalculator.Compute(warriorOnly, warriorCtx);
+        Assert.Equal(UnlockStatus.LevelLocked, warriorOnly[0].Status);
     }
 
     [Fact]

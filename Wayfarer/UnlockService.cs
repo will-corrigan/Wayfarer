@@ -168,10 +168,11 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     };
 
     /// <summary>Adds the ClassJob row ids/names a category flags into <paramref name="rowIds"/>/
-    /// <paramref name="names"/>, deduplicated against what's already there (row 0 means
-    /// unrestricted — nothing to add). Called once per <see cref="Quest.ClassJobCategory0"/>/
-    /// <see cref="Quest.ClassJobCategory1"/> so a quest open to jobs from either category ends up
-    /// with the union.</summary>
+    /// <paramref name="names"/> (row 0 means unrestricted — nothing to add). Called separately for
+    /// <see cref="Quest.ClassJobCategory0"/> and (only when its own level requirement is real,
+    /// see <see cref="QuestFacts.From"/>) <see cref="Quest.ClassJobCategory1"/> — the two are
+    /// never merged into one list: unioning them would fold the game's "every job" sentinel mask
+    /// on <c>ClassJobCategory1</c> into the primary job gate on ordinary single-job quests.</summary>
     private static void CollectAllowedJobs(
         RowRef<ClassJobCategory> categoryRef,
         List<(uint RowId, string Abbr, string Name)> classJobs,
@@ -280,6 +281,9 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         byte LockoutJoin,
         List<uint> RequiredJobRowIds,
         List<string> RequiredJobNames,
+        List<uint> AltRequiredJobRowIds,
+        List<string> AltRequiredJobNames,
+        int AltRequiredJobLevel,
         List<uint> InstanceContentRowIds,
         List<string> InstanceContentNames,
         byte InstanceContentJoin,
@@ -328,11 +332,6 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 lockoutNames.Add(locked.ValueNullable?.Name.ExtractText() ?? $"Quest {locked.RowId}");
             }
 
-            var jobRowIds = new List<uint>();
-            var jobNames = new List<string>();
-            CollectAllowedJobs(q.ClassJobCategory0, classJobs, jobRowIds, jobNames);
-            CollectAllowedJobs(q.ClassJobCategory1, classJobs, jobRowIds, jobNames);
-
             var icIds = new List<uint>();
             var icNames = new List<string>();
             foreach (var ic in q.InstanceContent)
@@ -362,16 +361,40 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 zone = level.Territory.ValueNullable?.PlaceName.ValueNullable?.Name.ExtractText();
             }
 
-            var lvl = 0;
+            // ClassJobLevel is a 2-slot collection pairing positionally with ClassJobCategory0/1.
+            // Verified against a full live-sheet scan: ClassJobLevel[1] != 0 never co-occurs with
+            // ClassJobCategory1 being the "every job" sentinel mask, and the sentinel always pairs
+            // with ClassJobLevel[1] == 0 — so the level alone tells us whether category1 is a real,
+            // independent alternative gate or just the game's placeholder on an unrestricted slot.
+            int lvl0 = 0, lvl1 = 0, idx = 0;
             foreach (var l in q.ClassJobLevel)
             {
-                lvl = l;
-                break;
+                if (idx == 0)
+                {
+                    lvl0 = l;
+                }
+                else if (idx == 1)
+                {
+                    lvl1 = l;
+                }
+
+                idx++;
+            }
+
+            var jobRowIds = new List<uint>();
+            var jobNames = new List<string>();
+            CollectAllowedJobs(q.ClassJobCategory0, classJobs, jobRowIds, jobNames);
+
+            var altJobRowIds = new List<uint>();
+            var altJobNames = new List<string>();
+            if (lvl1 != 0)
+            {
+                CollectAllowedJobs(q.ClassJobCategory1, classJobs, altJobRowIds, altJobNames);
             }
 
             return new QuestFacts(
                 RowId: q.RowId,
-                Level: lvl,
+                Level: lvl0,
                 Prereqs: prereqs,
                 PrereqNames: prereqNames,
                 PrereqJoin: q.PreviousQuestJoin,
@@ -380,6 +403,9 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 LockoutJoin: q.QuestLockJoin,
                 RequiredJobRowIds: jobRowIds,
                 RequiredJobNames: jobNames,
+                AltRequiredJobRowIds: altJobRowIds,
+                AltRequiredJobNames: altJobNames,
+                AltRequiredJobLevel: lvl1,
                 InstanceContentRowIds: icIds,
                 InstanceContentNames: icNames,
                 InstanceContentJoin: q.InstanceContentJoin,
@@ -413,6 +439,9 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.LockoutJoin = LockoutJoin;
             r.RequiredJobRowIds = RequiredJobRowIds;
             r.RequiredJobNames = RequiredJobNames;
+            r.AltRequiredJobRowIds = AltRequiredJobRowIds;
+            r.AltRequiredJobNames = AltRequiredJobNames;
+            r.AltRequiredJobLevel = AltRequiredJobLevel;
             r.InstanceContentRowIds = InstanceContentRowIds;
             r.InstanceContentNames = InstanceContentNames;
             r.InstanceContentJoin = InstanceContentJoin;
