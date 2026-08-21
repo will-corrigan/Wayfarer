@@ -110,6 +110,14 @@ internal sealed unsafe class ArrowWindow : Window
         var dy = (ty ?? player.Position.Y) - player.Position.Y;
         var dz = tz - player.Position.Z;
 
+        var distance = NavMath.Distance(dx, dy, dz);
+        if (distance < 5f)
+        {
+            // Point-blank arrow direction is numerically meaningless; show arrival instead.
+            CenteredText("You've arrived");
+            return;
+        }
+
         var yaw = 0f;
         var cm = CameraManager.Instance();
         if (cm != null && cm->Camera != null)
@@ -143,7 +151,7 @@ internal sealed unsafe class ArrowWindow : Window
             P(h * 0.6f, h * 0.45f),
             ImGui.GetColorU32(new Vector4(0.85f, 0.62f, 0.12f, 1f)));
 
-        CenteredText(NavMath.FormatDistance(NavMath.Distance(dx, dy, dz)));
+        CenteredText(NavMath.FormatDistance(distance));
     }
 
     private void DrawOtherZone(NavigationState state)

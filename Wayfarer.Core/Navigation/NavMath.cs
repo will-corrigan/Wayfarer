@@ -2,11 +2,14 @@ namespace Wayfarer.Core.Navigation;
 
 public static class NavMath
 {
-    // In-game calibration knobs (Task 7 gate): if the arrow is consistently 180° off,
-    // set CameraYawOffset = MathF.PI; if it rotates the wrong way when the camera
-    // turns, set CameraYawSign = -1f.
+    // Camera->DirH is counter-clockwise-positive from north (0 = north, +pi/2 = west).
+    // Our bearing/screen frame is clockwise-positive from north, so CameraYawSign = -1
+    // converts DirH into that frame (ArrowAngle reduces to bearing + cameraYaw).
+    // Evidence: live four-direction test 2026-08-21 (error zero facing N/S, mirrored
+    // E/W under the old Sign = +1) plus the shipping Compass plugin's documented
+    // DirH convention. Do not flip this without new evidence.
     public const float CameraYawOffset = 0f;
-    public const float CameraYawSign = 1f;
+    public const float CameraYawSign = -1f;
 
     /// <summary>Bearing to a target offset. FFXIV axes: +X east, +Z south, so north = -Z.
     /// 0 = north, clockwise positive.</summary>
