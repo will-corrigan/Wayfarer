@@ -2,23 +2,57 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to package (e.g. v0.1.1). Leave empty to run the normal release-please flow."
+        required: false
+        type: string
 
 permissions:
   contents: write
-
-env:
-  DALAMUD_HOME: ${{ github.workspace }}\.dalamud
+  pull-requests: write
 
 jobs:
-  release:
-    runs-on: windows-latest
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  package:
+    needs: release-please
+    if: >-
+      always() &&
+      ((github.event_name == 'push' && needs.release-please.result == 'success' && needs.release-please.outputs.release_created == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.tag != ''))
+    runs-on: windows-latest
+
+    env:
+      DALAMUD_HOME: ${{ github.workspace }}\.dalamud
+
+    steps:
+      - name: Determine tag
+        id: tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}"
+          if (-not $tag) { throw "No tag available to package" }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -40,33 +74,24 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Determine version
-        id: version
-        shell: pwsh
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $version = $tag.TrimStart('v')
-          "version=$version" >> $env:GITHUB_OUTPUT
-
       - name: Package release asset
         shell: pwsh
         run: Copy-Item -Path "Wayfarer/bin/Release/Wayfarer/latest.zip" -Destination "Wayfarer.zip"
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: Wayfarer.zip
-          generate_release_notes: true
+      - name: Upload release asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.tag.outputs.tag }}" Wayfarer.zip --repo "${{ github.repository }}"
 
       - name: Update repo.json
         shell: pwsh
         run: |
-          $version = "${{ steps.version.outputs.version }}"
+          $tag = "${{ steps.tag.outputs.tag }}"
+          $version = $tag.TrimStart('v')
           # Dalamud requires the repo version to EXACTLY match the built manifest version,
           # which .NET always emits as four parts (e.g. 0.1.0.0 from <Version>0.1.0</Version>).
           if (($version -split "\.").Count -eq 3) { $version = "$version.0" }
           $repoTesting = $version
-          $tag = "${{ github.ref_name }}"
           $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/Wayfarer.zip"
 
           $repo = Get-Content repo.json -Raw | ConvertFrom-Json
@@ -85,7 +110,7 @@ jobs:
           git add repo.json
           $status = git status --porcelain -- repo.json
           if ($status) {
-            git commit -m "chore: publish repo.json for ${{ github.ref_name }}"
+            git commit -m "chore: publish repo.json for ${{ steps.tag.outputs.tag }}"
             git push origin HEAD:main
           } else {
             Write-Host "repo.json unchanged, skipping commit"
