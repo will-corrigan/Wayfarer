@@ -90,7 +90,7 @@ internal sealed class WayfarerIpcProvider : IDisposable
                 continue;
             }
 
-            rows.Add(new UnlockRowDto
+            rows.Add(new()
             {
                 Unlock = u.Def.Unlock,
                 Status = u.Status.ToString(),

@@ -550,7 +550,7 @@ internal sealed unsafe class QuestNavigator(
 
             if (TryGetAetherytePosition(a, out var x, out var z))
             {
-                list.Add(new AetherytePoint(a.RowId, name, x, z));
+                list.Add(new(a.RowId, name, x, z));
             }
         }
 
