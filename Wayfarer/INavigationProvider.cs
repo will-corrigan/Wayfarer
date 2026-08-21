@@ -3,11 +3,12 @@ using Wayfarer.Core.Navigation;
 namespace Wayfarer;
 
 /// <summary>Consumer-shaped seam over <see cref="QuestNavigator"/>: the navigation state and
-/// pickup-routing operations used by <see cref="Windows.ArrowWindow"/>, <see cref="Windows.UnlockWindow"/>,
-/// <see cref="Modules.UnlockChecklistModule"/> and <see cref="WayfarerIpcProvider"/>.
-/// <see cref="Modules.QuestHelperModule"/>, which owns <see cref="QuestNavigator"/>'s lifecycle,
-/// keeps the concrete type instead of this interface — it needs <see cref="QuestNavigator.OnUpdate"/>,
-/// which is not part of this contract because none of the four consumers above call it.</summary>
+/// pickup-routing operations used by <see cref="Windows.ArrowWindow"/>, <see cref="Windows.UnlockWindow"/>
+/// and <see cref="Modules.UnlockChecklistModule"/>. <see cref="WayfarerIpcProvider"/> uses the concrete
+/// <see cref="QuestNavigator"/> type instead of this interface. <see cref="Modules.QuestHelperModule"/>,
+/// which owns <see cref="QuestNavigator"/>'s lifecycle, also keeps the concrete type — it needs
+/// <see cref="QuestNavigator.OnUpdate"/>, which is not part of this contract because none of the three
+/// consumers above call it.</summary>
 internal interface INavigationProvider
 {
     /// <summary>Raised after a pickup is accepted or completed and the navigator advances to the

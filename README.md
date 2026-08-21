@@ -55,7 +55,8 @@ against your actual quest log so it only shows what's realistically available to
   have, optional), so you can focus on what matters to you.
 - **Route me** chains the Quest Helper arrow through every available pickup currently shown, ordered
   by distance from your position, so you can clear a run of unlock quests back to back.
-- Locked entries show why — level-gated, quest-gated, or already done — right in the tooltip.
+- Locked entries show why — level-gated, quest-gated, gated behind a duty clear, Grand Company rank,
+  beast tribe reputation, a mount, or already done — right in the tooltip.
 
 > Screenshot coming soon: `docs/screenshots/unlock-checklist.png`
 

@@ -103,6 +103,7 @@ jobs:
           $repo[0].TestingAssemblyVersion = $repoTesting
           $repo[0].DownloadLinkInstall = $downloadUrl
           $repo[0].DownloadLinkUpdate = $downloadUrl
+          $repo[0].DownloadLinkTesting = $downloadUrl
 
           ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json
 

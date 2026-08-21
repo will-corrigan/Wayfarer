@@ -73,8 +73,11 @@ internal sealed class WayfarerIpcProvider : IDisposable
 
         var here = clientState.TerritoryType;
         var rows = new List<UnlockRowDto>();
-        foreach (var u in module.Unlocks.Entries)
+        foreach (var live in module.Unlocks.Entries)
         {
+            // Snapshot before reading: this can run off the framework thread while Recompute
+            // mutates Status/LockReason on the live instance concurrently.
+            var u = live.Snapshot();
             if (!string.Equals(scope, "all", StringComparison.Ordinal) && u.Status != UnlockStatus.Available)
             {
                 continue;

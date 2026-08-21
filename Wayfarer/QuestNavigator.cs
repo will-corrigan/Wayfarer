@@ -476,11 +476,16 @@ internal sealed unsafe class QuestNavigator(
             && tt.Aetheryte.ValueNullable is { } fallback)
         {
             var name = fallback.PlaceName.ValueNullable?.Name.ExtractText() ?? string.Empty;
-            TryGetAetherytePosition(fallback, out var fx, out var fz);
-            var point = new AetherytePoint(tt.Aetheryte.RowId, name, fx, fz, fallback.Territory.RowId);
+
+            // TeleportCandidate only reads the point's X/Z when its territory matches the
+            // target; on a resolution failure, report a territory that can never match so the
+            // caller falls back to overhead-only costing instead of distancing from (0, 0).
+            var resolved = TryGetAetherytePosition(fallback, out var fx, out var fz);
+            var territory = resolved ? fallback.Territory.RowId : uint.MaxValue;
+            var point = new AetherytePoint(tt.Aetheryte.RowId, name, fx, fz, territory);
             var ui2 = UIState.Instance();
             var fallbackUnlocked = ui2 != null && ui2->IsAetheryteUnlocked(tt.Aetheryte.RowId);
-            return (point, fallback.Territory.RowId, fallbackUnlocked);
+            return (point, territory, fallbackUnlocked);
         }
 
         return (null, 0, false);

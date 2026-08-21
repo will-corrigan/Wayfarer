@@ -133,7 +133,9 @@ public static class RouteCosting
     /// player already stands (never recommend teleporting to here; this is the split-
     /// city TerritoryType.Aetheryte fallback bug the evidence block calls out). When
     /// the aetheryte sits in neither the current nor the target territory (a third
-    /// territory's fallback), cost is overhead-only and effectively ranks last.</summary>
+    /// territory's fallback), cost is <see cref="float.MaxValue"/> — a sentinel that
+    /// makes this candidate lose to any other route and only survive if it's the only
+    /// one on offer, rather than a real distance-based cost.</summary>
     public static RouteCandidate? TeleportCandidate(
         AetherytePoint? aetheryte,
         uint aetheryteTerritory,
