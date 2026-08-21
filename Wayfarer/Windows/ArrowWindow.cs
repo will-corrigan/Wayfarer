@@ -58,6 +58,9 @@ internal sealed unsafe class ArrowWindow : Window
             case NavigationState.Modes.OtherZone:
                 DrawOtherZone(state);
                 break;
+            case NavigationState.Modes.DutyObjective:
+                DrawDutyObjective(state);
+                break;
             case NavigationState.Modes.Idle:
                 ImGui.TextDisabled("No quest followed");
                 break;
@@ -86,6 +89,17 @@ internal sealed unsafe class ArrowWindow : Window
     // second leg); absent for candidates where it wasn't computed.
     private static string RemainingSuffix(NavigationState state) =>
         state.RemainingYalms is { } r ? $", then {NavMath.FormatDistance(r)}" : string.Empty;
+
+    // Objective is inside instanced duty content: no arrow, no route — just say so.
+    // Deliberately its own branch (not the generic default/Reason fallback) so this
+    // reads as prominent, actionable guidance rather than the muted "can't help" text.
+    private static void DrawDutyObjective(NavigationState state)
+    {
+        if (state.Reason is { } reason)
+        {
+            ImGui.TextWrapped(reason);
+        }
+    }
 
     private void DrawArrow(NavigationState state)
     {

@@ -35,6 +35,7 @@ internal sealed unsafe class QuestNavigator(
     private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
     private readonly Queue<PickupTarget> routeQueue = new();
     private readonly Dictionary<(uint FromMap, uint ToMap), List<MapLinkPoint>> entranceCache = [];
+    private Dictionary<uint, DutyInfo>? dutyByTerritory;
     private volatile NavigationState current = new();
     private bool errorLogged;
 
@@ -426,6 +427,23 @@ internal sealed unsafe class QuestNavigator(
         int? routeStop = null,
         int? routeTotal = null)
     {
+        // Duty content (dungeons/trials/raids) has no aetherytes or entrances to route
+        // to — route costing below would correctly find nothing and report a useless
+        // "no route found". Detect and short-circuit BEFORE building any candidates.
+        if (DutyObjectiveGuidance.TryBuild(
+                targetTerritory,
+                DutyForTerritory,
+                UIState.IsInstanceContentUnlocked,
+                displayQuestId,
+                questName,
+                stepLabel,
+                isPickup,
+                routeStop,
+                routeTotal) is { } dutyState)
+        {
+            return dutyState;
+        }
+
         var territorySheet = dataManager.GetExcelSheet<TerritoryType>();
         var zoneName = territorySheet.GetRowOrDefault(targetTerritory)?.PlaceName.ValueNullable?.Name.ExtractText();
         var currentTerritory = clientState.TerritoryType;
@@ -603,6 +621,39 @@ internal sealed unsafe class QuestNavigator(
     private string QuestName(ushort id) =>
         dataManager.GetExcelSheet<Quest>().GetRowOrDefault(id + QuestRowIdOffset)?.Name.ExtractText()
         ?? $"Quest {id}";
+
+    /// <summary>territoryId → duty, built once and cached at first use. Built from the
+    /// InstanceContent sheet (not ContentFinderCondition) because InstanceContent has a
+    /// direct, typed <c>ContentFinderCondition</c> RowRef — giving both the duty name
+    /// and the InstanceContent row id (what UIState.IsInstanceContentUnlocked expects)
+    /// from one pass, with no ContentLinkType byte to decode.</summary>
+    private DutyInfo? DutyForTerritory(uint territoryId)
+    {
+        if (dutyByTerritory == null)
+        {
+            var map = new Dictionary<uint, DutyInfo>();
+            foreach (var ic in dataManager.GetExcelSheet<Lumina.Excel.Sheets.InstanceContent>())
+            {
+                if (ic.ContentFinderCondition.RowId == 0 || ic.ContentFinderCondition.ValueNullable is not { } cfc
+                    || cfc.TerritoryType.RowId == 0)
+                {
+                    continue;
+                }
+
+                var name = cfc.Name.ExtractText();
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                map[cfc.TerritoryType.RowId] = new DutyInfo(name, ic.RowId);
+            }
+
+            dutyByTerritory = map;
+        }
+
+        return dutyByTerritory.TryGetValue(territoryId, out var duty) ? duty : null;
+    }
 
     private List<AetherytePoint> GetAetherytePoints(uint territory, bool aethernet)
     {
