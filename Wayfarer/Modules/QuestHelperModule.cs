@@ -3,6 +3,8 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Guidance;
+using Wayfarer.Guidance.Sources;
 using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
@@ -18,7 +20,9 @@ internal sealed class QuestHelperModule(
     QuestHelperConfig cfg,
     Action saveConfig,
     QuestNavigator navigator,
-    ArrowWindow arrowWindow) : IModule
+    ArrowWindow arrowWindow,
+    IGuidanceArbiter arbiter,
+    QuestObjectiveSource questSource) : IModule
 {
     // Order matches ContextMenuMode's declaration order (Never = 0, ControllerOnly = 1,
     // Always = 2) — ImGui.Combo indexes by position, not enum value name.
@@ -35,6 +39,11 @@ internal sealed class QuestHelperModule(
     public void Enable()
     {
         Enabled = true;
+
+        // Registered last-in-wins order does not matter for an ambient source, but registration
+        // itself does: while this module is disabled there is no followed quest to fall back to,
+        // and the arrow correctly shows nothing rather than state nobody is maintaining.
+        arbiter.Register(questSource);
         framework.Update += Navigator.OnUpdate;
         windows.AddWindow(arrowWindow);
         commands.AddHandler("/way", new((_, _) =>
@@ -51,6 +60,7 @@ internal sealed class QuestHelperModule(
         commands.RemoveHandler("/way");
         windows.RemoveWindow(arrowWindow);
         framework.Update -= Navigator.OnUpdate;
+        arbiter.Unregister(questSource);
     }
 
     public void DrawConfig()

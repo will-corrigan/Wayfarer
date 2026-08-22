@@ -1,0 +1,132 @@
+using System.Globalization;
+using Wayfarer.Core.Guidance;
+using Wayfarer.Core.Hunting;
+
+namespace Wayfarer.Guidance.Sources;
+
+/// <summary>Guides the player through their hunting log's remaining targets. An ENGAGED source:
+/// selecting a target is an explicit mode, and the readout names it.
+///
+/// THIS CLASS IS THE ONLY PLACE THAT KNOWS WHEN A HUNTING TARGET IS DONE, and the answer is a kill
+/// count. That is the fix for the defect where selecting a target showed guidance for exactly one
+/// frame: the target was forced through a quest-pickup shape carrying quest row id 0, and the
+/// navigator asked the quest system whether row 0 had been accepted. There is now no code path from
+/// the arbiter to a quest read, so the question cannot be asked, of this source or any other.</summary>
+internal sealed class HuntingSource(IGuidanceArbiter arbiter, HuntingLogService hunting) : IGuidanceSource
+{
+    private GuidanceChain<HuntingTargetView>? chain;
+
+    public string SourceId => "hunting";
+
+    /// <summary>The target being guided to right now, or null when no hunt is active.</summary>
+    public HuntingTargetView? CurrentLeg => chain?.Current;
+
+    /// <summary>Transitional bridge for the presentations that still speak in pickups — it lets the
+    /// context menu keep asking "is an explicit selection active?" without knowing what a hunting
+    /// target is.</summary>
+    public PickupTarget? CurrentPickup => CurrentLeg is { } leg ? hunting.ToPickupTarget(leg) : null;
+
+    /// <summary>Guides to one chosen target, then carries on through the rest of the log's
+    /// remaining targets — picking a mob is a starting point, not a one-shot.</summary>
+    public void GoTo(HuntingTargetView target) => Start(BuildLegs(target));
+
+    /// <summary>Guides through every remaining target on the current log page.</summary>
+    public void StartHunt() => Start(BuildLegs(null));
+
+    public GuidanceOffer? Poll(GuidanceContext ctx)
+    {
+        if (chain is not { } plan)
+        {
+            return null;
+        }
+
+        var leg = plan.Advance();
+        if (leg is null)
+        {
+            chain = null;
+            return null;
+        }
+
+        // Same ObjectiveKey every tick while this target lives — only the position and kill count
+        // are refreshed. That is what stops a live-tracked mob from re-firing every per-objective
+        // side effect at frame rate.
+        var live = hunting.LiveView(leg) ?? leg;
+        var dutyTerritory = live.Monster.Locations.Find(l => !l.Routable)?.DutyTerritoryTypeId;
+        var objective = new GuidanceObjective(
+            new ObjectiveKey(SourceId, KeyFor(live.Monster)),
+            HuntingPlan.Destination(
+                live.IsRoutable,
+                live.TerritoryTypeId,
+                live.MapId,
+                live.WorldX,
+                live.WorldY,
+                live.WorldZ,
+                dutyTerritory,
+                live.IsLivePosition),
+            new ObjectiveCopy(
+                live.MonsterName,
+                live.IsRoutable ? $"{live.Killed}/{live.Required} killed" : live.DutyName,
+                HuntingPlan.SourceLabel(hunting.ActiveLogLabel)),
+            new ObjectiveProgress(plan.Index, plan.Total, HuntingPlan.ProgressText(live.Killed, live.Required)));
+
+        return new GuidanceOffer(objective, GuidanceEngagement.Engaged);
+    }
+
+    public void OnDisengaged(DisengageReason reason)
+    {
+        // Preempted means the player started something else: the hunt is still their plan, so it is
+        // kept and resumes at the same target. Every other reason drops it.
+        if (reason != DisengageReason.Preempted)
+        {
+            chain = null;
+        }
+    }
+
+    /// <summary>Stable across ticks and unique within the log: the BNpcName row plus the monster's
+    /// positional index, since the same creature name can appear in more than one task.</summary>
+    private static string KeyFor(HuntingMonster monster) =>
+        string.Create(
+            CultureInfo.InvariantCulture, $"{monster.BNpcNameId}:{monster.MonsterIndex}");
+
+    private static bool SameMonster(HuntingTargetView a, HuntingTargetView b) =>
+        ReferenceEquals(a.Monster, b.Monster)
+        || (a.Monster.BNpcNameId == b.Monster.BNpcNameId && a.Monster.MonsterIndex == b.Monster.MonsterIndex);
+
+    /// <summary>Done when the kill count is met — or when the target has left the current log page
+    /// entirely (a rank-up), which would otherwise strand the plan on a target the game no longer
+    /// tracks.</summary>
+    private bool IsLegComplete(HuntingTargetView leg) =>
+        !hunting.IsTracked(leg.Monster) || HuntingPlan.IsComplete(hunting.KilledFor(leg.Monster), leg.Required);
+
+    /// <summary>The plan: the chosen target first (if any), then every other remaining target on
+    /// the page. Ordering beyond the pinned head is the chain planner's business.</summary>
+    private List<HuntingTargetView> BuildLegs(HuntingTargetView? head)
+    {
+        var legs = new List<HuntingTargetView>();
+        if (head is { } chosen)
+        {
+            legs.Add(chosen);
+        }
+
+        foreach (var target in hunting.RemainingTargets)
+        {
+            if (head is null || !SameMonster(target, head))
+            {
+                legs.Add(target);
+            }
+        }
+
+        return legs;
+    }
+
+    private void Start(List<HuntingTargetView> legs)
+    {
+        if (legs.Count == 0)
+        {
+            return;
+        }
+
+        chain = new GuidanceChain<HuntingTargetView>(legs, IsLegComplete);
+        arbiter.Engage(this);
+    }
+}

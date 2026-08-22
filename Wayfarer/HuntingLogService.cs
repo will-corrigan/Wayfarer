@@ -37,6 +37,14 @@ internal sealed unsafe class HuntingLogService
 
     private HuntingDataset? dataset;
 
+    /// <summary>Live kill count reader and the page it belongs to, as of the last
+    /// <see cref="RecomputeCore"/>. Kept so <see cref="KilledFor"/> can answer for any monster on
+    /// demand — the guidance source asks per tick, and the answer must not require a full
+    /// recompute. Safe to hold: every kill changes the live signature, so a recompute has already
+    /// run by the time a count matters.</summary>
+    private Func<int, int, int>? killedCount;
+    private HuntingRank? currentPageRank;
+
     public HuntingLogService(
         IPluginLog log,
         IObjectTable objects,
@@ -92,10 +100,39 @@ internal sealed unsafe class HuntingLogService
     /// is null, is a duty affordance, or is in a different zone.</summary>
     public IReadOnlyList<HuntingTargetView> HuntHereOrder { get; private set; } = [];
 
+    /// <summary>Every remaining target on the current page resolved to a view, in dataset order —
+    /// including the ones outside the player's zone and the duty-gated ones, both of which
+    /// <see cref="HuntHereOrder"/> drops. This is what a hunting plan is built from: a chain that
+    /// only ever contained this zone's targets would stop the moment you cleared it.</summary>
+    public IReadOnlyList<HuntingTargetView> RemainingTargets { get; private set; } = [];
+
+    /// <summary>Transitional bridge to the old pickup shape, kept only so presentations that still
+    /// speak in pickups keep working. <c>QuestRowId</c> is meaningless here — which is exactly why
+    /// <see cref="HuntingTarget"/> carries the real selection: nothing may infer a hunting target's
+    /// completion from a quest row again.</summary>
     public PickupTarget? ToPickupTarget(HuntingTargetView v) =>
         v.IsRoutable
             ? new PickupTarget(v.MonsterName, ActiveLogLabel ?? "Hunting log", QuestRowId: 0, v.TerritoryTypeId, v.MapId, v.WorldX, v.WorldY, v.WorldZ, v.MonsterName)
+            { HuntingTarget = v }
             : null;
+
+    /// <summary>Live kill count for a monster on the current page, 0 when it cannot be read. The
+    /// hunting guidance source's completion signal, and the only one it has.</summary>
+    public int KilledFor(HuntingMonster monster) =>
+        killedCount is { } killed && currentPageRank is { } rank && TaskIndexOf(rank, monster) is var task and >= 0
+            ? killed(task, monster.MonsterIndex)
+            : 0;
+
+    /// <summary>Whether this monster still belongs to the page the game is tracking. False after a
+    /// rank-up, which is what lets a plan built on the old page finish instead of stalling on a
+    /// target whose kill count no longer exists.</summary>
+    public bool IsTracked(HuntingMonster monster) =>
+        currentPageRank is { } rank && TaskIndexOf(rank, monster) >= 0;
+
+    /// <summary>The freshest view of a target: current kill count, plus a live object-table position
+    /// when the player is standing in its zone. Framework thread only.</summary>
+    public HuntingTargetView LiveView(HuntingTargetView view) =>
+        WithLivePosition(view with { Killed = KilledFor(view.Monster) }, clientState.TerritoryType);
 
     /// <summary>Lightweight per-tick change detector (mirrors <see cref="UnlockService.OnFrameworkUpdate"/>):
     /// cheap current-job/territory/live-signature reads, only running the full <see cref="Recompute"/>
@@ -258,11 +295,13 @@ internal sealed unsafe class HuntingLogService
         CurrentRank = liveRank;
 
         var pageRank = huntingLog.Ranks.Find(r => HuntingProgress.PageState(r.Rank, liveRank) == HuntingPageState.Current);
+        currentPageRank = pageRank;
         if (pageRank is null)
         {
             NoLogReason = null; // still "active", just nothing left to show
             RemainingOnPage = [];
             HuntHereOrder = [];
+            RemainingTargets = [];
             CurrentTarget = null;
             return;
         }
@@ -273,6 +312,7 @@ internal sealed unsafe class HuntingLogService
                 ? counts[taskIndex][monsterIndex]
                 : 0;
 
+        killedCount = Killed;
         var remaining = HuntingProgress.RemainingForCurrentPage(pageRank, Killed);
         RemainingOnPage = remaining;
         NoLogReason = null;
@@ -330,6 +370,7 @@ internal sealed unsafe class HuntingLogService
         CurrentRank = null;
         RemainingOnPage = [];
         HuntHereOrder = [];
+        RemainingTargets = [];
         CurrentTarget = null;
     }
 
@@ -338,6 +379,7 @@ internal sealed unsafe class HuntingLogService
         var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
         var chainTargets = new List<HuntingChainTarget>();
         var byMonster = new Dictionary<HuntingMonster, (uint TerritoryTypeId, uint MapId, float X, float Y, float Z)>();
+        var allRemaining = new List<HuntingTargetView>();
         HuntingMonster? dutyTarget = null;
 
         foreach (var monster in remaining)
@@ -351,6 +393,11 @@ internal sealed unsafe class HuntingLogService
             if (!loc.Routable)
             {
                 dutyTarget ??= monster;
+
+                // Duty-gated targets stay in the plan as duty objectives rather than being dropped
+                // — the 25 Grand-Company-Elite targets were unreachable while a coordinate was the
+                // only thing a selection could carry.
+                allRemaining.Add(BuildDutyView(monster, killedCount, pageRank));
                 continue;
             }
 
@@ -363,8 +410,25 @@ internal sealed unsafe class HuntingLogService
             var wy = objects.LocalPlayer?.Position.Y ?? 0f; // map coords carry no vertical axis — see MapCoords.MapToWorld
             byMonster[monster] = (loc.TerritoryTypeId, loc.MapId, wx, wy, wz);
             chainTargets.Add(new HuntingChainTarget(monster, loc.TerritoryTypeId, wx, wz));
+            allRemaining.Add(ToView(monster, byMonster[monster], killedCount, pageRank));
         }
 
+        RemainingTargets = allRemaining;
+        SelectCurrentTarget(chainTargets, byMonster, dutyTarget, territory, killedCount, pageRank);
+    }
+
+    /// <summary>The service's own "what would you show if nobody chose anything" pick, kept for the
+    /// glanceable widget line and the hunting windows: nearest remaining target in this zone, else
+    /// the first elsewhere, else a duty-gated one. Guidance no longer depends on it — a chosen
+    /// target is owned by the hunting guidance source, which is why selecting one now survives.</summary>
+    private void SelectCurrentTarget(
+        List<HuntingChainTarget> chainTargets,
+        Dictionary<HuntingMonster, (uint TerritoryTypeId, uint MapId, float X, float Y, float Z)> byMonster,
+        HuntingMonster? dutyTarget,
+        uint territory,
+        Func<int, int, int> killedCount,
+        HuntingRank pageRank)
+    {
         var player = objects.LocalPlayer;
         var ordered = HuntingChaining.OrderNearestFirst(chainTargets, territory, player?.Position.X ?? 0f, player?.Position.Z ?? 0f);
 
@@ -445,9 +509,21 @@ internal sealed unsafe class HuntingLogService
     /// this codebase).</summary>
     private void RefreshLiveTracking(uint territory)
     {
-        if (CurrentTarget is not { IsRoutable: true } target || target.TerritoryTypeId != territory)
+        if (CurrentTarget is { } target)
         {
-            return;
+            CurrentTarget = WithLivePosition(target, territory);
+        }
+    }
+
+    /// <summary>The live scan itself, callable for any target rather than only
+    /// <see cref="CurrentTarget"/> — the hunting guidance source needs it for whichever leg it is
+    /// on. Returns <paramref name="target"/> unchanged when it has no world position or the player
+    /// is not in its zone.</summary>
+    private HuntingTargetView WithLivePosition(HuntingTargetView target, uint territory)
+    {
+        if (!target.IsRoutable || target.TerritoryTypeId != territory)
+        {
+            return target;
         }
 
         var player = objects.LocalPlayer;
@@ -471,7 +547,7 @@ internal sealed unsafe class HuntingLogService
             }
         }
 
-        CurrentTarget = nearest is { } n
+        return nearest is { } n
             ? target with { WorldX = n.X, WorldY = n.Y, WorldZ = n.Z, IsLivePosition = true }
             : target with { IsLivePosition = false };
     }

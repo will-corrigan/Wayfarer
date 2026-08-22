@@ -233,6 +233,14 @@ dotnet_diagnostic.MA0048.severity = none
 # INavigationProvider downgrades below.
 dotnet_diagnostic.MA0046.severity = none
 
+[Wayfarer.Core/Guidance/QuestFollowResolution.cs]
+# QuestFollowOutcome is a small companion record to QuestFollowResolution itself -
+# one followed-quest decision concept, kept in one file rather than two near-empty
+# ones (same rationale as OtherZoneResolution.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Guidance/GuidanceSuppression.cs]
 # SuppressionInputs is a small companion record to GuidanceSuppression itself -
 # one display-gate decision concept, kept in one file rather than two near-empty
@@ -306,6 +314,13 @@ dotnet_diagnostic.MA0046.severity = none
 # no natural sub-steps that would extract cleanly, and splitting them up for a
 # line-count rule risks introducing bugs in reviewed, ported game-data logic.
 dotnet_diagnostic.MA0051.severity = none
+
+[Wayfarer/Guidance/Sources/UnlockRouteSource.cs]
+# OnAdvanced is a plain no-argument notification ("the plan moved on") - there is
+# no event data to carry, so the standard EventHandler<T> shape would just be a
+# discarded, meaningless argument. Same rationale as the QuestNavigator /
+# INavigationProvider downgrades below, which this event replaces.
+dotnet_diagnostic.MA0046.severity = none
 
 [Wayfarer/Guidance/GuidanceRouter.cs]
 # OtherZone() arrived here as a verbatim move out of QuestNavigator (guidance

@@ -1,7 +1,9 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Input;
+using Wayfarer.Guidance.Sources;
 using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
@@ -12,14 +14,15 @@ namespace Wayfarer.Modules;
 internal sealed class UnlockChecklistModule(
     IFramework framework,
     WindowSystem windows,
-    ModuleRegistry modules,
     UnlockService unlocks,
     UnlockWindow unlockWindow,
     NativeHubWindow hub,
     InputModeService inputMode,
     UnlockChecklistConfig cfg,
     Action saveConfig,
-    IPluginLog log) : IModule
+    IPluginLog log,
+    IGuidanceArbiter arbiter,
+    UnlockRouteSource routeSource) : IModule
 {
     public string Name => "Unlock Checklist";
 
@@ -65,11 +68,12 @@ internal sealed class UnlockChecklistModule(
     {
         Enabled = true;
         framework.Update += Unlocks.OnFrameworkUpdate;
-        if (modules.Get<QuestHelperModule>() is { } questHelper)
-        {
-            questHelper.Navigator.OnPickupAdvanced += Unlocks.OnPickupAdvanced;
-        }
 
+        // Its own source, not another module's navigator: this used to reach into QuestHelperModule
+        // by concrete type to hear about pickups advancing, which is the coupling that makes every
+        // new module cost an edit to an existing one.
+        arbiter.Register(routeSource);
+        routeSource.OnAdvanced += Unlocks.OnPickupAdvanced;
         windows.AddWindow(Window);
     }
 
@@ -78,11 +82,11 @@ internal sealed class UnlockChecklistModule(
         Enabled = false;
         windows.RemoveWindow(Window);
         CloseNativeWindow();
-        if (modules.Get<QuestHelperModule>() is { } questHelper)
-        {
-            questHelper.Navigator.OnPickupAdvanced -= Unlocks.OnPickupAdvanced;
-        }
+        routeSource.OnAdvanced -= Unlocks.OnPickupAdvanced;
 
+        // Unregistering releases the engagement token if this module's route currently owns the
+        // arrow, so a disabled module can never keep guiding.
+        arbiter.Unregister(routeSource);
         framework.Update -= Unlocks.OnFrameworkUpdate;
     }
 
