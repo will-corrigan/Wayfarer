@@ -147,7 +147,7 @@ public sealed class Plugin : IDalamudPlugin
         var router = new GuidanceRouter(dataManager);
         var questSource = new QuestObjectiveSource(dataManager);
         var unlockSource = new UnlockRouteSource(arbiter);
-        var huntingSource = new HuntingSource(arbiter, hunting);
+        var huntingSource = new HuntingSource(arbiter, hunting, router, clientState, objects);
         var service = new GuidanceService(
             log, config.QuestHelper, clientState, condition, objects, arbiter, router);
         var navigator = new QuestNavigator(service, questSource, unlockSource, huntingSource);

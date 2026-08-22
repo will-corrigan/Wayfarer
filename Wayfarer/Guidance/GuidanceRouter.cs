@@ -51,6 +51,24 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         _ => new RouteResult.NoLocation("this step has no map location (it may take place inside a duty or cutscene)"),
     };
 
+    /// <summary>Where the player would arrive in <paramref name="territory"/> if they teleported
+    /// there now — the position of the aetheryte this router would recommend, in that territory's
+    /// own coordinate space. Null when the territory has no aetheryte of its own (its fallback
+    /// aetheryte lives somewhere else, so its coordinates are not comparable). Used by multi-zone
+    /// plans to start each zone's walk where the player actually lands.</summary>
+    public (float X, float Z)? ArrivalPoint(uint territory, float nearX, float nearZ)
+    {
+        var (aetheryte, aetheryteTerritory, _) = ResolveTargetAetheryte(territory, nearX, nearZ);
+        return aetheryte is { } point && aetheryteTerritory == territory ? (point.X, point.Z) : null;
+    }
+
+    /// <summary>Whether two territories sit on the same city aethernet network, i.e. whether you
+    /// can walk/shard between them for free instead of paying a teleport and a loading screen.
+    /// Derived from raw Aetheryte sheet rows, never from position-resolved points — see
+    /// <see cref="GetAethernetGroups"/> for the live bug that distinction fixed.</summary>
+    public bool SharesAethernetNetwork(uint territory, uint other) =>
+        territory == other || GetAethernetGroups(territory).Overlaps(GetAethernetGroups(other));
+
     private RouteResult RouteToPoint(GuidanceObjective objective, ObjectiveDestination.WorldPoint p, GuidanceContext ctx)
     {
         if (p.Territory == ctx.Territory && p.MapId == ctx.MapId)
