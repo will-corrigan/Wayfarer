@@ -18,9 +18,14 @@
   <ItemGroup>
     <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj"/>
     <ProjectReference Include="../Wayfarer.Api/Wayfarer.Api.csproj"/>
+    <!-- Vendored as a git submodule (external/KamiToolKit), not NuGet - see
+         THIRD_PARTY_NOTICES.md. Its own project settings are intentionally not inherited
+         from this repo's Directory.Build.props (see the guard there). -->
+    <ProjectReference Include="../external/KamiToolKit/KamiToolKit.csproj"/>
   </ItemGroup>
   <ItemGroup>
     <Content Include="../data/unlocks-by-level.json" Link="unlocks-by-level.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Content Include="../data/hunting-targets.json" Link="hunting-targets.json" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
   <!-- CPM is disabled above, so the analyzer references from Directory.Build.props
        need explicit versions here (kept in sync with Directory.Packages.props). -->

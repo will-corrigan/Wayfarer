@@ -26,6 +26,22 @@ public static class RoutePlanner
         return result;
     }
 
+    /// <summary>Top <paramref name="max"/> Available unlocks in <paramref name="currentTerritory"/>,
+    /// nearest-first from the player position — the pure selection behind the widget's glanceable
+    /// lines (spec §4, task A3). Same Available + GiverTerritory==territory criterion as
+    /// <see cref="UnlockStatusCalculator.CountAvailableIn"/>; reuses the same greedy-nearest chain
+    /// as <see cref="Order"/> restricted to the current zone.</summary>
+    public static List<ResolvedUnlock> TopAvailableHere(
+        IEnumerable<ResolvedUnlock> all, uint currentTerritory, float px, float pz, int max)
+    {
+        var here = all
+            .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory == currentTerritory)
+            .ToList();
+        var ordered = new List<ResolvedUnlock>();
+        Chain(here, px, pz, ordered);
+        return ordered.Count > max ? ordered.GetRange(0, max) : ordered;
+    }
+
     private static void Chain(List<ResolvedUnlock> pool, float x, float z, List<ResolvedUnlock> result)
     {
         while (pool.Count > 0)

@@ -76,13 +76,24 @@ Unlock data (levels, quest names, prerequisites) is compiled from the
 [Gamer Escape](https://ffxiv.gamerescape.com/wiki/Guide:Progression_and_Level_Locked_Content) community
 wiki. Thanks to the Gamer Escape contributors for maintaining it.
 
+Hunting log target coordinates are curated from [Hunty](https://github.com/Infiziert90/Hunty) by
+Infi (MIT). Thanks to Infi for maintaining that data.
+
+## Third-party
+
+Native (non-ImGui) windows are built on [KamiToolKit](https://github.com/MidoriKami/KamiToolKit) by
+MidoriKami (MIT), vendored as a git submodule under `external/KamiToolKit`. Full license text and
+other third-party notices live in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ## Building from source
 
 Requires the [.NET SDK](https://dotnet.microsoft.com/) version pinned in `global.json` and a local
-Dalamud dev environment. Point the `DALAMUD_HOME` environment variable at your Dalamud dev hooks
-directory before building:
+Dalamud dev environment. This repo has a git submodule (`external/KamiToolKit`), so clone with
+`--recurse-submodules`, or run `git submodule update --init` after a plain clone. Point the
+`DALAMUD_HOME` environment variable at your Dalamud dev hooks directory before building:
 
 ```bash
+git submodule update --init
 export DALAMUD_HOME=/path/to/XIVLauncher/addon/Hooks/dev
 dotnet build -c Release
 ```
@@ -98,9 +109,15 @@ dotnet test
 Issues and pull requests are welcome. Please run `dotnet format` and the hygiene check before submitting:
 
 ```bash
-dotnet format
+dotnet format --exclude external/KamiToolKit
 pwsh -NoProfile -File scripts/check-hygiene.ps1
 ```
+
+The `--exclude external/KamiToolKit` flag is not optional: the vendored submodule is listed in
+`Wayfarer.slnx`, so a plain `dotnet format` will reformat ~185 upstream files against its own
+`.editorconfig` (BOM stripping, whitespace rules) that upstream never applies. If that happens,
+restore the submodule's working tree with `git -C external/KamiToolKit checkout -- .` — never
+commit submodule content.
 
 ## Releases
 

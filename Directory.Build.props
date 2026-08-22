@@ -1,5 +1,14 @@
 <Project>
+  <!-- Vendored third-party projects (git submodules under external/) own their own build
+       settings entirely - none of the properties or analyzer references below may apply to
+       them. MSBuild's implicit Directory.Build.props walk has no concept of repo/submodule
+       boundaries, so without this guard a submodule project nested under this directory tree
+       would silently inherit our CPM/analyzer/lock-file settings (task-B1-brief.md). -->
   <PropertyGroup>
+    <IsVendoredSubmodule>false</IsVendoredSubmodule>
+    <IsVendoredSubmodule Condition="$(MSBuildProjectDirectory.Replace('\', '/').Contains('/external/'))">true</IsVendoredSubmodule>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IsVendoredSubmodule)' != 'true'">
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>14.0</LangVersion>
@@ -11,7 +20,7 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(IsVendoredSubmodule)' != 'true'">
     <PackageReference Include="StyleCop.Analyzers" PrivateAssets="all" />
     <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
   </ItemGroup>

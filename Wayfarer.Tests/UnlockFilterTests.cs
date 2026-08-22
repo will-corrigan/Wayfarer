@@ -63,6 +63,28 @@ public class UnlockFilterTests
         Assert.Equal(expected, route.Select(r => r.Def.Unlock).ToArray());
     }
 
+    [Fact]
+    public void TopAvailableHere_NearestFirstCappedAndZoneOnly()
+    {
+        var near = U("Near", "system", territory: 132, x: 10, z: 0);
+        var mid = U("Mid", "system", territory: 132, x: 50, z: 0);
+        var far = U("Far", "system", territory: 132, x: 200, z: 0);
+        var otherZone = U("Other", "system", territory: 130, x: 0, z: 0);
+        var notAvailable = U("Locked", "system", territory: 132, x: 5, z: 0, status: UnlockStatus.LevelLocked);
+        var top = RoutePlanner.TopAvailableHere([far, mid, near, otherZone, notAvailable], 132, 0f, 0f, max: 2);
+        var expected = new[] { "Near", "Mid" };
+        Assert.Equal(expected, top.Select(r => r.Def.Unlock).ToArray());
+    }
+
+    [Fact]
+    public void TopAvailableHere_FewerThanMaxReturnsAll()
+    {
+        var only = U("Only", "system", territory: 132, x: 10, z: 0);
+        var top = RoutePlanner.TopAvailableHere([only], 132, 0f, 0f, max: 3);
+        var expected = new[] { "Only" };
+        Assert.Equal(expected, top.Select(r => r.Def.Unlock).ToArray());
+    }
+
     private static ResolvedUnlock U(
         string unlock,
         string type,

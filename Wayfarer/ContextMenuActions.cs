@@ -1,17 +1,29 @@
 using Dalamud.Game.Gui.ContextMenu;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
 
 namespace Wayfarer;
 
-/// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu when it opens
-/// on the local player (self-target: own nameplate, portrait, party list row, ...) — a native row
-/// that inherits the game's own d-pad focus navigation, no cursor required (spec §2). The outer
-/// "Wayfarer" item is added from <see cref="IContextMenu.OnMenuOpened"/> so it only ever appears
-/// on a self-target Default menu; its children are built lazily from <see cref="IMenuItem.OnClicked"/>
-/// (via <see cref="IMenuItemClickedArgs.OpenSubmenu(Dalamud.Game.Text.SeStringHandling.SeString,
+/// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu — a native row
+/// that inherits the game's own d-pad focus navigation, no cursor required (spec §2).
+///
+/// PARKED FEATURE (see <see cref="ContextMenuMode"/>): an "any right-click menu" design was
+/// tried live and rejected — the local player challenged its value for mouse users, correctly:
+/// it's redundant with the clickable widget, so <see cref="QuestHelperConfig.MenuMode"/> now
+/// defaults to <see cref="ContextMenuMode.Never"/> and this class is effectively dormant until a
+/// different entry-point design lands. The gating machinery is kept (rather than deleted)
+/// because <see cref="ContextMenuMode.ControllerOnly"/> still has real value — a native,
+/// d-pad-navigable action surface for exactly the input mode where the widget's click
+/// affordances don't reach — evaluated fresh via <see cref="InputModeService.Mode"/> on every
+/// menu open (not registered/unregistered on mode flips, since checking is cheap and avoids a
+/// second subscription to manage). Either way, only <see cref="ContextMenuType.Default"/> is
+/// ever handled — the game's own Inventory-type menu is never touched. The outer "Wayfarer" item
+/// is added from <see cref="IContextMenu.OnMenuOpened"/>; its children are built lazily from
+/// <see cref="IMenuItem.OnClicked"/> (via <see
+/// cref="IMenuItemClickedArgs.OpenSubmenu(Dalamud.Game.Text.SeStringHandling.SeString,
 /// IReadOnlyList{IMenuItem})"/>) rather than at menu-open time, so a slow player never sees a
 /// submenu built from state that's gone stale by the time they confirm it.
 ///
@@ -32,6 +44,7 @@ internal sealed class ContextMenuActions : IDisposable
     private readonly ModuleRegistry modules;
     private readonly QuestHelperConfig cfg;
     private readonly IClientState clientState;
+    private readonly InputModeService inputMode;
     private readonly IPluginLog log;
 
     public ContextMenuActions(
@@ -40,6 +53,7 @@ internal sealed class ContextMenuActions : IDisposable
         ModuleRegistry modules,
         QuestHelperConfig cfg,
         IClientState clientState,
+        InputModeService inputMode,
         IPluginLog log)
     {
         this.contextMenu = contextMenu;
@@ -47,6 +61,7 @@ internal sealed class ContextMenuActions : IDisposable
         this.modules = modules;
         this.cfg = cfg;
         this.clientState = clientState;
+        this.inputMode = inputMode;
         this.log = log;
         contextMenu.OnMenuOpened += OnMenuOpened;
     }
@@ -56,8 +71,8 @@ internal sealed class ContextMenuActions : IDisposable
     private void OnMenuOpened(IMenuOpenedArgs args)
     {
         if (args.MenuType != ContextMenuType.Default
-            || !IsSelfTarget(args.Target)
-            || modules.Get<QuestHelperModule>() is not { Enabled: true })
+            || modules.Get<QuestHelperModule>() is not { Enabled: true }
+            || !ShouldShowMenu())
         {
             return;
         }
@@ -70,13 +85,14 @@ internal sealed class ContextMenuActions : IDisposable
         });
     }
 
-    /// <summary>True only for a Default-menu target that names the local player — every other
-    /// MenuTarget shape (party/friend list entries for OTHER characters, inventory items, no
-    /// target at all) resolves false and the outer item is simply never added.</summary>
-    private bool IsSelfTarget(MenuTarget target) =>
-        target is MenuTargetDefault def
-        && objects.LocalPlayer is { } player
-        && def.TargetObjectId == player.GameObjectId;
+    /// <summary>Evaluated fresh on every menu open (see class doc comment) — cheap enough that a
+    /// second event subscription to track input-mode flips isn't worth the complexity.</summary>
+    private bool ShouldShowMenu() => cfg.MenuMode switch
+    {
+        ContextMenuMode.Always => true,
+        ContextMenuMode.ControllerOnly => inputMode.Mode == InputMode.Controller,
+        _ => false,
+    };
 
     private void OnWayfarerClicked(IMenuItemClickedArgs args) =>
         args.OpenSubmenu("Wayfarer", BuildSubmenuItems());
@@ -114,7 +130,16 @@ internal sealed class ContextMenuActions : IDisposable
             items.Add(new MenuItem
             {
                 Name = "Open checklist",
-                OnClicked = _ => unlockModule.Window.IsOpen = true,
+                OnClicked = _ => unlockModule.OpenChecklist(),
+            });
+        }
+
+        if (modules.Get<HuntingLogModule>() is { Enabled: true } huntingModule)
+        {
+            items.Add(new MenuItem
+            {
+                Name = "Open hunting log",
+                OnClicked = _ => huntingModule.OpenLog(),
             });
         }
 

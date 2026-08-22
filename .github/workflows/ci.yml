@@ -18,6 +18,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Validate data files
+        run: |
+          node data/validate-unlocks.mjs
+          node data/validate-hunting-targets.mjs
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -37,7 +44,7 @@ jobs:
         run: dotnet restore --locked-mode
 
       - name: Format check
-        run: dotnet format --verify-no-changes --verbosity diagnostic
+        run: dotnet format --verify-no-changes --verbosity diagnostic --exclude external/KamiToolKit
 
       - name: Build
         run: dotnet build --no-restore -c Release

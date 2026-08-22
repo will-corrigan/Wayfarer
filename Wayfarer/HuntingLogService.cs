@@ -1,0 +1,529 @@
+using System.Globalization;
+using System.Numerics;
+using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using Lumina.Excel.Sheets;
+using Wayfarer.Core.Hunting;
+using Wayfarer.Core.Navigation;
+
+namespace Wayfarer;
+
+/// <summary>Loads the curated hunting-log dataset, reads live progress from
+/// <c>MonsterNoteManager</c> per <c>HuntingSlotTable</c>'s job→slot mapping and
+/// <c>HuntingProgress</c>'s page semantics (task C1, consumed here — not rebuilt), and resolves the
+/// current page's remaining targets to world positions/live mob tracking for
+/// <see cref="Modules.HuntingLogModule"/>. Framework thread only except where noted. Owned by
+/// <see cref="Modules.HuntingLogModule"/>, which subscribes <see cref="OnFrameworkUpdate"/> in
+/// <c>Enable()</c> and unsubscribes it in <c>Disable()</c> — mirrors <see cref="UnlockService"/>'s
+/// ownership split.</summary>
+internal sealed unsafe class HuntingLogService
+{
+    private readonly IPluginLog log;
+    private readonly IObjectTable objects;
+    private readonly IClientState clientState;
+    private readonly IDalamudPluginInterface pluginInterface;
+    private readonly IDataManager dataManager;
+
+    /// <summary>(currentClassJobId, territory, live-signature) as of the last tick that triggered
+    /// a full <see cref="Recompute"/> — see <see cref="ReadLiveSignature"/> for what the signature
+    /// folds in. Null means "never triggered", forcing a recompute on the first tick a player
+    /// exists.</summary>
+    private (uint ClassJobId, uint Territory, int Signature)? lastChecked;
+
+    private Dictionary<uint, (string Name, uint ContentFinderConditionId)>? dutyByTerritory;
+
+    private HuntingDataset? dataset;
+
+    public HuntingLogService(
+        IPluginLog log,
+        IObjectTable objects,
+        IClientState clientState,
+        IDalamudPluginInterface pluginInterface,
+        IDataManager dataManager)
+    {
+        this.log = log;
+        this.objects = objects;
+        this.clientState = clientState;
+        this.pluginInterface = pluginInterface;
+        this.dataManager = dataManager;
+        try
+        {
+            Load();
+            Loaded = true;
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "HuntingLogService: dataset load failed — hunting log module disabled");
+        }
+    }
+
+    public bool Loaded { get; private set; }
+
+    /// <summary>Display label for whichever log is active right now ("Gladiator", "Maelstrom
+    /// Elite", ...), or <see langword="null"/> when nothing is active — see
+    /// <see cref="NoLogReason"/> for why.</summary>
+    public string? ActiveLogLabel { get; private set; }
+
+    /// <summary>Explains why nothing is active: no dataset, a post-Stormblood job with no class
+    /// log and no Grand Company joined, an Elite log not yet unlocked, or the active log fully
+    /// completed. Null exactly when <see cref="ActiveLogLabel"/> is set.</summary>
+    public string? NoLogReason { get; private set; }
+
+    public int? CurrentRank { get; private set; }
+
+    /// <summary>Remaining (not-yet-fully-killed) monsters on the current page, dataset positional
+    /// order — see <see cref="HuntingProgress.RemainingForCurrentPage"/>.</summary>
+    public IReadOnlyList<HuntingMonster> RemainingOnPage { get; private set; } = [];
+
+    /// <summary>The guidance target: nearest remaining monster in the player's current zone if one
+    /// exists there (chained via <see cref="HuntingChaining"/>), else the dataset-first remaining
+    /// monster elsewhere, else a duty-gated (non-routable) remaining monster's duty affordance, or
+    /// <see langword="null"/> when nothing remains. Refreshed with a live <c>IObjectTable</c>
+    /// position every tick while the player stands in its territory (see
+    /// <see cref="RefreshLiveTracking"/>) — everything else about it only changes on
+    /// <see cref="Recompute"/>.</summary>
+    public HuntingTargetView? CurrentTarget { get; private set; }
+
+    /// <summary>Every remaining, routable target in the player's current zone, nearest-first —
+    /// the "hunt here" route-chaining analog (spec §5). Empty whenever <see cref="CurrentTarget"/>
+    /// is null, is a duty affordance, or is in a different zone.</summary>
+    public IReadOnlyList<HuntingTargetView> HuntHereOrder { get; private set; } = [];
+
+    public PickupTarget? ToPickupTarget(HuntingTargetView v) =>
+        v.IsRoutable
+            ? new PickupTarget(v.MonsterName, ActiveLogLabel ?? "Hunting log", QuestRowId: 0, v.TerritoryTypeId, v.MapId, v.WorldX, v.WorldY, v.WorldZ, v.MonsterName)
+            : null;
+
+    /// <summary>Lightweight per-tick change detector (mirrors <see cref="UnlockService.OnFrameworkUpdate"/>):
+    /// cheap current-job/territory/live-signature reads, only running the full <see cref="Recompute"/>
+    /// pass when one of them actually changed. Also refreshes the live in-zone tracking position
+    /// every tick regardless (spec §5's live proximity tracking — cheap, a single-NameId
+    /// <c>IObjectTable</c> filter, not gated the way the heavier recompute is).</summary>
+    public void OnFrameworkUpdate(IFramework framework)
+    {
+        if (!Loaded || !clientState.IsLoggedIn)
+        {
+            return;
+        }
+
+        var ps = PlayerState.Instance();
+        var classJobId = ps != null ? ps->CurrentClassJobId : 0u;
+        if (classJobId == 0)
+        {
+            return;
+        }
+
+        var territory = clientState.TerritoryType;
+        var signature = ReadLiveSignature(classJobId, ps);
+        var current = (classJobId, territory, signature);
+        if (lastChecked is not { } last || last != current)
+        {
+            lastChecked = current;
+            RecomputeSafe(classJobId, territory);
+        }
+
+        RefreshLiveTracking(territory);
+    }
+
+    /// <summary>Full progress pass: resolves the active log/slot, live rank, remaining targets on
+    /// the current page, and the guidance target. Framework thread only.</summary>
+    public void Recompute()
+    {
+        var ps = PlayerState.Instance();
+        RecomputeSafe(ps != null ? ps->CurrentClassJobId : 0u, clientState.TerritoryType);
+    }
+
+    /// <summary>Cheap per-tick fold of the live rank + every task's kill-count bytes for
+    /// <paramref name="classJobId"/>'s slot — used only as a change-detector signature (see
+    /// <see cref="OnFrameworkUpdate"/>), never to derive actual progress (that's
+    /// <see cref="RecomputeCore"/>'s job). Returns 0 when the job has no class log and no Grand
+    /// Company is joined (nothing to detect changes on).</summary>
+    private static int ReadLiveSignature(uint classJobId, PlayerState* ps)
+    {
+        var slot = HuntingSlotTable.SlotForClassJob(classJobId);
+        if (slot is null)
+        {
+            // Range-checked rather than fed to EliteSlotForGrandCompany (which throws on
+            // out-of-range): this runs on every framework tick outside any try/catch, so a
+            // corrupt GC byte must degrade to "no signal", not throw every frame.
+            var gc = ps != null ? ps->GrandCompany : (byte)0;
+            if (gc is 0 or > 3)
+            {
+                return 0;
+            }
+
+            slot = HuntingSlotTable.EliteSlotForGrandCompany(gc);
+        }
+
+        var mgr = MonsterNoteManager.Instance();
+        if (mgr == null)
+        {
+            return 0;
+        }
+
+        ref var rankInfo = ref mgr->RankData[slot.Value];
+        unchecked
+        {
+            var hash = 17;
+            hash = (hash * 31) + rankInfo.Rank;
+            var tasks = rankInfo.RankData;
+            for (var i = 0; i < tasks.Length; i++)
+            {
+                var counts = tasks[i].Counts;
+                for (var j = 0; j < counts.Length; j++)
+                {
+                    hash = (hash * 31) + counts[j];
+                }
+            }
+
+            return hash;
+        }
+    }
+
+    /// <summary>Copies the current page's live per-task kill-count bytes into plain managed arrays
+    /// so <see cref="RecomputeCore"/>'s <c>Killed</c> delegate doesn't need to capture the native
+    /// <c>Span</c> (ref structs can't be captured by a delegate).</summary>
+    private static byte[][] ReadTaskCounts(MonsterNoteRankInfo rankInfo)
+    {
+        var tasks = rankInfo.RankData;
+        var result = new byte[tasks.Length][];
+        for (var i = 0; i < tasks.Length; i++)
+        {
+            result[i] = tasks[i].Counts.ToArray();
+        }
+
+        return result;
+    }
+
+    private static int TaskIndexOf(HuntingRank pageRank, HuntingMonster monster)
+    {
+        foreach (var task in pageRank.Tasks)
+        {
+            if (task.Monsters.Contains(monster))
+            {
+                return task.TaskIndex;
+            }
+        }
+
+        return -1;
+    }
+
+    private void RecomputeSafe(uint classJobId, uint territory)
+    {
+        try
+        {
+            RecomputeCore(classJobId, territory);
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "HuntingLogService: recompute failed");
+        }
+    }
+
+    private void RecomputeCore(uint classJobId, uint territory)
+    {
+        if (!Loaded || dataset is not { } ds || classJobId == 0)
+        {
+            return;
+        }
+
+        if (ResolveActiveLog(classJobId, ds) is not { } active)
+        {
+            return;
+        }
+
+        var (huntingLog, slot, isElite, grandCompanyId) = active;
+
+        var mgr = MonsterNoteManager.Instance();
+        if (mgr == null)
+        {
+            return;
+        }
+
+        ref var rankInfo = ref mgr->RankData[slot];
+
+        // The memory Rank is 0-based; the dataset (and PageState) are 1-based. This is the one
+        // read boundary where the conversion happens — see HuntingProgress.CurrentRankFromMemory.
+        // No separate elite-unlock gate is needed here: joining a Grand Company unlocks its
+        // hunting log's first page outright (no unlock quest; higher pages gate on GC-rank
+        // promotions which the game folds into the memory Rank itself), so membership — already
+        // checked in ResolveActiveLog — IS the unlock signal. The previous "Rank <= 0 means
+        // locked" check misread the 0-based field: Rank 0 is a freshly unlocked log at page 1.
+        var liveRank = HuntingProgress.CurrentRankFromMemory(rankInfo.Rank);
+
+        ActiveLogLabel = isElite ? $"{GrandCompanyName(grandCompanyId)} Elite" : ClassJobName(classJobId);
+        CurrentRank = liveRank;
+
+        var pageRank = huntingLog.Ranks.Find(r => HuntingProgress.PageState(r.Rank, liveRank) == HuntingPageState.Current);
+        if (pageRank is null)
+        {
+            NoLogReason = null; // still "active", just nothing left to show
+            RemainingOnPage = [];
+            HuntHereOrder = [];
+            CurrentTarget = null;
+            return;
+        }
+
+        var counts = ReadTaskCounts(rankInfo);
+        int Killed(int taskIndex, int monsterIndex) =>
+            taskIndex >= 0 && taskIndex < counts.Length && monsterIndex >= 0 && monsterIndex < counts[taskIndex].Length
+                ? counts[taskIndex][monsterIndex]
+                : 0;
+
+        var remaining = HuntingProgress.RemainingForCurrentPage(pageRank, Killed);
+        RemainingOnPage = remaining;
+        NoLogReason = null;
+
+        BuildTargets(remaining, territory, Killed, pageRank);
+    }
+
+    /// <summary>Resolves which log is active for <paramref name="classJobId"/>: the job's own
+    /// class log, or — for a post-Stormblood job with none — one of the shared Grand Company Elite
+    /// logs, gated on Grand Company membership (spec §5, "reuse the gating brain"). Membership is
+    /// the complete unlock signal for the Elite logs: enlisting grants the log's first page with
+    /// no separate unlock quest, and later pages gate on GC-rank promotions the game reflects in
+    /// the memory Rank itself. Calls <see cref="SetNoLog"/> and returns null on any failure.</summary>
+    private (HuntingLog Log, int Slot, bool IsElite, uint GrandCompanyId)? ResolveActiveLog(uint classJobId, HuntingDataset ds)
+    {
+        var slot = HuntingSlotTable.SlotForClassJob(classJobId);
+        var isElite = false;
+        uint grandCompanyId = 0;
+        string jobKey;
+        if (slot is null)
+        {
+            var ps = PlayerState.Instance();
+            grandCompanyId = ps != null ? ps->GrandCompany : (byte)0;
+            if (grandCompanyId == 0)
+            {
+                SetNoLog("This job has no class hunting log, and you haven't joined a Grand Company yet for the Elite logs.");
+                return null;
+            }
+
+            slot = HuntingSlotTable.EliteSlotForGrandCompany(grandCompanyId);
+            isElite = true;
+            jobKey = (10000 + grandCompanyId).ToString(CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            jobKey = classJobId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (!ds.Logs.TryGetValue(jobKey, out var huntingLog))
+        {
+            SetNoLog("Hunting log data missing for this job.");
+            return null;
+        }
+
+        return (huntingLog, slot.Value, isElite, grandCompanyId);
+    }
+
+    private void SetNoLog(string reason)
+    {
+        ActiveLogLabel = null;
+        NoLogReason = reason;
+        CurrentRank = null;
+        RemainingOnPage = [];
+        HuntHereOrder = [];
+        CurrentTarget = null;
+    }
+
+    private void BuildTargets(List<HuntingMonster> remaining, uint territory, Func<int, int, int> killedCount, HuntingRank pageRank)
+    {
+        var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
+        var chainTargets = new List<HuntingChainTarget>();
+        var byMonster = new Dictionary<HuntingMonster, (uint TerritoryTypeId, uint MapId, float X, float Y, float Z)>();
+        HuntingMonster? dutyTarget = null;
+
+        foreach (var monster in remaining)
+        {
+            var loc = monster.Locations.Find(l => l.IsPrimary) ?? (monster.Locations.Count > 0 ? monster.Locations[0] : null);
+            if (loc is null)
+            {
+                continue;
+            }
+
+            if (!loc.Routable)
+            {
+                dutyTarget ??= monster;
+                continue;
+            }
+
+            if (mapSheet.GetRowOrDefault(loc.MapId) is not { } mapRow)
+            {
+                continue;
+            }
+
+            var (wx, wz) = MapCoords.MapToWorld(loc.X, loc.Y, mapRow.SizeFactor, mapRow.OffsetX, mapRow.OffsetY);
+            var wy = objects.LocalPlayer?.Position.Y ?? 0f; // map coords carry no vertical axis — see MapCoords.MapToWorld
+            byMonster[monster] = (loc.TerritoryTypeId, loc.MapId, wx, wy, wz);
+            chainTargets.Add(new HuntingChainTarget(monster, loc.TerritoryTypeId, wx, wz));
+        }
+
+        var player = objects.LocalPlayer;
+        var ordered = HuntingChaining.OrderNearestFirst(chainTargets, territory, player?.Position.X ?? 0f, player?.Position.Z ?? 0f);
+
+        HuntHereOrder = [.. ordered.Select(t => ToView(t.Monster, byMonster[t.Monster], killedCount, pageRank))];
+
+        if (HuntHereOrder.Count > 0)
+        {
+            CurrentTarget = HuntHereOrder[0];
+            return;
+        }
+
+        // Nothing in the current zone: fall back to the dataset-first routable target elsewhere,
+        // then finally a duty-gated one.
+        var elsewhere = chainTargets.Find(t => byMonster.ContainsKey(t.Monster));
+        if (elsewhere is not null)
+        {
+            CurrentTarget = ToView(elsewhere.Monster, byMonster[elsewhere.Monster], killedCount, pageRank);
+            return;
+        }
+
+        CurrentTarget = dutyTarget is { } duty ? BuildDutyView(duty, killedCount, pageRank) : null;
+    }
+
+    private HuntingTargetView ToView(
+        HuntingMonster monster,
+        (uint TerritoryTypeId, uint MapId, float X, float Y, float Z) loc,
+        Func<int, int, int> killedCount,
+        HuntingRank pageRank)
+    {
+        var taskIndex = TaskIndexOf(pageRank, monster);
+        var killed = killedCount(taskIndex, monster.MonsterIndex);
+        return new HuntingTargetView(
+            Monster: monster,
+            MonsterName: MonsterName(monster.BNpcNameId),
+            Killed: killed,
+            Required: monster.RequiredKills,
+            TerritoryTypeId: loc.TerritoryTypeId,
+            MapId: loc.MapId,
+            WorldX: loc.X,
+            WorldY: loc.Y,
+            WorldZ: loc.Z,
+            IsLivePosition: false,
+            DutyName: null,
+            DutyContentFinderConditionId: null);
+    }
+
+    private HuntingTargetView BuildDutyView(HuntingMonster monster, Func<int, int, int> killedCount, HuntingRank pageRank)
+    {
+        var taskIndex = TaskIndexOf(pageRank, monster);
+        var killed = killedCount(taskIndex, monster.MonsterIndex);
+        var loc = monster.Locations.Find(l => !l.Routable);
+        var duty = loc?.DutyTerritoryTypeId is { } dt ? DutyForTerritory(dt) : null;
+        return new HuntingTargetView(
+            Monster: monster,
+            MonsterName: MonsterName(monster.BNpcNameId),
+            Killed: killed,
+            Required: monster.RequiredKills,
+            TerritoryTypeId: 0,
+            MapId: 0,
+            WorldX: 0,
+            WorldY: 0,
+            WorldZ: 0,
+            IsLivePosition: false,
+            DutyName: duty?.Name ?? "an instanced Grand Company duty",
+            DutyContentFinderConditionId: duty?.ContentFinderConditionId);
+    }
+
+    /// <summary>Refreshes <see cref="CurrentTarget"/>'s position from a live <c>IObjectTable</c>
+    /// scan when the player stands in its territory (spec §5's in-zone live tracking): nearest
+    /// alive, targetable <c>IBattleNpc</c> whose <c>NameId</c> (the BNpcName row id, on
+    /// <c>ICharacter</c>) matches the target's <c>BNpcNameId</c> replaces the curated coordinate;
+    /// falls back to the curated coordinate (clearing
+    /// <see cref="HuntingTargetView.IsLivePosition"/>) when none is visible. NOT
+    /// <c>IGameObject.BaseId</c>/<c>DataId</c> — for a battle NPC that is the BNpcBase row id, a
+    /// different id space (see <see cref="HuntingLiveTracking"/>). A single-id filter over the
+    /// object table is cheap enough to run every tick unconditionally — no separate throttle
+    /// needed (mirrors the "no Stopwatch/frame-counter throttling" idiom already used elsewhere in
+    /// this codebase).</summary>
+    private void RefreshLiveTracking(uint territory)
+    {
+        if (CurrentTarget is not { IsRoutable: true } target || target.TerritoryTypeId != territory)
+        {
+            return;
+        }
+
+        var player = objects.LocalPlayer;
+        Vector3? nearest = null;
+        var bestSq = float.MaxValue;
+        foreach (var obj in objects)
+        {
+            if (obj is not IBattleNpc bnpc
+                || !HuntingLiveTracking.IsCandidate(bnpc.NameId, target.Monster.BNpcNameId, bnpc.IsDead, bnpc.IsTargetable))
+            {
+                continue;
+            }
+
+            var dx = obj.Position.X - (player?.Position.X ?? obj.Position.X);
+            var dz = obj.Position.Z - (player?.Position.Z ?? obj.Position.Z);
+            var sq = (dx * dx) + (dz * dz);
+            if (sq < bestSq)
+            {
+                bestSq = sq;
+                nearest = obj.Position;
+            }
+        }
+
+        CurrentTarget = nearest is { } n
+            ? target with { WorldX = n.X, WorldY = n.Y, WorldZ = n.Z, IsLivePosition = true }
+            : target with { IsLivePosition = false };
+    }
+
+    private string MonsterName(uint bNpcNameId) =>
+        dataManager.GetExcelSheet<BNpcName>().GetRowOrDefault(bNpcNameId)?.Singular.ExtractText() is { Length: > 0 } n
+            ? n
+            : $"Monster {bNpcNameId}";
+
+    private string ClassJobName(uint classJobId) =>
+        dataManager.GetExcelSheet<ClassJob>().GetRowOrDefault(classJobId)?.Name.ExtractText() is { Length: > 0 } n
+            ? n
+            : $"Job {classJobId}";
+
+    private string GrandCompanyName(uint grandCompanyId) =>
+        dataManager.GetExcelSheet<GrandCompany>().GetRowOrDefault(grandCompanyId)?.Name.ExtractText() is { Length: > 0 } n
+            ? n
+            : $"Grand Company {grandCompanyId}";
+
+    /// <summary>Territory → duty name/CFC id, built once from the <c>InstanceContent</c> sheet —
+    /// identical lookup to <see cref="QuestNavigator"/>'s private <c>DutyForTerritory</c> (spec §5:
+    /// "InstanceContent→CFC lookup pattern exists in QuestNavigator" — reused, not reinvented).</summary>
+    private (string Name, uint ContentFinderConditionId)? DutyForTerritory(uint territoryId)
+    {
+        if (dutyByTerritory == null)
+        {
+            var map = new Dictionary<uint, (string, uint)>();
+            foreach (var ic in dataManager.GetExcelSheet<Lumina.Excel.Sheets.InstanceContent>())
+            {
+                if (ic.ContentFinderCondition.RowId == 0 || ic.ContentFinderCondition.ValueNullable is not { } cfc
+                    || cfc.TerritoryType.RowId == 0)
+                {
+                    continue;
+                }
+
+                var name = cfc.Name.ExtractText();
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                map[cfc.TerritoryType.RowId] = (name, cfc.RowId);
+            }
+
+            dutyByTerritory = map;
+        }
+
+        return dutyByTerritory.TryGetValue(territoryId, out var duty) ? duty : null;
+    }
+
+    private void Load()
+    {
+        var dir = pluginInterface.AssemblyLocation.DirectoryName
+            ?? throw new InvalidOperationException("no assembly directory");
+        var json = File.ReadAllText(Path.Combine(dir, "hunting-targets.json"));
+        dataset = HuntingDataset.Parse(json);
+    }
+}

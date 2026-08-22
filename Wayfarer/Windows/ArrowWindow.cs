@@ -123,6 +123,8 @@ internal sealed unsafe class ArrowWindow : Window
         DrawQuestLine(state);
         DrawControllerGlyphHint();
         DrawUnlocksButton();
+        DrawGlanceableUnlocks();
+        DrawGlanceableHunting();
         ControllerHint.Draw(inputModeCfg, saveConfig);
 
         MeasureHeightForNextFrame();
@@ -337,14 +339,15 @@ internal sealed unsafe class ArrowWindow : Window
 
         if (state.AetheryteName is null)
         {
-            if (state.EntranceX is null)
+            // No live marker, no known map-link entrance, and no teleport worth
+            // suggesting (see RouteCosting.TeleportCandidate) — most commonly an
+            // interior objective (e.g. inside a manor) with no entrance modeled in the
+            // map-link data. QuestNavigator's OtherZoneResolution.InteriorMessage is the
+            // single source of truth for this text (Core-tested) — Reason carries it
+            // straight through, so this is just display, not re-derivation.
+            if (state.EntranceX is null && state.Reason is { } reason)
             {
-                // No live marker, no known map-link entrance, and no teleport worth
-                // suggesting (see RouteCosting.TeleportCandidate) — most commonly an
-                // interior objective (e.g. inside a manor) with no entrance modeled in
-                // the map-link data. Say so plainly rather than a bare "no route found",
-                // which reads as a plugin failure instead of actionable guidance.
-                ImGui.TextWrapped($"Objective is inside {state.ZoneName ?? "another zone"} — find the entrance nearby.");
+                ImGui.TextWrapped(reason);
             }
         }
         else if (!state.AetheryteUnlocked)
@@ -450,5 +453,85 @@ internal sealed unsafe class ArrowWindow : Window
         {
             ImGui.PopStyleColor();
         }
+    }
+
+    /// <summary>Glanceable unlock lines (spec §4, task A3): the top 2-3 Available unlocks in the
+    /// current zone, nearest-first, read straight from the already-computed
+    /// <see cref="UnlockService.GlanceableHere"/> — never rescanned here. Only the distance shown
+    /// per line is recomputed every frame, and that's cheap arithmetic against the live player
+    /// position (the same cost model <see cref="DrawArrowTo"/> already pays), not a new scan.
+    /// Absent when the module is missing/disabled, the config toggle is off, or there's simply
+    /// nothing available here right now — kept subtle (small disabled-style text) under the
+    /// existing content, with the same InputMode-aware spacing as the rest of the window.</summary>
+    private void DrawGlanceableUnlocks()
+    {
+        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule
+            || !unlockModule.Config.ShowOnWidget)
+        {
+            return;
+        }
+
+        var here = unlockModule.Unlocks.GlanceableHere;
+        if (here.Count == 0)
+        {
+            return;
+        }
+
+        Gap();
+        var player = objects.LocalPlayer;
+        foreach (var u in here)
+        {
+            if (player != null)
+            {
+                var distance = NavMath.Distance(
+                    u.GiverX - player.Position.X, u.GiverY - player.Position.Y, u.GiverZ - player.Position.Z);
+                ImGui.TextDisabled($"{u.Def.Unlock} ({NavMath.FormatDistance(distance)})");
+            }
+            else
+            {
+                ImGui.TextDisabled(u.Def.Unlock);
+            }
+        }
+    }
+
+    /// <summary>Glanceable hunting-log line (spec §4/§5): the current target's name and live kill
+    /// count, read straight from the already-computed <see cref="HuntingLogModule.Hunting"/> state
+    /// — never rescanned here, same "the module keeps this fresh in the background" split as
+    /// <see cref="DrawGlanceableUnlocks"/>. Absent when the module is missing/disabled, the config
+    /// toggle is off, or nothing is currently active.</summary>
+    private void DrawGlanceableHunting()
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule
+            || !huntingModule.Config.ShowOnWidget)
+        {
+            return;
+        }
+
+        var hunting = huntingModule.Hunting;
+        if (hunting.CurrentTarget is not { } target)
+        {
+            return;
+        }
+
+        Gap();
+        var line = $"Hunting: {target.MonsterName} ({target.Killed}/{target.Required})";
+        if (target.IsRoutable)
+        {
+            var player = objects.LocalPlayer;
+            if (player != null)
+            {
+                var distance = NavMath.Distance(
+                    target.WorldX - player.Position.X, target.WorldY - player.Position.Y, target.WorldZ - player.Position.Z);
+                line += target.IsLivePosition
+                    ? $" — {NavMath.FormatDistance(distance)}"
+                    : $" — {NavMath.FormatDistance(distance)} (route)";
+            }
+        }
+        else
+        {
+            line += $" — {target.DutyName}";
+        }
+
+        ImGui.TextDisabled(line);
     }
 }

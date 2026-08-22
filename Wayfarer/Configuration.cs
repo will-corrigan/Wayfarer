@@ -3,6 +3,19 @@ using Wayfarer.Core.Input;
 
 namespace Wayfarer;
 
+/// <summary>Gates when <see cref="ContextMenuActions"/> registers its "Wayfarer" submenu on the
+/// game's Default context menu. Parked feature (see <see cref="QuestHelperConfig.MenuMode"/>) —
+/// an "any right-click menu" design was tried and rejected: it's redundant for mouse players, who
+/// already have the clickable widget, so <see cref="ControllerOnly"/> is the only case with
+/// real value (a native, d-pad-navigable action surface where the widget's click affordances
+/// don't reach), and <see cref="Never"/> is the default until a better entry point is designed.</summary>
+public enum ContextMenuMode
+{
+    Never,
+    ControllerOnly,
+    Always,
+}
+
 public sealed class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
@@ -15,6 +28,8 @@ public sealed class Configuration : IPluginConfiguration
     public QuestHelperConfig QuestHelper { get; set; } = new();
 
     public UnlockChecklistConfig UnlockChecklist { get; set; } = new();
+
+    public HuntingLogConfig HuntingLog { get; set; } = new();
 
     public InputModeConfig InputMode { get; set; } = new();
 }
@@ -53,10 +68,30 @@ public sealed class QuestHelperConfig
 
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
+
+    /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to <see
+    /// cref="ContextMenuMode.Never"/> — the feature is parked pending a different entry-point
+    /// design (an "any right-click menu" submenu was tried and rejected as noisy for mouse
+    /// players, who already have the clickable widget). See <see cref="ContextMenuMode"/>.</summary>
+    public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.Never;
 }
 
-/// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>. Reserved for future use —
-/// the module currently has no configurable options beyond enable/disable.</summary>
+/// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>.</summary>
 public sealed class UnlockChecklistConfig
 {
+    /// <summary>Shows the top 2-3 Available unlocks in the current zone as small lines on
+    /// <see cref="Windows.ArrowWindow"/> (spec §4, task A3) — a quick glance that makes opening
+    /// the checklist window optional. On by default; absent regardless when the module itself is
+    /// disabled.</summary>
+    public bool ShowOnWidget { get; set; } = true;
+}
+
+/// <summary>Settings for <see cref="Modules.HuntingLogModule"/>.</summary>
+public sealed class HuntingLogConfig
+{
+    /// <summary>Shows the current hunting-log target and its kill count as a small line on
+    /// <see cref="Windows.ArrowWindow"/> (spec §4/§5) — a quick glance that makes opening the
+    /// hunting log window optional. On by default; absent regardless when the module itself is
+    /// disabled.</summary>
+    public bool ShowOnWidget { get; set; } = true;
 }

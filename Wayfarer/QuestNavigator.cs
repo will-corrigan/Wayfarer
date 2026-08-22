@@ -35,6 +35,8 @@ internal sealed unsafe class QuestNavigator(
     private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
     private readonly Queue<PickupTarget> routeQueue = new();
     private readonly Dictionary<(uint FromMap, uint ToMap), List<MapLinkPoint>> entranceCache = [];
+    private readonly Dictionary<uint, HashSet<uint>> aethernetGroupCache = [];
+    private List<AethernetSheetRow>? aethernetSheetRows;
     private Dictionary<uint, DutyInfo>? dutyByTerritory;
     private volatile NavigationState current = new();
     private bool errorLogged;
@@ -159,6 +161,40 @@ internal sealed unsafe class QuestNavigator(
         }
 
         return null;
+    }
+
+    /// <summary>Every nonzero AethernetGroup homed in <paramref name="territory"/>,
+    /// derived from RAW Aetheryte sheet rows — deliberately NOT from
+    /// <see cref="GetAetherytePoints"/>, whose point builder drops any row without a
+    /// resolvable position. That distinction is the third live "Teleport to Foundation
+    /// first" reproduction (2026-08-22): every Ishgard shard row (83–87 The Pillars,
+    /// 80–82 Foundation) carries Map=0 and dead Level refs, so the position-filtered
+    /// list for The Pillars was always empty, the current-territory group set came out
+    /// empty, and RouteCosting.TeleportCandidate's same-network suppression never
+    /// fired. Group membership is a pure sheet fact; positions are irrelevant to it
+    /// (see AethernetGroups.ForTerritory).</summary>
+    private HashSet<uint> GetAethernetGroups(uint territory)
+    {
+        if (aethernetGroupCache.TryGetValue(territory, out var cached))
+        {
+            return cached;
+        }
+
+        if (aethernetSheetRows == null)
+        {
+            aethernetSheetRows = [];
+            foreach (var a in dataManager.GetExcelSheet<Aetheryte>())
+            {
+                if (a.AethernetGroup != 0)
+                {
+                    aethernetSheetRows.Add(new(a.Territory.RowId, a.AethernetGroup));
+                }
+            }
+        }
+
+        var groups = AethernetGroups.ForTerritory(aethernetSheetRows, territory);
+        aethernetGroupCache[territory] = groups;
+        return groups;
     }
 
     private NavigationState Compute()
@@ -499,53 +535,70 @@ internal sealed unsafe class QuestNavigator(
         var entrance = RouteCosting.EntranceCandidate(sourceLinks, targetLinks, px, pz, tx, tz);
 
         // City-network-local teleports are never useful advice — see
-        // RouteCosting.TeleportCandidate's doc comment. currentTerritoryShards already
-        // carries every aethernet stop (shards AND the main aetheryte) reachable from
-        // here for free; its groups are what a real teleport candidate must clear.
-        var currentTerritoryGroups = new HashSet<uint>();
-        foreach (var shard in currentTerritoryShards)
-        {
-            if (shard.Group != 0)
-            {
-                currentTerritoryGroups.Add(shard.Group);
-            }
-        }
+        // RouteCosting.TeleportCandidate's doc comment. Both group sets come from raw
+        // sheet rows (GetAethernetGroups), NEVER from the position-filtered point
+        // lists above — see that method's doc comment for the live bug this fixed.
+        var currentTerritoryGroups = GetAethernetGroups(currentTerritory);
 
         var (aetheryte, aetheryteTerritory, unlocked) = ResolveTargetAetheryte(targetTerritory, tx, tz);
+        var aetheryteTerritoryGroups = GetAethernetGroups(aetheryteTerritory);
+
         var teleport = RouteCosting.TeleportCandidate(
-            aetheryte, aetheryteTerritory, targetTerritory, currentTerritory, tx, tz, unlocked, currentTerritoryGroups);
+            aetheryte,
+            aetheryteTerritory,
+            targetTerritory,
+            currentTerritory,
+            tx,
+            tz,
+            unlocked,
+            currentTerritoryGroups,
+            aetheryteTerritoryGroups);
 
         var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
 
-        // Caller (MarkerMatch.TerritoryOnly) has an exact live-marker position and
-        // asked for it as the least-bad fallback when no real cross-map route exists —
-        // use it instead of the generic "find the entrance nearby" OtherZone message,
-        // which would throw away position data we actually have.
-        if (chosen == null && fallbackWhenNoCandidate is { } fallback)
+        // The three-way choice (real route / marker fallback / plain interior message)
+        // is a pure Core decision (OtherZoneResolution.Resolve) — see its doc comment.
+        // MarkerFallback returns the caller's fallback state (MarkerMatch.TerritoryOnly's
+        // exact live-marker position) as-is; InteriorMessage sets Reason to the single
+        // source-of-truth text so ArrowWindow just displays it rather than re-deriving
+        // "no route" from raw AetheryteName/EntranceX nulls itself.
+        return OtherZoneResolution.Resolve(chosen, fallbackWhenNoCandidate) switch
         {
-            return fallback;
-        }
-
-        return new()
-        {
-            Mode = NavigationState.Modes.OtherZone,
-            QuestId = displayQuestId,
-            QuestName = questName,
-            StepLabel = stepLabel,
-            ZoneName = zoneName,
-            TargetX = tx, TargetZ = tz,
-            AetheryteId = chosen?.AetheryteId,
-            AetheryteName = chosen?.AetheryteName,
-            AetheryteUnlocked = chosen?.AetheryteUnlocked ?? false,
-            EntranceName = chosen?.EntranceName,
-            EntranceX = chosen?.ArrowX,
-            EntranceZ = chosen?.ArrowZ,
-            AethernetEntryName = chosen?.AethernetEntryName,
-            AethernetExitName = chosen?.AethernetExitName,
-            RemainingYalms = chosen?.RemainingYalms,
-            IsPickup = isPickup,
-            RouteStop = routeStop,
-            RouteTotal = routeTotal,
+            OtherZoneOutcome.MarkerFallback => fallbackWhenNoCandidate!,
+            OtherZoneOutcome.InteriorMessage => new()
+            {
+                Mode = NavigationState.Modes.OtherZone,
+                QuestId = displayQuestId,
+                QuestName = questName,
+                StepLabel = stepLabel,
+                ZoneName = zoneName,
+                TargetX = tx, TargetZ = tz,
+                Reason = OtherZoneResolution.InteriorMessage(zoneName),
+                IsPickup = isPickup,
+                RouteStop = routeStop,
+                RouteTotal = routeTotal,
+            },
+            _ => new()
+            {
+                Mode = NavigationState.Modes.OtherZone,
+                QuestId = displayQuestId,
+                QuestName = questName,
+                StepLabel = stepLabel,
+                ZoneName = zoneName,
+                TargetX = tx, TargetZ = tz,
+                AetheryteId = chosen?.AetheryteId,
+                AetheryteName = chosen?.AetheryteName,
+                AetheryteUnlocked = chosen?.AetheryteUnlocked ?? false,
+                EntranceName = chosen?.EntranceName,
+                EntranceX = chosen?.ArrowX,
+                EntranceZ = chosen?.ArrowZ,
+                AethernetEntryName = chosen?.AethernetEntryName,
+                AethernetExitName = chosen?.AethernetExitName,
+                RemainingYalms = chosen?.RemainingYalms,
+                IsPickup = isPickup,
+                RouteStop = routeStop,
+                RouteTotal = routeTotal,
+            },
         };
     }
 
@@ -777,27 +830,35 @@ internal sealed unsafe class QuestNavigator(
             return true;
         }
 
-        if (a.Map.ValueNullable is { } map)
+        // The row's own Map reference is not reliable: every Ishgard shard row
+        // (80–82 Foundation, 83–87 The Pillars) carries Map=0 while the TERRITORY's
+        // map (218/219) carries their DataType 4 markers — so fall back to the home
+        // territory's map, or intra-Ishgard shard routing never gets a position.
+        var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
+        var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
+        var territoryMap = a.Territory.ValueNullable?.Map.RowId ?? 0;
+        foreach (var mapId in AetheryteMapSearch.CandidateMaps(a.Map.RowId, territoryMap))
         {
-            var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
-            if (markerSheet.HasRow(map.MapMarkerRange))
+            if (mapSheet.GetRowOrDefault(mapId) is not { } map || !markerSheet.HasRow(map.MapMarkerRange))
             {
-                foreach (var m in markerSheet[map.MapMarkerRange])
-                {
-                    var matches = m.DataType switch
-                    {
-                        3 => m.DataKey.RowId == a.RowId,               // aetheryte: DataKey = Aetheryte row
-                        4 => m.DataKey.RowId == a.AethernetName.RowId, // shard: DataKey = PlaceName row (verified)
-                        _ => false,
-                    };
-                    if (!matches)
-                    {
-                        continue;
-                    }
+                continue;
+            }
 
-                    (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, map.SizeFactor, map.OffsetX, map.OffsetY);
-                    return true;
+            foreach (var m in markerSheet[map.MapMarkerRange])
+            {
+                var matches = m.DataType switch
+                {
+                    3 => m.DataKey.RowId == a.RowId,               // aetheryte: DataKey = Aetheryte row
+                    4 => m.DataKey.RowId == a.AethernetName.RowId, // shard: DataKey = PlaceName row (verified)
+                    _ => false,
+                };
+                if (!matches)
+                {
+                    continue;
                 }
+
+                (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, map.SizeFactor, map.OffsetX, map.OffsetY);
+                return true;
             }
         }
 
