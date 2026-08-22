@@ -442,6 +442,32 @@ internal sealed unsafe class ArrowWindow : Window
         }
     }
 
+    /// <summary>Sits beside the unlocks entry for the same reason it exists at all: the hunting log
+    /// otherwise has no way to be opened. Shows the active log's remaining count so it doubles as a
+    /// glance, and stays a plain line on a controller like its neighbour.</summary>
+    private void DrawHuntingButton()
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule)
+        {
+            return;
+        }
+
+        var hunting = huntingModule.Hunting;
+        var label = hunting.ActiveLogLabel is null
+            ? "Hunting log"
+            : $"Hunting log ({hunting.RemainingOnPage.Count})";
+
+        ImGui.SameLine();
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            ImGui.TextUnformatted(label);
+        }
+        else if (ImGui.SmallButton(label))
+        {
+            huntingModule.OpenLog();
+        }
+    }
+
     /// <summary>Cross-module: hidden entirely when <see cref="UnlockChecklistModule"/> isn't
     /// registered or is disabled (task-5-brief.md delta 3).</summary>
     private void DrawUnlocksButton()
@@ -469,8 +495,10 @@ internal sealed unsafe class ArrowWindow : Window
         }
         else if (ImGui.SmallButton(label))
         {
-            unlockModule.Window.IsOpen = true;
+            unlockModule.OpenChecklist();
         }
+
+        DrawHuntingButton();
 
         if (highlight)
         {

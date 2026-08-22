@@ -100,7 +100,7 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.Draw += inputMode.OnFrame;
         pluginInterface.UiBuilder.Draw += windows.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
-        pluginInterface.UiBuilder.OpenMainUi += OpenConfig;
+        pluginInterface.UiBuilder.OpenMainUi += OpenMain;
         commands.AddHandler("/wayfarer", new(OnCommand)
         { HelpMessage = "Open Wayfarer settings. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer unlocks\" the checklist." });
 
@@ -113,7 +113,7 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.Draw -= windows.Draw;
         pluginInterface.UiBuilder.Draw -= inputMode.OnFrame;
         pluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
-        pluginInterface.UiBuilder.OpenMainUi -= OpenConfig;
+        pluginInterface.UiBuilder.OpenMainUi -= OpenMain;
 
         contextMenuActions.Dispose();
         ipcProvider.Dispose();
@@ -174,6 +174,10 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void OpenConfig() => configWindow.IsOpen = true;
+
+    /// <summary>The plugin list's main-UI button opens what the plugin is FOR — the checklist —
+    /// rather than its settings, which have their own button right beside it.</summary>
+    private void OpenMain() => modules.Get<UnlockChecklistModule>()?.OpenChecklist();
 
     /// <summary>Every window has to be reachable by typing, whatever the input mode: the widget's
     /// buttons are hidden on a controller and the context-menu surface is off by default, so a bare
