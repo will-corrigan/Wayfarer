@@ -232,6 +232,14 @@ dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.SA1649.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
+[Wayfarer.Core/Navigation/AethernetGroups.cs]
+# AethernetSheetRow is a small companion record to AethernetGroups itself -
+# one sheet-truth-group-derivation concept, kept in one file rather than two
+# near-empty ones.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Navigation/MarkerSelection.cs]
 # MarkerMatch/MarkerPoint are small companion types to MarkerSelection itself
 # (task-fix-interior-report.md fix round 2) - one marker-precedence-decision

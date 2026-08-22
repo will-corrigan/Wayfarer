@@ -159,6 +159,31 @@ public class RouteCostingTests
     }
 
     [Fact]
+    public void TeleportCandidate_Suppressed_ByOwnGroup_WhenHomeTerritoryUnresolved()
+    {
+        // ResolveTargetAetheryte substitutes uint.MaxValue as the fallback aetheryte's
+        // territory when its position can't be resolved — which also empties the
+        // home-territory group set, silently disabling the territory-level suppression.
+        // The point still carries its own sheet AethernetGroup (4 for the Foundation
+        // hub, sheet-verified), so a per-point check against the CURRENT territory's
+        // networks must still catch the city-local teleport.
+        var fallback = new AetherytePoint(70, "Foundation", 0f, 0f, uint.MaxValue, SharedGroup);
+
+        var teleport = RouteCosting.TeleportCandidate(
+            fallback,
+            aetheryteTerritory: uint.MaxValue,
+            targetTerritory: 433,
+            currentTerritory: Pillars,
+            tx: 0f,
+            tz: 0f,
+            unlocked: true,
+            currentTerritoryAethernetGroups: [SharedGroup],
+            aetheryteTerritoryAethernetGroups: []);
+
+        Assert.Null(teleport);
+    }
+
+    [Fact]
     public void TeleportCandidate_Allowed_WhenAetheryteGroupDiffersFromCurrentTerritory()
     {
         // Cross-city teleport: target aetheryte's network (group 4, Ishgard) is not
