@@ -1,4 +1,5 @@
 using Dalamud.Configuration;
+using Wayfarer.Core.Input;
 
 namespace Wayfarer;
 
@@ -14,6 +15,19 @@ public sealed class Configuration : IPluginConfiguration
     public QuestHelperConfig QuestHelper { get; set; } = new();
 
     public UnlockChecklistConfig UnlockChecklist { get; set; } = new();
+
+    public InputModeConfig InputMode { get; set; } = new();
+}
+
+/// <summary>Settings for <see cref="InputModeService"/>, shared by every window that adapts to
+/// the player's input device.</summary>
+public sealed class InputModeConfig
+{
+    public InputModeOverride Override { get; set; } = InputModeOverride.Auto;
+
+    /// <summary>Set once the player dismisses the one-time hint explaining LB+LS-click
+    /// (Dalamud's global gamepad-nav toggle). Shown in both windows' first draw until then.</summary>
+    public bool ControllerHintDismissed { get; set; }
 }
 
 /// <summary>Settings for <see cref="Modules.QuestHelperModule"/>. There is no "show widget"
@@ -26,6 +40,10 @@ public sealed class QuestHelperConfig
 
     public float ArrowScale { get; set; } = 1.0f;
 
+    /// <summary>Multiplies the widget's font scale via ImGui.SetWindowFontScale — independent of
+    /// <see cref="ArrowScale"/>, which only sizes the arrow graphic. 0.8–2.0.</summary>
+    public float TextScale { get; set; } = 1.0f;
+
     public bool ArrowHideInCombat { get; set; } = true;
 
     public bool ArrowHideInDuty { get; set; } = true;
@@ -34,12 +52,6 @@ public sealed class QuestHelperConfig
 
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
-
-    /// <summary>When true (default), the widget uses ImGui's AlwaysAutoResize and
-    /// always snugs to its content. When false, the window is manually resizable —
-    /// its size then persists via ImGui's window ID the same way its position
-    /// already does — and its text wraps to the window width instead.</summary>
-    public bool AutoSizeWidget { get; set; } = true;
 }
 
 /// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>. Reserved for future use —

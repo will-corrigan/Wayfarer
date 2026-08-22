@@ -19,6 +19,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ModuleRegistry modules;
     private readonly ConfigWindow configWindow;
     private readonly WayfarerIpcProvider ipcProvider;
+    private readonly InputModeService inputMode;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -28,6 +29,8 @@ public sealed class Plugin : IDalamudPlugin
         IObjectTable objects,
         ICondition condition,
         ICommandManager commands,
+        IGameConfig gameConfig,
+        IGamepadState gamepadState,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -38,13 +41,16 @@ public sealed class Plugin : IDalamudPlugin
 
         modules = new(log, config);
 
+        inputMode = new InputModeService(gameConfig, gamepadState, config.InputMode, log);
+
         var navigator = new QuestNavigator(log, config.QuestHelper, clientState, condition, objects, dataManager);
-        var arrowWindow = new ArrowWindow(navigator, modules, config.QuestHelper, objects, clientState, log);
+        var arrowWindow = new ArrowWindow(
+            navigator, modules, config.QuestHelper, objects, clientState, log, inputMode, config.InputMode, SaveConfig);
         var questHelperModule = new QuestHelperModule(framework, windows, commands, config.QuestHelper, SaveConfig, navigator, arrowWindow);
         modules.Register(questHelperModule, enabledByDefault: true);
 
         var unlocks = new UnlockService(log, objects, clientState, pluginInterface, dataManager);
-        var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState);
+        var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState, inputMode, config.InputMode, SaveConfig);
         var unlockChecklistModule = new UnlockChecklistModule(framework, windows, modules, unlocks, unlockWindow);
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
@@ -52,6 +58,10 @@ public sealed class Plugin : IDalamudPlugin
 
         configWindow = new(modules, config, SaveConfig);
         windows.AddWindow(configWindow);
+
+        // inputMode.OnFrame runs first so windows.Draw (and every window it draws this same
+        // frame) sees the current frame's resolved Mode/Glyphs, not last frame's.
+        pluginInterface.UiBuilder.Draw += inputMode.OnFrame;
         pluginInterface.UiBuilder.Draw += windows.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi += OpenConfig;
@@ -65,6 +75,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         commands.RemoveHandler("/wayfarer");
         pluginInterface.UiBuilder.Draw -= windows.Draw;
+        pluginInterface.UiBuilder.Draw -= inputMode.OnFrame;
         pluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi -= OpenConfig;
 

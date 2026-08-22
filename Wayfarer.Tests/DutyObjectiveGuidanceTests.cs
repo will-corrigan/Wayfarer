@@ -31,7 +31,7 @@ public class DutyObjectiveGuidanceTests
     }
 
     [Fact]
-    public void DutyTerritory_Unlocked_ProducesQueueMessage()
+    public void DutyTerritory_Unlocked_ProducesCompleteDutyMessage()
     {
         var result = DutyObjectiveGuidance.TryBuild(
             targetTerritory: FistOfTheFatherTerritory,
@@ -46,7 +46,7 @@ public class DutyObjectiveGuidanceTests
 
         Assert.NotNull(result);
         Assert.Equal(NavigationState.Modes.DutyObjective, result!.Mode);
-        Assert.Equal("Complete the duty: The Fist of the Father — queue via Duty Finder", result.Reason);
+        Assert.Equal("Complete the duty: The Fist of the Father", result.Reason);
         Assert.Equal(1000u, result.QuestId);
         Assert.Equal("Disarmed", result.QuestName);
         Assert.Equal("Defeat the Manipulator", result.StepLabel);

@@ -1,5 +1,6 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Command;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Wayfarer.Windows;
@@ -57,18 +58,23 @@ internal sealed class QuestHelperModule(
             saveConfig();
         }
 
-        var autoSize = cfg.AutoSizeWidget;
-        if (ImGui.Checkbox("Auto-size widget", ref autoSize))
-        {
-            cfg.AutoSizeWidget = autoSize;
-            saveConfig();
-        }
-
         var scale = cfg.ArrowScale;
-        ImGui.SetNextItemWidth(160);
+        ImGui.SetNextItemWidth(160 * ImGuiHelpers.GlobalScale);
         if (ImGui.SliderFloat("Arrow size", ref scale, 0.5f, 2.0f, "%.1fx"))
         {
             cfg.ArrowScale = scale;
+        }
+
+        if (ImGui.IsItemDeactivatedAfterEdit())
+        {
+            saveConfig();
+        }
+
+        var textScale = cfg.TextScale;
+        ImGui.SetNextItemWidth(160 * ImGuiHelpers.GlobalScale);
+        if (ImGui.SliderFloat("Text size", ref textScale, 0.8f, 2.0f, "%.1fx"))
+        {
+            cfg.TextScale = textScale;
         }
 
         if (ImGui.IsItemDeactivatedAfterEdit())

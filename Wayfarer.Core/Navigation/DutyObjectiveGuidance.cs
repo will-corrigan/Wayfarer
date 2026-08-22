@@ -8,15 +8,14 @@ namespace Wayfarer.Core.Navigation;
 /// delegates, so this class has no Dalamud/Lumina/ClientStructs dependency.</summary>
 public static class DutyObjectiveGuidance
 {
-    /// <summary>Reason-text markers for the "duty can be queued now" case, shared with
+    /// <summary>Reason-text marker for the "duty can be queued now" case, shared with
     /// ArrowWindow so it can pull the duty name back out of <see
     /// cref="NavigationState.Reason"/> to render it as a clickable link without a
     /// separate duty-name field on the wire — the row id in <see
     /// cref="NavigationState.DutyContentFinderConditionId"/> is the only additive
-    /// state this feature needs.</summary>
+    /// state this feature needs. No trailing suffix: the link's own tooltip ("Open in
+    /// Duty Finder") is the affordance, so the reason text ends at the duty name.</summary>
     public const string CompleteDutyPrefix = "Complete the duty: ";
-
-    public const string CompleteDutySuffix = " — queue via Duty Finder";
 
     /// <summary>Returns the dedicated duty-guidance state when <paramref
     /// name="targetTerritory"/> is duty content, or null when it isn't (the caller
@@ -39,7 +38,7 @@ public static class DutyObjectiveGuidance
 
         var unlocked = isInstanceContentUnlocked(duty.InstanceContentId);
         var reason = unlocked
-            ? $"{CompleteDutyPrefix}{duty.Name}{CompleteDutySuffix}"
+            ? $"{CompleteDutyPrefix}{duty.Name}"
             : $"Unlock and complete the duty: {duty.Name}";
 
         return new NavigationState

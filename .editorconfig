@@ -293,6 +293,13 @@ dotnet_diagnostic.MA0048.severity = none
 # standard EventHandler<T> shape would just be a discarded, meaningless argument.
 dotnet_diagnostic.MA0046.severity = none
 
+[Wayfarer/InputModeService.cs]
+# ModeChanged carries a single Wayfarer.Core.Input.InputMode enum value - a small
+# value type, not a class hierarchy. Wrapping it in an EventArgs subclass just to
+# satisfy the (sender, EventArgs) convention would add a needless allocation/type
+# for a payload that's already a complete, self-describing value (task-A1-brief.md).
+dotnet_diagnostic.MA0046.severity = none
+
 [Wayfarer/Windows/UnlockWindow.cs]
 # navigator is intentionally typed as the consumer-shaped INavigationProvider seam
 # (task-2b-brief.md) rather than the concrete QuestNavigator it happens to always
