@@ -1,4 +1,10 @@
 <Solution>
+  <!-- Listed (not just pulled in transitively via ProjectReference) so a solution-scoped
+       `dotnet build -c Release` correctly propagates Release to this submodule's build too:
+       ProjectReference targets outside the solution silently built Debug under a solution
+       build otherwise. `dotnet format` is told to skip it via the exclude flag (see
+       ci.yml/README): it owns its own style (see Directory.Build.props' submodule guard). -->
+  <Project Path="external/KamiToolKit/KamiToolKit.csproj" />
   <Project Path="Wayfarer.Api/Wayfarer.Api.csproj" />
   <Project Path="Wayfarer.Core/Wayfarer.Core.csproj" />
   <Project Path="Wayfarer.Tests/Wayfarer.Tests.csproj" />
