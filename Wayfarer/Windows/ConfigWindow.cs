@@ -1,59 +1,92 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Wayfarer.Core.Input;
-using Wayfarer.Modules;
+using Wayfarer.Core.Ui;
+using Wayfarer.Settings;
 
 namespace Wayfarer.Windows;
 
-public sealed class ConfigWindow(ModuleRegistry modules, Configuration config, Action saveConfig) : Window("Wayfarer")
+/// <summary>The ImGui rendering of <see cref="SettingsCatalog"/> — the same settings, in the same
+/// order, as the native window's Settings tab, because both read one declaration.
+///
+/// This is a <b>fallback surface</b>, not a destination: everything Wayfarer does now lives in the
+/// one native window, and both Dalamud's cog and its main button open that. This exists for the
+/// case where the native window cannot be created at all, so a player is never left with no way to
+/// turn a setting off.</summary>
+public sealed class ConfigWindow : Window
 {
-    private static readonly InputModeOverride[] InputModeOverrides =
-        [InputModeOverride.Auto, InputModeOverride.Mouse, InputModeOverride.Controller];
+    private readonly SettingsCatalog settings;
+
+    internal ConfigWindow(SettingsCatalog settings)
+        : base("Wayfarer")
+    {
+        this.settings = settings;
+    }
 
     public override void Draw()
     {
-        DrawInputModeSection();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        foreach (var module in modules.Modules)
+        foreach (var section in settings.Build())
         {
-            var enabled = module.Enabled;
-            if (ImGui.Checkbox(module.Name, ref enabled))
+            ImGui.TextUnformatted(section.Title);
+            ImGui.Separator();
+            foreach (var setting in section.Settings)
             {
-                modules.SetEnabled(module, enabled);
-                config.ModuleEnabled[module.Name] = enabled;
-                saveConfig();
+                DrawSetting(setting);
             }
 
-            ImGui.TextDisabled(module.Description);
-
-            if (module.Enabled)
-            {
-                ImGui.Indent();
-                module.DrawConfig();
-                ImGui.Unindent();
-            }
+            ImGui.Spacing();
         }
     }
 
-    /// <summary>Auto/Mouse/Controller override — see <see cref="InputModeArbitrator"/>. Auto
-    /// (the default) follows whichever device was used most recently; the other two options pin
-    /// the presentation regardless of what the player's hands are doing.</summary>
-    private void DrawInputModeSection()
+    private static void DrawSetting(SettingDefinition setting)
     {
-        ImGui.TextUnformatted("Input mode");
-        var current = Array.IndexOf(InputModeOverrides, config.InputMode.Override);
-        ImGui.SetNextItemWidth(160 * ImGuiHelpers.GlobalScale);
-        if (ImGui.Combo(
-            "##inputModeOverride",
-            ref current,
-            ["Auto (follow last input)", "Mouse & keyboard", "Controller"],
-            InputModeOverrides.Length))
+        switch (setting.Kind)
         {
-            config.InputMode.Override = InputModeOverrides[current];
-            saveConfig();
+            case SettingKind.Toggle:
+                DrawToggle(setting);
+                break;
+            case SettingKind.Scale:
+                DrawScale(setting);
+                break;
+            default:
+                DrawChoice(setting);
+                break;
+        }
+
+        if (setting.Description is { Length: > 0 } description)
+        {
+            ImGui.Indent();
+            ImGui.TextDisabled(description);
+            ImGui.Unindent();
+        }
+    }
+
+    private static void DrawToggle(SettingDefinition setting)
+    {
+        var value = setting.ReadFlag?.Invoke() ?? false;
+        if (ImGui.Checkbox($"{setting.Label}##{setting.Id}", ref value))
+        {
+            setting.WriteFlag?.Invoke(value);
+        }
+    }
+
+    private static void DrawScale(SettingDefinition setting)
+    {
+        var value = setting.ReadValue?.Invoke() ?? setting.Minimum;
+        ImGui.SetNextItemWidth(160 * ImGuiHelpers.GlobalScale);
+        if (ImGui.SliderFloat($"{setting.Label}##{setting.Id}", ref value, setting.Minimum, setting.Maximum, "%.1fx"))
+        {
+            setting.WriteValue?.Invoke(value);
+        }
+    }
+
+    private static void DrawChoice(SettingDefinition setting)
+    {
+        var current = setting.ReadOption?.Invoke() ?? 0;
+        ImGui.SetNextItemWidth(220 * ImGuiHelpers.GlobalScale);
+        if (ImGui.Combo($"{setting.Label}##{setting.Id}", ref current, [.. setting.Options], setting.Options.Count))
+        {
+            setting.WriteOption?.Invoke(current);
         }
     }
 }

@@ -5,93 +5,119 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
 using Wayfarer.Core.Navigation;
+using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
+using Wayfarer.Settings;
+using Wayfarer.Windows.Native;
 
 namespace Wayfarer.Windows;
 
-/// <summary>Single native (KamiToolKit <see cref="NativeAddon"/>) window that is the Controller-mode
-/// home for the whole plugin (spec: controller wave task 4) — replaces the earlier separate
-/// per-module native windows with one hub carrying a native <see cref="TabBarNode"/>
-/// (Checklist | Hunting Log | Settings), so d-pad focus navigation comes from the game itself, same
-/// as the tabs it replaces. Owned directly by <see cref="Plugin"/> (not by either module) since it
-/// now serves both; <see cref="UnlockChecklistModule"/> and <see cref="HuntingLogModule"/> only ever
-/// call <see cref="OpenTab"/> to land on their own tab.
+/// <summary>The Wayfarer window — one native (KamiToolKit <see cref="NativeAddon"/>) window holding
+/// everything the plugin has to show, for mouse and controller alike. The game's own windows are
+/// mouse-first and cursor-navigable at the same time; copying that is what lets one surface serve
+/// both players instead of two parallel stacks drifting apart.
 ///
-/// Every piece of content below is a straight port of the former <c>NativeUnlockWindow</c> /
-/// <c>NativeHuntingWindow</c> classes' row-building logic, unchanged in behavior, just re-homed
-/// under one addon with a bucketed <see cref="NodeBase.IsVisible"/> toggle per tab instead of one
-/// window each. <see cref="NativeAddon"/> fully deallocates its node tree on every close, so all
-/// three tabs' content is rebuilt from scratch in <see cref="OnSetup"/> on every open, then the
-/// active tab's list is force-refreshed again on every <see cref="SelectTab"/> switch so stale data
-/// never lingers behind a tab that was built once and left alone.</summary>
-internal sealed unsafe class NativeHubWindow(
-    IUnlockProvider unlocks,
-    HuntingLogService hunting,
-    ModuleRegistry modules,
-    IObjectTable objects,
-    IClientState clientState,
-    IFramework framework,
-    Configuration config,
-    Action saveConfig,
-    IPluginLog log) : NativeAddon
+/// <b>Navigation.</b> The game drives a controller through any window with an explicit index graph
+/// stored per interactive component (<c>AtkCursorNavigationInfo</c>: five bytes, self index plus
+/// four neighbours). It is entirely opt-in — a component whose indices are all zero is a dead end,
+/// and KamiToolKit only fills the graph in automatically for the children of its own list
+/// containers. This window previously set no indices at all, which is why the cursor arrived on
+/// whichever button took initial focus and could never leave it. The layout below is numbered
+/// against <see cref="HubNavPlan"/>, in full, after every change that could move anything.
+///
+/// <b>Why the lists are <c>ListNode</c>s.</b> <c>ScrollingNode&lt;VerticalListNode&gt;</c> — what
+/// this window used before — has no navigation implementation and no scroll-follows-focus, and
+/// cannot be given either from the outside. <c>ListNode&lt;T, TU&gt;</c> has both: it reserves four
+/// index slots per row and parks invisible sentinel components above and below the viewport that
+/// catch a held d-pad and scroll instead of moving. It costs a uniform row height, which is why
+/// section headings are rows here rather than separate nodes.
+///
+/// <b>Rebuild model.</b> <see cref="NativeAddon"/> deallocates its whole node tree on close, so
+/// everything is built from scratch in <see cref="OnSetup"/> on every open.</summary>
+internal sealed unsafe class NativeHubWindow : NativeAddon
 {
     // Lumina's Quest sheet offsets row ids by this amount — see UnlockWindow's identical constant
     // for why FollowedOverride/GetAcceptedQuestObjective work in the raw (unoffset) ushort space.
     private const uint QuestRowIdOffset = 65536;
 
+    private const float TabBarHeight = 26f;
+    private const float RowHeight = 24f;
+    private const float ChecklistControlsHeight = 92f;
+    private const float HuntingControlsHeight = 60f;
+
     private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
+
     private static readonly (string Key, string Label)[] CategoryChips =
         [("content", "Content"), ("system", "Systems"), ("cosmetic", "Cosmetics"), ("zone", "Zones")];
 
     private static readonly (string Key, string Label)[] PriorityChips =
         [("essential", "Essential"), ("nice", "Nice"), ("optional", "Optional")];
 
-    private static readonly (string Label, float Value)[] TextScalePresets =
-        [("Small", 0.8f), ("Normal", 1.0f), ("Large", 1.3f)];
-
-    private static readonly (string Label, HubPositionPreset Preset)[] PositionPresets =
-    [
-        ("Top-left", HubPositionPreset.TopLeft),
-        ("Top-right", HubPositionPreset.TopRight),
-        ("Center", HubPositionPreset.Center),
-        ("Bottom-left", HubPositionPreset.BottomLeft),
-        ("Bottom-right", HubPositionPreset.BottomRight),
-    ];
+    private readonly IUnlockProvider unlocks;
+    private readonly HuntingLogService hunting;
+    private readonly ModuleRegistry modules;
+    private readonly IObjectTable objects;
+    private readonly IClientState clientState;
+    private readonly IFramework framework;
+    private readonly Configuration config;
+    private readonly SettingsCatalog settings;
+    private readonly IPluginLog log;
 
     private readonly FilterState filter = new();
     private readonly List<NodeBase> checklistNodes = [];
     private readonly List<NodeBase> huntingNodes = [];
     private readonly List<NodeBase> settingsNodes = [];
-    private readonly List<(TextNode Node, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
+    private readonly List<HubListRow> rows = [];
+    private readonly List<(HubListRow Row, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
 
     private int groupMode;
     private HubTab pendingTab = HubTab.Checklist;
     private HubTab currentTab = HubTab.Checklist;
     private Vector2 tabContentStart;
     private Vector2 tabContentSize;
+    private int lastChecklistSignature;
+    private int lastHuntingSignature;
+    private int lastPopulatedRows;
+    private bool navigationWarningLogged;
 
     private TabBarNode? hubTabs;
+    private ListNode<HubListRow, HubListRowNode>? list;
 
-    private ScrollingNode<VerticalListNode>? checklistListArea;
+    private VerticalListNode? checklistControls;
+    private TextButtonNode? groupButton;
     private TextButtonNode? routeButton;
-    private TextNode? routeCaption;
-    private int lastChecklistSignature;
 
-    private ScrollingNode<VerticalListNode>? huntingListArea;
+    private VerticalListNode? huntingControls;
     private TextNode? huntingHeaderNode;
     private TextButtonNode? huntHereButton;
-    private int lastHuntingSignature;
 
+    private TextButtonNode? stopButton;
     private ScrollingNode<VerticalListNode>? settingsArea;
+    private CheckboxNode? firstSettingControl;
 
-    private enum HubPositionPreset
+    public NativeHubWindow(
+        IUnlockProvider unlocks,
+        HuntingLogService hunting,
+        ModuleRegistry modules,
+        IObjectTable objects,
+        IClientState clientState,
+        IFramework framework,
+        Configuration config,
+        SettingsCatalog settings,
+        IPluginLog log)
     {
-        TopLeft,
-        TopRight,
-        BottomLeft,
-        BottomRight,
-        Center,
+        this.unlocks = unlocks;
+        this.hunting = hunting;
+        this.modules = modules;
+        this.objects = objects;
+        this.clientState = clientState;
+        this.framework = framework;
+        this.config = config;
+        this.settings = settings;
+        this.log = log;
+
+        settings.OnWindowPositionChanged += ApplyPositionPreset;
     }
 
     /// <inheritdoc/>
@@ -101,6 +127,7 @@ internal sealed unsafe class NativeHubWindow(
         // starts the native closing animation (finishes several frames later), but Dispose() must
         // leave nothing subscribed to IFramework the moment it returns, regardless of that timing.
         framework.Update -= OnFrameworkUpdate;
+        settings.OnWindowPositionChanged -= ApplyPositionPreset;
 
         // Dalamud unloads plugins on a thread-pool thread (game exit); base.Dispose() calls
         // Close(), which asserts the main thread and throws otherwise. Marshal onto the framework
@@ -124,9 +151,8 @@ internal sealed unsafe class NativeHubWindow(
         }
     }
 
-    /// <summary>Opens the hub on <paramref name="tab"/>, or — if already open — just switches to
-    /// it. Used by both <see cref="UnlockChecklistModule.OpenChecklist"/> and
-    /// <see cref="HuntingLogModule.OpenLog"/>, and by the widget's "Open Wayfarer ▸" entry point.</summary>
+    /// <summary>Opens the window on <paramref name="tab"/>, or — if already open — just switches to
+    /// it. Every entry point into Wayfarer comes through here.</summary>
     public void OpenTab(HubTab tab)
     {
         if (IsOpen)
@@ -138,6 +164,7 @@ internal sealed unsafe class NativeHubWindow(
         pendingTab = tab;
         Size = ComputeDefaultSize();
         Open();
+        ApplyPositionPreset(config.Hub.Position);
     }
 
     protected override unsafe void OnSetup(AtkUnitBase* addon, Span<AtkValue> values)
@@ -148,7 +175,7 @@ internal sealed unsafe class NativeHubWindow(
             {
                 Position = ContentStartPosition,
                 Size = new Vector2(ContentSize.X, 40f),
-                String = "Wayfarer data failed to load - see the Dalamud log.",
+                String = "Wayfarer's data failed to load — see the Dalamud log.",
             });
             return;
         }
@@ -156,18 +183,30 @@ internal sealed unsafe class NativeHubWindow(
         var contentStart = ContentStartPosition;
         var contentSize = ContentSize;
 
-        hubTabs = new TabBarNode { Position = contentStart, Size = new Vector2(contentSize.X, 26f) };
+        // Nav must be assigned before the LAST thing that triggers TabBarNode's private
+        // RecalculateLayout() — which is a Size assignment OR an AddTab call. Assigning it in the
+        // initializer and adding the tabs afterwards is the ordering that is correct either way;
+        // do it the other way round and the indices never reach the radio buttons, silently.
+        hubTabs = new TabBarNode
+        {
+            NavIndex = HubNavPlan.TabBar,
+            NavUp = NavGraphPlanner.NoNavigation,
+            NavDown = HubNavPlan.Region,
+            Position = contentStart,
+            Size = new Vector2(contentSize.X, TabBarHeight),
+        };
         hubTabs.AddTab("Checklist", () => SelectTab(HubTab.Checklist));
         hubTabs.AddTab("Hunting Log", () => SelectTab(HubTab.Hunting));
         hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
         AddNode(hubTabs);
 
-        var y = contentStart.Y + hubTabs.Height + 6f;
+        var y = contentStart.Y + TabBarHeight + 6f;
         tabContentStart = new Vector2(contentStart.X, y);
         tabContentSize = new Vector2(contentSize.X, contentSize.Y - (y - contentStart.Y));
 
-        BuildChecklistTab();
-        BuildHuntingTab();
+        BuildSharedList();
+        BuildChecklistControls();
+        BuildHuntingControls();
         BuildSettingsTab();
 
         SelectTab(pendingTab);
@@ -179,17 +218,21 @@ internal sealed unsafe class NativeHubWindow(
     {
         framework.Update -= OnFrameworkUpdate;
         distanceRows.Clear();
+        rows.Clear();
         checklistNodes.Clear();
         huntingNodes.Clear();
         settingsNodes.Clear();
         hubTabs = null;
-        checklistListArea = null;
+        list = null;
+        checklistControls = null;
+        groupButton = null;
         routeButton = null;
-        routeCaption = null;
-        huntingListArea = null;
+        huntingControls = null;
         huntingHeaderNode = null;
         huntHereButton = null;
+        stopButton = null;
         settingsArea = null;
+        firstSettingControl = null;
     }
 
     // ----- Private static helpers (grouped together — SA1204) ------------------------------
@@ -197,8 +240,11 @@ internal sealed unsafe class NativeHubWindow(
     {
         var screen = new Vector2(AtkStage.Instance()->ScreenSize.Width, AtkStage.Instance()->ScreenSize.Height);
         var scale = AtkUnitBase.GetGlobalUIScale();
-        var width = Math.Clamp(560f * scale, 420f, screen.X * 0.55f);
-        var height = Math.Clamp(screen.Y * 0.65f, 420f, screen.Y * 0.85f);
+        var width = Math.Clamp(600f * scale, 460f, screen.X * 0.6f);
+
+        // Tall by default on purpose: the Settings tab's controls are real components in a plain
+        // column, and a controller can only reach the ones that are actually laid out on screen.
+        var height = Math.Clamp(screen.Y * 0.78f, 460f, screen.Y * 0.9f);
         return new Vector2(width, height);
     }
 
@@ -217,14 +263,6 @@ internal sealed unsafe class NativeHubWindow(
         _ => "Settings",
     };
 
-    private static CheckboxNode BuildChipCheckbox(string label, bool isChecked, Action<bool> onClick) => new()
-    {
-        Height = 20f,
-        String = label,
-        IsChecked = isChecked,
-        OnClick = onClick,
-    };
-
     private static void ToggleMembership(HashSet<string> set, string key, bool isOn)
     {
         if (isOn)
@@ -237,50 +275,15 @@ internal sealed unsafe class NativeHubWindow(
         }
     }
 
-    private static TextNode BuildHeaderNode(string text) => new()
-    {
-        Height = 22f,
-        FontSize = 15,
-        TextColor = new Vector4(0.9f, 0.72f, 0.25f, 1f),
-        String = text,
-    };
-
     private static (string Label, Vector4 Color) StatusPresentation(UnlockStatus status) => status switch
     {
-        UnlockStatus.Done => ("Done", new Vector4(0.5f, 0.8f, 0.5f, 1f)),
-        UnlockStatus.Accepted => ("Accepted", new Vector4(0.6f, 0.8f, 1f, 1f)),
-        UnlockStatus.Available => ("Available", new Vector4(1f, 0.82f, 0.25f, 1f)),
-        UnlockStatus.LockedOut => ("Gone", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
-        UnlockStatus.UnknownGate => ("Unknown", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
-        _ => ("Locked", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
+        UnlockStatus.Done => ("Complete", GameColors.Dimmed),
+        UnlockStatus.Accepted => ("Accepted", GameColors.ListText),
+        UnlockStatus.Available => ("Available", GameColors.Good),
+        UnlockStatus.LockedOut => ("Missed", GameColors.Bad),
+        UnlockStatus.UnknownGate => ("Unknown", GameColors.Dimmed),
+        _ => ("Locked", GameColors.Dimmed),
     };
-
-    // Builds the dimmed second line under a row's button: giver name (any status), the accepted
-    // quest's own name, and its live next objective — the same three facts UnlockWindow's hover
-    // tooltip shows, folded inline since native rows have no tooltip.
-    private static string? BuildCaption(ResolvedUnlock u, INavigationProvider? navigator)
-    {
-        var parts = new List<string>();
-        if (u.GiverName is { Length: > 0 } giver)
-        {
-            parts.Add($"From {giver}");
-        }
-
-        if (u.Status == UnlockStatus.Accepted && u.Def.Quest is { Length: > 0 } quest)
-        {
-            parts.Add($"— {quest}");
-        }
-
-        if (u.Status == UnlockStatus.Accepted
-            && navigator != null
-            && u.QuestRowId is { } questRowId
-            && navigator.GetAcceptedQuestObjective(questRowId - QuestRowIdOffset) is { Length: > 0 } objective)
-        {
-            parts.Add($"Next: {objective}");
-        }
-
-        return parts.Count > 0 ? string.Join("\n", parts) : null;
-    }
 
     private static IEnumerable<ResolvedUnlock> OrderInGroup(IEnumerable<ResolvedUnlock> group) =>
         group.OrderBy(u => u.Status switch
@@ -312,18 +315,117 @@ internal sealed unsafe class NativeHubWindow(
         }
     }
 
-    // ----- Tab switching / background polling -----------------------------------------------
+    private static FloatSliderNode BuildScale(SettingDefinition setting) => new()
+    {
+        Height = 24f,
+        Min = setting.Minimum,
+        Max = setting.Maximum,
+        Step = setting.Step,
+        Value = setting.ReadValue?.Invoke() ?? setting.Minimum,
+        OnValueChanged = value => setting.WriteValue?.Invoke(value),
+    };
+
+    // A cycling button rather than a drop-down: a DropDownNode's popup has to be registered into
+    // the host addon's AdditionalFocusableNodes before a cursor can reach it, and a popup the
+    // controller cannot enter is exactly the trap this whole pass exists to remove.
+    private static TextButtonNode BuildChoice(SettingDefinition setting)
+    {
+        TextButtonNode? node = null;
+        node = new TextButtonNode
+        {
+            Height = 24f,
+            Width = 320f,
+            String = $"{setting.Label}: {setting.CurrentValueText()}",
+            OnClick = () =>
+            {
+                setting.CycleOption();
+                if (node is not null)
+                {
+                    node.String = $"{setting.Label}: {setting.CurrentValueText()}";
+                }
+            },
+        };
+        return node;
+    }
+
+    private static AlignedHorizontalListNode BuildFilterRow(IEnumerable<CheckboxNode> chips)
+    {
+        var row = new AlignedHorizontalListNode
+        {
+            Height = 22f,
+            FitToContentHeight = true,
+            ItemSpacing = 10f,
+        };
+
+        foreach (var chip in chips)
+        {
+            row.AddNode(chip);
+        }
+
+        return row;
+    }
+
+    private static TextNode BuildHeadingNode(string text) => new()
+    {
+        Height = 22f,
+        FontType = FontType.TrumpGothic,
+        FontSize = 20,
+        TextColor = GameColors.Heading,
+        TextOutlineColor = GameColors.HeadingEdge,
+        TextFlags = TextFlags.Edge,
+        String = text,
+    };
+
     private void AddTabNode(List<NodeBase> bucket, NodeBase node)
     {
         AddNode(node);
         bucket.Add(node);
     }
 
-    /// <summary>Switches the visible tab, force-refreshing its content so nothing stale is shown
-    /// (the background poll in <see cref="OnFrameworkUpdate"/> only refreshes the currently active
-    /// tab, so the other two can be arbitrarily out of date by the time the player switches to
-    /// them), then focuses the first content control (task 4c) so d-pad navigation lands in the
-    /// tab's content rather than staying on the title bar / tab strip.</summary>
+    // ----- Shared virtual list --------------------------------------------------------------
+    private void BuildSharedList()
+    {
+        list = new ListNode<HubListRow, HubListRowNode>
+        {
+            NavIndex = HubNavPlan.List,
+            NavUp = HubNavPlan.Region,
+            NavDown = HubNavPlan.TabBar,
+
+            // The left/right escape is the guaranteed way out of the list, and it is deliberate
+            // rather than decorative: KamiToolKit's own downward exit dies permanently the first
+            // time the list scrolls (OnDownNavReceived zeroes it and guards the restore with a
+            // condition a just-incremented counter can never satisfy). Left or right always
+            // returns to the tab bar, so no graph defect can strand the cursor inside the list.
+            NavLeft = HubNavPlan.TabBar,
+            NavRight = HubNavPlan.TabBar,
+
+            ItemSpacing = 1f,
+
+            // Suppresses ListNode's "selection follows scroll", which otherwise raises OnClick for
+            // every row a held d-pad scrolls past — on this window that would fire navigation at
+            // each one. Selection highlight is cleared explicitly after every activation instead.
+            AllowMultipleSelection = true,
+            AutoResetScroll = false,
+            Position = tabContentStart,
+            Size = new Vector2(tabContentSize.X, tabContentSize.Y),
+            OptionsList = [],
+            OnItemSelected = OnRowClicked,
+        };
+        AddNode(list);
+    }
+
+    private void OnRowClicked(HubListRow? row)
+    {
+        list?.ClearSelection();
+        row?.Activate?.Invoke();
+    }
+
+    // ----- Tab switching / background polling -----------------------------------------------
+
+    /// <summary>Switches the visible tab, force-refreshing its content (the background poll only
+    /// refreshes the active tab, so the others can be arbitrarily stale), re-laying out the shared
+    /// list under whichever control block that tab uses, and renumbering the whole navigation
+    /// graph afterwards.</summary>
     private void SelectTab(HubTab tab)
     {
         currentTab = tab;
@@ -333,18 +435,59 @@ internal sealed unsafe class NativeHubWindow(
         SetBucketVisible(huntingNodes, tab == HubTab.Hunting);
         SetBucketVisible(settingsNodes, tab == HubTab.Settings);
 
+        if (list is not null)
+        {
+            var controlsHeight = tab switch
+            {
+                HubTab.Checklist => ChecklistControlsHeight,
+                HubTab.Hunting => HuntingControlsHeight,
+                _ => 0f,
+            };
+
+            list.IsVisible = tab != HubTab.Settings;
+            if (list.IsVisible)
+            {
+                list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
+                list.Size = new Vector2(tabContentSize.X, Math.Max(tabContentSize.Y - controlsHeight, RowHeight));
+            }
+        }
+
         switch (tab)
         {
             case HubTab.Checklist:
                 RebuildChecklist();
-                routeButton?.SetFocus();
                 break;
             case HubTab.Hunting:
                 RebuildHunting();
-                huntHereButton?.SetFocus();
                 break;
             default:
                 RebuildSettings();
+                break;
+        }
+
+        FocusTabAnchor(tab);
+    }
+
+    /// <summary>Seeds the cursor somewhere valid when a tab opens, and puts it back somewhere valid
+    /// after a rebuild that could have pulled the row out from under it. Only ever targets a real
+    /// component that is on screen right now.</summary>
+    private void FocusTabAnchor(HubTab tab)
+    {
+        if (!config.InputMode.CursorNavigation)
+        {
+            return;
+        }
+
+        switch (tab)
+        {
+            case HubTab.Checklist:
+                routeButton?.SetFocus();
+                break;
+            case HubTab.Hunting:
+                huntHereButton?.SetFocus();
+                break;
+            default:
+                firstSettingControl?.SetFocus();
                 break;
         }
     }
@@ -372,95 +515,234 @@ internal sealed unsafe class NativeHubWindow(
 
                 break;
         }
+
+        RestoreListDownwardExit();
+        UpdateStopButton();
+    }
+
+    /// <summary>Undoes KamiToolKit's <c>ListNode</c> defect 1 from the outside: its downward scroll
+    /// sentinel zeroes its own exit link on the first scroll and restores it only when
+    /// <c>scrollPosition</c> is 0, which cannot happen straight after an increment — so once the
+    /// player scrolls, down stops leaving the list forever. Re-pointing the link once the list is
+    /// scrolled as far as it goes gives the exit back without taking away scroll-past-the-bottom.
+    /// Cheap enough to check every frame and idempotent.</summary>
+    private void RestoreListDownwardExit()
+    {
+        if (list?.DownwardsNavNode is not { } sentinel || sentinel.NavDown != NavGraphPlanner.NoNavigation)
+        {
+            return;
+        }
+
+        if (list.ScrollBarNode.ScrollPosition >= list.ScrollBarNode.ScrollMaxPosition)
+        {
+            sentinel.NavDown = list.NavDown;
+        }
     }
 
     // Re-evaluated fresh on every call — mirrors the ImGui windows' navigator field being
     // recomputed every frame, so a Quest Helper toggle flip between opens is picked up on the
-    // very next click/rebuild rather than only on the next background poll. Returns the concrete
-    // type rather than INavigationProvider (CA1859) — every caller only ever consumes it through
-    // that interface's members anyway.
+    // very next click/rebuild rather than only on the next background poll.
     private QuestNavigator? ResolveNavigator() =>
         modules.Get<QuestHelperModule>() is { Enabled: true } questHelper ? questHelper.Navigator : null;
 
-    // ----- Checklist tab (ported from the former NativeUnlockWindow) -----------------------
-    private void BuildChecklistTab()
-    {
-        var y = tabContentStart.Y;
-        y = BuildGroupTabs(y);
-        y = BuildToggleRow(y);
-        y = BuildRouteRow(y);
+    // ----- Navigation -----------------------------------------------------------------------
 
-        checklistListArea = new ScrollingNode<VerticalListNode>
+    /// <summary>Renumbers the entire graph. Never patches: the indices are absolute and dense, so a
+    /// partial update leaves collisions (the cursor teleports) or holes (it stops moving). Called
+    /// after every content, filter, visibility or tab change.</summary>
+    private void ApplyNavigation(NodeBase? controls)
+    {
+        if (list is null)
         {
-            ContentNode = { FitWidth = true, FitContents = true, ItemSpacing = 6f },
-            AutoHideScrollBar = true,
-            Position = new Vector2(tabContentStart.X, y),
-            Size = new Vector2(tabContentSize.X, tabContentSize.Y - (y - tabContentStart.Y)),
-        };
-        AddTabNode(checklistNodes, checklistListArea);
+            return;
+        }
+
+        if (!config.InputMode.CursorNavigation)
+        {
+            return;
+        }
+
+        var populated = PopulatedRowCount();
+        var firstRow = populated > 0 ? NavListBlock.RowIndex(HubNavPlan.List, 0) : HubNavPlan.TabBar;
+
+        var regionEnd = HubNavPlan.Region;
+        if (controls is not null)
+        {
+            regionEnd = NavigationWalker.Apply(controls, HubNavPlan.Region, HubNavPlan.TabBar, firstRow);
+        }
+
+        var lastRegionIndex = regionEnd > HubNavPlan.Region ? regionEnd - 1 : HubNavPlan.TabBar;
+        if (list.IsVisible)
+        {
+            list.NavUp = lastRegionIndex;
+            RepairLastPopulatedRow(populated, lastRegionIndex);
+        }
+
+        LogGraph(controls, regionEnd, populated);
     }
 
-    private AlignedHorizontalListNode BuildFilterRow(float y, IEnumerable<CheckboxNode> chips)
+    /// <summary>Undoes KamiToolKit's <c>ListNode</c> defect 2 from the outside: its per-row loop
+    /// iterates the recycled node pool but tests for "last row" against a different count, so when
+    /// the list holds fewer items than the pool the real last row's downward link points at a row
+    /// node that is currently invisible and pressing down there does nothing. Re-pointing that one
+    /// row at the list's own exit is the whole fix.</summary>
+    private void RepairLastPopulatedRow(int populated, int navUp)
     {
-        var row = new AlignedHorizontalListNode
+        if (list is null || populated <= 0 || populated >= list.OptionNodes.Count)
         {
-            Position = new Vector2(tabContentStart.X, y),
-            Size = new Vector2(tabContentSize.X, 22f),
-            FitToContentHeight = true,
-            ItemSpacing = 10f,
+            return;
+        }
+
+        var index = NavListBlock.RowIndex(HubNavPlan.List, populated - 1);
+        var up = populated > 1 ? NavListBlock.RowIndex(HubNavPlan.List, populated - 2) : navUp;
+        list.OptionNodes[populated - 1].ProcessNav(index, up, list.NavDown, list.NavLeft, list.NavRight);
+    }
+
+    private int PopulatedRowCount() =>
+        list is null ? 0 : Math.Min(list.OptionsList.Count, list.OptionNodes.Count);
+
+    // Verbose, once per rebuild: if a report ever comes back as "the cursor got stuck", the index
+    // map at that moment is already in the log and nobody has to reproduce it.
+    private void LogGraph(NodeBase? controls, int regionEnd, int populated)
+    {
+        var controlCount = controls is null ? 0 : NavigationWalker.CountTargets(controls);
+        log.Verbose(
+            $"Wayfarer nav [{currentTab}]: tabs {HubNavPlan.TabBar}..{HubNavPlan.TabBarLast}, " +
+            $"controls {HubNavPlan.Region}..{Math.Max(regionEnd - 1, HubNavPlan.Region)} ({controlCount}), " +
+            $"list {HubNavPlan.List} rows {populated}/{list?.OptionNodes.Count ?? 0} of {rows.Count}.");
+
+        var pool = list?.OptionNodes.Count ?? 0;
+        if (navigationWarningLogged || NavListBlock.Fits(HubNavPlan.List, pool))
+        {
+            return;
+        }
+
+        navigationWarningLogged = true;
+        log.Warning(
+            $"Wayfarer nav: a {pool}-row list at index {HubNavPlan.List} exceeds the {NavGraphPlanner.MaxIndex} " +
+            "index ceiling; the lower rows will not be reachable with a controller.");
+    }
+
+    /// <summary>Pushes the current row models into the list and renumbers everything. The one place
+    /// that touches <c>OptionsList</c>, so the sequence — content, then geometry, then graph, then
+    /// focus — is stated once.</summary>
+    private void PublishRows(NodeBase? controls)
+    {
+        if (list is null)
+        {
+            return;
+        }
+
+        var previous = lastPopulatedRows;
+        list.OptionsList = [.. rows];
+        lastPopulatedRows = PopulatedRowCount();
+
+        ApplyNavigation(controls);
+
+        if (lastPopulatedRows < previous)
+        {
+            // The list shrank. The cursor is a node pointer, not an index, and ListNode recycles
+            // its row nodes rather than freeing them, so nothing dangles — but the row under the
+            // cursor may now be showing something else or be hidden entirely. Putting focus back
+            // on this tab's own action button is cheap, idempotent, and the only guard against the
+            // cursor sitting on a row that no longer exists.
+            FocusTabAnchor(currentTab);
+        }
+
+        if (InternalAddon is not null)
+        {
+            InternalAddon->UpdateCollisionNodeList(false);
+        }
+    }
+
+    // ----- Checklist tab ---------------------------------------------------------------------
+    private void BuildChecklistControls()
+    {
+        checklistControls = new VerticalListNode
+        {
+            FitWidth = true,
+            ItemSpacing = 4f,
+            Position = tabContentStart,
+            Size = new Vector2(tabContentSize.X, ChecklistControlsHeight),
         };
 
-        foreach (var chip in chips)
+        checklistControls.AddNode(BuildFilterRow(BuildDoneAndCategoryChips()));
+        checklistControls.AddNode(BuildFilterRow(BuildPriorityChips()));
+        checklistControls.AddNode(BuildChecklistActionRow());
+
+        AddTabNode(checklistNodes, checklistControls);
+    }
+
+    private AlignedHorizontalListNode BuildChecklistActionRow()
+    {
+        var row = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+
+        // A cycling button rather than a nested tab bar: a TabBarNode consumes one index per tab,
+        // which the walker (which numbers one index per element) cannot account for — nesting one
+        // inside a numbered region would overlap the elements that follow it.
+        groupButton = new TextButtonNode
         {
-            row.AddNode(chip);
-        }
+            Width = 140f,
+            Height = 24f,
+            String = $"Group: {GroupModes[groupMode]}",
+            OnClick = () =>
+            {
+                groupMode = (groupMode + 1) % GroupModes.Length;
+                RebuildChecklist();
+            },
+        };
+        row.AddNode(groupButton);
+
+        routeButton = new TextButtonNode
+        {
+            Width = 150f,
+            Height = 24f,
+            String = "Route me",
+            OnClick = OnRouteClicked,
+        };
+        row.AddNode(routeButton);
+
+        stopButton = new TextButtonNode
+        {
+            Width = 110f,
+            Height = 24f,
+            String = "Stop",
+            IsEnabled = false,
+            OnClick = OnStopClicked,
+        };
+        row.AddNode(stopButton);
 
         return row;
     }
 
-    private float BuildGroupTabs(float y)
-    {
-        var tabs = new TabBarNode { Position = new Vector2(tabContentStart.X, y), Size = new Vector2(tabContentSize.X, 24f) };
-        for (var i = 0; i < GroupModes.Length; i++)
-        {
-            var index = i; // captured per-tab, not the loop variable
-            tabs.AddTab(GroupModes[i], () =>
-            {
-                groupMode = index;
-                RebuildChecklist();
-            });
-        }
-
-        AddTabNode(checklistNodes, tabs);
-        return y + tabs.Height + 6f;
-    }
-
-    private float BuildToggleRow(float y)
-    {
-        var doneAndCategory = BuildFilterRow(y, BuildDoneAndCategoryChips());
-        AddTabNode(checklistNodes, doneAndCategory);
-        y += doneAndCategory.Height + 4f;
-
-        var priority = BuildFilterRow(y, BuildPriorityChips());
-        AddTabNode(checklistNodes, priority);
-        return y + priority.Height + 8f;
-    }
-
     private IEnumerable<CheckboxNode> BuildDoneAndCategoryChips()
     {
-        yield return BuildChipCheckbox("Done", filter.ShowDone, isOn =>
+        yield return new CheckboxNode
         {
-            filter.ShowDone = isOn;
-            RebuildChecklist();
-        });
+            Height = 20f,
+            String = "Complete",
+            IsChecked = filter.ShowDone,
+            OnClick = isOn =>
+            {
+                filter.ShowDone = isOn;
+                RebuildChecklist();
+            },
+        };
 
         foreach (var (key, label) in CategoryChips)
         {
-            yield return BuildChipCheckbox(label, filter.Categories.Contains(key), isOn =>
+            var chipKey = key;
+            yield return new CheckboxNode
             {
-                ToggleMembership(filter.Categories, key, isOn);
-                RebuildChecklist();
-            });
+                Height = 20f,
+                String = label,
+                IsChecked = filter.Categories.Contains(chipKey),
+                OnClick = isOn =>
+                {
+                    ToggleMembership(filter.Categories, chipKey, isOn);
+                    RebuildChecklist();
+                },
+            };
         }
     }
 
@@ -468,36 +750,19 @@ internal sealed unsafe class NativeHubWindow(
     {
         foreach (var (key, label) in PriorityChips)
         {
-            yield return BuildChipCheckbox(label, filter.Priorities.Contains(key), isOn =>
+            var chipKey = key;
+            yield return new CheckboxNode
             {
-                ToggleMembership(filter.Priorities, key, isOn);
-                RebuildChecklist();
-            });
+                Height = 20f,
+                String = label,
+                IsChecked = filter.Priorities.Contains(chipKey),
+                OnClick = isOn =>
+                {
+                    ToggleMembership(filter.Priorities, chipKey, isOn);
+                    RebuildChecklist();
+                },
+            };
         }
-    }
-
-    private float BuildRouteRow(float y)
-    {
-        routeButton = new TextButtonNode
-        {
-            Position = new Vector2(tabContentStart.X, y),
-            Size = new Vector2(150f, 26f),
-            String = "Route me (0)",
-            OnClick = OnRouteClicked,
-        };
-        AddTabNode(checklistNodes, routeButton);
-
-        routeCaption = new TextNode
-        {
-            Position = new Vector2(tabContentStart.X + 160f, y + 5f),
-            Size = new Vector2(tabContentSize.X - 160f, 20f),
-            FontSize = 11,
-            TextColor = new Vector4(0.65f, 0.65f, 0.65f, 1f),
-            String = "chains the arrow through every available pickup shown",
-        };
-        AddTabNode(checklistNodes, routeCaption);
-
-        return y + 32f;
     }
 
     private List<ResolvedUnlock> ComputeVisibleUnlocks() =>
@@ -519,54 +784,48 @@ internal sealed unsafe class NativeHubWindow(
 
     private void RebuildChecklist()
     {
-        if (checklistListArea is null)
+        if (list is null)
         {
             return;
         }
 
         var navigator = ResolveNavigator();
         var visible = ComputeVisibleUnlocks();
-
         UpdateRouteRow(visible, navigator);
 
-        checklistListArea.ContentNode.Clear();
+        rows.Clear();
+        distanceRows.Clear();
         foreach (var group in GroupUnlockEntries(visible))
         {
-            checklistListArea.ContentNode.AddNode(BuildHeaderNode($"{group.Key} ({group.Count()})"));
+            rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = group.Key, Detail = $"{group.Count()}" });
             foreach (var u in OrderInGroup(group))
             {
-                checklistListArea.ContentNode.AddNode(BuildChecklistRowNode(u, navigator));
+                rows.Add(BuildChecklistRow(u, navigator));
             }
         }
 
-        AddUnverifiedSection();
+        AddUnverifiedRows();
 
-        if (checklistListArea.ContentNode.Nodes.Count == 0)
+        if (rows.Count == 0)
         {
-            checklistListArea.ContentNode.AddNode(new TextNode
-            {
-                Height = 22f,
-                String = "No resolved unlocks yet - open the checklist once more to force a recompute.",
-            });
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing to show with these filters." });
         }
 
-        checklistListArea.RecalculateSizes();
+        PublishRows(checklistControls);
         lastChecklistSignature = ComputeChecklistSignature();
     }
 
     private void UpdateRouteRow(List<ResolvedUnlock> visible, INavigationProvider? navigator)
     {
-        if (routeButton is null || routeCaption is null)
+        if (routeButton is null || groupButton is null)
         {
             return;
         }
 
-        var routable = visible.Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null).ToList();
-        routeButton.String = $"Route me ({routable.Count})";
-        routeButton.IsEnabled = navigator != null && routable.Count > 0;
-        routeCaption.String = navigator == null
-            ? "enable Quest Helper to navigate"
-            : "chains the arrow through every available pickup shown";
+        groupButton.String = $"Group: {GroupModes[groupMode]}";
+        var routable = visible.Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+        routeButton.String = routable > 0 ? $"Route me ({routable})" : "Route me";
+        routeButton.IsEnabled = navigator != null && routable > 0;
     }
 
     private void OnRouteClicked()
@@ -592,37 +851,23 @@ internal sealed unsafe class NativeHubWindow(
         }
     }
 
-    private VerticalListNode BuildChecklistRowNode(ResolvedUnlock u, INavigationProvider? navigator)
+    private HubListRow BuildChecklistRow(ResolvedUnlock u, INavigationProvider? navigator)
     {
-        var row = new VerticalListNode { FitWidth = true, FitContents = true, ItemSpacing = 2f };
-
         var (label, color) = StatusPresentation(u.Status);
-        var button = new TextButtonNode
+        var where = u.ZoneName is { Length: > 0 } zone ? $"{zone} · " : string.Empty;
+        var giver = u.GiverName is { Length: > 0 } name ? $" — {name}" : string.Empty;
+
+        return new HubListRow
         {
-            Height = 24f,
-            String = $"{label}  {u.Def.Unlock}  (lv{u.QuestLevel}{(u.ZoneName is { } z ? $", {z}" : string.Empty)})",
-            OnClick = () => OnChecklistRowClicked(u),
+            Kind = HubRowKind.Entry,
+            Label = $"{u.Def.Unlock}{giver}",
+            Detail = $"{where}Lv{u.QuestLevel} · {label}",
+            LabelColor = color,
+            Activate = navigator is null ? null : () => OnChecklistRowActivated(u),
         };
-        button.LabelNode.TextColor = color;
-        row.AddNode(button);
-
-        if (BuildCaption(u, navigator) is { } caption)
-        {
-            var lines = caption.Split('\n');
-            row.AddNode(new TextNode
-            {
-                Height = (lines.Length * 13f) + 4f,
-                FontSize = 11,
-                LineSpacing = 13,
-                TextColor = new Vector4(0.65f, 0.65f, 0.65f, 1f),
-                String = caption,
-            });
-        }
-
-        return row;
     }
 
-    private void OnChecklistRowClicked(ResolvedUnlock u)
+    private void OnChecklistRowActivated(ResolvedUnlock u)
     {
         var navigator = ResolveNavigator();
         if (navigator is null)
@@ -641,23 +886,22 @@ internal sealed unsafe class NativeHubWindow(
         }
     }
 
-    private void AddUnverifiedSection()
+    private void AddUnverifiedRows()
     {
         var unverified = unlocks.Entries.Where(u => u.Status == UnlockStatus.Unverified).ToList();
-        if (unverified.Count == 0 || checklistListArea is null)
+        if (unverified.Count == 0)
         {
             return;
         }
 
-        checklistListArea.ContentNode.AddNode(BuildHeaderNode($"Unverified ({unverified.Count})"));
+        rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "Unverified", Detail = $"{unverified.Count}" });
         foreach (var u in unverified)
         {
-            checklistListArea.ContentNode.AddNode(new TextNode
+            rows.Add(new HubListRow
             {
-                Height = 18f,
-                FontSize = 11,
-                TextColor = new Vector4(0.6f, 0.6f, 0.6f, 1f),
-                String = $"{u.Def.Unlock} (lv{u.Def.Level})",
+                Kind = HubRowKind.Note,
+                Label = u.Def.Unlock,
+                Detail = $"Lv{u.Def.Level}",
             });
         }
     }
@@ -685,39 +929,40 @@ internal sealed unsafe class NativeHubWindow(
         return unlocks.Entries.FirstOrDefault(u => u.GiverTerritory == here)?.ZoneName;
     }
 
-    // ----- Hunting tab (ported from the former NativeHuntingWindow) ------------------------
-    private void BuildHuntingTab()
+    // ----- Hunting tab -----------------------------------------------------------------------
+    private void BuildHuntingControls()
     {
-        var y = tabContentStart.Y;
+        huntingControls = new VerticalListNode
+        {
+            FitWidth = true,
+            ItemSpacing = 4f,
+            Position = tabContentStart,
+            Size = new Vector2(tabContentSize.X, HuntingControlsHeight),
+        };
 
         huntingHeaderNode = new TextNode
         {
-            Position = new Vector2(tabContentStart.X, y),
-            Size = new Vector2(tabContentSize.X, 22f),
-            FontSize = 15,
-            TextColor = new Vector4(0.9f, 0.72f, 0.25f, 1f),
+            Height = 22f,
+            FontType = FontType.TrumpGothic,
+            FontSize = 20,
+            TextColor = GameColors.Heading,
+            TextOutlineColor = GameColors.HeadingEdge,
+            TextFlags = TextFlags.Edge,
         };
-        AddTabNode(huntingNodes, huntingHeaderNode);
-        y += 26f;
+        huntingControls.AddNode(huntingHeaderNode);
 
+        var actions = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
         huntHereButton = new TextButtonNode
         {
-            Position = new Vector2(tabContentStart.X, y),
-            Size = new Vector2(160f, 26f),
-            String = "Hunt here (0)",
-            OnClick = OnHuntHereClicked,
+            Width = 170f,
+            Height = 24f,
+            String = "Start hunting",
+            OnClick = OnHuntClicked,
         };
-        AddTabNode(huntingNodes, huntHereButton);
-        y += 32f;
+        actions.AddNode(huntHereButton);
+        huntingControls.AddNode(actions);
 
-        huntingListArea = new ScrollingNode<VerticalListNode>
-        {
-            ContentNode = { FitWidth = true, FitContents = true, ItemSpacing = 6f },
-            AutoHideScrollBar = true,
-            Position = new Vector2(tabContentStart.X, y),
-            Size = new Vector2(tabContentSize.X, tabContentSize.Y - (y - tabContentStart.Y)),
-        };
-        AddTabNode(huntingNodes, huntingListArea);
+        AddTabNode(huntingNodes, huntingControls);
     }
 
     private int ComputeHuntingSignature()
@@ -742,12 +987,12 @@ internal sealed unsafe class NativeHubWindow(
     private void RefreshHuntingDistances()
     {
         var player = objects.LocalPlayer;
-        if (player is null)
+        if (player is null || distanceRows.Count == 0)
         {
             return;
         }
 
-        foreach (var (node, monster) in distanceRows)
+        foreach (var (row, monster) in distanceRows)
         {
             var view = hunting.CurrentTarget is { } current && current.Monster == monster
                 ? current
@@ -758,103 +1003,85 @@ internal sealed unsafe class NativeHubWindow(
             }
 
             var distance = NavMath.Distance(view.WorldX - player.Position.X, view.WorldY - player.Position.Y, view.WorldZ - player.Position.Z);
-            node.String = view.IsLivePosition ? $"{NavMath.FormatDistance(distance)} (live)" : NavMath.FormatDistance(distance);
+            row.Detail = $"{view.Killed}/{view.Required} · {NavMath.FormatDistance(distance)}";
         }
+
+        list?.Update();
     }
 
     private void RebuildHunting()
     {
-        if (huntingListArea is null || huntingHeaderNode is null || huntHereButton is null)
+        if (list is null || huntingHeaderNode is null || huntHereButton is null)
         {
             return;
         }
 
         huntingHeaderNode.String = hunting.ActiveLogLabel is { } label
-            ? $"{label} — rank {hunting.CurrentRank}"
+            ? $"{label} — Rank {hunting.CurrentRank}"
             : hunting.NoLogReason ?? "No hunting log active.";
 
         var navigator = ResolveNavigator();
-        huntHereButton.String = $"Hunt here ({hunting.HuntHereOrder.Count})";
-        huntHereButton.IsEnabled = navigator != null && hunting.HuntHereOrder.Count > 0;
+        var remaining = hunting.HuntHereOrder.Count;
+        huntHereButton.String = remaining > 0 ? $"Start hunting ({remaining})" : "Start hunting";
+        huntHereButton.IsEnabled = navigator != null && remaining > 0;
 
-        huntingListArea.ContentNode.Clear();
+        rows.Clear();
         distanceRows.Clear();
         foreach (var target in hunting.HuntHereOrder)
         {
-            huntingListArea.ContentNode.AddNode(BuildHuntingRowNode(target, navigator));
+            rows.Add(BuildHuntingRow(target, navigator));
         }
 
         var shown = hunting.HuntHereOrder.Select(t => t.Monster).ToHashSet();
         if (hunting.CurrentTarget is { } current && !shown.Contains(current.Monster))
         {
-            huntingListArea.ContentNode.AddNode(BuildHuntingRowNode(current, navigator));
+            rows.Add(BuildHuntingRow(current, navigator));
         }
 
-        if (huntingListArea.ContentNode.Nodes.Count == 0)
+        if (rows.Count == 0)
         {
-            huntingListArea.ContentNode.AddNode(new TextNode { Height = 22f, String = "Nothing remaining on this page." });
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing left on this rank." });
         }
 
-        huntingListArea.RecalculateSizes();
+        PublishRows(huntingControls);
+        RefreshHuntingDistances();
         lastHuntingSignature = ComputeHuntingSignature();
     }
 
-    private VerticalListNode BuildHuntingRowNode(HuntingTargetView target, QuestNavigator? navigator)
+    private HubListRow BuildHuntingRow(HuntingTargetView target, QuestNavigator? navigator)
     {
-        var row = new VerticalListNode { FitWidth = true, FitContents = true, ItemSpacing = 2f };
-
-        if (target.IsRoutable)
+        if (!target.IsRoutable)
         {
-            var button = new TextButtonNode
+            return new HubListRow
             {
-                Height = 24f,
-                String = $"{target.MonsterName}  ({target.Killed}/{target.Required})",
-                IsEnabled = navigator != null,
-                OnClick = () =>
-                {
-                    if (navigator != null && hunting.ToPickupTarget(target) is { } pickup)
-                    {
-                        navigator.SetPickup(pickup);
-                    }
-                },
+                Kind = HubRowKind.Entry,
+                Label = target.MonsterName,
+                Detail = $"{target.Killed}/{target.Required} · {target.DutyName}",
+                Activate = target.DutyContentFinderConditionId is null
+                    ? null
+                    : () => OpenDuty(target.DutyContentFinderConditionId),
             };
-            row.AddNode(button);
-
-            var player = objects.LocalPlayer;
-            if (player != null)
-            {
-                var distance = NavMath.Distance(target.WorldX - player.Position.X, target.WorldY - player.Position.Y, target.WorldZ - player.Position.Z);
-                var distanceNode = new TextNode
-                {
-                    Height = 16f,
-                    FontSize = 11,
-                    TextColor = new Vector4(0.65f, 0.65f, 0.65f, 1f),
-                    String = target.IsLivePosition ? $"{NavMath.FormatDistance(distance)} (live)" : NavMath.FormatDistance(distance),
-                };
-                row.AddNode(distanceNode);
-                distanceRows.Add((distanceNode, target.Monster));
-            }
-
-            return row;
         }
 
-        row.AddNode(new TextNode
+        var row = new HubListRow
         {
-            Height = 24f,
-            String = $"{target.MonsterName}  ({target.Killed}/{target.Required})",
-        });
-        row.AddNode(new TextButtonNode
-        {
-            Height = 24f,
-            String = $"Open Duty Finder: {target.DutyName}",
-            IsEnabled = target.DutyContentFinderConditionId is not null,
-            OnClick = () => OpenDuty(target.DutyContentFinderConditionId),
-        });
+            Kind = HubRowKind.Entry,
+            Label = target.MonsterName,
+            Detail = $"{target.Killed}/{target.Required}",
+            Activate = navigator is null ? null : () =>
+            {
+                if (hunting.ToPickupTarget(target) is { } pickup)
+                {
+                    navigator.SetPickup(pickup);
+                }
+            },
+        };
 
+        distanceRows.Add((row, target.Monster));
         return row;
     }
 
-    private void OnHuntHereClicked()
+    private void OnHuntClicked()
     {
         var navigator = ResolveNavigator();
         if (navigator is null || hunting.HuntHereOrder.Count == 0)
@@ -869,12 +1096,31 @@ internal sealed unsafe class NativeHubWindow(
         }
     }
 
-    // ----- Settings tab (new — task 4: controller-navigable essentials) --------------------
+    /// <summary>The universal exit. Whenever an explicit mode owns the arrow the player must have a
+    /// reachable way out of it — this is that way, and it is a real focusable button rather than a
+    /// menu item hidden behind a popup.</summary>
+    private void OnStopClicked() => ResolveNavigator()?.ClearPickup();
+
+    private void UpdateStopButton()
+    {
+        if (stopButton is null)
+        {
+            return;
+        }
+
+        var engaged = ResolveNavigator()?.Current.Engaged == true;
+        if (stopButton.IsEnabled != engaged)
+        {
+            stopButton.IsEnabled = engaged;
+        }
+    }
+
+    // ----- Settings tab ----------------------------------------------------------------------
     private void BuildSettingsTab()
     {
         settingsArea = new ScrollingNode<VerticalListNode>
         {
-            ContentNode = { FitWidth = true, FitContents = true, ItemSpacing = 8f },
+            ContentNode = { FitWidth = true, FitContents = true, ItemSpacing = 4f },
             AutoHideScrollBar = true,
             Position = tabContentStart,
             Size = tabContentSize,
@@ -882,9 +1128,6 @@ internal sealed unsafe class NativeHubWindow(
         AddTabNode(settingsNodes, settingsArea);
     }
 
-    /// <summary>Rebuilt every time the Settings tab is selected (not polled every frame like the
-    /// other two tabs) so module-enabled checkboxes always reflect the latest state — e.g. after
-    /// flipping a module in the ImGui <see cref="ConfigWindow"/> and then opening the hub.</summary>
     private void RebuildSettings()
     {
         if (settingsArea is null)
@@ -893,82 +1136,51 @@ internal sealed unsafe class NativeHubWindow(
         }
 
         settingsArea.ContentNode.Clear();
+        firstSettingControl = null;
 
-        var firstModuleToggle = RebuildSettingsModules();
-        RebuildSettingsPresets();
+        foreach (var section in settings.Build())
+        {
+            settingsArea.ContentNode.AddNode(BuildHeadingNode(section.Title));
+            foreach (var setting in section.Settings)
+            {
+                settingsArea.ContentNode.AddNode(BuildSettingControl(setting));
+            }
+        }
 
         settingsArea.RecalculateSizes();
-        firstModuleToggle?.SetFocus();
+        ApplyNavigation(settingsArea.ContentNode);
     }
 
-    private CheckboxNode? RebuildSettingsModules()
+    private NodeBase BuildSettingControl(SettingDefinition setting) => setting.Kind switch
     {
-        settingsArea!.ContentNode.AddNode(BuildHeaderNode("Modules"));
+        SettingKind.Toggle => BuildToggle(setting),
+        SettingKind.Scale => BuildScale(setting),
+        _ => BuildChoice(setting),
+    };
 
-        CheckboxNode? first = null;
-        foreach (var module in modules.Modules)
-        {
-            var checkbox = new CheckboxNode
-            {
-                Height = 22f,
-                String = module.Name,
-                IsChecked = module.Enabled,
-                OnClick = isOn =>
-                {
-                    modules.SetEnabled(module, isOn);
-                    config.ModuleEnabled[module.Name] = isOn;
-                    saveConfig();
-                },
-            };
-            first ??= checkbox;
-            settingsArea.ContentNode.AddNode(checkbox);
-        }
-
-        return first;
-    }
-
-    private void RebuildSettingsPresets()
+    private CheckboxNode BuildToggle(SettingDefinition setting)
     {
-        settingsArea!.ContentNode.AddNode(BuildHeaderNode("Text size"));
-        var scaleRow = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
-        foreach (var (label, value) in TextScalePresets)
+        var node = new CheckboxNode
         {
-            scaleRow.AddNode(new TextButtonNode
-            {
-                Width = 90f,
-                Height = 24f,
-                String = label,
-                OnClick = () =>
-                {
-                    config.QuestHelper.TextScale = value;
-                    saveConfig();
-                },
-            });
-        }
-
-        settingsArea.ContentNode.AddNode(scaleRow);
-
-        settingsArea.ContentNode.AddNode(BuildHeaderNode("Window position"));
-        var positionRow = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
-        foreach (var (label, preset) in PositionPresets)
-        {
-            positionRow.AddNode(new TextButtonNode
-            {
-                Width = 90f,
-                Height = 24f,
-                String = label,
-                OnClick = () => ApplyPositionPreset(preset),
-            });
-        }
-
-        settingsArea.ContentNode.AddNode(positionRow);
+            Height = 22f,
+            String = setting.Label,
+            IsChecked = setting.ReadFlag?.Invoke() ?? false,
+            OnClick = value => setting.WriteFlag?.Invoke(value),
+        };
+        firstSettingControl ??= node;
+        return node;
     }
 
-    // Immediate reposition (no drag needed — task 4, "moving it was a pain"); NativeAddon already
-    // persists whatever position is current when the window is next hidden (SaveAddonConfig in
-    // Hide()), so no extra config field is needed for this to survive a reopen.
+    // Immediate reposition, because a controller cannot reach the game's own title-bar
+    // right-click Move/Scale menu. NativeAddon persists whatever position is current when the
+    // window is next hidden, so nothing extra is needed for it to survive a reopen.
     private unsafe void ApplyPositionPreset(HubPositionPreset preset)
     {
+        if (!IsOpen)
+        {
+            return;
+        }
+
         const float margin = 12f;
         var screen = new Vector2(AtkStage.Instance()->ScreenSize.Width, AtkStage.Instance()->ScreenSize.Height);
         var position = preset switch

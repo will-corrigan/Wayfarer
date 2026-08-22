@@ -26,6 +26,9 @@ public interface IModule : IDisposable
     /// <summary>Deactivates the module, undoing everything <see cref="Enable"/> did.</summary>
     void Disable();
 
-    /// <summary>Draws the module's own config section. Only called while the module is enabled.</summary>
-    void DrawConfig();
+    // Modules deliberately do NOT draw their own settings. Every setting Wayfarer has is declared
+    // once in Settings/SettingsCatalog and rendered by whichever presentation is on screen — the
+    // old per-module DrawConfig was reachable only from Dalamud's mouse-driven config window,
+    // which is how a controller player ended up with settings they could see the effects of but
+    // never change.
 }

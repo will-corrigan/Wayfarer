@@ -8,6 +8,7 @@ using Wayfarer.Guidance;
 using Wayfarer.Guidance.Coordinators;
 using Wayfarer.Guidance.Sources;
 using Wayfarer.Modules;
+using Wayfarer.Settings;
 using Wayfarer.Windows;
 
 namespace Wayfarer;
@@ -26,6 +27,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WayfarerIpcProvider ipcProvider;
     private readonly InputModeService inputMode;
     private readonly ContextMenuActions contextMenuActions;
+    private readonly SettingsCatalog settings;
 
     /// <summary>The single Controller-mode native surface for the whole plugin (Checklist |
     /// Hunting Log | Settings tabs) — owned here, not by either module, since both
@@ -68,7 +70,10 @@ public sealed class Plugin : IDalamudPlugin
 
         var unlocks = new UnlockService(log, objects, clientState, pluginInterface, dataManager);
         var hunting = new HuntingLogService(log, objects, clientState, pluginInterface, dataManager);
-        hub = new NativeHubWindow(unlocks, hunting, modules, objects, clientState, framework, config, SaveConfig, log)
+
+        // Declared once, rendered by the native window and by the ImGui fallback alike.
+        settings = new SettingsCatalog(config, modules, SaveConfig);
+        hub = new NativeHubWindow(unlocks, hunting, modules, objects, clientState, framework, config, settings, log)
         {
             InternalName = "WayfarerHubNative",
             Title = "Wayfarer",
@@ -92,7 +97,7 @@ public sealed class Plugin : IDalamudPlugin
         ipcProvider = new(pluginInterface, modules, clientState);
         contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, log);
 
-        configWindow = new(modules, config, SaveConfig);
+        configWindow = new(settings);
         windows.AddWindow(configWindow);
 
         // inputMode.OnFrame runs first so windows.Draw (and every window it draws this same
@@ -102,7 +107,7 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi += OpenMain;
         commands.AddHandler("/wayfarer", new(OnCommand)
-        { HelpMessage = "Open Wayfarer settings. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer unlocks\" the checklist." });
+        { HelpMessage = "Open Wayfarer. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer settings\" the settings, \"/wayfarer stop\" ends the current route or hunt." });
 
         log.Information("Wayfarer loaded");
     }
@@ -173,15 +178,31 @@ public sealed class Plugin : IDalamudPlugin
         return new GuidanceGraph(arbiter, questSource, unlockSource, huntingSource, navigator, flagCoordinator);
     }
 
-    private void OpenConfig() => configWindow.IsOpen = true;
+    /// <summary>Dalamud's settings cog lands on the Settings tab of the one Wayfarer window rather
+    /// than on a separate ImGui panel — there is one window, and settings are a tab in it. The
+    /// ImGui config window remains only as the fallback when the native one cannot be opened.</summary>
+    private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
 
-    /// <summary>The plugin list's main-UI button opens what the plugin is FOR — the checklist —
+    /// <summary>The plugin list's main button opens what the plugin is FOR — the checklist —
     /// rather than its settings, which have their own button right beside it.</summary>
     private void OpenMain() => modules.Get<UnlockChecklistModule>()?.OpenChecklist();
 
-    /// <summary>Every window has to be reachable by typing, whatever the input mode: the widget's
-    /// buttons are hidden on a controller and the context-menu surface is off by default, so a bare
-    /// "/wayfarer" alone would leave the checklist and hunting log with no entry point at all.</summary>
+    private void OpenHub(HubTab tab, Action fallback)
+    {
+        try
+        {
+            hub.OpenTab(tab);
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Plugin: the native Wayfarer window failed to open — falling back to the ImGui settings.");
+            fallback();
+        }
+    }
+
+    /// <summary>Typed shortcuts into the one window, plus the universal exit. These are
+    /// convenience aliases: the window is reachable from the plugin list, the readout and the
+    /// Dalamud cog, and nothing here is the only route to anything.</summary>
     private void OnCommand(string command, string arguments)
     {
         switch (arguments.Trim().ToLowerInvariant())
@@ -192,8 +213,14 @@ public sealed class Plugin : IDalamudPlugin
             case "unlocks" or "checklist":
                 modules.Get<UnlockChecklistModule>()?.OpenChecklist();
                 break;
-            default:
+            case "settings" or "config":
                 OpenConfig();
+                break;
+            case "stop":
+                modules.Get<QuestHelperModule>()?.Navigator.ClearPickup();
+                break;
+            default:
+                modules.Get<UnlockChecklistModule>()?.OpenChecklist();
                 break;
         }
     }
@@ -227,7 +254,6 @@ public sealed class Plugin : IDalamudPlugin
             windows,
             commands,
             config.QuestHelper,
-            config.Guidance,
             saveConfig,
             guidance.Navigator,
             arrowWindow,
@@ -256,9 +282,7 @@ public sealed class Plugin : IDalamudPlugin
             unlocks,
             unlockWindow,
             hub,
-            inputMode,
             config.UnlockChecklist,
-            saveConfig,
             log,
             guidance.Arbiter,
             guidance.UnlockSource);
@@ -284,9 +308,7 @@ public sealed class Plugin : IDalamudPlugin
             hunting,
             huntingWindow,
             hub,
-            inputMode,
             config.HuntingLog,
-            saveConfig,
             log,
             guidance.Arbiter,
             guidance.HuntingSource);

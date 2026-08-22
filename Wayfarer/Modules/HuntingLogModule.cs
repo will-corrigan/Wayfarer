@@ -1,8 +1,6 @@
-using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Input;
 using Wayfarer.Guidance.Sources;
 using Wayfarer.Windows;
 
@@ -19,9 +17,7 @@ internal sealed class HuntingLogModule(
     HuntingLogService hunting,
     HuntingWindow huntingWindow,
     NativeHubWindow hub,
-    InputModeService inputMode,
     HuntingLogConfig cfg,
-    Action saveConfig,
     IPluginLog log,
     IGuidanceArbiter arbiter,
     HuntingSource huntingSource) : IModule
@@ -41,26 +37,20 @@ internal sealed class HuntingLogModule(
     /// <see cref="UnlockChecklistModule.Config"/>.</summary>
     internal HuntingLogConfig Config { get; } = cfg;
 
-    /// <summary>Opens whichever hunting-log presentation matches the player's current
-    /// <see cref="InputModeService.Mode"/> (spec §3/§5): the shared native hub window (Hunting Log
-    /// tab) on Controller, the ImGui window on Mouse. A hub open failure falls back to the ImGui
-    /// window with a single log line — same fallback shape as <see cref="UnlockChecklistModule.OpenChecklist"/>.</summary>
+    /// <summary>Opens the hunting log — the native window, for mouse and controller alike. The
+    /// ImGui copy survives only as the automatic fallback for a native window that cannot be
+    /// created; same shape as <see cref="UnlockChecklistModule.OpenChecklist"/>.</summary>
     public void OpenLog()
     {
-        if (inputMode.Mode == InputMode.Controller)
+        try
         {
-            try
-            {
-                // Close the other presentation first so an input-mode flip between opens can't
-                // leave both windows on screen at once.
-                Window.IsOpen = false;
-                hub.OpenTab(HubTab.Hunting);
-                return;
-            }
-            catch (Exception ex)
-            {
-                log.Error(ex, "HuntingLogModule: native hub failed to open — falling back to the ImGui window.");
-            }
+            Window.IsOpen = false;
+            hub.OpenTab(HubTab.Hunting);
+            return;
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "HuntingLogModule: the native window failed to open — falling back to the ImGui window.");
         }
 
         CloseNativeWindow();
@@ -85,21 +75,6 @@ internal sealed class HuntingLogModule(
         // disabled module can never keep guiding.
         arbiter.Unregister(huntingSource);
         framework.Update -= Hunting.OnFrameworkUpdate;
-    }
-
-    public void DrawConfig()
-    {
-        if (ImGui.Button("Open hunting log"))
-        {
-            OpenLog();
-        }
-
-        var showOnWidget = Config.ShowOnWidget;
-        if (ImGui.Checkbox("Show current target on the quest widget", ref showOnWidget))
-        {
-            Config.ShowOnWidget = showOnWidget;
-            saveConfig();
-        }
     }
 
     public void Dispose()
