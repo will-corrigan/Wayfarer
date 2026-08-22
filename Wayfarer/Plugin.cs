@@ -20,6 +20,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ConfigWindow configWindow;
     private readonly WayfarerIpcProvider ipcProvider;
     private readonly InputModeService inputMode;
+    private readonly ContextMenuActions contextMenuActions;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -31,6 +32,7 @@ public sealed class Plugin : IDalamudPlugin
         ICommandManager commands,
         IGameConfig gameConfig,
         IGamepadState gamepadState,
+        IContextMenu contextMenu,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -55,6 +57,7 @@ public sealed class Plugin : IDalamudPlugin
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
+        contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, log);
 
         configWindow = new(modules, config, SaveConfig);
         windows.AddWindow(configWindow);
@@ -79,6 +82,7 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi -= OpenConfig;
 
+        contextMenuActions.Dispose();
         ipcProvider.Dispose();
 
         // Modules are disposed before the windows they may still reference are torn down.
