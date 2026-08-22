@@ -101,8 +101,8 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.Draw += windows.Draw;
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi += OpenConfig;
-        commands.AddHandler("/wayfarer", new((_, _) => configWindow.IsOpen = true)
-        { HelpMessage = "Open Wayfarer settings" });
+        commands.AddHandler("/wayfarer", new(OnCommand)
+        { HelpMessage = "Open Wayfarer settings. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer unlocks\" the checklist." });
 
         log.Information("Wayfarer loaded");
     }
@@ -174,6 +174,25 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void OpenConfig() => configWindow.IsOpen = true;
+
+    /// <summary>Every window has to be reachable by typing, whatever the input mode: the widget's
+    /// buttons are hidden on a controller and the context-menu surface is off by default, so a bare
+    /// "/wayfarer" alone would leave the checklist and hunting log with no entry point at all.</summary>
+    private void OnCommand(string command, string arguments)
+    {
+        switch (arguments.Trim().ToLowerInvariant())
+        {
+            case "hunt" or "hunting":
+                modules.Get<HuntingLogModule>()?.OpenLog();
+                break;
+            case "unlocks" or "checklist":
+                modules.Get<UnlockChecklistModule>()?.OpenChecklist();
+                break;
+            default:
+                OpenConfig();
+                break;
+        }
+    }
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
     /// builds the widget (with its Controller-mode "Open Wayfarer ▸" entry point wired straight to
