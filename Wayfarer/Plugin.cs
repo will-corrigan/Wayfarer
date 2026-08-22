@@ -3,6 +3,10 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KamiToolKit;
+using Wayfarer.Core.Guidance;
+using Wayfarer.Guidance;
+using Wayfarer.Guidance.Coordinators;
+using Wayfarer.Guidance.Sources;
 using Wayfarer.Modules;
 using Wayfarer.Windows;
 
@@ -28,6 +32,10 @@ public sealed class Plugin : IDalamudPlugin
     /// <see cref="UnlockChecklistModule"/> and <see cref="HuntingLogModule"/> open into it. See
     /// <see cref="NativeHubWindow"/>'s doc comment.</summary>
     private readonly NativeHubWindow hub;
+
+    /// <summary>The single writer of the game map flag — held here purely so it is unsubscribed
+    /// and the player's own flag restored on unload.</summary>
+    private readonly MapFlagCoordinator mapFlag;
 
     private readonly IPluginLog log;
 
@@ -66,16 +74,19 @@ public sealed class Plugin : IDalamudPlugin
             Title = "Wayfarer",
         };
 
+        var guidance = BuildGuidance(log, config, clientState, condition, objects, dataManager, hunting);
+        mapFlag = guidance.MapFlag;
+
         modules.Register(
-            BuildQuestHelperModule(framework, dataManager, clientState, objects, condition, inputMode, config, SaveConfig, log),
+            BuildQuestHelperModule(framework, clientState, objects, inputMode, config, SaveConfig, log, guidance),
             enabledByDefault: true);
 
         modules.Register(
-            BuildUnlockChecklistModule(framework, objects, clientState, unlocks, inputMode, config, SaveConfig, log),
+            BuildUnlockChecklistModule(framework, objects, clientState, unlocks, inputMode, config, SaveConfig, log, guidance),
             enabledByDefault: true);
 
         modules.Register(
-            BuildHuntingLogModule(framework, objects, hunting, inputMode, config, SaveConfig, log),
+            BuildHuntingLogModule(framework, objects, hunting, inputMode, config, SaveConfig, log, guidance),
             enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
@@ -115,6 +126,7 @@ public sealed class Plugin : IDalamudPlugin
             // unload crash + leaked hook (task 2): whatever throws or however long disposal takes
             // above, KamiToolKitLibrary.Cleanup() below is what releases the static FireCallback
             // hook, and it must always run.
+            mapFlag.Dispose();
             modules.Dispose();
             windows.RemoveAllWindows();
             hub.Dispose();
@@ -125,6 +137,42 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
+    /// <summary>The guidance object graph, built once: one arbiter (the single writer for what the
+    /// arrow follows), one router (how to get anywhere), one source per feature (what to guide to
+    /// and — crucially — when it is done), the per-frame service, and the adapter the existing
+    /// windows still talk to. Each module registers its own source when it is enabled.</summary>
+    private static GuidanceGraph BuildGuidance(
+        IPluginLog log,
+        Configuration config,
+        IClientState clientState,
+        ICondition condition,
+        IObjectTable objects,
+        IDataManager dataManager,
+        HuntingLogService hunting)
+    {
+        var arbiter = new GuidanceArbiter((message, ex) => log.Error(ex, message));
+        var router = new GuidanceRouter(dataManager);
+        var questSource = new QuestObjectiveSource(dataManager);
+        var unlockSource = new UnlockRouteSource(arbiter);
+        var huntingSource = new HuntingSource(arbiter, hunting, router, clientState, objects);
+        var service = new GuidanceService(
+            log, config.QuestHelper, clientState, condition, objects, arbiter, router);
+        var navigator = new QuestNavigator(service, questSource, unlockSource, huntingSource);
+
+        // The only writer of the game's single, destructive map flag. Objectives declare that they
+        // want to be flagged; this performs it, snapshots the player's own flag first and gives it
+        // back on exit.
+        var gameFlag = new GameMapFlag(clientState, log);
+        var flagCoordinator = new MapFlagCoordinator(
+            arbiter,
+            () => config.Guidance.MarkObjectiveWithMapFlag,
+            gameFlag.Read,
+            gameFlag.Set,
+            gameFlag.Restore).Start();
+
+        return new GuidanceGraph(arbiter, questSource, unlockSource, huntingSource, navigator, flagCoordinator);
+    }
+
     private void OpenConfig() => configWindow.IsOpen = true;
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
@@ -132,18 +180,16 @@ public sealed class Plugin : IDalamudPlugin
     /// <see cref="hub"/>) and its owning module.</summary>
     private QuestHelperModule BuildQuestHelperModule(
         IFramework framework,
-        IDataManager dataManager,
         IClientState clientState,
         IObjectTable objects,
-        ICondition condition,
         InputModeService inputMode,
         Configuration config,
         Action saveConfig,
-        IPluginLog log)
+        IPluginLog log,
+        GuidanceGraph guidance)
     {
-        var navigator = new QuestNavigator(log, config.QuestHelper, clientState, condition, objects, dataManager);
         var arrowWindow = new ArrowWindow(
-            navigator,
+            guidance.Navigator,
             modules,
             config.QuestHelper,
             objects,
@@ -153,7 +199,17 @@ public sealed class Plugin : IDalamudPlugin
             config.InputMode,
             saveConfig,
             () => hub.OpenTab(HubTab.Checklist));
-        return new QuestHelperModule(framework, windows, commands, config.QuestHelper, saveConfig, navigator, arrowWindow);
+        return new QuestHelperModule(
+            framework,
+            windows,
+            commands,
+            config.QuestHelper,
+            config.Guidance,
+            saveConfig,
+            guidance.Navigator,
+            arrowWindow,
+            guidance.Arbiter,
+            guidance.QuestSource);
     }
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
@@ -167,11 +223,22 @@ public sealed class Plugin : IDalamudPlugin
         InputModeService inputMode,
         Configuration config,
         Action saveConfig,
-        IPluginLog log)
+        IPluginLog log,
+        GuidanceGraph guidance)
     {
         var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState, inputMode, config.InputMode, saveConfig);
         return new UnlockChecklistModule(
-            framework, windows, modules, unlocks, unlockWindow, hub, inputMode, config.UnlockChecklist, saveConfig, log);
+            framework,
+            windows,
+            unlocks,
+            unlockWindow,
+            hub,
+            inputMode,
+            config.UnlockChecklist,
+            saveConfig,
+            log,
+            guidance.Arbiter,
+            guidance.UnlockSource);
     }
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
@@ -184,10 +251,31 @@ public sealed class Plugin : IDalamudPlugin
         InputModeService inputMode,
         Configuration config,
         Action saveConfig,
-        IPluginLog log)
+        IPluginLog log,
+        GuidanceGraph guidance)
     {
         var huntingWindow = new HuntingWindow(hunting, modules, objects, inputMode, config.InputMode, saveConfig);
         return new HuntingLogModule(
-            framework, windows, hunting, huntingWindow, hub, inputMode, config.HuntingLog, saveConfig, log);
+            framework,
+            windows,
+            hunting,
+            huntingWindow,
+            hub,
+            inputMode,
+            config.HuntingLog,
+            saveConfig,
+            log,
+            guidance.Arbiter,
+            guidance.HuntingSource);
     }
+
+    /// <summary>What <see cref="BuildGuidance"/> hands back, so the module builders can take one
+    /// parameter instead of five.</summary>
+    private sealed record GuidanceGraph(
+        GuidanceArbiter Arbiter,
+        QuestObjectiveSource QuestSource,
+        UnlockRouteSource UnlockSource,
+        HuntingSource HuntingSource,
+        QuestNavigator Navigator,
+        MapFlagCoordinator MapFlag);
 }

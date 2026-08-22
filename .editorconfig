@@ -209,6 +209,60 @@ dotnet_diagnostic.CA1707.severity = none
 # task-2-brief.md port map.
 dotnet_diagnostic.MA0016.severity = none
 
+[Wayfarer.Core/Guidance/GuidanceObjective.cs]
+# ObjectiveKey/ObjectiveCopy/ObjectiveProgress/ObjectiveAffordances are the parts
+# GuidanceObjective is made of - one objective-model concept, kept in one file
+# rather than five near-empty ones (same rationale as MarkerSelection.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/IGuidanceSource.cs]
+# GuidanceEngagement/DisengageReason/GuidanceContext/GuidanceOffer are the
+# vocabulary of the IGuidanceSource contract itself and are meaningless apart
+# from it - one contract concept, kept in one file.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/{IGuidanceArbiter,GuidanceArbiter}.cs]
+# OnObjectiveChanged carries the new objective and nothing else - the standard
+# EventHandler<T> shape would add an `object sender` argument no subscriber can
+# use (the arbiter is a singleton per plugin instance) plus an EventArgs wrapper
+# around a single reference. Same rationale as the QuestNavigator/
+# INavigationProvider downgrades below.
+dotnet_diagnostic.MA0046.severity = none
+
+[Wayfarer.Core/Guidance/MapFlagCoordinator.cs]
+# MapFlagSnapshot is a small companion record to MapFlagCoordinator itself - one
+# save-and-restore concept, kept in one file rather than two near-empty ones.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/ChainPlanner.cs]
+# ZoneOrderPolicy is a small companion enum to ChainPlanner itself - one
+# plan-ordering concept, kept in one file rather than two near-empty ones (same
+# rationale as OtherZoneResolution.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/QuestFollowResolution.cs]
+# QuestFollowOutcome is a small companion record to QuestFollowResolution itself -
+# one followed-quest decision concept, kept in one file rather than two near-empty
+# ones (same rationale as OtherZoneResolution.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/GuidanceSuppression.cs]
+# SuppressionInputs is a small companion record to GuidanceSuppression itself -
+# one display-gate decision concept, kept in one file rather than two near-empty
+# ones (same rationale as OtherZoneResolution.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Navigation/AetherytePicker.cs]
 # Ported as a single file with its companion AetherytePoint record, matching
 # the source repo's port map (task-2-brief.md) exactly.
@@ -274,6 +328,23 @@ dotnet_diagnostic.MA0046.severity = none
 # logic (task-5-brief.md port map) - each is one sequential decision tree with
 # no natural sub-steps that would extract cleanly, and splitting them up for a
 # line-count rule risks introducing bugs in reviewed, ported game-data logic.
+dotnet_diagnostic.MA0051.severity = none
+
+[Wayfarer/Guidance/Sources/UnlockRouteSource.cs]
+# OnAdvanced is a plain no-argument notification ("the plan moved on") - there is
+# no event data to carry, so the standard EventHandler<T> shape would just be a
+# discarded, meaningless argument. Same rationale as the QuestNavigator /
+# INavigationProvider downgrades below, which this event replaces.
+dotnet_diagnostic.MA0046.severity = none
+
+[Wayfarer/Guidance/GuidanceRouter.cs]
+# OtherZone() arrived here as a verbatim move out of QuestNavigator (guidance
+# architecture step 2), carrying the same MA0051 downgrade it had there: it is
+# one sequential candidate-costing decision over live-verified game data (the
+# split-city teleport suppression, the aethernet-group derivation, the interior
+# marker fallback), with no natural sub-steps that extract cleanly. Splitting it
+# to satisfy a line-count rule is exactly the "tidy-up indistinguishable from a
+# regression" risk the move was designed to avoid.
 dotnet_diagnostic.MA0051.severity = none
 
 [Wayfarer/**.cs]

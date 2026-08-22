@@ -1,7 +1,9 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Input;
+using Wayfarer.Guidance.Sources;
 using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
@@ -20,7 +22,9 @@ internal sealed class HuntingLogModule(
     InputModeService inputMode,
     HuntingLogConfig cfg,
     Action saveConfig,
-    IPluginLog log) : IModule
+    IPluginLog log,
+    IGuidanceArbiter arbiter,
+    HuntingSource huntingSource) : IModule
 {
     public string Name => "Hunting Log";
 
@@ -67,6 +71,7 @@ internal sealed class HuntingLogModule(
     {
         Enabled = true;
         framework.Update += Hunting.OnFrameworkUpdate;
+        arbiter.Register(huntingSource);
         windows.AddWindow(Window);
     }
 
@@ -75,6 +80,10 @@ internal sealed class HuntingLogModule(
         Enabled = false;
         windows.RemoveWindow(Window);
         CloseNativeWindow();
+
+        // Unregistering releases the engagement token if a hunt currently owns the arrow, so a
+        // disabled module can never keep guiding.
+        arbiter.Unregister(huntingSource);
         framework.Update -= Hunting.OnFrameworkUpdate;
     }
 

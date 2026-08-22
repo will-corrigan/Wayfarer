@@ -1,867 +1,98 @@
-using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Lumina.Excel.Sheets;
 using Wayfarer.Core.Navigation;
-using GameMap = FFXIVClientStructs.FFXIV.Client.Game.UI.Map;
+using Wayfarer.Guidance;
+using Wayfarer.Guidance.Sources;
 
 namespace Wayfarer;
 
-/// <summary>A single unlock-quest pickup step in a navigator route: the location to
-/// walk to in order to accept the quest that unlocks something.</summary>
-public sealed record PickupTarget(
+/// <summary>A single selection the arrow can be pointed at: historically an unlock-quest pickup
+/// (walk here and accept this quest), later reused — badly — for hunting targets too, which is how
+/// a monster ended up carrying a quest row id of 0.
+///
+/// TRANSITIONAL. It survives only so the windows and the context menu keep compiling unchanged
+/// while guidance moves underneath them; each feature now owns a properly typed selection, and
+/// <see cref="HuntingTarget"/> is what tells the adapter which source a selection really belongs
+/// to. This type disappears when the presentations are moved onto the typed source APIs.</summary>
+internal sealed record PickupTarget(
     string UnlockName, string QuestName, uint QuestRowId,
-    uint Territory, uint MapId, float X, float Y, float Z, string? GiverName = null);
-
-/// <summary>Resolves the followed quest's objective once per framework tick and
-/// publishes an immutable NavigationState (read by ArrowWindow and get_navigation;
-/// cross-thread reads are safe because only the reference is swapped). Owned by
-/// <see cref="Modules.QuestHelperModule"/>, which subscribes <see cref="OnUpdate"/>
-/// to <c>Framework.Update</c> in <c>Enable()</c> and unsubscribes in <c>Disable()</c> —
-/// this class runs only while that module is enabled.</summary>
-internal sealed unsafe class QuestNavigator(
-    IPluginLog log,
-    QuestHelperConfig cfg,
-    IClientState clientState,
-    ICondition condition,
-    IObjectTable objects,
-    IDataManager dataManager) : INavigationProvider
+    uint Territory, uint MapId, float X, float Y, float Z, string? GiverName = null)
 {
-    private const uint QuestRowIdOffset = 65536;
+    /// <summary>Set when this "pickup" is really a hunting target, so
+    /// <see cref="QuestNavigator.SetPickup"/> can hand it to the source that knows how to tell when
+    /// it is finished. Nothing may infer that from <see cref="QuestRowId"/> — for a monster it is
+    /// meaningless, and reading it anyway is the defect this whole architecture removes.</summary>
+    public HuntingTargetView? HuntingTarget { get; init; }
+}
 
-    private readonly Dictionary<uint, List<AetherytePoint>> aetheryteCache = [];
-    private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
-    private readonly Queue<PickupTarget> routeQueue = new();
-    private readonly Dictionary<(uint FromMap, uint ToMap), List<MapLinkPoint>> entranceCache = [];
-    private readonly Dictionary<uint, HashSet<uint>> aethernetGroupCache = [];
-    private List<AethernetSheetRow>? aethernetSheetRows;
-    private Dictionary<uint, DutyInfo>? dutyByTerritory;
-    private volatile NavigationState current = new();
-    private bool errorLogged;
+/// <summary>Thin adapter over the guidance framework, keeping the shape the windows, the context
+/// menu and the IPC provider already speak. Every method here is a redirect: guidance itself lives
+/// in <see cref="GuidanceService"/> (the per-frame loop), the sources (what to guide to and when it
+/// is done) and <see cref="GuidanceRouter"/> (how to get there).
+///
+/// Owned by <see cref="Modules.QuestHelperModule"/>, which subscribes <see cref="OnUpdate"/> to
+/// <c>Framework.Update</c> in <c>Enable()</c> and unsubscribes in <c>Disable()</c>.</summary>
+internal sealed class QuestNavigator(
+    GuidanceService guidance,
+    QuestObjectiveSource questSource,
+    UnlockRouteSource unlockSource,
+    HuntingSource huntingSource) : INavigationProvider
+{
+    public event Action? OnPickupAdvanced
+    {
+        add => unlockSource.OnAdvanced += value;
+        remove => unlockSource.OnAdvanced -= value;
+    }
 
-    // Route progress (Step 4): set together in SetRoute, advanced together in the
-    // pickup-advance path in Compute(), cleared together by SetPickup/ClearPickup/route
-    // exhaustion. Null total means "no route active" — including a single SetPickup.
-    private int? routeTotal;
-    private int routeStop;
+    public NavigationState Current => guidance.Current;
 
-    public event System.Action? OnPickupAdvanced;
+    public ushort? FollowedOverride
+    {
+        get => questSource.FollowedQuest;
+        set => questSource.FollowedQuest = value;
+    }
 
-    public ushort? FollowedOverride { get; set; }
+    /// <summary>The active explicit selection, whichever feature owns it — an unlock stop, or a
+    /// hunting target rendered back into the old shape. Transitional, like
+    /// <see cref="PickupTarget"/> itself.</summary>
+    public PickupTarget? Pickup => unlockSource.CurrentLeg ?? huntingSource.CurrentPickup;
 
-    public NavigationState Current => current;
-
-    public PickupTarget? Pickup { get; private set; }
-
+    /// <summary>Routes the selection to the source that owns it. A hunting target's completion is a
+    /// kill count and an unlock stop's is a quest accept; sending either to the wrong owner is what
+    /// made a selected monster vanish a frame later.</summary>
     public void SetPickup(PickupTarget t)
     {
-        routeQueue.Clear();
-        routeTotal = null;
-        Pickup = t;
+        if (t.HuntingTarget is { } target)
+        {
+            huntingSource.GoTo(target);
+            return;
+        }
+
+        unlockSource.GoTo(t);
     }
 
     public void SetRoute(List<PickupTarget> route)
     {
-        routeQueue.Clear();
-        foreach (var t in route)
+        if (route.Count == 0)
         {
-            routeQueue.Enqueue(t);
+            return;
         }
 
-        if (routeQueue.Count > 0)
+        if (route[0].HuntingTarget is not null)
         {
-            routeTotal = routeQueue.Count;
-            routeStop = 1;
-            Pickup = routeQueue.Dequeue();
+            huntingSource.StartHunt();
+            return;
         }
-        else
-        {
-            routeTotal = null;
-            Pickup = null;
-        }
+
+        unlockSource.StartRoute(route);
     }
 
-    public void ClearPickup()
-    {
-        routeQueue.Clear();
-        routeTotal = null;
-        Pickup = null;
-    }
+    /// <summary>The universal exit: whichever explicit mode is engaged, this ends it and drops the
+    /// player back to the quest they were following.</summary>
+    public void ClearPickup() => guidance.Arbiter.ReleaseAll();
 
-    public void OnUpdate(IFramework framework)
-    {
-        try
-        {
-            current = Compute();
-            errorLogged = false;
-        }
-        catch (Exception ex)
-        {
-            if (!errorLogged)
-            {
-                log.Error(ex, "QuestNavigator: compute failed");
-                errorLogged = true;
-            }
+    public void OnUpdate(IFramework framework) => guidance.OnUpdate(framework);
 
-            current = new() { Mode = NavigationState.Modes.NoLocation, Reason = "no location data" };
-        }
-    }
+    public List<(ushort Id, string Name)> GetAcceptedQuests() => questSource.GetAcceptedQuests();
 
-    /// <summary>Accepted quests for the picker popup. Framework thread only (called from Draw).</summary>
-    public List<(ushort Id, string Name)> GetAcceptedQuests()
-    {
-        var result = new List<(ushort Id, string Name)>();
-        var qm = QuestManager.Instance();
-        if (qm == null)
-        {
-            return result;
-        }
-
-        foreach (ref var q in qm->NormalQuests)
-        {
-            if (q.QuestId == 0 || q.IsHidden)
-            {
-                continue;
-            }
-
-            result.Add((q.QuestId, QuestName(q.QuestId)));
-        }
-
-        result.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
-        return result;
-    }
-
-    /// <summary>Live current-objective label for any accepted quest, keyed by its raw id. Same
-    /// scan as the followed-quest StepLabel computation in <see cref="Compute"/> — see that
-    /// method's "1) The game's own live quest markers" step — but standalone so
-    /// <see cref="Windows.UnlockWindow"/> can look up an accepted row's objective without
-    /// following it first. Framework thread only (called from Draw).</summary>
-    public string? GetAcceptedQuestObjective(uint rawQuestId)
-    {
-        var gameMap = GameMap.Instance();
-        if (gameMap == null)
-        {
-            return null;
-        }
-
-        foreach (ref var mi in gameMap->QuestMarkers)
-        {
-            if ((mi.ObjectiveId & 0xFFFF) != rawQuestId)
-            {
-                continue;
-            }
-
-            var label = mi.Label.ToString();
-            if (label.Length > 0)
-            {
-                return label;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>Every nonzero AethernetGroup homed in <paramref name="territory"/>,
-    /// derived from RAW Aetheryte sheet rows — deliberately NOT from
-    /// <see cref="GetAetherytePoints"/>, whose point builder drops any row without a
-    /// resolvable position. That distinction is the third live "Teleport to Foundation
-    /// first" reproduction (2026-08-22): every Ishgard shard row (83–87 The Pillars,
-    /// 80–82 Foundation) carries Map=0 and dead Level refs, so the position-filtered
-    /// list for The Pillars was always empty, the current-territory group set came out
-    /// empty, and RouteCosting.TeleportCandidate's same-network suppression never
-    /// fired. Group membership is a pure sheet fact; positions are irrelevant to it
-    /// (see AethernetGroups.ForTerritory).</summary>
-    private HashSet<uint> GetAethernetGroups(uint territory)
-    {
-        if (aethernetGroupCache.TryGetValue(territory, out var cached))
-        {
-            return cached;
-        }
-
-        if (aethernetSheetRows == null)
-        {
-            aethernetSheetRows = [];
-            foreach (var a in dataManager.GetExcelSheet<Aetheryte>())
-            {
-                if (a.AethernetGroup != 0)
-                {
-                    aethernetSheetRows.Add(new(a.Territory.RowId, a.AethernetGroup));
-                }
-            }
-        }
-
-        var groups = AethernetGroups.ForTerritory(aethernetSheetRows, territory);
-        aethernetGroupCache[territory] = groups;
-        return groups;
-    }
-
-    private NavigationState Compute()
-    {
-        if (!clientState.IsLoggedIn)
-        {
-            return new();
-        }
-
-        var cond = condition;
-        if (cond[ConditionFlag.OccupiedInCutSceneEvent] || cond[ConditionFlag.WatchingCutscene]
-            || cond[ConditionFlag.WatchingCutscene78] || cond[ConditionFlag.BetweenAreas])
-        {
-            return new();
-        }
-
-        if (cfg.ArrowHideInCombat && cond[ConditionFlag.InCombat])
-        {
-            return new();
-        }
-
-        if (cfg.ArrowHideInDuty && cond[ConditionFlag.BoundByDuty])
-        {
-            return new();
-        }
-
-        var player = objects.LocalPlayer;
-        if (player == null)
-        {
-            return new();
-        }
-
-        var territory = clientState.TerritoryType;
-        var mapId = clientState.MapId;
-        var pos = player.Position;
-
-        if (Pickup is { } pickup)
-        {
-            var raw = (ushort)(pickup.QuestRowId - QuestRowIdOffset);
-            var qm2 = QuestManager.Instance();
-            if ((qm2 != null && qm2->IsQuestAccepted(raw)) || QuestManager.IsQuestComplete(pickup.QuestRowId))
-            {
-                // Picked up (or already done) — advance the route or resume quests.
-                Pickup = routeQueue.Count > 0 ? routeQueue.Dequeue() : null;
-                if (routeTotal is not null)
-                {
-                    if (Pickup is not null)
-                    {
-                        routeStop++;
-                    }
-                    else
-                    {
-                        routeTotal = null; // route exhausted
-                    }
-                }
-
-                OnPickupAdvanced?.Invoke();
-            }
-
-            if (Pickup is { } p)
-            {
-                var label = p.GiverName is { Length: > 0 } giver
-                    ? $"Pick up: {p.QuestName} from {giver}"
-                    : $"Pick up: {p.QuestName}";
-                var (rs, rt) = routeTotal is { } t ? (routeStop, t) : ((int?)null, (int?)null);
-                if (p.Territory == territory && p.MapId == mapId)
-                {
-                    var d = NavMath.Distance(p.X - pos.X, p.Y - pos.Y, p.Z - pos.Z);
-                    return SameZone(p.QuestRowId, $"Unlocks: {p.UnlockName}", label, p.X, p.Y, p.Z, d, territory, pos.X, pos.Z, isPickup: true, routeStop: rs, routeTotal: rt);
-                }
-
-                return OtherZone(p.QuestRowId, $"Unlocks: {p.UnlockName}", label, p.Territory, p.MapId, p.X, p.Z, pos.X, pos.Z, isPickup: true, routeStop: rs, routeTotal: rt);
-            }
-        }
-
-        var followed = ResolveFollowedQuest();
-        if (followed == null)
-        {
-            return new() { Mode = NavigationState.Modes.Idle };
-        }
-
-        var (questId, questName) = followed.Value;
-
-        // 1) The game's own live quest markers — authoritative for the current step.
-        string? stepLabel = null;
-        var markers = new List<(float X, float Y, float Z, uint TerritoryId, uint MapId)>();
-        var gameMap = GameMap.Instance();
-        if (gameMap != null)
-        {
-            foreach (ref var mi in gameMap->QuestMarkers)
-            {
-                if ((mi.ObjectiveId & 0xFFFF) != questId)
-                {
-                    continue;
-                }
-
-                if (stepLabel == null)
-                {
-                    var label = mi.Label.ToString();
-                    if (label.Length > 0)
-                    {
-                        stepLabel = label;
-                    }
-                }
-
-                for (var i = 0; i < (int)mi.MarkerData.LongCount; i++)
-                {
-                    var md = mi.MarkerData[i];
-                    markers.Add((md.Position.X, md.Position.Y, md.Position.Z, md.TerritoryTypeId, md.MapId));
-                }
-            }
-        }
-
-        // Marker precedence is a pure decision (MarkerSelection.Select, Core-tested) —
-        // see that type's doc comments for exactly what's verified live (the Fortemps
-        // Manor entrance-marker case) versus assumed (the general territory-only
-        // shape). Summary of the three tiers below:
-        //   Exact           — same territory AND same map: walk straight there,
-        //                     unchanged from the original behavior.
-        //   TerritoryOnly   — same territory, different map (e.g. a different floor,
-        //                     OR an entrance marker for a technically-interior
-        //                     objective sitting in the player's outdoor zone — the
-        //                     marker data alone can't tell these apart). NEVER jump
-        //                     straight to a raw arrow here: try the same cross-map
-        //                     candidate routing OtherZone() uses for genuine
-        //                     cross-territory objectives (aethernet/entrance/
-        //                     teleport) first, since a real map-link entrance (e.g.
-        //                     stairs) must win over a straight line through a floor.
-        //                     Only when NO such candidate exists — the Fortemps Manor
-        //                     shape, where no cross-map route data exists at all —
-        //                     fall back to a direct arrow at the marker's own
-        //                     position as the least-bad guidance available.
-        //   None            — no marker in the player's current territory at all;
-        //                     fall through to the existing cross-territory
-        //                     (markers[0]) and static-sheet paths below.
-        var markerPoints = new List<MarkerPoint>(markers.Count);
-        foreach (var m in markers)
-        {
-            markerPoints.Add(new(m.X, m.Y, m.Z, m.TerritoryId, m.MapId));
-        }
-
-        var (markerMatch, matched) = MarkerSelection.Select(markerPoints, territory, mapId, pos.X, pos.Y, pos.Z);
-        switch (markerMatch)
-        {
-            case MarkerMatch.Exact:
-                {
-                    var mk = matched!;
-                    var d = NavMath.Distance(mk.X - pos.X, mk.Y - pos.Y, mk.Z - pos.Z);
-                    return SameZone(questId + QuestRowIdOffset, questName, stepLabel, mk.X, mk.Y, mk.Z, d, territory, pos.X, pos.Z);
-                }
-
-            case MarkerMatch.TerritoryOnly:
-                {
-                    var mk = matched!;
-                    var fallbackDist = NavMath.Distance(mk.X - pos.X, mk.Y - pos.Y, mk.Z - pos.Z);
-                    var fallback = SameZone(
-                        questId + QuestRowIdOffset, questName, stepLabel, mk.X, mk.Y, mk.Z, fallbackDist, territory, pos.X, pos.Z);
-                    return OtherZone(
-                        questId + QuestRowIdOffset,
-                        questName,
-                        stepLabel,
-                        territory,
-                        mk.MapId,
-                        mk.X,
-                        mk.Z,
-                        pos.X,
-                        pos.Z,
-                        fallbackWhenNoCandidate: fallback);
-                }
-        }
-
-        if (markers.Count > 0)
-        {
-            var m = markers[0];
-            return OtherZone(questId + QuestRowIdOffset, questName, stepLabel, m.TerritoryId, m.MapId, m.X, m.Z, pos.X, pos.Z);
-        }
-
-        // 2) Static sheet fallback: quest ToDo location for the current sequence.
-        var seq = QuestManager.GetQuestSequence(questId);
-        if (dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset) is { } q)
-        {
-            foreach (var p in q.TodoParams)
-            {
-                if (p.ToDoCompleteSeq != seq)
-                {
-                    continue;
-                }
-
-                foreach (var locRef in p.ToDoLocation)
-                {
-                    if (locRef.RowId == 0 || locRef.ValueNullable is not { } level)
-                    {
-                        continue;
-                    }
-
-                    if (level.Territory.RowId == territory && level.Map.RowId == mapId)
-                    {
-                        var d = NavMath.Distance(level.X - pos.X, level.Y - pos.Y, level.Z - pos.Z);
-                        return SameZone(questId + QuestRowIdOffset, questName, stepLabel, level.X, level.Y, level.Z, d, territory, pos.X, pos.Z);
-                    }
-
-                    return OtherZone(questId + QuestRowIdOffset, questName, stepLabel, level.Territory.RowId, level.Map.RowId, level.X, level.Z, pos.X, pos.Z);
-                }
-
-                break;
-            }
-        }
-
-        return new()
-        {
-            Mode = NavigationState.Modes.NoLocation,
-            QuestId = questId + QuestRowIdOffset,
-            QuestName = questName,
-            StepLabel = stepLabel,
-            Reason = "this step has no map location (it may take place inside a duty or cutscene)",
-        };
-    }
-
-    private NavigationState SameZone(
-        uint displayQuestId,
-        string questName,
-        string? stepLabel,
-        float tx,
-        float ty,
-        float tz,
-        float dist,
-        uint territory,
-        float px,
-        float pz,
-        bool isPickup = false,
-        int? routeStop = null,
-        int? routeTotal = null)
-    {
-        // City aethernet routing: if hopping the entry shard nearest the player and
-        // out of the shard nearest the objective beats the direct run, retarget the
-        // arrow to the entry shard and surface the exit shard's name for the travel menu.
-        if (AethernetRoute(territory, px, pz, tx, tz, dist) is { } route)
-        {
-            var playerToEntry = NavMath.Distance(route.Entry.X - px, 0, route.Entry.Z - pz);
-            return new()
-            {
-                Mode = NavigationState.Modes.SameZone,
-                QuestId = displayQuestId,
-                QuestName = questName,
-                StepLabel = stepLabel,
-                TargetX = route.Entry.X, TargetZ = route.Entry.Z, // arrow → entry shard (TargetY absent: widget uses player Y)
-                DistanceYalms = playerToEntry,
-                AethernetEntryName = route.Entry.Name,
-                AethernetExitName = route.Exit.Name,
-                IsPickup = isPickup,
-                RouteStop = routeStop,
-                RouteTotal = routeTotal,
-            };
-        }
-
-        return new()
-        {
-            Mode = NavigationState.Modes.SameZone,
-            QuestId = displayQuestId,
-            QuestName = questName,
-            StepLabel = stepLabel,
-            TargetX = tx, TargetY = ty, TargetZ = tz,
-            DistanceYalms = dist,
-            IsPickup = isPickup,
-            RouteStop = routeStop,
-            RouteTotal = routeTotal,
-        };
-    }
-
-    /// <summary>Returns (entry shard nearest the player, exit shard nearest the target)
-    /// when hopping the aethernet beats running to the target directly; null otherwise.</summary>
-    private (AetherytePoint Entry, AetherytePoint Exit)? AethernetRoute(
-        uint territory, float px, float pz, float tx, float tz, float directDist)
-    {
-        var shards = GetAetherytePoints(territory, aethernet: true);
-        if (AetherytePicker.Nearest(shards, px, pz) is { } entry
-            && AetherytePicker.Nearest(shards, tx, tz) is { } exit
-            && entry.Id != exit.Id)
-        {
-            var playerToEntry = NavMath.Distance(entry.X - px, 0, entry.Z - pz);
-            var exitToTarget = NavMath.Distance(exit.X - tx, 0, exit.Z - tz);
-            if (AetherytePicker.ShouldRouteViaAethernet(directDist, playerToEntry, exitToTarget))
-            {
-                return (entry, exit);
-            }
-        }
-
-        return null;
-    }
-
-    private NavigationState OtherZone(
-        uint displayQuestId,
-        string questName,
-        string? stepLabel,
-        uint targetTerritory,
-        uint targetMapId,
-        float tx,
-        float tz,
-        float px,
-        float pz,
-        bool isPickup = false,
-        int? routeStop = null,
-        int? routeTotal = null,
-        NavigationState? fallbackWhenNoCandidate = null)
-    {
-        // Duty content (dungeons/trials/raids) has no aetherytes or entrances to route
-        // to — route costing below would correctly find nothing and report a useless
-        // "no route found". Detect and short-circuit BEFORE building any candidates.
-        if (DutyObjectiveGuidance.TryBuild(
-                targetTerritory,
-                DutyForTerritory,
-                UIState.IsInstanceContentUnlocked,
-                displayQuestId,
-                questName,
-                stepLabel,
-                isPickup,
-                routeStop,
-                routeTotal) is { } dutyState)
-        {
-            return dutyState;
-        }
-
-        var territorySheet = dataManager.GetExcelSheet<TerritoryType>();
-        var zoneName = territorySheet.GetRowOrDefault(targetTerritory)?.PlaceName.ValueNullable?.Name.ExtractText();
-        var currentTerritory = clientState.TerritoryType;
-
-        var currentTerritoryShards = GetAetherytePoints(currentTerritory, aethernet: true);
-        var aethernet = RouteCosting.AethernetCandidate(
-            currentTerritoryShards,
-            GetAetherytePoints(targetTerritory, aethernet: true),
-            px,
-            pz,
-            tx,
-            tz);
-
-        var sourceLinks = FindEntrances(clientState.MapId, targetMapId);
-        var targetLinks = FindEntrances(targetMapId, clientState.MapId);
-        var entrance = RouteCosting.EntranceCandidate(sourceLinks, targetLinks, px, pz, tx, tz);
-
-        // City-network-local teleports are never useful advice — see
-        // RouteCosting.TeleportCandidate's doc comment. Both group sets come from raw
-        // sheet rows (GetAethernetGroups), NEVER from the position-filtered point
-        // lists above — see that method's doc comment for the live bug this fixed.
-        var currentTerritoryGroups = GetAethernetGroups(currentTerritory);
-
-        var (aetheryte, aetheryteTerritory, unlocked) = ResolveTargetAetheryte(targetTerritory, tx, tz);
-        var aetheryteTerritoryGroups = GetAethernetGroups(aetheryteTerritory);
-
-        var teleport = RouteCosting.TeleportCandidate(
-            aetheryte,
-            aetheryteTerritory,
-            targetTerritory,
-            currentTerritory,
-            tx,
-            tz,
-            unlocked,
-            currentTerritoryGroups,
-            aetheryteTerritoryGroups);
-
-        var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
-
-        // The three-way choice (real route / marker fallback / plain interior message)
-        // is a pure Core decision (OtherZoneResolution.Resolve) — see its doc comment.
-        // MarkerFallback returns the caller's fallback state (MarkerMatch.TerritoryOnly's
-        // exact live-marker position) as-is; InteriorMessage sets Reason to the single
-        // source-of-truth text so ArrowWindow just displays it rather than re-deriving
-        // "no route" from raw AetheryteName/EntranceX nulls itself.
-        return OtherZoneResolution.Resolve(chosen, fallbackWhenNoCandidate) switch
-        {
-            OtherZoneOutcome.MarkerFallback => fallbackWhenNoCandidate!,
-            OtherZoneOutcome.InteriorMessage => new()
-            {
-                Mode = NavigationState.Modes.OtherZone,
-                QuestId = displayQuestId,
-                QuestName = questName,
-                StepLabel = stepLabel,
-                ZoneName = zoneName,
-                TargetX = tx, TargetZ = tz,
-                Reason = OtherZoneResolution.InteriorMessage(zoneName),
-                IsPickup = isPickup,
-                RouteStop = routeStop,
-                RouteTotal = routeTotal,
-            },
-            _ => new()
-            {
-                Mode = NavigationState.Modes.OtherZone,
-                QuestId = displayQuestId,
-                QuestName = questName,
-                StepLabel = stepLabel,
-                ZoneName = zoneName,
-                TargetX = tx, TargetZ = tz,
-                AetheryteId = chosen?.AetheryteId,
-                AetheryteName = chosen?.AetheryteName,
-                AetheryteUnlocked = chosen?.AetheryteUnlocked ?? false,
-                EntranceName = chosen?.EntranceName,
-                EntranceX = chosen?.ArrowX,
-                EntranceZ = chosen?.ArrowZ,
-                AethernetEntryName = chosen?.AethernetEntryName,
-                AethernetExitName = chosen?.AethernetExitName,
-                RemainingYalms = chosen?.RemainingYalms,
-                IsPickup = isPickup,
-                RouteStop = routeStop,
-                RouteTotal = routeTotal,
-            },
-        };
-    }
-
-    /// <summary>Resolves the aetheryte to recommend teleporting to for an objective in
-    /// <paramref name="targetTerritory"/>: that territory's own nearest (unlocked
-    /// preferred) aetheryte, or — for territories that own none, e.g. instanced
-    /// interiors — the TerritoryType fallback aetheryte, whose OWN territory can differ
-    /// from <paramref name="targetTerritory"/> (verified live: both Ishgard territories'
-    /// fallback resolves to the Foundation aetheryte). RouteCosting.TeleportCandidate is
-    /// responsible for rejecting a fallback that lands back in the player's own
-    /// territory; this method only resolves candidates, it doesn't filter them.</summary>
-    private (AetherytePoint? Aetheryte, uint Territory, bool Unlocked) ResolveTargetAetheryte(
-        uint targetTerritory, float tx, float tz)
-    {
-        var all = GetAetherytePoints(targetTerritory, aethernet: false);
-        var ui = UIState.Instance();
-        var unlockedPts = new List<AetherytePoint>();
-        if (ui != null)
-        {
-            foreach (var a in all)
-            {
-                if (ui->IsAetheryteUnlocked(a.Id))
-                {
-                    unlockedPts.Add(a);
-                }
-            }
-        }
-
-        if (AetherytePicker.Nearest(unlockedPts.Count > 0 ? unlockedPts : all, tx, tz) is { } pick)
-        {
-            return (pick, pick.Territory, unlockedPts.Count > 0);
-        }
-
-        if (dataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(targetTerritory) is { } tt
-            && tt.Aetheryte.RowId != 0
-            && tt.Aetheryte.ValueNullable is { } fallback)
-        {
-            var name = fallback.PlaceName.ValueNullable?.Name.ExtractText() ?? string.Empty;
-
-            // TeleportCandidate only reads the point's X/Z when its territory matches the
-            // target; on a resolution failure, report a territory that can never match so the
-            // caller falls back to overhead-only costing instead of distancing from (0, 0).
-            var resolved = TryGetAetherytePosition(fallback, out var fx, out var fz);
-            var territory = resolved ? fallback.Territory.RowId : uint.MaxValue;
-
-            // AethernetGroup must travel with the fallback point too — this is exactly
-            // the live bug case (an interior territory's fallback resolving to a
-            // same-network city aetheryte), and TeleportCandidate's group-suppression
-            // check can only catch it if the point actually carries its group.
-            var point = new AetherytePoint(tt.Aetheryte.RowId, name, fx, fz, territory, fallback.AethernetGroup);
-            var ui2 = UIState.Instance();
-            var fallbackUnlocked = ui2 != null && ui2->IsAetheryteUnlocked(tt.Aetheryte.RowId);
-            return (point, territory, fallbackUnlocked);
-        }
-
-        return (null, 0, false);
-    }
-
-    /// <summary>Finds every map-link marker (door / zone exit) on <paramref
-    /// name="fromMapId"/> that leads to <paramref name="toMapId"/>. DataType 1 =
-    /// adjacent map, 2 = interior sub-map; DataKey is the destination Map row for both
-    /// (verified against live game data). Split cities have several such doors between
-    /// their two maps — all are returned so route costing can pick the nearest.</summary>
-    private List<MapLinkPoint> FindEntrances(uint fromMapId, uint toMapId)
-    {
-        var key = (fromMapId, toMapId);
-        if (entranceCache.TryGetValue(key, out var cached))
-        {
-            return cached;
-        }
-
-        var found = new List<MapLinkPoint>();
-        var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
-        if (fromMapId != toMapId && mapSheet.GetRowOrDefault(fromMapId) is { } from)
-        {
-            var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
-            if (markerSheet.HasRow(from.MapMarkerRange))
-            {
-                foreach (var m in markerSheet[from.MapMarkerRange])
-                {
-                    if (m.DataType is not (1 or 2) || m.DataKey.RowId != toMapId)
-                    {
-                        continue;
-                    }
-
-                    var (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, from.SizeFactor, from.OffsetX, from.OffsetY);
-                    var name = m.PlaceNameSubtext.ValueNullable?.Name.ExtractText();
-                    if (string.IsNullOrEmpty(name))
-                    {
-                        name = mapSheet.GetRowOrDefault(toMapId)?.PlaceName.ValueNullable?.Name.ExtractText() ?? "entrance";
-                    }
-
-                    found.Add(new(name!, x, z));
-                }
-            }
-        }
-
-        entranceCache[key] = found;
-        return found;
-    }
-
-    private (ushort Id, string Name)? ResolveFollowedQuest()
-    {
-        var qm = QuestManager.Instance();
-        if (FollowedOverride is { } o)
-        {
-            if (qm == null)
-            {
-                return (o, QuestName(o)); // can't confirm right now — keep override, don't fall back to MSQ
-            }
-
-            if (qm->IsQuestAccepted(o))
-            {
-                return (o, QuestName(o));
-            }
-
-            FollowedOverride = null; // confirmed completed/abandoned → back to MSQ
-        }
-
-        var tree = AgentScenarioTree.Instance();
-        if (tree == null || tree->Data == null)
-        {
-            return null;
-        }
-
-        var ids = tree->Data->MainScenarioQuestIds;
-        for (var i = 0; i < 3 && i < ids.Length; i++)
-        {
-            if (ids[i] != 0)
-            {
-                return (ids[i], QuestName(ids[i]));
-            }
-        }
-
-        return null;
-    }
-
-    private string QuestName(ushort id) =>
-        dataManager.GetExcelSheet<Quest>().GetRowOrDefault(id + QuestRowIdOffset)?.Name.ExtractText()
-        ?? $"Quest {id}";
-
-    /// <summary>territoryId → duty, built once and cached at first use. Built from the
-    /// InstanceContent sheet (not ContentFinderCondition) because InstanceContent has a
-    /// direct, typed <c>ContentFinderCondition</c> RowRef — giving both the duty name
-    /// and the InstanceContent row id (what UIState.IsInstanceContentUnlocked expects)
-    /// from one pass, with no ContentLinkType byte to decode.</summary>
-    private DutyInfo? DutyForTerritory(uint territoryId)
-    {
-        if (dutyByTerritory == null)
-        {
-            var map = new Dictionary<uint, DutyInfo>();
-            foreach (var ic in dataManager.GetExcelSheet<Lumina.Excel.Sheets.InstanceContent>())
-            {
-                if (ic.ContentFinderCondition.RowId == 0 || ic.ContentFinderCondition.ValueNullable is not { } cfc
-                    || cfc.TerritoryType.RowId == 0)
-                {
-                    continue;
-                }
-
-                var name = cfc.Name.ExtractText();
-                if (string.IsNullOrEmpty(name))
-                {
-                    continue;
-                }
-
-                map[cfc.TerritoryType.RowId] = new DutyInfo(name, ic.RowId, cfc.RowId);
-            }
-
-            dutyByTerritory = map;
-        }
-
-        return dutyByTerritory.TryGetValue(territoryId, out var duty) ? duty : null;
-    }
-
-    private List<AetherytePoint> GetAetherytePoints(uint territory, bool aethernet)
-    {
-        var cache = aethernet ? aethernetCache : aetheryteCache;
-        if (cache.TryGetValue(territory, out var cached))
-        {
-            return cached;
-        }
-
-        var list = new List<AetherytePoint>();
-        foreach (var a in dataManager.GetExcelSheet<Aetheryte>())
-        {
-            if (a.Territory.RowId != territory)
-            {
-                continue;
-            }
-
-            // Aethernet candidates are anything on the city network (shards AND the
-            // main aetheryte, which is itself an aethernet stop in-game); plain
-            // aetheryte candidates remain IsAetheryte rows only.
-            if (aethernet ? a.AethernetName.RowId == 0 : !a.IsAetheryte)
-            {
-                continue;
-            }
-
-            var name = aethernet
-                ? a.AethernetName.ValueNullable?.Name.ExtractText()
-                : a.PlaceName.ValueNullable?.Name.ExtractText();
-            if (string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            if (TryGetAetherytePosition(a, out var x, out var z))
-            {
-                list.Add(new(a.RowId, name, x, z, a.Territory.RowId, a.AethernetGroup));
-            }
-        }
-
-        cache[territory] = list;
-        return list;
-    }
-
-    private bool TryGetAetherytePosition(Aetheryte a, out float x, out float z)
-    {
-        x = z = 0;
-        foreach (var lv in a.Level)
-        {
-            if (lv.RowId == 0 || lv.ValueNullable is not { } level)
-            {
-                continue;
-            }
-
-            x = level.X;
-            z = level.Z;
-            return true;
-        }
-
-        // The row's own Map reference is not reliable: every Ishgard shard row
-        // (80–82 Foundation, 83–87 The Pillars) carries Map=0 while the TERRITORY's
-        // map (218/219) carries their DataType 4 markers — so fall back to the home
-        // territory's map, or intra-Ishgard shard routing never gets a position.
-        var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
-        var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
-        var territoryMap = a.Territory.ValueNullable?.Map.RowId ?? 0;
-        foreach (var mapId in AetheryteMapSearch.CandidateMaps(a.Map.RowId, territoryMap))
-        {
-            if (mapSheet.GetRowOrDefault(mapId) is not { } map || !markerSheet.HasRow(map.MapMarkerRange))
-            {
-                continue;
-            }
-
-            foreach (var m in markerSheet[map.MapMarkerRange])
-            {
-                var matches = m.DataType switch
-                {
-                    3 => m.DataKey.RowId == a.RowId,               // aetheryte: DataKey = Aetheryte row
-                    4 => m.DataKey.RowId == a.AethernetName.RowId, // shard: DataKey = PlaceName row (verified)
-                    _ => false,
-                };
-                if (!matches)
-                {
-                    continue;
-                }
-
-                (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, map.SizeFactor, map.OffsetX, map.OffsetY);
-                return true;
-            }
-        }
-
-        return false;
-    }
+    public string? GetAcceptedQuestObjective(uint rawQuestId) => questSource.GetAcceptedQuestObjective(rawQuestId);
 }
