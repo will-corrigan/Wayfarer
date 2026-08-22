@@ -47,6 +47,9 @@ internal sealed class HuntingLogModule(
         {
             try
             {
+                // Close the other presentation first so an input-mode flip between opens can't
+                // leave both windows on screen at once.
+                Window.IsOpen = false;
                 nativeHuntingWindow.Open();
                 return;
             }
@@ -56,6 +59,7 @@ internal sealed class HuntingLogModule(
             }
         }
 
+        CloseNativeWindow();
         Window.IsOpen = true;
     }
 
@@ -70,6 +74,7 @@ internal sealed class HuntingLogModule(
     {
         Enabled = false;
         windows.RemoveWindow(Window);
+        CloseNativeWindow();
         framework.Update -= Hunting.OnFrameworkUpdate;
     }
 
@@ -96,5 +101,17 @@ internal sealed class HuntingLogModule(
         }
 
         nativeHuntingWindow.Dispose();
+    }
+
+    /// <summary>Closes the native window if it is open — used by <see cref="Disable"/> (an open
+    /// native window would otherwise linger on screen polling frozen service state; the ImGui
+    /// counterpart disappears with its WindowSystem removal) and by <see cref="OpenLog"/>'s ImGui
+    /// path to keep the two presentations mutually exclusive.</summary>
+    private void CloseNativeWindow()
+    {
+        if (nativeHuntingWindow.IsOpen)
+        {
+            nativeHuntingWindow.Close();
+        }
     }
 }

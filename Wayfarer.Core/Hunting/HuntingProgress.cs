@@ -5,8 +5,19 @@ namespace Wayfarer.Core.Hunting;
 /// for turning <c>MonsterNoteManager</c> reads into the primitives these take.</summary>
 public static class HuntingProgress
 {
+    /// <summary>Converts the live <c>MonsterNoteManager</c> per-slot <c>Rank</c> field into the
+    /// 1-based rank space the dataset and <see cref="PageState"/> use. The memory field is
+    /// 0-based: Hunty (the reference implementation of the same struct read) indexes its per-rank
+    /// arrays with the raw value directly and treats <c>progressRank &gt; rank</c> as "page
+    /// finished" against 0-based array indices. The dataset's <see cref="HuntingRank.Rank"/> is
+    /// 1-based (the validator asserts <c>rank == rankIdx + 1</c>). This is the single documented
+    /// conversion point — every plugin-side read of the memory Rank must pass through here before
+    /// touching page logic, so the two id spaces can never be mixed again.</summary>
+    public static int CurrentRankFromMemory(int memoryRank) => memoryRank + 1;
+
     /// <summary>Tri-state for a 1-based rank page relative to the player's current rank on that
-    /// log (also 1-based, e.g. from the live <c>MonsterNoteManager</c> rank-progress read).</summary>
+    /// log (also 1-based — convert a raw <c>MonsterNoteManager</c> read through
+    /// <see cref="CurrentRankFromMemory"/> first).</summary>
     public static HuntingPageState PageState(int rank, int currentRank)
     {
         if (rank < currentRank)

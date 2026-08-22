@@ -15,6 +15,54 @@ public class HuntingProgressTests
         Assert.Equal(expected, HuntingProgress.PageState(rank, currentRank));
     }
 
+    // The live MonsterNoteManager Rank field is 0-based (Hunty indexes its per-rank arrays with
+    // the raw value); dataset ranks are 1-based. CurrentRankFromMemory is the single conversion
+    // point — these pin the boundary cases the raw feed used to get wrong.
+    [Fact]
+    public void CurrentRankFromMemory_FreshLog_FirstPageIsCurrent()
+    {
+        var currentRank = HuntingProgress.CurrentRankFromMemory(0);
+
+        Assert.Equal(1, currentRank);
+        Assert.Equal(HuntingPageState.Current, HuntingProgress.PageState(1, currentRank));
+        Assert.Equal(HuntingPageState.Locked, HuntingProgress.PageState(2, currentRank));
+    }
+
+    [Fact]
+    public void CurrentRankFromMemory_MidLog_PagesAlign()
+    {
+        // Memory Rank 2 means pages 1-2 are finished and the player is working page 3.
+        var currentRank = HuntingProgress.CurrentRankFromMemory(2);
+
+        Assert.Equal(HuntingPageState.Done, HuntingProgress.PageState(1, currentRank));
+        Assert.Equal(HuntingPageState.Done, HuntingProgress.PageState(2, currentRank));
+        Assert.Equal(HuntingPageState.Current, HuntingProgress.PageState(3, currentRank));
+        Assert.Equal(HuntingPageState.Locked, HuntingProgress.PageState(4, currentRank));
+    }
+
+    [Fact]
+    public void CurrentRankFromMemory_EliteFirstPage_IsCurrentNotLocked()
+    {
+        // A freshly unlocked Elite log reads memory Rank 0 — that is "working on page 1",
+        // not "log locked" (the unlock signal is Grand Company membership, not the Rank value).
+        var currentRank = HuntingProgress.CurrentRankFromMemory(0);
+
+        Assert.Equal(HuntingPageState.Current, HuntingProgress.PageState(1, currentRank));
+    }
+
+    [Fact]
+    public void CurrentRankFromMemory_CompletedLog_NoPageIsCurrent()
+    {
+        // Memory Rank equal to the page count (all 5 class-log pages finished) must leave no
+        // page Current — the "log complete" presentation.
+        var currentRank = HuntingProgress.CurrentRankFromMemory(5);
+
+        for (var page = 1; page <= 5; page++)
+        {
+            Assert.Equal(HuntingPageState.Done, HuntingProgress.PageState(page, currentRank));
+        }
+    }
+
     [Fact]
     public void RemainingForCurrentPage_ExcludesFullyKilledMonsters()
     {

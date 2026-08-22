@@ -113,6 +113,12 @@ dotnet format --exclude external/KamiToolKit
 pwsh -NoProfile -File scripts/check-hygiene.ps1
 ```
 
+The `--exclude external/KamiToolKit` flag is not optional: the vendored submodule is listed in
+`Wayfarer.slnx`, so a plain `dotnet format` will reformat ~185 upstream files against its own
+`.editorconfig` (BOM stripping, whitespace rules) that upstream never applies. If that happens,
+restore the submodule's working tree with `git -C external/KamiToolKit checkout -- .` — never
+commit submodule content.
+
 ## Releases
 
 Releases are automated with [release-please](https://github.com/googleapis/release-please). Commits to

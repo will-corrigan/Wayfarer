@@ -45,6 +45,9 @@ internal sealed class UnlockChecklistModule(
         {
             try
             {
+                // Close the other presentation first so an input-mode flip between opens can't
+                // leave both windows on screen at once.
+                Window.IsOpen = false;
                 nativeUnlockWindow.Open();
                 return;
             }
@@ -54,6 +57,7 @@ internal sealed class UnlockChecklistModule(
             }
         }
 
+        CloseNativeWindow();
         Window.IsOpen = true;
     }
 
@@ -73,6 +77,7 @@ internal sealed class UnlockChecklistModule(
     {
         Enabled = false;
         windows.RemoveWindow(Window);
+        CloseNativeWindow();
         if (modules.Get<QuestHelperModule>() is { } questHelper)
         {
             questHelper.Navigator.OnPickupAdvanced -= Unlocks.OnPickupAdvanced;
@@ -104,5 +109,17 @@ internal sealed class UnlockChecklistModule(
         }
 
         nativeUnlockWindow.Dispose();
+    }
+
+    /// <summary>Closes the native window if it is open — used by <see cref="Disable"/> (an open
+    /// native window would otherwise linger on screen polling frozen service state; the ImGui
+    /// counterpart disappears with its WindowSystem removal) and by <see cref="OpenChecklist"/>'s
+    /// ImGui path to keep the two presentations mutually exclusive.</summary>
+    private void CloseNativeWindow()
+    {
+        if (nativeUnlockWindow.IsOpen)
+        {
+            nativeUnlockWindow.Close();
+        }
     }
 }

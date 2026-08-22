@@ -26,6 +26,12 @@ internal sealed unsafe class NativeHuntingWindow(
     IObjectTable objects,
     IFramework framework) : NativeAddon
 {
+    /// <summary>The distance caption under each routable row, keyed by the row's monster so the
+    /// text can be refreshed every tick from the freshest view (the player moves and live
+    /// tracking updates positions without changing <see cref="ComputeSignature"/> — rebuilding
+    /// the whole list for that would steal native focus mid-navigation).</summary>
+    private readonly List<(TextNode Node, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
+
     private ScrollingNode<VerticalListNode>? listArea;
     private TextNode? headerNode;
     private TextButtonNode? huntHereButton;
@@ -90,7 +96,11 @@ internal sealed unsafe class NativeHuntingWindow(
         framework.Update += OnFrameworkUpdate;
     }
 
-    protected override unsafe void OnFinalize(AtkUnitBase* addon) => framework.Update -= OnFrameworkUpdate;
+    protected override unsafe void OnFinalize(AtkUnitBase* addon)
+    {
+        framework.Update -= OnFrameworkUpdate;
+        distanceRows.Clear(); // the node tree is deallocated with the addon — drop the wrappers
+    }
 
     private static void OpenDuty(uint? cfcId)
     {
@@ -116,10 +126,39 @@ internal sealed unsafe class NativeHuntingWindow(
         var signature = ComputeSignature();
         if (signature == lastSignature)
         {
+            RefreshDistances();
             return;
         }
 
         RebuildList();
+    }
+
+    /// <summary>Per-tick refresh of the distance captions only: player movement and live-tracking
+    /// position updates change distances without changing <see cref="ComputeSignature"/>, so the
+    /// rows would otherwise show the distance from whenever the list was last rebuilt.</summary>
+    private void RefreshDistances()
+    {
+        var player = objects.LocalPlayer;
+        if (player is null)
+        {
+            return;
+        }
+
+        foreach (var (node, monster) in distanceRows)
+        {
+            // CurrentTarget is the only view live tracking rewrites in place; every other row's
+            // position is the curated coordinate captured at rebuild time.
+            var view = hunting.CurrentTarget is { } current && current.Monster == monster
+                ? current
+                : hunting.HuntHereOrder.FirstOrDefault(t => t.Monster == monster);
+            if (view is null)
+            {
+                continue;
+            }
+
+            var distance = NavMath.Distance(view.WorldX - player.Position.X, view.WorldY - player.Position.Y, view.WorldZ - player.Position.Z);
+            node.String = view.IsLivePosition ? $"{NavMath.FormatDistance(distance)} (live)" : NavMath.FormatDistance(distance);
+        }
     }
 
     private int ComputeSignature()
@@ -154,6 +193,7 @@ internal sealed unsafe class NativeHuntingWindow(
         huntHereButton.IsEnabled = navigator != null && hunting.HuntHereOrder.Count > 0;
 
         listArea.ContentNode.Clear();
+        distanceRows.Clear();
         foreach (var target in hunting.HuntHereOrder)
         {
             listArea.ContentNode.AddNode(BuildRowNode(target, navigator));
@@ -199,13 +239,15 @@ internal sealed unsafe class NativeHuntingWindow(
             if (player != null)
             {
                 var distance = NavMath.Distance(target.WorldX - player.Position.X, target.WorldY - player.Position.Y, target.WorldZ - player.Position.Z);
-                row.AddNode(new TextNode
+                var distanceNode = new TextNode
                 {
                     Height = 16f,
                     FontSize = 11,
                     TextColor = new Vector4(0.65f, 0.65f, 0.65f, 1f),
                     String = target.IsLivePosition ? $"{NavMath.FormatDistance(distance)} (live)" : NavMath.FormatDistance(distance),
-                });
+                };
+                row.AddNode(distanceNode);
+                distanceRows.Add((distanceNode, target.Monster));
             }
 
             return row;

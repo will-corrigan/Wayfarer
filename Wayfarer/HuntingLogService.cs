@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Numerics;
-using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -100,7 +100,7 @@ internal sealed unsafe class HuntingLogService
     /// <summary>Lightweight per-tick change detector (mirrors <see cref="UnlockService.OnFrameworkUpdate"/>):
     /// cheap current-job/territory/live-signature reads, only running the full <see cref="Recompute"/>
     /// pass when one of them actually changed. Also refreshes the live in-zone tracking position
-    /// every tick regardless (spec §5's live proximity tracking — cheap, a single-DataId
+    /// every tick regardless (spec §5's live proximity tracking — cheap, a single-NameId
     /// <c>IObjectTable</c> filter, not gated the way the heavier recompute is).</summary>
     public void OnFrameworkUpdate(IFramework framework)
     {
@@ -146,8 +146,11 @@ internal sealed unsafe class HuntingLogService
         var slot = HuntingSlotTable.SlotForClassJob(classJobId);
         if (slot is null)
         {
+            // Range-checked rather than fed to EliteSlotForGrandCompany (which throws on
+            // out-of-range): this runs on every framework tick outside any try/catch, so a
+            // corrupt GC byte must degrade to "no signal", not throw every frame.
             var gc = ps != null ? ps->GrandCompany : (byte)0;
-            if (gc == 0)
+            if (gc is 0 or > 3)
             {
                 return 0;
             }
@@ -241,12 +244,15 @@ internal sealed unsafe class HuntingLogService
         }
 
         ref var rankInfo = ref mgr->RankData[slot];
-        var liveRank = rankInfo.Rank;
-        if (isElite && liveRank <= 0)
-        {
-            SetNoLog("Elite hunting log not yet unlocked for your Grand Company.");
-            return;
-        }
+
+        // The memory Rank is 0-based; the dataset (and PageState) are 1-based. This is the one
+        // read boundary where the conversion happens — see HuntingProgress.CurrentRankFromMemory.
+        // No separate elite-unlock gate is needed here: joining a Grand Company unlocks its
+        // hunting log's first page outright (no unlock quest; higher pages gate on GC-rank
+        // promotions which the game folds into the memory Rank itself), so membership — already
+        // checked in ResolveActiveLog — IS the unlock signal. The previous "Rank <= 0 means
+        // locked" check misread the 0-based field: Rank 0 is a freshly unlocked log at page 1.
+        var liveRank = HuntingProgress.CurrentRankFromMemory(rankInfo.Rank);
 
         ActiveLogLabel = isElite ? $"{GrandCompanyName(grandCompanyId)} Elite" : ClassJobName(classJobId);
         CurrentRank = liveRank;
@@ -276,11 +282,10 @@ internal sealed unsafe class HuntingLogService
 
     /// <summary>Resolves which log is active for <paramref name="classJobId"/>: the job's own
     /// class log, or — for a post-Stormblood job with none — one of the shared Grand Company Elite
-    /// logs, gated on Grand Company membership (spec §5, "reuse the gating brain"). GC rank beyond
-    /// simple membership isn't independently verified (see <see cref="HuntingSlotTable"/>'s own
-    /// doc comment for the same style of documented uncertainty) — <see cref="RecomputeCore"/>
-    /// additionally treats a live Rank of 0 for the resolved Elite slot as "not unlocked yet" as a
-    /// defensive second check. Calls <see cref="SetNoLog"/> and returns null on any failure.</summary>
+    /// logs, gated on Grand Company membership (spec §5, "reuse the gating brain"). Membership is
+    /// the complete unlock signal for the Elite logs: enlisting grants the log's first page with
+    /// no separate unlock quest, and later pages gate on GC-rank promotions the game reflects in
+    /// the memory Rank itself. Calls <see cref="SetNoLog"/> and returns null on any failure.</summary>
     private (HuntingLog Log, int Slot, bool IsElite, uint GrandCompanyId)? ResolveActiveLog(uint classJobId, HuntingDataset ds)
     {
         var slot = HuntingSlotTable.SlotForClassJob(classJobId);
@@ -426,13 +431,15 @@ internal sealed unsafe class HuntingLogService
 
     /// <summary>Refreshes <see cref="CurrentTarget"/>'s position from a live <c>IObjectTable</c>
     /// scan when the player stands in its territory (spec §5's in-zone live tracking): nearest
-    /// alive <c>BattleNpc</c> whose <c>BaseId</c> (Dalamud's current name for the sheet-linking id
-    /// the spec calls <c>DataId</c> — <c>DataId</c> itself is a deprecated alias) matches the
-    /// target's <c>BNpcNameId</c> replaces the curated coordinate; falls back to the curated
-    /// coordinate (clearing <see cref="HuntingTargetView.IsLivePosition"/>) when none is visible. A
-    /// single-id filter over the object table is cheap enough to run every tick unconditionally —
-    /// no separate throttle needed (mirrors the "no Stopwatch/frame-counter throttling" idiom
-    /// already used elsewhere in this codebase).</summary>
+    /// alive, targetable <c>IBattleNpc</c> whose <c>NameId</c> (the BNpcName row id, on
+    /// <c>ICharacter</c>) matches the target's <c>BNpcNameId</c> replaces the curated coordinate;
+    /// falls back to the curated coordinate (clearing
+    /// <see cref="HuntingTargetView.IsLivePosition"/>) when none is visible. NOT
+    /// <c>IGameObject.BaseId</c>/<c>DataId</c> — for a battle NPC that is the BNpcBase row id, a
+    /// different id space (see <see cref="HuntingLiveTracking"/>). A single-id filter over the
+    /// object table is cheap enough to run every tick unconditionally — no separate throttle
+    /// needed (mirrors the "no Stopwatch/frame-counter throttling" idiom already used elsewhere in
+    /// this codebase).</summary>
     private void RefreshLiveTracking(uint territory)
     {
         if (CurrentTarget is not { IsRoutable: true } target || target.TerritoryTypeId != territory)
@@ -445,7 +452,8 @@ internal sealed unsafe class HuntingLogService
         var bestSq = float.MaxValue;
         foreach (var obj in objects)
         {
-            if (obj.ObjectKind != ObjectKind.BattleNpc || obj.IsDead || obj.BaseId != target.Monster.BNpcNameId)
+            if (obj is not IBattleNpc bnpc
+                || !HuntingLiveTracking.IsCandidate(bnpc.NameId, target.Monster.BNpcNameId, bnpc.IsDead, bnpc.IsTargetable))
             {
                 continue;
             }

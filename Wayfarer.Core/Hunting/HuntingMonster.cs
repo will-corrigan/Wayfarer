@@ -9,8 +9,10 @@ public sealed class HuntingMonster
     public int MonsterIndex { get; set; }
 
     /// <summary>FK into the BNpcName sheet — resolve display name/icon from Lumina at load,
-    /// never carried in this data file. Also what live in-zone tracking (IObjectTable,
-    /// <c>ObjectKind.BattleNpc</c>, <c>DataId == BNpcNameId</c>) matches against.</summary>
+    /// never carried in this data file. Also what live in-zone tracking matches against, via
+    /// <c>IBattleNpc.NameId</c> (the BNpcName row id) — NOT <c>IGameObject.BaseId</c>/<c>DataId</c>,
+    /// which for battle NPCs is the BNpcBase row id, a different id space (see
+    /// <see cref="HuntingLiveTracking"/>).</summary>
     public uint BNpcNameId { get; set; }
 
     /// <summary>Curated by Hunty; provisional pending a live-sheet-derived count per the design

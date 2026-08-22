@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "coordinateSystem": "map",
-  "coordinateSystemNote": "x/y are FFXIV 'map coordinates' (the ~1.0-42.0 human-readable scale shown on the in-game map/minimap and used by MapLinkPayload), NOT raw world position and NOT raw MapMarker pixel coordinates. Convert to world position before feeding a router that expects world-space input; see c1-data-report.md for the verified formula. routable=false marks entries with no usable coordinate (duty-gated Elite-log targets Hunty records as 0,0 — see dutyTerritoryTypeId).",
+  "coordinateSystemNote": "x/y are FFXIV 'map coordinates' (the ~1.0-42.0 human-readable scale shown on the in-game map/minimap and used by MapLinkPayload), NOT raw world position and NOT raw MapMarker pixel coordinates. Convert to world position before feeding a router that expects world-space input (the verified inverse of Dalamud's MapUtil formula lives in MapCoords.MapToWorld). routable=false marks entries with no usable coordinate (duty-gated Elite-log targets Hunty records as 0,0 — see dutyTerritoryTypeId).",
   "source": {
     "project": "Hunty",
     "repoUrl": "https://github.com/Infiziert90/Hunty",
