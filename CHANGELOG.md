@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/will-corrigan/Wayfarer/compare/v0.3.0...v0.4.0) (2026-08-22)
+
+
+### Features
+
+* controller hub window with checklist, hunting log and settings tabs ([b24ced1](https://github.com/will-corrigan/Wayfarer/commit/b24ced1114c55d94258b6988625790e6670e5fd4))
+
+
+### Bug Fixes
+
+* rework the controller experience ([cd2e4dc](https://github.com/will-corrigan/Wayfarer/commit/cd2e4dce9e66fffe5e9e03f32e143ca2d9eced1f))
+
 ## [0.3.0](https://github.com/will-corrigan/Wayfarer/compare/v0.2.1...v0.3.0) (2026-08-22)
 
 
