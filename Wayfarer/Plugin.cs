@@ -4,6 +4,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KamiToolKit;
 using Wayfarer.Modules;
+using Wayfarer.Spike;
 using Wayfarer.Windows;
 
 namespace Wayfarer;
@@ -29,6 +30,10 @@ public sealed class Plugin : IDalamudPlugin
     /// <see cref="NativeHubWindow"/>'s doc comment.</summary>
     private readonly NativeHubWindow hub;
 
+    /// <summary>TEMPORARY — the native UX spike (see <c>Wayfarer/Spike</c>). Delete this field, its
+    /// construction and its disposal along with that folder; nothing else depends on it.</summary>
+    private readonly SpikeController spike;
+
     private readonly IPluginLog log;
 
     public Plugin(
@@ -42,6 +47,8 @@ public sealed class Plugin : IDalamudPlugin
         IGameConfig gameConfig,
         IGamepadState gamepadState,
         IContextMenu contextMenu,
+        INamePlateGui namePlates,
+        IChatGui chat,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -93,6 +100,9 @@ public sealed class Plugin : IDalamudPlugin
         commands.AddHandler("/wayfarer", new((_, _) => configWindow.IsOpen = true)
         { HelpMessage = "Open Wayfarer settings" });
 
+        // TEMPORARY — native UX spike (see Wayfarer/Spike). Remove with that folder.
+        spike = new SpikeController(commands, chat, framework, clientState, objects, namePlates, hunting, unlocks, inputMode, log);
+
         log.Information("Wayfarer loaded");
     }
 
@@ -109,6 +119,10 @@ public sealed class Plugin : IDalamudPlugin
 
         try
         {
+            // TEMPORARY — native UX spike (see Wayfarer/Spike). Remove with that folder. Kept
+            // inside this try so a throwing spike can never cost us KamiToolKitLibrary.Cleanup().
+            spike.Dispose();
+
             // Modules are disposed before the hub they call into is torn down. ModuleRegistry's
             // own Dispose() guards each module individually, and NativeHubWindow.Dispose() guards
             // its own main-thread marshalling — but this try/finally is the actual fix for the
