@@ -15,10 +15,10 @@ public class ApiContractTests
         WriteIndented = true,
     };
 
-    [Fact]
-    public void NavigationDto_RoundTrips_EveryFieldOfNavigationState()
-    {
-        var state = new NavigationState
+    /// <summary>Every field set to a distinct, recognizable value so the round-trip assertions can
+    /// tell a dropped field from a defaulted one.</summary>
+    private static NavigationState FullyPopulated =>
+        new()
         {
             Mode = NavigationState.Modes.OtherZone,
             QuestId = 1234,
@@ -43,7 +43,18 @@ public class ApiContractTests
             RouteTotal = 5,
             Reason = "unlock quest pickup",
             DutyContentFinderConditionId = 456,
+            SourceId = "unlocks",
+            SourceLabel = "Unlock route",
+            Engaged = true,
+            ObjectiveKey = "unlocks:65821",
+            ProgressText = "2 of 5 targets",
+            IsLiveTarget = true,
         };
+
+    [Fact]
+    public void NavigationDto_RoundTrips_EveryFieldOfNavigationState()
+    {
+        var state = FullyPopulated;
 
         var json = JsonSerializer.Serialize(state, PluginOptions);
         var dto = JsonSerializer.Deserialize<NavigationDto>(json, PluginOptions);
@@ -72,7 +83,59 @@ public class ApiContractTests
         Assert.Equal(state.RouteTotal, dto.RouteTotal);
         Assert.Equal(state.Reason, dto.Reason);
         Assert.Equal(state.DutyContentFinderConditionId, dto.DutyContentFinderConditionId);
+        Assert.Equal(state.SourceId, dto.SourceId);
+        Assert.Equal(state.SourceLabel, dto.SourceLabel);
+        Assert.Equal(state.Engaged, dto.Engaged);
+        Assert.Equal(state.ObjectiveKey, dto.ObjectiveKey);
+        Assert.Equal(state.ProgressText, dto.ProgressText);
+        Assert.Equal(state.IsLiveTarget, dto.IsLiveTarget);
     }
+
+    /// <summary>A consumer compiled against the pre-guidance wire shape must keep working: the new
+    /// fields are additive, so JSON written without them deserializes to null/false rather than
+    /// failing.</summary>
+    [Fact]
+    public void NavigationDto_Deserializes_LegacyJsonWithoutGuidanceFields()
+    {
+        const string legacy = """
+            {"mode":"otherZone","questId":1234,"questName":"A Realm Reborn","isPickup":true,
+             "routeStop":2,"routeTotal":5}
+            """;
+
+        var dto = JsonSerializer.Deserialize<NavigationDto>(legacy, PluginOptions);
+
+        Assert.NotNull(dto);
+        Assert.Equal("otherZone", dto.Mode);
+        Assert.True(dto.IsPickup);
+        Assert.Null(dto.SourceId);
+        Assert.Null(dto.SourceLabel);
+        Assert.False(dto.Engaged);
+        Assert.Null(dto.ObjectiveKey);
+        Assert.Null(dto.ProgressText);
+        Assert.False(dto.IsLiveTarget);
+    }
+
+    /// <summary>The other half of the additive-change argument: a NEWER provider sending fields
+    /// this client has never heard of must not break deserialization.</summary>
+    [Fact]
+    public void WayfarerClient_Tolerates_UnknownExtraProperties()
+    {
+        const string json = """{"mode":"idle","somethingFromTheFuture":{"a":1},"anotherOne":"x"}""";
+        var client = new WayfarerClient(() => WayfarerIpc.ApiVersion, () => json, (_, _) => "[]");
+
+        var dto = client.GetNavigation();
+
+        Assert.NotNull(dto);
+        Assert.Equal("idle", dto.Mode);
+    }
+
+    /// <summary>Pins the decision NOT to bump the API version for additive wire fields.
+    /// <see cref="WayfarerClient.IsAvailable"/> tests EXACT equality against
+    /// <see cref="WayfarerIpc.ApiVersion"/>, so bumping it would make every consumer compiled
+    /// against v1 report the whole IPC surface unavailable — a strictly worse outcome than an
+    /// older consumer simply ignoring fields it does not know about.</summary>
+    [Fact]
+    public void ApiVersion_IsUnchanged_ForAdditiveOnlyChanges() => Assert.Equal(1, WayfarerIpc.ApiVersion);
 
     [Fact]
     public void NavigationDto_RoundTrips_AllNullOptionalFields()

@@ -307,6 +307,16 @@ dotnet_diagnostic.MA0046.severity = none
 # line-count rule risks introducing bugs in reviewed, ported game-data logic.
 dotnet_diagnostic.MA0051.severity = none
 
+[Wayfarer/Guidance/GuidanceRouter.cs]
+# OtherZone() arrived here as a verbatim move out of QuestNavigator (guidance
+# architecture step 2), carrying the same MA0051 downgrade it had there: it is
+# one sequential candidate-costing decision over live-verified game data (the
+# split-city teleport suppression, the aethernet-group derivation, the interior
+# marker fallback), with no natural sub-steps that extract cleanly. Splitting it
+# to satisfy a line-count rule is exactly the "tidy-up indistinguishable from a
+# regression" risk the move was designed to avoid.
+dotnet_diagnostic.MA0051.severity = none
+
 [Wayfarer/**.cs]
 # Internal readonly fields (rather than properties) for injected Dalamud
 # services and shared plugin state - matches the source repo's Plugin.cs/

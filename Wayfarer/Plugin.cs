@@ -3,6 +3,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KamiToolKit;
+using Wayfarer.Guidance;
 using Wayfarer.Modules;
 using Wayfarer.Windows;
 
@@ -141,7 +142,8 @@ public sealed class Plugin : IDalamudPlugin
         Action saveConfig,
         IPluginLog log)
     {
-        var navigator = new QuestNavigator(log, config.QuestHelper, clientState, condition, objects, dataManager);
+        var router = new GuidanceRouter(dataManager);
+        var navigator = new QuestNavigator(log, config.QuestHelper, clientState, condition, objects, dataManager, router);
         var arrowWindow = new ArrowWindow(
             navigator,
             modules,
