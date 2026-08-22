@@ -4,11 +4,9 @@ using Wayfarer.Core.Input;
 namespace Wayfarer;
 
 /// <summary>Gates when <see cref="ContextMenuActions"/> registers its "Wayfarer" submenu on the
-/// game's Default context menu. Parked feature (see <see cref="QuestHelperConfig.MenuMode"/>) —
-/// an "any right-click menu" design was tried and rejected: it's redundant for mouse players, who
-/// already have the clickable widget, so <see cref="ControllerOnly"/> is the only case with
-/// real value (a native, d-pad-navigable action surface where the widget's click affordances
-/// don't reach), and <see cref="Never"/> is the default until a better entry point is designed.</summary>
+/// game's Default context menu. <see cref="ControllerOnly"/> is the default: an entry in every
+/// right-click menu is noise for a mouse player, who has the plugin list and the window itself,
+/// but it is the one cursor-free way into Wayfarer's actions on a controller.</summary>
 public enum ContextMenuMode
 {
     Never,
@@ -160,11 +158,13 @@ public sealed class QuestHelperConfig
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
 
-    /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to <see
-    /// cref="ContextMenuMode.Never"/> — the feature is parked pending a different entry-point
-    /// design (an "any right-click menu" submenu was tried and rejected as noisy for mouse
-    /// players, who already have the clickable widget). See <see cref="ContextMenuMode"/>.</summary>
-    public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.Never;
+    /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to
+    /// <see cref="ContextMenuMode.ControllerOnly"/>: the readout is a click-through overlay and can
+    /// carry no affordances at all, so a controller player needs one native, d-pad-navigable place
+    /// to reach the checklist, the hunting log and the teleport the readout is recommending — and
+    /// the game's own context menu is exactly that, with no new chrome and no cursor. Left off for
+    /// mouse players by default, where an entry in every right-click menu is noise.</summary>
+    public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.ControllerOnly;
 }
 
 /// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>.</summary>

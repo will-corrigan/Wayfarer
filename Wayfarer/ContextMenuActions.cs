@@ -8,16 +8,15 @@ using Wayfarer.Modules;
 namespace Wayfarer;
 
 /// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu — a native row
-/// that inherits the game's own d-pad focus navigation, no cursor required (spec §2).
+/// that inherits the game's own d-pad focus navigation, no cursor required.
 ///
-/// PARKED FEATURE (see <see cref="ContextMenuMode"/>): an "any right-click menu" design was
-/// tried live and rejected — the local player challenged its value for mouse users, correctly:
-/// it's redundant with the clickable widget, so <see cref="QuestHelperConfig.MenuMode"/> now
-/// defaults to <see cref="ContextMenuMode.Never"/> and this class is effectively dormant until a
-/// different entry-point design lands. The gating machinery is kept (rather than deleted)
-/// because <see cref="ContextMenuMode.ControllerOnly"/> still has real value — a native,
-/// d-pad-navigable action surface for exactly the input mode where the widget's click
-/// affordances don't reach — evaluated fresh via <see cref="InputModeService.Mode"/> on every
+/// This was parked when the readout was a clickable ImGui widget, on the grounds that it was
+/// redundant for mouse players. It is no longer redundant for anyone on a controller: the readout
+/// is now a click-through overlay and carries no affordances at all, so this is the one place a
+/// controller player can reach the checklist, the hunting log and the teleport the readout is
+/// recommending without typing a command. <see cref="QuestHelperConfig.MenuMode"/> therefore
+/// defaults to <see cref="ContextMenuMode.ControllerOnly"/> — evaluated fresh via
+/// <see cref="InputModeService.Mode"/> on every
 /// menu open (not registered/unregistered on mode flips, since checking is cheap and avoids a
 /// second subscription to manage). Either way, only <see cref="ContextMenuType.Default"/> is
 /// ever handled — the game's own Inventory-type menu is never touched. The outer "Wayfarer" item

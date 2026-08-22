@@ -53,6 +53,9 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
 
     private static readonly int[] MarkerIconValues = [71223, 71221, 71203, 60094];
 
+    // Positional, matching ContextMenuMode's declaration order.
+    private static readonly string[] ContextMenuLabels = ["Never", "On a controller", "Always"];
+
     /// <summary>Raised when the window-position setting changes, so the window can move at once
     /// rather than on the next open.</summary>
     public Action<HubPositionPreset>? OnWindowPositionChanged { get; set; }
@@ -251,6 +254,16 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.InputMode.CursorNavigation,
             WriteFlag = Write(value => config.InputMode.CursorNavigation = value),
+        },
+        new SettingDefinition
+        {
+            Id = "input.contextMenu",
+            Label = "Show Wayfarer in the game's menus",
+            Description = "The only way to reach Wayfarer's actions without a cursor.",
+            Kind = SettingKind.Choice,
+            Options = ContextMenuLabels,
+            ReadOption = () => (int)config.QuestHelper.MenuMode,
+            WriteOption = Write(index => config.QuestHelper.MenuMode = (ContextMenuMode)index),
         },
         new SettingDefinition
         {

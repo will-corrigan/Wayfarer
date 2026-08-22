@@ -181,7 +181,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             {
                 Position = ContentStartPosition,
                 Size = new Vector2(ContentSize.X, 40f),
-                String = "Wayfarer's data failed to load — see the Dalamud log.",
+                String = "Wayfarer could not load its data.",
             });
             return;
         }
@@ -457,6 +457,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             OnItemSelected = OnRowClicked,
         };
         AddNode(list);
+    }
+
+    /// <summary>A disabled button with no explanation is the shape of the original "nothing in
+    /// here works" report: the action buttons go inert when Quest Helper is off, and nothing said
+    /// so. This says so, in the list, where the eye already is.</summary>
+    private void AddGuidanceUnavailableNote(INavigationProvider? navigator)
+    {
+        if (navigator is null)
+        {
+            rows.Add(new HubListRow
+            {
+                Kind = HubRowKind.Note,
+                Label = "Turn Quest Helper on in Settings to be guided anywhere from here.",
+            });
+        }
     }
 
     private void OnRowClicked(HubListRow? row)
@@ -841,6 +856,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         rows.Clear();
         distanceRows.Clear();
+        AddGuidanceUnavailableNote(navigator);
         foreach (var group in GroupUnlockEntries(visible))
         {
             rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = group.Key, Detail = $"{group.Count()}" });
@@ -1073,6 +1089,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         rows.Clear();
         distanceRows.Clear();
+        AddGuidanceUnavailableNote(navigator);
         foreach (var target in hunting.HuntHereOrder)
         {
             rows.Add(BuildHuntingRow(target, navigator));
