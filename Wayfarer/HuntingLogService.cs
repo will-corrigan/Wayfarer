@@ -308,7 +308,10 @@ internal sealed unsafe class HuntingLogService
         }
         else
         {
-            jobKey = classJobId.ToString(CultureInfo.InvariantCulture);
+            // Evolved jobs (PLD/WAR/NIN/...) share their base class's dataset row — the base-class
+            // mapping is HuntingSlotTable's, reused here rather than re-derived, so the dataset key
+            // always matches the class log HuntingSlotTable already resolved the slot for.
+            jobKey = HuntingSlotTable.BaseClassFor(classJobId).ToString(CultureInfo.InvariantCulture);
         }
 
         if (!ds.Logs.TryGetValue(jobKey, out var huntingLog))

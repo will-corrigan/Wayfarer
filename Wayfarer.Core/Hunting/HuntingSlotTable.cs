@@ -60,6 +60,16 @@ public static class HuntingSlotTable
             : null;
     }
 
+    /// <summary>Resolves <paramref name="classJobId"/> to the ClassJobId whose hunting-log dataset
+    /// key should be used to look up a class log: the job itself if it already IS a base class (or
+    /// has no class log at all), or its base class if it's one of the ten evolved jobs. This is the
+    /// single source of truth for that mapping — <see cref="HuntingLogService.ResolveActiveLog"/>
+    /// must derive its dataset <c>jobKey</c> from this, not from the raw <paramref name="classJobId"/>,
+    /// since <c>data/hunting-targets.json</c> only has base-class keys (see that method's doc
+    /// comment for the bug this fixes).</summary>
+    public static uint BaseClassFor(uint classJobId) =>
+        EvolvedToBaseClass.TryGetValue(classJobId, out var baseClassJobId) ? baseClassJobId : classJobId;
+
     /// <summary>Slot 8-10 for a Grand Company's shared Elite log. <paramref name="grandCompanyId"/>
     /// is the GrandCompany sheet RowId (1-3) — the same convention as this data file's synthetic
     /// <c>10000+grandCompanyId</c> jobKeys.</summary>

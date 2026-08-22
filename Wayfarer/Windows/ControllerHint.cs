@@ -2,23 +2,26 @@ using Dalamud.Bindings.ImGui;
 
 namespace Wayfarer.Windows;
 
-/// <summary>The one-time "L1 + L3 enables gamepad navigation" hint drawn at the top of both
-/// <see cref="ArrowWindow"/> and <see cref="UnlockWindow"/>'s first draw, until dismissed.
+/// <summary>The one-time "enable gamepad navigation, then open the hub" hint drawn at the top of
+/// both <see cref="ArrowWindow"/> and <see cref="UnlockWindow"/>'s first draw, until dismissed.
 /// Backed by a single shared <see cref="InputModeConfig.ControllerHintDismissed"/> flag —
-/// dismissing it in either window dismisses it in both, permanently (persisted config). Named
-/// by Dalamud's own brand-neutral button enum (<c>GamepadButtons.L1</c>/<c>L3</c> — see
-/// <see cref="InputModeService"/>'s reflection findings on why button-brand detection isn't
-/// possible), with the Xbox-labeled shorthand alongside for players who only know it that way.</summary>
+/// dismissing it in either window dismisses it in both, permanently (persisted config). Describes
+/// the full controller entry-point flow (spec: controller wave task 5): enable Dalamud's gamepad
+/// nav, then confirm the widget's "Open Wayfarer ▸" row to reach the native hub — using whichever
+/// pad's button labels <see cref="InputModeService"/> currently detects.</summary>
 internal static class ControllerHint
 {
-    public static void Draw(InputModeConfig cfg, Action saveConfig)
+    public static void Draw(InputModeConfig cfg, InputModeService inputMode, Action saveConfig)
     {
         if (cfg.ControllerHintDismissed)
         {
             return;
         }
 
-        ImGui.TextWrapped("Playing with a controller? Press L1 + L3 (LB + left-stick click on Xbox pads) to turn on gamepad navigation for plugin windows.");
+        var enableCombo = inputMode.IsPlayStationPad ? "L1 + L3" : "LB + Left Stick click";
+        ImGui.TextWrapped(
+            $"Playing with a controller? Press {enableCombo} to turn on gamepad navigation, then " +
+            $"highlight \"Open Wayfarer ▸\" below and press {inputMode.Glyphs.Confirm} to open the full menu.");
         if (ImGui.SmallButton("Got it##dismissControllerHint"))
         {
             cfg.ControllerHintDismissed = true;

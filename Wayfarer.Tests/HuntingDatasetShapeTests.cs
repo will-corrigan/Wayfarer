@@ -138,6 +138,29 @@ public class HuntingDatasetShapeTests
         }
     }
 
+    // Regression test for the controller-wave job-key bug (HuntingLogService.cs:311): every
+    // ClassJobId HuntingSlotTable.SlotForClassJob resolves a slot for — base classes AND the ten
+    // evolved jobs — must resolve to a real dataset key once run through
+    // HuntingSlotTable.BaseClassFor, the single source of truth HuntingLogService.ResolveActiveLog
+    // must (and now does) use to build its jobKey. Covers 1-43 (every defined ClassJobId) so a
+    // future evolved job added to EvolvedToBaseClass without a matching dataset key fails here
+    // instead of silently reproducing the "Hunting log data missing for this job." bug in-game.
+    [Fact]
+    public void EveryClassLogClassJobId_ResolvesViaBaseClassFor_ToADatasetKey()
+    {
+        var d = Load();
+        for (uint classJobId = 1; classJobId <= 43; classJobId++)
+        {
+            if (HuntingSlotTable.SlotForClassJob(classJobId) is null)
+            {
+                continue; // post-Stormblood job, or unknown id — no class log, nothing to resolve
+            }
+
+            var jobKey = HuntingSlotTable.BaseClassFor(classJobId).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            Assert.True(d.Logs.ContainsKey(jobKey), $"classJobId {classJobId} -> jobKey {jobKey} missing from dataset");
+        }
+    }
+
     private static HuntingDataset Load()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "hunting-targets.json");

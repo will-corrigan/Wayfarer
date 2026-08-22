@@ -48,7 +48,8 @@ internal sealed class InputModeService
 
         seed = ReadUintAsBool(SystemConfigOption.PadMode) ? InputMode.Controller : InputMode.Mouse;
         Mode = seed;
-        Glyphs = GlyphSet.For(ReadUintAsBool(SystemConfigOption.PadReverseConfirmCancel));
+        IsPlayStationPad = ReadIsPlayStationPad();
+        Glyphs = GlyphSet.For(IsPlayStationPad, ReadUintAsBool(SystemConfigOption.PadReverseConfirmCancel));
     }
 
     public event Action<InputMode>? OnModeChanged;
@@ -56,6 +57,12 @@ internal sealed class InputModeService
     public InputMode Mode { get; private set; }
 
     public GlyphSet Glyphs { get; private set; }
+
+    /// <summary>Whether the game's <c>PadSelectButtonIcon</c> setting is confirmed PlayStation
+    /// (raw value 0). False for Xbox (raw value 1) AND for any unread/unrecognized value — see
+    /// <see cref="GlyphSet"/>'s doc comment for why "unknown" defaults to text labels rather than a
+    /// possibly-wrong glyph shape.</summary>
+    public bool IsPlayStationPad { get; private set; }
 
     /// <summary>Polled once per ImGui frame. Safe to call every frame regardless of whether any
     /// window is open — IGamepadState/IGameConfig reads are cheap, and ImGui.GetIO() is only
@@ -75,7 +82,8 @@ internal sealed class InputModeService
         }
 
         var available = ReadUintAsBool(SystemConfigOption.PadAvailable, defaultValue: true);
-        Glyphs = GlyphSet.For(ReadUintAsBool(SystemConfigOption.PadReverseConfirmCancel));
+        IsPlayStationPad = ReadIsPlayStationPad();
+        Glyphs = GlyphSet.For(IsPlayStationPad, ReadUintAsBool(SystemConfigOption.PadReverseConfirmCancel));
 
         var resolved = InputModeArbitrator.Resolve(
             cfg.Override, seed, Mode, lastGamepadActivity, lastMouseActivity, available, now);
@@ -124,6 +132,23 @@ internal sealed class InputModeService
         {
             log.Warning(ex, $"InputModeService: failed reading {option}");
             return defaultValue;
+        }
+    }
+
+    /// <summary>PadSelectButtonIcon is 0 for PlayStation, 1 for Xbox (community-documented values —
+    /// no Dalamud/Lumina enum exists for this option). Only raw value 0 is treated as confirmed
+    /// PlayStation; a read failure or any other value (including a possible future console's icon
+    /// set) falls back to text labels via <see cref="GlyphSet"/>, never a guessed glyph shape.</summary>
+    private bool ReadIsPlayStationPad()
+    {
+        try
+        {
+            return gameConfig.TryGet(SystemConfigOption.PadSelectButtonIcon, out uint raw) && raw == 0;
+        }
+        catch (Exception ex)
+        {
+            log.Warning(ex, "InputModeService: failed reading PadSelectButtonIcon");
+            return false;
         }
     }
 }
