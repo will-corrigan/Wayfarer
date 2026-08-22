@@ -272,21 +272,55 @@ internal sealed unsafe class QuestNavigator(
             }
         }
 
+        // Prefer a marker that matches BOTH territory and map (the strict, unambiguous
+        // case); if none does, fall back to territory-only matches. The game places
+        // entrance/transition markers for interior objectives directly in the player's
+        // current outdoor zone (e.g. an NPC at the manor gate for an objective that's
+        // technically inside the manor's own interior territory) — verified live: The
+        // Man Within's marker sat in The Pillars (t419) at Fortemps Manor's entrance
+        // while the quest's sheet-recorded ToDoLocation pointed at the manor's interior
+        // territory. That marker's TerritoryTypeId matched the player's live territory,
+        // but its MapId did not necessarily match clientState.MapId (sub-area/layer
+        // numbering can differ even within one territory) — comparing both fields
+        // strictly caused this match to fail and fall through to the sheet-based
+        // OtherZone path, which then suggested a nonsensical cross-territory teleport
+        // for an objective actually reachable on foot from right here. Territory is the
+        // load-bearing signal for "is this actually walkable from where I stand right
+        // now"; MapId is treated as a tie-breaker, not a gate.
         var bestDist = float.MaxValue;
         (float X, float Y, float Z) best = default;
+        var bestTerritoryOnlyDist = float.MaxValue;
+        (float X, float Y, float Z) bestTerritoryOnly = default;
         foreach (var m in markers)
         {
-            if (m.TerritoryId != territory || m.MapId != mapId)
+            if (m.TerritoryId != territory)
             {
                 continue;
             }
 
             var d = NavMath.Distance(m.X - pos.X, m.Y - pos.Y, m.Z - pos.Z);
+            if (d < bestTerritoryOnlyDist)
+            {
+                bestTerritoryOnly = (m.X, m.Y, m.Z);
+                bestTerritoryOnlyDist = d;
+            }
+
+            if (m.MapId != mapId)
+            {
+                continue;
+            }
+
             if (d < bestDist)
             {
                 best = (m.X, m.Y, m.Z);
                 bestDist = d;
             }
+        }
+
+        if (bestDist == float.MaxValue && bestTerritoryOnlyDist < float.MaxValue)
+        {
+            best = bestTerritoryOnly;
+            bestDist = bestTerritoryOnlyDist;
         }
 
         if (bestDist < float.MaxValue)
@@ -448,8 +482,9 @@ internal sealed unsafe class QuestNavigator(
         var zoneName = territorySheet.GetRowOrDefault(targetTerritory)?.PlaceName.ValueNullable?.Name.ExtractText();
         var currentTerritory = clientState.TerritoryType;
 
+        var currentTerritoryShards = GetAetherytePoints(currentTerritory, aethernet: true);
         var aethernet = RouteCosting.AethernetCandidate(
-            GetAetherytePoints(currentTerritory, aethernet: true),
+            currentTerritoryShards,
             GetAetherytePoints(targetTerritory, aethernet: true),
             px,
             pz,
@@ -460,9 +495,22 @@ internal sealed unsafe class QuestNavigator(
         var targetLinks = FindEntrances(targetMapId, clientState.MapId);
         var entrance = RouteCosting.EntranceCandidate(sourceLinks, targetLinks, px, pz, tx, tz);
 
+        // City-network-local teleports are never useful advice — see
+        // RouteCosting.TeleportCandidate's doc comment. currentTerritoryShards already
+        // carries every aethernet stop (shards AND the main aetheryte) reachable from
+        // here for free; its groups are what a real teleport candidate must clear.
+        var currentTerritoryGroups = new HashSet<uint>();
+        foreach (var shard in currentTerritoryShards)
+        {
+            if (shard.Group != 0)
+            {
+                currentTerritoryGroups.Add(shard.Group);
+            }
+        }
+
         var (aetheryte, aetheryteTerritory, unlocked) = ResolveTargetAetheryte(targetTerritory, tx, tz);
         var teleport = RouteCosting.TeleportCandidate(
-            aetheryte, aetheryteTerritory, targetTerritory, currentTerritory, tx, tz, unlocked);
+            aetheryte, aetheryteTerritory, targetTerritory, currentTerritory, tx, tz, unlocked, currentTerritoryGroups);
 
         var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
 
@@ -530,7 +578,12 @@ internal sealed unsafe class QuestNavigator(
             // caller falls back to overhead-only costing instead of distancing from (0, 0).
             var resolved = TryGetAetherytePosition(fallback, out var fx, out var fz);
             var territory = resolved ? fallback.Territory.RowId : uint.MaxValue;
-            var point = new AetherytePoint(tt.Aetheryte.RowId, name, fx, fz, territory);
+
+            // AethernetGroup must travel with the fallback point too — this is exactly
+            // the live bug case (an interior territory's fallback resolving to a
+            // same-network city aetheryte), and TeleportCandidate's group-suppression
+            // check can only catch it if the point actually carries its group.
+            var point = new AetherytePoint(tt.Aetheryte.RowId, name, fx, fz, territory, fallback.AethernetGroup);
             var ui2 = UIState.Instance();
             var fallbackUnlocked = ui2 != null && ui2->IsAetheryteUnlocked(tt.Aetheryte.RowId);
             return (point, territory, fallbackUnlocked);
