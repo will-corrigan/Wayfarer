@@ -136,6 +136,27 @@ public class InputModeArbitratorTests
         Assert.Equal(InputMode.Controller, result);
     }
 
+    [Theory]
+    [InlineData(InputMode.Mouse)]
+    [InlineData(InputMode.Controller)]
+    public void Auto_ExactTie_PreservesPrevious(InputMode previous)
+    {
+        // Both devices report the identical timestamp. The internal candidate comparison is
+        // strictly-greater-than for gamepad, so a tie computes Mouse as the candidate - but a
+        // tied gap is exactly zero, which never clears Hysteresis, so the switch is blocked
+        // regardless of which mode was previously active: an exact tie is always a no-op.
+        var result = InputModeArbitrator.Resolve(
+            InputModeOverride.Auto,
+            seed: InputMode.Mouse,
+            previous,
+            lastGamepadActivity: T0,
+            lastMouseActivity: T0,
+            gamepadAvailable: true,
+            now: T0);
+
+        Assert.Equal(previous, result);
+    }
+
     [Fact]
     public void Auto_CandidateSameAsPrevious_NoOp()
     {

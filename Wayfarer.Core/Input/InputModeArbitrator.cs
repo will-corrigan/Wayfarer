@@ -26,7 +26,17 @@ public static class InputModeArbitrator
     /// (button press or past-deadzone stick movement), or <see langword="null"/> if none has
     /// been observed yet this session.</param>
     /// <param name="lastMouseActivity">Timestamp of the most recent mouse movement/click, or
-    /// <see langword="null"/> if none has been observed yet this session.</param>
+    /// <see langword="null"/> if none has been observed yet this session. An exact tie against
+    /// <paramref name="lastGamepadActivity"/> always leaves <paramref name="previous"/>
+    /// unchanged: the internal candidate comparison below is strictly-greater-than for gamepad,
+    /// so a tie computes Mouse as the candidate — but a tied gap is exactly zero, which never
+    /// clears <see cref="Hysteresis"/>, so even when that computed candidate differs from
+    /// <paramref name="previous"/> the switch is blocked and <paramref name="previous"/> is
+    /// returned regardless of which mode it was. Net effect: an exact tie is a no-op either way.
+    /// Pinned by <c>Auto_ExactTie_PreservesPrevious</c> (both previous-mode cases) in the test
+    /// suite. Not expected to matter in practice — both timestamps come from separate
+    /// <c>DateTimeOffset.UtcNow</c> reads in the same per-frame poll, so an exact tie needs
+    /// clock-resolution luck to occur at all — but pinned rather than left implicit.</param>
     /// <param name="gamepadAvailable">The game's own <c>PadAvailable</c> flag. When false, Auto
     /// mode never resolves to <see cref="InputMode.Controller"/> — guards against stale activity
     /// timestamps outliving a controller that just got unplugged.</param>
