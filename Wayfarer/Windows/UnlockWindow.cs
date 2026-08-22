@@ -57,7 +57,7 @@ internal sealed class UnlockWindow(
             return;
         }
 
-        ControllerHint.Draw(inputModeCfg, saveConfig);
+        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
 
         if (inputMode.Mode == InputMode.Controller)
         {

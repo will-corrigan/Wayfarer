@@ -16,7 +16,7 @@ internal sealed class HuntingLogModule(
     WindowSystem windows,
     HuntingLogService hunting,
     HuntingWindow huntingWindow,
-    NativeHuntingWindow nativeHuntingWindow,
+    NativeHubWindow hub,
     InputModeService inputMode,
     HuntingLogConfig cfg,
     Action saveConfig,
@@ -38,8 +38,8 @@ internal sealed class HuntingLogModule(
     internal HuntingLogConfig Config { get; } = cfg;
 
     /// <summary>Opens whichever hunting-log presentation matches the player's current
-    /// <see cref="InputModeService.Mode"/> (spec §3/§5): the native KamiToolKit window on
-    /// Controller, the ImGui window on Mouse. A native-window open failure falls back to the ImGui
+    /// <see cref="InputModeService.Mode"/> (spec §3/§5): the shared native hub window (Hunting Log
+    /// tab) on Controller, the ImGui window on Mouse. A hub open failure falls back to the ImGui
     /// window with a single log line — same fallback shape as <see cref="UnlockChecklistModule.OpenChecklist"/>.</summary>
     public void OpenLog()
     {
@@ -50,12 +50,12 @@ internal sealed class HuntingLogModule(
                 // Close the other presentation first so an input-mode flip between opens can't
                 // leave both windows on screen at once.
                 Window.IsOpen = false;
-                nativeHuntingWindow.Open();
+                hub.OpenTab(HubTab.Hunting);
                 return;
             }
             catch (Exception ex)
             {
-                log.Error(ex, "HuntingLogModule: native hunting log window failed to open — falling back to the ImGui window.");
+                log.Error(ex, "HuntingLogModule: native hub failed to open — falling back to the ImGui window.");
             }
         }
 
@@ -100,18 +100,19 @@ internal sealed class HuntingLogModule(
             Disable();
         }
 
-        nativeHuntingWindow.Dispose();
+        // The hub is shared with UnlockChecklistModule and owned/disposed by Plugin directly, not
+        // by either module — see NativeHubWindow's doc comment.
     }
 
-    /// <summary>Closes the native window if it is open — used by <see cref="Disable"/> (an open
-    /// native window would otherwise linger on screen polling frozen service state; the ImGui
-    /// counterpart disappears with its WindowSystem removal) and by <see cref="OpenLog"/>'s ImGui
-    /// path to keep the two presentations mutually exclusive.</summary>
+    /// <summary>Closes the hub if it is open — used by <see cref="Disable"/> (an open hub would
+    /// otherwise linger on screen polling frozen service state; the ImGui counterpart disappears
+    /// with its WindowSystem removal) and by <see cref="OpenLog"/>'s ImGui path to keep the two
+    /// presentations mutually exclusive.</summary>
     private void CloseNativeWindow()
     {
-        if (nativeHuntingWindow.IsOpen)
+        if (hub.IsOpen)
         {
-            nativeHuntingWindow.Close();
+            hub.Close();
         }
     }
 }

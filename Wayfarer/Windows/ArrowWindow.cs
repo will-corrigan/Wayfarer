@@ -30,6 +30,7 @@ internal sealed unsafe class ArrowWindow : Window
     private readonly InputModeService inputMode;
     private readonly InputModeConfig inputModeCfg;
     private readonly Action saveConfig;
+    private readonly Action openHub;
 
     // Height for *this* frame's SizeConstraints — the previous frame's measured content height
     // (see PreDraw/MeasureHeightForNextFrame). Seeded with a sane small default so the very
@@ -47,7 +48,8 @@ internal sealed unsafe class ArrowWindow : Window
         IPluginLog log,
         InputModeService inputMode,
         InputModeConfig inputModeCfg,
-        Action saveConfig)
+        Action saveConfig,
+        Action openHub)
         : base("###WayfarerArrow")
     {
         this.navigator = navigator;
@@ -59,6 +61,7 @@ internal sealed unsafe class ArrowWindow : Window
         this.inputMode = inputMode;
         this.inputModeCfg = inputModeCfg;
         this.saveConfig = saveConfig;
+        this.openHub = openHub;
         RespectCloseHotkey = false; // Esc must not close a HUD widget
         IsOpen = true;              // visibility is governed by DrawConditions
         Flags = SharedFlags;
@@ -122,10 +125,11 @@ internal sealed unsafe class ArrowWindow : Window
         Gap();
         DrawQuestLine(state);
         DrawControllerGlyphHint();
+        DrawHubEntry();
         DrawUnlocksButton();
         DrawGlanceableUnlocks();
         DrawGlanceableHunting();
-        ControllerHint.Draw(inputModeCfg, saveConfig);
+        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
 
         MeasureHeightForNextFrame();
     }
@@ -240,6 +244,25 @@ internal sealed unsafe class ArrowWindow : Window
 
         var glyphs = inputMode.Glyphs;
         ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
+    }
+
+    /// <summary>Controller-mode-only entry point into the native hub (spec: controller wave task
+    /// 5) — previously there was no reachable path from the widget to the checklist/hunting-log
+    /// native windows at all under Dalamud's gamepad-nav (only the quest picker and teleport rows
+    /// were focusable Selectables). A plain <c>ImGui.Selectable</c> is itself reachable the same
+    /// way those already are, once the player has enabled gamepad nav per <see cref="ControllerHint"/>.</summary>
+    private void DrawHubEntry()
+    {
+        if (inputMode.Mode != InputMode.Controller)
+        {
+            return;
+        }
+
+        Gap();
+        if (ImGui.Selectable("Open Wayfarer ▸"))
+        {
+            openHub();
+        }
     }
 
     private void DrawArrow(NavigationState state)

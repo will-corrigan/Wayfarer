@@ -2,20 +2,36 @@ using Dalamud.Game.Text;
 
 namespace Wayfarer;
 
-/// <summary>Confirm/cancel button-shape glyphs for controller-mode hints, drawn from the game's
-/// own icon font via <see cref="SeIconChar"/>. Reflection over Dalamud's SeIconChar enum found
-/// only the geometric PlayStation-style shapes (Cross/Circle/Square/Triangle) — no Xbox-lettered
-/// variant exists as an embeddable font glyph (the game renders those via a texture swap
-/// elsewhere in its UI, not through this font), so the game's PadSelectButtonIcon setting has no
-/// glyph to select here regardless of value. Orientation — which shape means "confirm" — DOES
-/// change live via PadReverseConfirmCancel, which this does track.</summary>
-internal readonly record struct GlyphSet(char Confirm, char Cancel)
+/// <summary>Confirm/cancel button labels for controller-mode hints. Reflection over Dalamud's
+/// SeIconChar enum found only the geometric PlayStation-style glyph shapes (Cross/Circle/Square/
+/// Triangle) embeddable via the game's own icon font — no Xbox-lettered variant exists as a font
+/// glyph there (the game renders those via a texture swap elsewhere in its UI, not through this
+/// font). So on anything other than a confirmed PlayStation button-icon setting (Xbox, or unknown/
+/// unreadable), this renders plain text labels ("A"/"B") instead of a wrong-shaped glyph — see
+/// <see cref="InputModeService"/>, which reads the game's own <c>PadSelectButtonIcon</c> config to
+/// decide which. Orientation — which button means "confirm" — tracks PadReverseConfirmCancel in
+/// both cases.</summary>
+internal readonly record struct GlyphSet(string Confirm, string Cancel)
 {
-    /// <summary>Default FFXIV orientation: Cross confirms, Circle cancels.</summary>
-    public static readonly GlyphSet Standard = new(SeIconChar.Cross.ToIconChar(), SeIconChar.Circle.ToIconChar());
+    /// <summary>PlayStation glyphs, default orientation: Cross confirms, Circle cancels.</summary>
+    public static readonly GlyphSet PlayStationStandard =
+        new(SeIconChar.Cross.ToIconChar().ToString(), SeIconChar.Circle.ToIconChar().ToString());
 
-    /// <summary>PadReverseConfirmCancel flipped: Circle confirms, Cross cancels.</summary>
-    public static readonly GlyphSet Reversed = new(SeIconChar.Circle.ToIconChar(), SeIconChar.Cross.ToIconChar());
+    /// <summary>PlayStation glyphs, PadReverseConfirmCancel flipped: Circle confirms, Cross cancels.</summary>
+    public static readonly GlyphSet PlayStationReversed =
+        new(SeIconChar.Circle.ToIconChar().ToString(), SeIconChar.Cross.ToIconChar().ToString());
 
-    public static GlyphSet For(bool reverseConfirmCancel) => reverseConfirmCancel ? Reversed : Standard;
+    /// <summary>Xbox (or unknown) text labels, default orientation: A confirms, B cancels.</summary>
+    public static readonly GlyphSet XboxStandard = new("A", "B");
+
+    /// <summary>Xbox (or unknown) text labels, PadReverseConfirmCancel flipped: B confirms, A cancels.</summary>
+    public static readonly GlyphSet XboxReversed = new("B", "A");
+
+    public static GlyphSet For(bool isPlayStation, bool reverseConfirmCancel) => (isPlayStation, reverseConfirmCancel) switch
+    {
+        (true, false) => PlayStationStandard,
+        (true, true) => PlayStationReversed,
+        (false, false) => XboxStandard,
+        (false, true) => XboxReversed,
+    };
 }

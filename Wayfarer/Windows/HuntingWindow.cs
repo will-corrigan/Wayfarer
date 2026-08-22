@@ -12,10 +12,10 @@ namespace Wayfarer.Windows;
 
 /// <summary>ImGui (Mouse-mode) presentation of the hunting log — same data source
 /// (<see cref="HuntingLogService"/>), same row actions (SetPickup/SetRoute through
-/// <see cref="INavigationProvider"/>) as <see cref="NativeHuntingWindow"/>, the Controller-mode
-/// counterpart (spec §5). Duty-gated (non-routable) Grand Company Elite targets render their duty
-/// name as a clickable "Open in Duty Finder" link instead of a Go button, mirroring
-/// <see cref="ArrowWindow"/>'s own duty-objective link.</summary>
+/// <see cref="INavigationProvider"/>) as the Hunting Log tab of <see cref="NativeHubWindow"/>, the
+/// Controller-mode counterpart (spec §5). Duty-gated (non-routable) Grand Company Elite targets
+/// render their duty name as a clickable "Open in Duty Finder" link instead of a Go button,
+/// mirroring <see cref="ArrowWindow"/>'s own duty-objective link.</summary>
 internal sealed unsafe class HuntingWindow(
     HuntingLogService hunting,
     ModuleRegistry modules,
@@ -39,7 +39,7 @@ internal sealed unsafe class HuntingWindow(
             return;
         }
 
-        ControllerHint.Draw(inputModeCfg, saveConfig);
+        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
 
         if (inputMode.Mode == InputMode.Controller)
         {
@@ -112,7 +112,7 @@ internal sealed unsafe class HuntingWindow(
 
     // Returns the concrete type rather than INavigationProvider (CA1859) — the only caller
     // (DrawRow/DrawHuntHereButton) consumes it purely through that interface's members anyway;
-    // same reasoning as NativeUnlockWindow.ResolveNavigator.
+    // same reasoning as NativeHubWindow.ResolveNavigator.
     private QuestNavigator? ResolveNavigator() =>
         modules.Get<QuestHelperModule>() is { Enabled: true } questHelper ? questHelper.Navigator : null;
 

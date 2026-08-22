@@ -77,11 +77,23 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
         where T : class, IModule =>
         modules.OfType<T>().FirstOrDefault();
 
+    /// <summary>Disposes every module in reverse registration order, guarding each one with its own
+    /// try/catch (spec: controller wave task 2b) so a single module throwing during teardown — e.g.
+    /// a native window's <see cref="IDisposable.Dispose"/> asserting the main thread when Dalamud
+    /// unloads plugins from a thread-pool thread — can't abort the rest of the chain and strand
+    /// <see cref="Plugin"/> before it reaches <c>KamiToolKitLibrary.Cleanup()</c>.</summary>
     public void Dispose()
     {
         for (var i = modules.Count - 1; i >= 0; i--)
         {
-            modules[i].Dispose();
+            try
+            {
+                modules[i].Dispose();
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, $"Module '{modules[i].Name}' threw while disposing; continuing with the remaining modules.");
+            }
         }
     }
 }
