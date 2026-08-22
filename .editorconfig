@@ -209,6 +209,37 @@ dotnet_diagnostic.CA1707.severity = none
 # task-2-brief.md port map.
 dotnet_diagnostic.MA0016.severity = none
 
+[Wayfarer.Core/Guidance/GuidanceObjective.cs]
+# ObjectiveKey/ObjectiveCopy/ObjectiveProgress/ObjectiveAffordances are the parts
+# GuidanceObjective is made of - one objective-model concept, kept in one file
+# rather than five near-empty ones (same rationale as MarkerSelection.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/IGuidanceSource.cs]
+# GuidanceEngagement/DisengageReason/GuidanceContext/GuidanceOffer are the
+# vocabulary of the IGuidanceSource contract itself and are meaningless apart
+# from it - one contract concept, kept in one file.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Guidance/{IGuidanceArbiter,GuidanceArbiter}.cs]
+# OnObjectiveChanged carries the new objective and nothing else - the standard
+# EventHandler<T> shape would add an `object sender` argument no subscriber can
+# use (the arbiter is a singleton per plugin instance) plus an EventArgs wrapper
+# around a single reference. Same rationale as the QuestNavigator/
+# INavigationProvider downgrades below.
+dotnet_diagnostic.MA0046.severity = none
+
+[Wayfarer.Core/Guidance/GuidanceSuppression.cs]
+# SuppressionInputs is a small companion record to GuidanceSuppression itself -
+# one display-gate decision concept, kept in one file rather than two near-empty
+# ones (same rationale as OtherZoneResolution.cs below).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Navigation/AetherytePicker.cs]
 # Ported as a single file with its companion AetherytePoint record, matching
 # the source repo's port map (task-2-brief.md) exactly.
