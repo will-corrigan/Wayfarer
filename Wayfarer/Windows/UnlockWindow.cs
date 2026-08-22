@@ -1,13 +1,22 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Input;
 using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
 
 namespace Wayfarer.Windows;
 
-internal sealed class UnlockWindow : Window
+internal sealed class UnlockWindow(
+    IUnlockProvider unlocks,
+    ModuleRegistry modules,
+    IObjectTable objects,
+    IClientState clientState,
+    InputModeService inputMode,
+    InputModeConfig inputModeCfg,
+    Action saveConfig) : Window("Unlocks###WayfarerUnlocks")
 {
     // Lumina's Quest sheet offsets row ids by this amount; QuestNavigator.FollowedOverride
     // and GetAcceptedQuests() both work in the raw (unoffset) ushort id space — see
@@ -21,10 +30,6 @@ internal sealed class UnlockWindow : Window
     private static readonly (string Key, string Label)[] PriorityChips =
         [("essential", "Essential"), ("nice", "Nice"), ("optional", "Optional")];
 
-    private readonly IUnlockProvider unlocks;
-    private readonly ModuleRegistry modules;
-    private readonly IObjectTable objects;
-    private readonly IClientState clientState;
     private readonly FilterState filter = new();
     private int groupMode; // index into GroupModes
     private string search = string.Empty;
@@ -35,19 +40,14 @@ internal sealed class UnlockWindow : Window
     /// back to a non-clickable "enable Quest Helper to navigate" state.</summary>
     private INavigationProvider? navigator;
 
-    public UnlockWindow(IUnlockProvider unlocks, ModuleRegistry modules, IObjectTable objects, IClientState clientState)
-        : base("Unlocks###WayfarerUnlocks")
-    {
-        this.unlocks = unlocks;
-        this.modules = modules;
-        this.objects = objects;
-        this.clientState = clientState;
-        SizeConstraints = new() { MinimumSize = new(430, 300) };
-    }
-
     // OnOpen already runs on the framework thread in Dalamud's window system, so a
     // direct call is correct here (RunOnFrameworkThread would just return a completed task).
     public override void OnOpen() => unlocks.Recompute();
+
+    // GlobalScale can change live (user drags the Dalamud UI-scale slider without restarting),
+    // so the minimum size is recomputed every frame rather than fixed once in the constructor.
+    public override void PreDraw() =>
+        SizeConstraints = new() { MinimumSize = new(430 * ImGuiHelpers.GlobalScale, 300 * ImGuiHelpers.GlobalScale) };
 
     public override void Draw()
     {
@@ -57,11 +57,27 @@ internal sealed class UnlockWindow : Window
             return;
         }
 
+        ControllerHint.Draw(inputModeCfg, saveConfig);
+
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            // Rows below are still click-driven pending the native context-menu action surface
+            // (task A2) — reachable today only via Dalamud's stopgap gamepad-nav (see the hint
+            // above), hence this legend rather than removing the affordance outright.
+            var glyphs = inputMode.Glyphs;
+            ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
+        }
+
         navigator = modules.Get<QuestHelperModule>() is { Enabled: true } questHelper
             ? questHelper.Navigator
             : null;
 
         DrawFilterBar();
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            ImGuiHelpers.ScaledDummy(0f, 6f);
+        }
+
         ImGui.Separator();
 
         var visible = unlocks.Entries
@@ -161,10 +177,10 @@ internal sealed class UnlockWindow : Window
 
     private void DrawFilterBar()
     {
-        ImGui.SetNextItemWidth(90);
+        ImGui.SetNextItemWidth(90 * ImGuiHelpers.GlobalScale);
         ImGui.Combo("##groupby", ref groupMode, GroupModes, GroupModes.Length);
         ImGui.SameLine();
-        ImGui.SetNextItemWidth(140);
+        ImGui.SetNextItemWidth(140 * ImGuiHelpers.GlobalScale);
         if (ImGui.InputTextWithHint("##search", "search...", ref search, 64))
         {
             filter.Search = search;
@@ -302,7 +318,7 @@ internal sealed class UnlockWindow : Window
     private void DrawRowTooltip(ResolvedUnlock u)
     {
         ImGui.BeginTooltip();
-        ImGui.PushTextWrapPos(320);
+        ImGui.PushTextWrapPos(320 * ImGuiHelpers.GlobalScale);
         ImGui.TextUnformatted(u.Def.Description ?? u.Def.Unlock);
         if (u.Def.Quest is { } q)
         {

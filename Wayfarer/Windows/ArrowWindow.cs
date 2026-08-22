@@ -1,9 +1,11 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Modules;
 
@@ -14,6 +16,9 @@ internal sealed unsafe class ArrowWindow : Window
     private const ImGuiWindowFlags SharedFlags =
         ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing;
 
+    // Floor for the user-resizable width so a drag can't collapse the widget to nothing.
+    private const float MinWidthUnscaled = 160f;
+
     private static readonly Vector4 LinkColor = new(0.4f, 0.7f, 1f, 1f);
 
     private readonly INavigationProvider navigator;
@@ -22,6 +27,9 @@ internal sealed unsafe class ArrowWindow : Window
     private readonly IObjectTable objects;
     private readonly IClientState clientState;
     private readonly IPluginLog log;
+    private readonly InputModeService inputMode;
+    private readonly InputModeConfig inputModeCfg;
+    private readonly Action saveConfig;
 
     public ArrowWindow(
         INavigationProvider navigator,
@@ -29,7 +37,10 @@ internal sealed unsafe class ArrowWindow : Window
         QuestHelperConfig cfg,
         IObjectTable objects,
         IClientState clientState,
-        IPluginLog log)
+        IPluginLog log,
+        InputModeService inputMode,
+        InputModeConfig inputModeCfg,
+        Action saveConfig)
         : base("###WayfarerArrow")
     {
         this.navigator = navigator;
@@ -38,26 +49,36 @@ internal sealed unsafe class ArrowWindow : Window
         this.objects = objects;
         this.clientState = clientState;
         this.log = log;
+        this.inputMode = inputMode;
+        this.inputModeCfg = inputModeCfg;
+        this.saveConfig = saveConfig;
         RespectCloseHotkey = false; // Esc must not close a HUD widget
         IsOpen = true;              // visibility is governed by DrawConditions
-        Flags = BaseFlags;
+        Flags = SharedFlags;
     }
-
-    // AlwaysAutoResize keeps the window snug by default; opting out (AutoSizeWidget =
-    // false) makes it manually resizable — its size then persists via ImGui's window
-    // ID the same way its position already does — and lets long text wrap instead of
-    // stretching the widget.
-    private ImGuiWindowFlags BaseFlags =>
-        cfg.AutoSizeWidget ? SharedFlags | ImGuiWindowFlags.AlwaysAutoResize : SharedFlags;
 
     public override bool DrawConditions() =>
         !cfg.WidgetHidden && !string.Equals(navigator.Current.Mode, NavigationState.Modes.Hidden, StringComparison.Ordinal);
 
-    public override void PreDraw() =>
-        Flags = cfg.ArrowLocked ? BaseFlags | ImGuiWindowFlags.NoMove : BaseFlags;
+    public override void PreDraw()
+    {
+        Flags = cfg.ArrowLocked ? SharedFlags | ImGuiWindowFlags.NoMove : SharedFlags;
+
+        // Width stays whatever the player last dragged it to (or the min floor); height is
+        // never user-set — it's re-measured from actual content every frame at the end of
+        // Draw() below and re-applied here as a floor so the very first frame (nothing
+        // measured yet, and possibly a stale ini-persisted size from before this sizing model
+        // existed) can't render collapsed or with leftover dead space.
+        var minWidth = MinWidthUnscaled * ImGuiHelpers.GlobalScale;
+        SizeConstraints = new() { MinimumSize = new(minWidth, 0f), MaximumSize = new(float.MaxValue, float.MaxValue) };
+    }
 
     public override void Draw()
     {
+        // TextScale is a QuestHelperConfig setting (0.8–2.0 via the slider) but a stray manual
+        // config edit could push it out of range — SetWindowFontScale doesn't clamp on its own.
+        ImGui.SetWindowFontScale(Math.Clamp(cfg.TextScale, 0.1f, 5f));
+
         var state = navigator.Current;
         switch (state.Mode)
         {
@@ -82,9 +103,30 @@ internal sealed unsafe class ArrowWindow : Window
                 break;
         }
 
-        ImGui.Spacing();
+        Gap();
         DrawQuestLine(state);
+        DrawControllerGlyphHint();
         DrawUnlocksButton();
+        ControllerHint.Draw(inputModeCfg, saveConfig);
+
+        FitHeightToContent();
+    }
+
+    /// <summary>Auto-fit height, resizable width: re-measures this frame's actual content
+    /// height (cursor Y at the end of Draw, plus the window's bottom padding) and re-applies
+    /// the window size — current width unchanged, height set to what was just measured — via
+    /// <see cref="ImGui.SetWindowSize(Vector2, ImGuiCond)"/>. That call targets the *next*
+    /// frame's layout (this frame's has already happened), so it's a standard one-frame-lag
+    /// auto-height idiom; running it every single frame with <see cref="ImGuiCond.Always"/>
+    /// means any stale/ini-persisted height (including from before this sizing model existed)
+    /// self-corrects within one frame and stays correct from then on. Width is read back from
+    /// <see cref="ImGui.GetWindowSize"/> rather than tracked separately, so an in-progress user
+    /// resize-drag is preserved exactly, never fought.</summary>
+    private static void FitHeightToContent()
+    {
+        var width = ImGui.GetWindowSize().X;
+        var height = ImGui.GetCursorPosY() + ImGui.GetStyle().WindowPadding.Y;
+        ImGui.SetWindowSize(new Vector2(width, height), ImGuiCond.Always);
     }
 
     private static void CenteredText(string text)
@@ -103,10 +145,15 @@ internal sealed unsafe class ArrowWindow : Window
     // Objective is inside instanced duty content: no arrow, no route — just say so.
     // Deliberately its own branch (not the generic default/Reason fallback) so this
     // reads as prominent, actionable guidance rather than the muted "can't help" text.
-    // When the duty can be queued right now, DutyContentFinderConditionId is set and
-    // the reason follows the fixed "Complete the duty: {name} — queue via Duty
-    // Finder" template — split on those markers so the duty name alone renders as a
-    // clickable link; every other case (not yet unlocked) just wraps the plain text.
+    // When the duty can be queued right now, DutyContentFinderConditionId is set and the
+    // reason follows the fixed "Complete the duty: {name}" template — split on the prefix
+    // so the duty name alone renders as a clickable link (its tooltip already says "Open
+    // in Duty Finder"; there's no separate "queue via Duty Finder" suffix to render — the
+    // link IS the affordance). Every other case (not yet unlocked) just wraps the plain
+    // text. The prefix and the link are each their own TextWrapped/TextUnformatted call
+    // starting at a fresh line — never glued together with SameLine(0, 0) — so each wraps
+    // independently at word boundaries no matter how narrow the window gets; gluing them
+    // is what previously produced a one-character-per-line column at narrow widths.
     private static void DrawDutyObjective(NavigationState state)
     {
         if (state.Reason is not { } reason)
@@ -115,17 +162,13 @@ internal sealed unsafe class ArrowWindow : Window
         }
 
         if (state.DutyContentFinderConditionId is { } cfcId
-            && reason.StartsWith(DutyObjectiveGuidance.CompleteDutyPrefix, StringComparison.Ordinal)
-            && reason.EndsWith(DutyObjectiveGuidance.CompleteDutySuffix, StringComparison.Ordinal))
+            && reason.StartsWith(DutyObjectiveGuidance.CompleteDutyPrefix, StringComparison.Ordinal))
         {
-            var name = reason[DutyObjectiveGuidance.CompleteDutyPrefix.Length..^DutyObjectiveGuidance.CompleteDutySuffix.Length];
+            var name = reason[DutyObjectiveGuidance.CompleteDutyPrefix.Length..];
 
             ImGui.PushTextWrapPos(0f);
-            ImGui.TextUnformatted(DutyObjectiveGuidance.CompleteDutyPrefix);
-            ImGui.SameLine(0, 0);
+            ImGui.TextWrapped(DutyObjectiveGuidance.CompleteDutyPrefix);
             DrawDutyLink(name, cfcId);
-            ImGui.SameLine(0, 0);
-            ImGui.TextUnformatted(DutyObjectiveGuidance.CompleteDutySuffix);
             ImGui.PopTextWrapPos();
             return;
         }
@@ -161,6 +204,34 @@ internal sealed unsafe class ArrowWindow : Window
                 agent->OpenRegularDuty(cfcId, false);
             }
         }
+    }
+
+    /// <summary>Vertical breathing room between the window's sections. A little more generous in
+    /// Controller mode for couch readability (spec §4) than the mouse-mode default.</summary>
+    private void Gap()
+    {
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            ImGuiHelpers.ScaledDummy(0f, 8f);
+        }
+        else
+        {
+            ImGui.Spacing();
+        }
+    }
+
+    /// <summary>Controller-mode-only legend for the confirm/cancel glyphs used by items in this
+    /// window that are still reachable only through Dalamud's stopgap gamepad-nav mode (d-pad
+    /// focus + confirm), pending the native context-menu action surface (task A2).</summary>
+    private void DrawControllerGlyphHint()
+    {
+        if (inputMode.Mode != InputMode.Controller)
+        {
+            return;
+        }
+
+        var glyphs = inputMode.Glyphs;
+        ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
     }
 
     private void DrawArrow(NavigationState state)
@@ -209,8 +280,10 @@ internal sealed unsafe class ArrowWindow : Window
 
         var angle = NavMath.ArrowAngle(NavMath.Bearing(dx, dz), yaw);
 
-        var size = 48f * cfg.ArrowScale;
-        var width = MathF.Max(ImGui.CalcTextSize(navigator.Current.QuestName ?? string.Empty).X, size + 16f);
+        var size = 48f * cfg.ArrowScale * ImGuiHelpers.GlobalScale;
+        var width = MathF.Max(
+            ImGui.CalcTextSize(navigator.Current.QuestName ?? string.Empty).X,
+            size + (16f * ImGuiHelpers.GlobalScale));
         ImGui.Dummy(new(width, size));
         var min = ImGui.GetItemRectMin();
         var c = new Vector2(min.X + (width / 2f), min.Y + (size / 2f));
@@ -342,15 +415,22 @@ internal sealed unsafe class ArrowWindow : Window
         }
 
         ImGui.Separator();
-        ImGui.Spacing();
+        Gap();
         var count = unlockModule.Unlocks.AvailableHereCount;
         var highlight = count > 0;
+        var label = highlight ? $"Unlocks ({count})" : "Unlocks";
         if (highlight)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.82f, 0.25f, 1f));
         }
 
-        if (ImGui.SmallButton(highlight ? $"Unlocks ({count})" : "Unlocks"))
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            // No clickable-only affordances in controller mode (spec §4) — this becomes a
+            // glanceable status line; the action moves to the context-menu surface (task A2).
+            ImGui.TextUnformatted(label);
+        }
+        else if (ImGui.SmallButton(label))
         {
             unlockModule.Window.IsOpen = true;
         }
