@@ -102,6 +102,13 @@ internal sealed class QuestHelperModule(
             cfg.ClickTeleportEnabled = clickTp;
             saveConfig();
         }
+
+        var menuEverywhere = cfg.MenuEverywhere;
+        if (ImGui.Checkbox("Show Wayfarer in all right-click menus", ref menuEverywhere))
+        {
+            cfg.MenuEverywhere = menuEverywhere;
+            saveConfig();
+        }
     }
 
     public void Dispose()

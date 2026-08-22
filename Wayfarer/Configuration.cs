@@ -53,6 +53,14 @@ public sealed class QuestHelperConfig
 
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
+
+    /// <summary>Controls <see cref="ContextMenuActions"/>'s gating: true (the default) shows the
+    /// "Wayfarer" submenu on ANY Default-type context menu (any NPC/nameplate right-click, or a
+    /// controller subcommand menu) — self-target-only gating turned out unusable on a real HUD (no
+    /// solo party frame, finicky self-model right-click, F1-self-targeting rejected as a
+    /// workaround). False restores the original self-target-only behavior (own nameplate/
+    /// portrait/party-list row) for players who'd rather not see the submenu everywhere.</summary>
+    public bool MenuEverywhere { get; set; } = true;
 }
 
 /// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>. Reserved for future use —

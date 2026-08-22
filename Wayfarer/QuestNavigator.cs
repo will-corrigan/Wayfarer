@@ -517,35 +517,49 @@ internal sealed unsafe class QuestNavigator(
 
         var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
 
-        // Caller (MarkerMatch.TerritoryOnly) has an exact live-marker position and
-        // asked for it as the least-bad fallback when no real cross-map route exists —
-        // use it instead of the generic "find the entrance nearby" OtherZone message,
-        // which would throw away position data we actually have.
-        if (chosen == null && fallbackWhenNoCandidate is { } fallback)
+        // The three-way choice (real route / marker fallback / plain interior message)
+        // is a pure Core decision (OtherZoneResolution.Resolve) — see its doc comment.
+        // MarkerFallback returns the caller's fallback state (MarkerMatch.TerritoryOnly's
+        // exact live-marker position) as-is; InteriorMessage sets Reason to the single
+        // source-of-truth text so ArrowWindow just displays it rather than re-deriving
+        // "no route" from raw AetheryteName/EntranceX nulls itself.
+        return OtherZoneResolution.Resolve(chosen, fallbackWhenNoCandidate) switch
         {
-            return fallback;
-        }
-
-        return new()
-        {
-            Mode = NavigationState.Modes.OtherZone,
-            QuestId = displayQuestId,
-            QuestName = questName,
-            StepLabel = stepLabel,
-            ZoneName = zoneName,
-            TargetX = tx, TargetZ = tz,
-            AetheryteId = chosen?.AetheryteId,
-            AetheryteName = chosen?.AetheryteName,
-            AetheryteUnlocked = chosen?.AetheryteUnlocked ?? false,
-            EntranceName = chosen?.EntranceName,
-            EntranceX = chosen?.ArrowX,
-            EntranceZ = chosen?.ArrowZ,
-            AethernetEntryName = chosen?.AethernetEntryName,
-            AethernetExitName = chosen?.AethernetExitName,
-            RemainingYalms = chosen?.RemainingYalms,
-            IsPickup = isPickup,
-            RouteStop = routeStop,
-            RouteTotal = routeTotal,
+            OtherZoneOutcome.MarkerFallback => fallbackWhenNoCandidate!,
+            OtherZoneOutcome.InteriorMessage => new()
+            {
+                Mode = NavigationState.Modes.OtherZone,
+                QuestId = displayQuestId,
+                QuestName = questName,
+                StepLabel = stepLabel,
+                ZoneName = zoneName,
+                TargetX = tx, TargetZ = tz,
+                Reason = OtherZoneResolution.InteriorMessage(zoneName),
+                IsPickup = isPickup,
+                RouteStop = routeStop,
+                RouteTotal = routeTotal,
+            },
+            _ => new()
+            {
+                Mode = NavigationState.Modes.OtherZone,
+                QuestId = displayQuestId,
+                QuestName = questName,
+                StepLabel = stepLabel,
+                ZoneName = zoneName,
+                TargetX = tx, TargetZ = tz,
+                AetheryteId = chosen?.AetheryteId,
+                AetheryteName = chosen?.AetheryteName,
+                AetheryteUnlocked = chosen?.AetheryteUnlocked ?? false,
+                EntranceName = chosen?.EntranceName,
+                EntranceX = chosen?.ArrowX,
+                EntranceZ = chosen?.ArrowZ,
+                AethernetEntryName = chosen?.AethernetEntryName,
+                AethernetExitName = chosen?.AethernetExitName,
+                RemainingYalms = chosen?.RemainingYalms,
+                IsPickup = isPickup,
+                RouteStop = routeStop,
+                RouteTotal = routeTotal,
+            },
         };
     }
 

@@ -337,14 +337,15 @@ internal sealed unsafe class ArrowWindow : Window
 
         if (state.AetheryteName is null)
         {
-            if (state.EntranceX is null)
+            // No live marker, no known map-link entrance, and no teleport worth
+            // suggesting (see RouteCosting.TeleportCandidate) — most commonly an
+            // interior objective (e.g. inside a manor) with no entrance modeled in the
+            // map-link data. QuestNavigator's OtherZoneResolution.InteriorMessage is the
+            // single source of truth for this text (Core-tested) — Reason carries it
+            // straight through, so this is just display, not re-derivation.
+            if (state.EntranceX is null && state.Reason is { } reason)
             {
-                // No live marker, no known map-link entrance, and no teleport worth
-                // suggesting (see RouteCosting.TeleportCandidate) — most commonly an
-                // interior objective (e.g. inside a manor) with no entrance modeled in
-                // the map-link data. Say so plainly rather than a bare "no route found",
-                // which reads as a plugin failure instead of actionable guidance.
-                ImGui.TextWrapped($"Objective is inside {state.ZoneName ?? "another zone"} — find the entrance nearby.");
+                ImGui.TextWrapped(reason);
             }
         }
         else if (!state.AetheryteUnlocked)

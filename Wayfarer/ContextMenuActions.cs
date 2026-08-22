@@ -6,12 +6,19 @@ using Wayfarer.Modules;
 
 namespace Wayfarer;
 
-/// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu when it opens
-/// on the local player (self-target: own nameplate, portrait, party list row, ...) — a native row
-/// that inherits the game's own d-pad focus navigation, no cursor required (spec §2). The outer
-/// "Wayfarer" item is added from <see cref="IContextMenu.OnMenuOpened"/> so it only ever appears
-/// on a self-target Default menu; its children are built lazily from <see cref="IMenuItem.OnClicked"/>
-/// (via <see cref="IMenuItemClickedArgs.OpenSubmenu(Dalamud.Game.Text.SeStringHandling.SeString,
+/// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu — a native row
+/// that inherits the game's own d-pad focus navigation, no cursor required (spec §2). By default
+/// (<see cref="QuestHelperConfig.MenuEverywhere"/> = true) it appears on ANY Default-type menu:
+/// any NPC/nameplate right-click, the local player's own nameplate/portrait/party-list row, or a
+/// controller subcommand menu. The original design gated this to a self-target menu only, but
+/// that turned out unusable on a real HUD — no solo party frame to right-click, the self-model
+/// right-click is finicky, and F1-self-targeting was rejected as a workaround — so
+/// self-target-only is now an opt-IN restriction (<c>MenuEverywhere = false</c>) rather than the
+/// default. Either way, the game's own Inventory-type context menu is never touched — only
+/// <see cref="ContextMenuType.Default"/> is handled at all. The outer "Wayfarer" item is added
+/// from <see cref="IContextMenu.OnMenuOpened"/>; its children are built lazily from
+/// <see cref="IMenuItem.OnClicked"/> (via <see
+/// cref="IMenuItemClickedArgs.OpenSubmenu(Dalamud.Game.Text.SeStringHandling.SeString,
 /// IReadOnlyList{IMenuItem})"/>) rather than at menu-open time, so a slow player never sees a
 /// submenu built from state that's gone stale by the time they confirm it.
 ///
@@ -56,8 +63,8 @@ internal sealed class ContextMenuActions : IDisposable
     private void OnMenuOpened(IMenuOpenedArgs args)
     {
         if (args.MenuType != ContextMenuType.Default
-            || !IsSelfTarget(args.Target)
-            || modules.Get<QuestHelperModule>() is not { Enabled: true })
+            || modules.Get<QuestHelperModule>() is not { Enabled: true }
+            || (!cfg.MenuEverywhere && !IsSelfTarget(args.Target)))
         {
             return;
         }
@@ -70,9 +77,11 @@ internal sealed class ContextMenuActions : IDisposable
         });
     }
 
-    /// <summary>True only for a Default-menu target that names the local player — every other
-    /// MenuTarget shape (party/friend list entries for OTHER characters, inventory items, no
-    /// target at all) resolves false and the outer item is simply never added.</summary>
+    /// <summary>True only for a Default-menu target that names the local player. Only consulted
+    /// when <see cref="QuestHelperConfig.MenuEverywhere"/> is false — the opt-in restriction back
+    /// to the original self-target-only gating (own nameplate/portrait/party-list row); every
+    /// other MenuTarget shape (party/friend list entries for OTHER characters, no target at all)
+    /// resolves false and the outer item is simply never added.</summary>
     private bool IsSelfTarget(MenuTarget target) =>
         target is MenuTargetDefault def
         && objects.LocalPlayer is { } player
