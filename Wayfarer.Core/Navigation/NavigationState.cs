@@ -1,8 +1,12 @@
 namespace Wayfarer.Core.Navigation;
 
 /// <summary>Immutable-by-convention snapshot of quest navigation, published once per
-/// framework tick by the plugin and read by the widget and the get_navigation MCP tool.</summary>
-public sealed class NavigationState
+/// framework tick by the plugin and read by the widget and the get_navigation MCP tool.
+/// A record purely so <see cref="Guidance.GuidanceProjection"/> can attach an objective's identity
+/// to a route with <c>with</c> instead of restating a dozen fields per branch — the wire shape,
+/// which is what this type exists for, is unchanged (records serialize by public property exactly
+/// as classes do).</summary>
+public sealed record NavigationState
 {
     public string Mode { get; init; } = Modes.Hidden;
 
@@ -51,8 +55,38 @@ public sealed class NavigationState
     // for teleport mode (no post-arrival distance is tracked).
     public float? RemainingYalms { get; init; }
 
-    /// <summary>true when the arrow is guiding to an unlock-quest pickup rather than a followed quest</summary>
+    /// <summary>true when the arrow is guiding to something the player explicitly chose rather than
+    /// a followed quest. Superseded by <see cref="SourceId"/>/<see cref="Engaged"/> and retained
+    /// for wire compatibility — its meaning is unchanged, and it is now computed as
+    /// <see cref="Engaged"/> (an explicit mode is by definition not the followed quest).</summary>
     public bool IsPickup { get; init; }
+
+    /// <summary>Stable id of the feature that owns the arrow right now: "quest", "unlocks",
+    /// "hunting", or null when nothing is being guided to.</summary>
+    public string? SourceId { get; init; }
+
+    /// <summary>The mode indicator — "Main Scenario", "Unlock route", "Hunting Log · Gladiator".
+    /// Non-null whenever <see cref="Engaged"/> is true: an explicit mode must always name itself,
+    /// because this readout is the only mode indicator the player has.</summary>
+    public string? SourceLabel { get; init; }
+
+    /// <summary>An explicit mode is active (a route, a hunt) rather than the ambient followed
+    /// quest. Presentations MUST offer a reachable exit whenever this is true.</summary>
+    public bool Engaged { get; init; }
+
+    /// <summary>"sourceId:value" — the active objective's stable identity. Consumers key their own
+    /// per-objective side effects off this and nothing else: it changes exactly when the objective
+    /// changes, and NOT when a live-tracked target's position is refreshed.</summary>
+    public string? ObjectiveKey { get; init; }
+
+    /// <summary>Progress within the owning feature's own plan, in that feature's words: "2/3
+    /// kills", "68%". <see cref="RouteStop"/>/<see cref="RouteTotal"/> carry the numeric form when
+    /// the plan is an ordered chain.</summary>
+    public string? ProgressText { get; init; }
+
+    /// <summary>The target position came from a live object-table scan this tick rather than a
+    /// curated coordinate. Display only — routing treats both alike.</summary>
+    public bool IsLiveTarget { get; init; }
 
     /// <summary>1-based position of the current pickup within an active multi-stop route
     /// (SetRoute), null when no route is active — including single pickups via SetPickup.</summary>
