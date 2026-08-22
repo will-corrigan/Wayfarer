@@ -74,8 +74,12 @@ public sealed class QuestHelperConfig
     public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.Never;
 }
 
-/// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>. Reserved for future use —
-/// the module currently has no configurable options beyond enable/disable.</summary>
+/// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>.</summary>
 public sealed class UnlockChecklistConfig
 {
+    /// <summary>Shows the top 2-3 Available unlocks in the current zone as small lines on
+    /// <see cref="Windows.ArrowWindow"/> (spec §4, task A3) — a quick glance that makes opening
+    /// the checklist window optional. On by default; absent regardless when the module itself is
+    /// disabled.</summary>
+    public bool ShowOnWidget { get; set; } = true;
 }

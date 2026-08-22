@@ -13,7 +13,9 @@ internal sealed class UnlockChecklistModule(
     WindowSystem windows,
     ModuleRegistry modules,
     UnlockService unlocks,
-    UnlockWindow unlockWindow) : IModule
+    UnlockWindow unlockWindow,
+    UnlockChecklistConfig cfg,
+    Action saveConfig) : IModule
 {
     public string Name => "Unlock Checklist";
 
@@ -24,6 +26,10 @@ internal sealed class UnlockChecklistModule(
     internal UnlockService Unlocks { get; } = unlocks;
 
     internal UnlockWindow Window { get; } = unlockWindow;
+
+    /// <summary>Read by <see cref="Windows.ArrowWindow"/> for the glanceable-lines toggle
+    /// (spec §4, task A3) — the coherent home for it since the data comes from this module.</summary>
+    internal UnlockChecklistConfig Config { get; } = cfg;
 
     public void Enable()
     {
@@ -54,6 +60,13 @@ internal sealed class UnlockChecklistModule(
         if (ImGui.Button("Open checklist"))
         {
             Window.IsOpen = true;
+        }
+
+        var showOnWidget = Config.ShowOnWidget;
+        if (ImGui.Checkbox("Show top unlocks on the quest widget", ref showOnWidget))
+        {
+            Config.ShowOnWidget = showOnWidget;
+            saveConfig();
         }
     }
 

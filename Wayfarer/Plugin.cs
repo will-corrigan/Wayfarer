@@ -53,7 +53,8 @@ public sealed class Plugin : IDalamudPlugin
 
         var unlocks = new UnlockService(log, objects, clientState, pluginInterface, dataManager);
         var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState, inputMode, config.InputMode, SaveConfig);
-        var unlockChecklistModule = new UnlockChecklistModule(framework, windows, modules, unlocks, unlockWindow);
+        var unlockChecklistModule = new UnlockChecklistModule(
+            framework, windows, modules, unlocks, unlockWindow, config.UnlockChecklist, SaveConfig);
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);

@@ -123,6 +123,7 @@ internal sealed unsafe class ArrowWindow : Window
         DrawQuestLine(state);
         DrawControllerGlyphHint();
         DrawUnlocksButton();
+        DrawGlanceableUnlocks();
         ControllerHint.Draw(inputModeCfg, saveConfig);
 
         MeasureHeightForNextFrame();
@@ -450,6 +451,45 @@ internal sealed unsafe class ArrowWindow : Window
         if (highlight)
         {
             ImGui.PopStyleColor();
+        }
+    }
+
+    /// <summary>Glanceable unlock lines (spec §4, task A3): the top 2-3 Available unlocks in the
+    /// current zone, nearest-first, read straight from the already-computed
+    /// <see cref="UnlockService.GlanceableHere"/> — never rescanned here. Only the distance shown
+    /// per line is recomputed every frame, and that's cheap arithmetic against the live player
+    /// position (the same cost model <see cref="DrawArrowTo"/> already pays), not a new scan.
+    /// Absent when the module is missing/disabled, the config toggle is off, or there's simply
+    /// nothing available here right now — kept subtle (small disabled-style text) under the
+    /// existing content, with the same InputMode-aware spacing as the rest of the window.</summary>
+    private void DrawGlanceableUnlocks()
+    {
+        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule
+            || !unlockModule.Config.ShowOnWidget)
+        {
+            return;
+        }
+
+        var here = unlockModule.Unlocks.GlanceableHere;
+        if (here.Count == 0)
+        {
+            return;
+        }
+
+        Gap();
+        var player = objects.LocalPlayer;
+        foreach (var u in here)
+        {
+            if (player != null)
+            {
+                var distance = NavMath.Distance(
+                    u.GiverX - player.Position.X, u.GiverY - player.Position.Y, u.GiverZ - player.Position.Z);
+                ImGui.TextDisabled($"{u.Def.Unlock} ({NavMath.FormatDistance(distance)})");
+            }
+            else
+            {
+                ImGui.TextDisabled(u.Def.Unlock);
+            }
         }
     }
 }
