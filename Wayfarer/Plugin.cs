@@ -23,13 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WayfarerIpcProvider ipcProvider;
     private readonly InputModeService inputMode;
     private readonly ContextMenuActions contextMenuActions;
-    private readonly UnlockService unlockService;
     private readonly IPluginLog log;
-
-    // TEMPORARY task-B1 spike field - see WaynativeSpikeWindow's doc comment. Lazily created by
-    // the /waynative debug command, disposed in Dispose() below; delete both alongside the
-    // window class once task B2 lands the real native checklist window.
-    private WaynativeSpikeWindow? waynativeSpike;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -65,10 +59,15 @@ public sealed class Plugin : IDalamudPlugin
         modules.Register(questHelperModule, enabledByDefault: true);
 
         var unlocks = new UnlockService(log, objects, clientState, pluginInterface, dataManager);
-        unlockService = unlocks;
         var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState, inputMode, config.InputMode, SaveConfig);
+        var nativeUnlockWindow = new NativeUnlockWindow(unlocks, modules, objects, clientState, framework)
+        {
+            InternalName = "WayfarerUnlocksNative",
+            Title = "Unlocks",
+            Size = new Vector2(560f, 640f),
+        };
         var unlockChecklistModule = new UnlockChecklistModule(
-            framework, windows, modules, unlocks, unlockWindow, config.UnlockChecklist, SaveConfig);
+            framework, windows, modules, unlocks, unlockWindow, nativeUnlockWindow, inputMode, config.UnlockChecklist, SaveConfig, log);
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
@@ -86,32 +85,23 @@ public sealed class Plugin : IDalamudPlugin
         commands.AddHandler("/wayfarer", new((_, _) => configWindow.IsOpen = true)
         { HelpMessage = "Open Wayfarer settings" });
 
-        // TEMPORARY task-B1 spike command - see WaynativeSpikeWindow's doc comment. Remove
-        // alongside the field/window class once task B2 lands the real native window.
-        commands.AddHandler("/waynative", new((_, _) => ToggleWaynativeSpike())
-        { HelpMessage = "[TEMP] Toggle the native-window prototype (task B1 spike)" });
-
         log.Information("Wayfarer loaded");
     }
 
     public void Dispose()
     {
         commands.RemoveHandler("/wayfarer");
-        commands.RemoveHandler("/waynative");
         pluginInterface.UiBuilder.Draw -= windows.Draw;
         pluginInterface.UiBuilder.Draw -= inputMode.OnFrame;
         pluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi -= OpenConfig;
 
-        // TEMPORARY task-B1 spike - see WaynativeSpikeWindow's doc comment. Disposed before
-        // KamiToolKitLibrary.Cleanup() below so it doesn't get counted as a leaked addon.
-        waynativeSpike?.Dispose();
-        waynativeSpike = null;
-
         contextMenuActions.Dispose();
         ipcProvider.Dispose();
 
-        // Modules are disposed before the windows they may still reference are torn down.
+        // Modules are disposed before the windows they may still reference are torn down —
+        // this includes UnlockChecklistModule disposing NativeUnlockWindow before
+        // KamiToolKitLibrary.Cleanup() below, so it doesn't get counted as a leaked addon.
         modules.Dispose();
         windows.RemoveAllWindows();
 
@@ -119,23 +109,4 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void OpenConfig() => configWindow.IsOpen = true;
-
-    // TEMPORARY task-B1 spike - see WaynativeSpikeWindow's doc comment.
-    private void ToggleWaynativeSpike()
-    {
-        if (waynativeSpike is null)
-        {
-            // Framework-thread state read synchronously like UnlockWindow.OnOpen does - the
-            // command handler already runs on the main/framework thread.
-            unlockService.Recompute();
-            waynativeSpike = new WaynativeSpikeWindow(unlockService, log)
-            {
-                InternalName = "WayfarerNativeSpike",
-                Title = "Wayfarer (native spike - temp)",
-                Size = new Vector2(420f, 480f),
-            };
-        }
-
-        waynativeSpike.Toggle();
-    }
 }

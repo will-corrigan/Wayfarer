@@ -1,6 +1,7 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Input;
 using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
@@ -14,8 +15,11 @@ internal sealed class UnlockChecklistModule(
     ModuleRegistry modules,
     UnlockService unlocks,
     UnlockWindow unlockWindow,
+    NativeUnlockWindow nativeUnlockWindow,
+    InputModeService inputMode,
     UnlockChecklistConfig cfg,
-    Action saveConfig) : IModule
+    Action saveConfig,
+    IPluginLog log) : IModule
 {
     public string Name => "Unlock Checklist";
 
@@ -30,6 +34,28 @@ internal sealed class UnlockChecklistModule(
     /// <summary>Read by <see cref="Windows.ArrowWindow"/> for the glanceable-lines toggle
     /// (spec §4, task A3) — the coherent home for it since the data comes from this module.</summary>
     internal UnlockChecklistConfig Config { get; } = cfg;
+
+    /// <summary>Opens whichever checklist presentation matches the player's current
+    /// <see cref="InputModeService.Mode"/> (spec §3): the native KamiToolKit window on
+    /// Controller, the unchanged ImGui window on Mouse. A native-window open failure falls back
+    /// to the ImGui window with a single log line rather than leaving the player with nothing.</summary>
+    public void OpenChecklist()
+    {
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            try
+            {
+                nativeUnlockWindow.Open();
+                return;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, "UnlockChecklistModule: native checklist window failed to open — falling back to the ImGui checklist.");
+            }
+        }
+
+        Window.IsOpen = true;
+    }
 
     public void Enable()
     {
@@ -59,7 +85,7 @@ internal sealed class UnlockChecklistModule(
     {
         if (ImGui.Button("Open checklist"))
         {
-            Window.IsOpen = true;
+            OpenChecklist();
         }
 
         var showOnWidget = Config.ShowOnWidget;
@@ -76,5 +102,7 @@ internal sealed class UnlockChecklistModule(
         {
             Disable();
         }
+
+        nativeUnlockWindow.Dispose();
     }
 }

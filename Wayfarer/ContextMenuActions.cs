@@ -130,7 +130,7 @@ internal sealed class ContextMenuActions : IDisposable
             items.Add(new MenuItem
             {
                 Name = "Open checklist",
-                OnClicked = _ => unlockModule.Window.IsOpen = true,
+                OnClicked = _ => unlockModule.OpenChecklist(),
             });
         }
 
