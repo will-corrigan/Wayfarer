@@ -830,27 +830,35 @@ internal sealed unsafe class QuestNavigator(
             return true;
         }
 
-        if (a.Map.ValueNullable is { } map)
+        // The row's own Map reference is not reliable: every Ishgard shard row
+        // (80–82 Foundation, 83–87 The Pillars) carries Map=0 while the TERRITORY's
+        // map (218/219) carries their DataType 4 markers — so fall back to the home
+        // territory's map, or intra-Ishgard shard routing never gets a position.
+        var mapSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>();
+        var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
+        var territoryMap = a.Territory.ValueNullable?.Map.RowId ?? 0;
+        foreach (var mapId in AetheryteMapSearch.CandidateMaps(a.Map.RowId, territoryMap))
         {
-            var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
-            if (markerSheet.HasRow(map.MapMarkerRange))
+            if (mapSheet.GetRowOrDefault(mapId) is not { } map || !markerSheet.HasRow(map.MapMarkerRange))
             {
-                foreach (var m in markerSheet[map.MapMarkerRange])
-                {
-                    var matches = m.DataType switch
-                    {
-                        3 => m.DataKey.RowId == a.RowId,               // aetheryte: DataKey = Aetheryte row
-                        4 => m.DataKey.RowId == a.AethernetName.RowId, // shard: DataKey = PlaceName row (verified)
-                        _ => false,
-                    };
-                    if (!matches)
-                    {
-                        continue;
-                    }
+                continue;
+            }
 
-                    (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, map.SizeFactor, map.OffsetX, map.OffsetY);
-                    return true;
+            foreach (var m in markerSheet[map.MapMarkerRange])
+            {
+                var matches = m.DataType switch
+                {
+                    3 => m.DataKey.RowId == a.RowId,               // aetheryte: DataKey = Aetheryte row
+                    4 => m.DataKey.RowId == a.AethernetName.RowId, // shard: DataKey = PlaceName row (verified)
+                    _ => false,
+                };
+                if (!matches)
+                {
+                    continue;
                 }
+
+                (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, map.SizeFactor, map.OffsetX, map.OffsetY);
+                return true;
             }
         }
 
