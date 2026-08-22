@@ -10,6 +10,7 @@ public class DutyObjectiveGuidanceTests
 {
     private const uint FistOfTheFatherTerritory = 621;
     private const uint FistOfTheFatherInstanceContentId = 258;
+    private const uint FistOfTheFatherCfcId = 262;
     private const string FistOfTheFatherName = "The Fist of the Father";
 
     [Fact]
@@ -49,6 +50,7 @@ public class DutyObjectiveGuidanceTests
         Assert.Equal(1000u, result.QuestId);
         Assert.Equal("Disarmed", result.QuestName);
         Assert.Equal("Defeat the Manipulator", result.StepLabel);
+        Assert.Equal(FistOfTheFatherCfcId, result.DutyContentFinderConditionId);
     }
 
     [Fact]
@@ -67,6 +69,7 @@ public class DutyObjectiveGuidanceTests
 
         Assert.NotNull(result);
         Assert.Equal("Unlock and complete the duty: The Fist of the Father", result!.Reason);
+        Assert.Null(result.DutyContentFinderConditionId);
     }
 
     [Fact]
@@ -91,6 +94,6 @@ public class DutyObjectiveGuidanceTests
 
     private static DutyInfo? Lookup(uint territoryId) =>
         territoryId == FistOfTheFatherTerritory
-            ? new DutyInfo(FistOfTheFatherName, FistOfTheFatherInstanceContentId)
+            ? new DutyInfo(FistOfTheFatherName, FistOfTheFatherInstanceContentId, FistOfTheFatherCfcId)
             : null;
 }

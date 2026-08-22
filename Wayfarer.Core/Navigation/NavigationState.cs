@@ -63,6 +63,13 @@ public sealed class NavigationState
 
     public string? Reason { get; init; }
 
+    /// <summary>DutyObjective mode only, set when the duty can be queued right now (the
+    /// "Complete the duty" case — never set for the "unlock and complete" case, since
+    /// there's nothing to queue yet): the ContentFinderCondition row id to pass to
+    /// AgentContentsFinder.OpenRegularDuty so the widget's duty-name link can open the
+    /// Duty Finder directly instead of leaving the player to find it themselves.</summary>
+    public uint? DutyContentFinderConditionId { get; init; }
+
     public static class Modes
     {
         public const string Hidden = "hidden";

@@ -57,6 +57,13 @@ internal sealed class QuestHelperModule(
             saveConfig();
         }
 
+        var autoSize = cfg.AutoSizeWidget;
+        if (ImGui.Checkbox("Auto-size widget", ref autoSize))
+        {
+            cfg.AutoSizeWidget = autoSize;
+            saveConfig();
+        }
+
         var scale = cfg.ArrowScale;
         ImGui.SetNextItemWidth(160);
         if (ImGui.SliderFloat("Arrow size", ref scale, 0.5f, 2.0f, "%.1fx"))
@@ -84,7 +91,7 @@ internal sealed class QuestHelperModule(
         }
 
         var clickTp = cfg.ClickTeleportEnabled;
-        if (ImGui.Checkbox("Click-to-teleport (the plugin's only game action)", ref clickTp))
+        if (ImGui.Checkbox("Click-to-teleport (the plugin's only server-affecting action)", ref clickTp))
         {
             cfg.ClickTeleportEnabled = clickTp;
             saveConfig();

@@ -34,6 +34,12 @@ public sealed class QuestHelperConfig
 
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
+
+    /// <summary>When true (default), the widget uses ImGui's AlwaysAutoResize and
+    /// always snugs to its content. When false, the window is manually resizable —
+    /// its size then persists via ImGui's window ID the same way its position
+    /// already does — and its text wraps to the window width instead.</summary>
+    public bool AutoSizeWidget { get; set; } = true;
 }
 
 /// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>. Reserved for future use —

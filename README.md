@@ -36,11 +36,15 @@ aim at map coordinates — it understands how you actually get there:
 - **City aethernet.** Inside the big cities, the arrow uses aethernet shards for the same kind of
   detour it uses aetherytes for out in the field.
 - **One click, one teleport.** Click the arrow when it's pointing at an aetheryte and Wayfarer casts
-  that teleport for you — it's the only action the plugin ever takes on your behalf. Everything else
-  it does is read-only.
+  that teleport for you — it's the only server-affecting action the plugin ever takes on your behalf.
+  Client UI navigation, like opening the Duty Finder for a duty objective, is fine too; everything
+  else it does is read-only.
+- **Duty Finder link.** When your objective is inside a dungeon, trial or raid you can already queue
+  for, the duty's name is a clickable link that opens it straight in the Duty Finder.
 
 `/way` toggles the arrow widget. Lock its position, resize it, and hide it in combat or duties from
-its settings panel.
+its settings panel. Turn off auto-sizing to resize the widget by hand — its size is remembered the
+same way its position is.
 
 > Screenshot coming soon: `docs/screenshots/quest-helper.png`
 
