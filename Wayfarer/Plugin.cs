@@ -70,6 +70,10 @@ public sealed class Plugin : IDalamudPlugin
             framework, windows, modules, unlocks, unlockWindow, nativeUnlockWindow, inputMode, config.UnlockChecklist, SaveConfig, log);
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
+        modules.Register(
+            BuildHuntingLogModule(framework, dataManager, clientState, objects, inputMode, config, SaveConfig, log),
+            enabledByDefault: true);
+
         ipcProvider = new(pluginInterface, modules, clientState);
         contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, log);
 
@@ -109,4 +113,29 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void OpenConfig() => configWindow.IsOpen = true;
+
+    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
+    /// same construction shape as the unlock checklist module above (service → ImGui window →
+    /// native window → module), just wrapped in its own method.</summary>
+    private HuntingLogModule BuildHuntingLogModule(
+        IFramework framework,
+        IDataManager dataManager,
+        IClientState clientState,
+        IObjectTable objects,
+        InputModeService inputMode,
+        Configuration config,
+        Action saveConfig,
+        IPluginLog log)
+    {
+        var hunting = new HuntingLogService(log, objects, clientState, pluginInterface, dataManager);
+        var huntingWindow = new HuntingWindow(hunting, modules, objects, inputMode, config.InputMode, saveConfig);
+        var nativeHuntingWindow = new NativeHuntingWindow(hunting, modules, objects, framework)
+        {
+            InternalName = "WayfarerHuntingNative",
+            Title = "Hunting Log",
+            Size = new Vector2(420f, 560f),
+        };
+        return new HuntingLogModule(
+            framework, windows, hunting, huntingWindow, nativeHuntingWindow, inputMode, config.HuntingLog, saveConfig, log);
+    }
 }

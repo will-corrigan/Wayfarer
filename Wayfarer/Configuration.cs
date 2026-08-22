@@ -29,6 +29,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public UnlockChecklistConfig UnlockChecklist { get; set; } = new();
 
+    public HuntingLogConfig HuntingLog { get; set; } = new();
+
     public InputModeConfig InputMode { get; set; } = new();
 }
 
@@ -80,6 +82,16 @@ public sealed class UnlockChecklistConfig
     /// <summary>Shows the top 2-3 Available unlocks in the current zone as small lines on
     /// <see cref="Windows.ArrowWindow"/> (spec §4, task A3) — a quick glance that makes opening
     /// the checklist window optional. On by default; absent regardless when the module itself is
+    /// disabled.</summary>
+    public bool ShowOnWidget { get; set; } = true;
+}
+
+/// <summary>Settings for <see cref="Modules.HuntingLogModule"/>.</summary>
+public sealed class HuntingLogConfig
+{
+    /// <summary>Shows the current hunting-log target and its kill count as a small line on
+    /// <see cref="Windows.ArrowWindow"/> (spec §4/§5) — a quick glance that makes opening the
+    /// hunting log window optional. On by default; absent regardless when the module itself is
     /// disabled.</summary>
     public bool ShowOnWidget { get; set; } = true;
 }

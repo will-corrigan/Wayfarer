@@ -134,6 +134,15 @@ internal sealed class ContextMenuActions : IDisposable
             });
         }
 
+        if (modules.Get<HuntingLogModule>() is { Enabled: true } huntingModule)
+        {
+            items.Add(new MenuItem
+            {
+                Name = "Open hunting log",
+                OnClicked = _ => huntingModule.OpenLog(),
+            });
+        }
+
         // Nothing to reset when neither an override nor a pickup/route is active — following the
         // MSQ is already exactly what's happening.
         if (navigator.FollowedOverride is not null || navigator.Pickup is not null)

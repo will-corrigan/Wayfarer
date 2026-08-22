@@ -124,6 +124,7 @@ internal sealed unsafe class ArrowWindow : Window
         DrawControllerGlyphHint();
         DrawUnlocksButton();
         DrawGlanceableUnlocks();
+        DrawGlanceableHunting();
         ControllerHint.Draw(inputModeCfg, saveConfig);
 
         MeasureHeightForNextFrame();
@@ -491,5 +492,46 @@ internal sealed unsafe class ArrowWindow : Window
                 ImGui.TextDisabled(u.Def.Unlock);
             }
         }
+    }
+
+    /// <summary>Glanceable hunting-log line (spec §4/§5): the current target's name and live kill
+    /// count, read straight from the already-computed <see cref="HuntingLogModule.Hunting"/> state
+    /// — never rescanned here, same "the module keeps this fresh in the background" split as
+    /// <see cref="DrawGlanceableUnlocks"/>. Absent when the module is missing/disabled, the config
+    /// toggle is off, or nothing is currently active.</summary>
+    private void DrawGlanceableHunting()
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule
+            || !huntingModule.Config.ShowOnWidget)
+        {
+            return;
+        }
+
+        var hunting = huntingModule.Hunting;
+        if (hunting.CurrentTarget is not { } target)
+        {
+            return;
+        }
+
+        Gap();
+        var line = $"Hunting: {target.MonsterName} ({target.Killed}/{target.Required})";
+        if (target.IsRoutable)
+        {
+            var player = objects.LocalPlayer;
+            if (player != null)
+            {
+                var distance = NavMath.Distance(
+                    target.WorldX - player.Position.X, target.WorldY - player.Position.Y, target.WorldZ - player.Position.Z);
+                line += target.IsLivePosition
+                    ? $" — {NavMath.FormatDistance(distance)}"
+                    : $" — {NavMath.FormatDistance(distance)} (route)";
+            }
+        }
+        else
+        {
+            line += $" — {target.DutyName}";
+        }
+
+        ImGui.TextDisabled(line);
     }
 }
