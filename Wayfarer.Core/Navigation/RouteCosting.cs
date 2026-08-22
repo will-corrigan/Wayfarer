@@ -49,8 +49,13 @@ public static class RouteCosting
 
     /// <summary>Hop the shared aethernet network: nearest shard to the player in the
     /// current territory, out the nearest shard to the objective in the target
-    /// territory. Null when either side has no shard or the two shards are not on the
-    /// same AethernetGroup (i.e. the cities aren't linked by one network).</summary>
+    /// territory. Null when either side has no shard, the two shards are not on the
+    /// same AethernetGroup (i.e. the cities aren't linked by one network), or the
+    /// nearest shard on both ends is the SAME shard — a same-shard "hop" is not a
+    /// route, and this guard matters now that a caller can pass the same territory's
+    /// shard list on both sides (same-territory, different-map objectives routed via
+    /// QuestNavigator's MarkerMatch.TerritoryOnly path), where player and objective
+    /// can otherwise resolve to one shared nearest shard.</summary>
     public static RouteCandidate? AethernetCandidate(
         IReadOnlyList<AetherytePoint> currentTerritoryShards,
         IReadOnlyList<AetherytePoint> targetTerritoryShards,
@@ -61,7 +66,7 @@ public static class RouteCosting
     {
         if (AetherytePicker.Nearest(currentTerritoryShards, px, pz) is not { } entry
             || AetherytePicker.Nearest(targetTerritoryShards, tx, tz) is not { } exit
-            || entry.Group == 0 || entry.Group != exit.Group)
+            || entry.Id == exit.Id || entry.Group == 0 || entry.Group != exit.Group)
         {
             return null;
         }
