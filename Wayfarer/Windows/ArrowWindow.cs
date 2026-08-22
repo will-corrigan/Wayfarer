@@ -339,7 +339,12 @@ internal sealed unsafe class ArrowWindow : Window
         {
             if (state.EntranceX is null)
             {
-                ImGui.TextWrapped($"Objective is in {state.ZoneName ?? "another zone"} — no route found.");
+                // No live marker, no known map-link entrance, and no teleport worth
+                // suggesting (see RouteCosting.TeleportCandidate) — most commonly an
+                // interior objective (e.g. inside a manor) with no entrance modeled in
+                // the map-link data. Say so plainly rather than a bare "no route found",
+                // which reads as a plugin failure instead of actionable guidance.
+                ImGui.TextWrapped($"Objective is inside {state.ZoneName ?? "another zone"} — find the entrance nearby.");
             }
         }
         else if (!state.AetheryteUnlocked)

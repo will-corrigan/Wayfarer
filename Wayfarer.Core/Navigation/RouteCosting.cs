@@ -129,13 +129,20 @@ public static class RouteCosting
 
     /// <summary>Teleport to the given aetheryte (the target territory's own, or the
     /// TerritoryType fallback for territories that own none). Null when there is no
-    /// aetheryte, or — critically — when the aetheryte's OWN territory is where the
-    /// player already stands (never recommend teleporting to here; this is the split-
-    /// city TerritoryType.Aetheryte fallback bug the evidence block calls out). When
-    /// the aetheryte sits in neither the current nor the target territory (a third
-    /// territory's fallback), cost is <see cref="float.MaxValue"/> — a sentinel that
-    /// makes this candidate lose to any other route and only survive if it's the only
-    /// one on offer, rather than a real distance-based cost.</summary>
+    /// aetheryte, when the aetheryte's OWN territory is where the player already
+    /// stands (never recommend teleporting to here; this is the split-city
+    /// TerritoryType.Aetheryte fallback bug the evidence block calls out), or when the
+    /// aetheryte's AethernetGroup matches any group already reachable from the
+    /// player's current territory — a city-network-local "teleport" is never useful
+    /// advice (a full loading screen to reach a stop the free aethernet already
+    /// covers; e.g. Foundation aetheryte suggested while standing in The Pillars —
+    /// both group 4 in the live Ishgard split city). Cross-city teleports (different
+    /// AethernetGroup, or group 0 = no network at all, e.g. an overworld/field
+    /// aetheryte) are unaffected. When the aetheryte sits in neither the current nor
+    /// the target territory (a third territory's fallback), cost is <see
+    /// cref="float.MaxValue"/> — a sentinel that makes this candidate lose to any
+    /// other route and only survive if it's the only one on offer, rather than a real
+    /// distance-based cost.</summary>
     public static RouteCandidate? TeleportCandidate(
         AetherytePoint? aetheryte,
         uint aetheryteTerritory,
@@ -143,9 +150,15 @@ public static class RouteCosting
         uint currentTerritory,
         float tx,
         float tz,
-        bool unlocked)
+        bool unlocked,
+        IReadOnlyCollection<uint> currentTerritoryAethernetGroups)
     {
         if (aetheryte is not { } a || aetheryteTerritory == currentTerritory)
+        {
+            return null;
+        }
+
+        if (a.Group != 0 && currentTerritoryAethernetGroups.Contains(a.Group))
         {
             return null;
         }

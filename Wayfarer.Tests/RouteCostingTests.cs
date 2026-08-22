@@ -94,9 +94,57 @@ public class RouteCostingTests
             currentTerritory: Foundation,
             tx: 400f,
             tz: 0f,
-            unlocked: true);
+            unlocked: true,
+            currentTerritoryAethernetGroups: []);
 
         Assert.Null(teleport);
+    }
+
+    [Fact]
+    public void TeleportCandidate_Suppressed_WhenAetheryteSharesAethernetGroupWithCurrentTerritory()
+    {
+        // The live bug: standing in The Pillars (419), objective inside Fortemps
+        // Manor resolves (via the TerritoryType fallback) to the Foundation
+        // aetheryte (418) — a DIFFERENT territory than Pillars, so the same-territory
+        // check alone doesn't catch it. But Foundation and Pillars share AethernetGroup
+        // 4 (verified live), so the player can already reach Foundation for free over
+        // the aethernet — a full-loading-screen teleport there is never useful advice.
+        var foundationAetheryte = new AetherytePoint(70, "Ishgard Aetheryte Plaza", 0f, 0f, Foundation, SharedGroup);
+
+        var teleport = RouteCosting.TeleportCandidate(
+            foundationAetheryte,
+            aetheryteTerritory: Foundation,
+            targetTerritory: Pillars,
+            currentTerritory: Pillars,
+            tx: 400f,
+            tz: 0f,
+            unlocked: true,
+            currentTerritoryAethernetGroups: [SharedGroup]);
+
+        Assert.Null(teleport);
+    }
+
+    [Fact]
+    public void TeleportCandidate_Allowed_WhenAetheryteGroupDiffersFromCurrentTerritory()
+    {
+        // Cross-city teleport: target aetheryte's network (group 4, Ishgard) is not
+        // one the player's current territory (a different city, group 7) can already
+        // reach over its own aethernet — a real teleport is the only way there.
+        const uint otherCityGroup = 7;
+        var ishgardAetheryte = new AetherytePoint(70, "Ishgard Aetheryte Plaza", 0f, 0f, Foundation, SharedGroup);
+
+        var teleport = RouteCosting.TeleportCandidate(
+            ishgardAetheryte,
+            aetheryteTerritory: Foundation,
+            targetTerritory: Foundation,
+            currentTerritory: 130, // some other city territory
+            tx: 10f,
+            tz: 0f,
+            unlocked: true,
+            currentTerritoryAethernetGroups: [otherCityGroup]);
+
+        Assert.NotNull(teleport);
+        Assert.Equal(RouteMode.Teleport, teleport!.Mode);
     }
 
     [Fact]
@@ -111,7 +159,8 @@ public class RouteCostingTests
             currentTerritory: Foundation,
             tx: 10f,
             tz: 0f,
-            unlocked: true);
+            unlocked: true,
+            currentTerritoryAethernetGroups: []);
 
         Assert.NotNull(teleport);
         Assert.Equal(RouteMode.Teleport, teleport!.Mode);
@@ -131,7 +180,8 @@ public class RouteCostingTests
             currentTerritory: Foundation,
             tx: 10f,
             tz: 0f,
-            unlocked: true);
+            unlocked: true,
+            currentTerritoryAethernetGroups: []);
 
         Assert.NotNull(teleport);
         Assert.Equal(float.MaxValue, teleport!.Cost);
@@ -186,7 +236,7 @@ public class RouteCostingTests
     [Fact]
     public void TeleportCandidate_Null_WhenAetheryteIsNull()
     {
-        Assert.Null(RouteCosting.TeleportCandidate(null, 0, Pillars, Foundation, 0f, 0f, false));
+        Assert.Null(RouteCosting.TeleportCandidate(null, 0, Pillars, Foundation, 0f, 0f, false, []));
     }
 
     [Fact]
