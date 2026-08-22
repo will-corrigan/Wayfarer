@@ -31,6 +31,13 @@ internal sealed unsafe class ArrowWindow : Window
     private readonly InputModeConfig inputModeCfg;
     private readonly Action saveConfig;
 
+    // Height for *this* frame's SizeConstraints — the previous frame's measured content height
+    // (see PreDraw/MeasureHeightForNextFrame). Seeded with a sane small default so the very
+    // first frame (nothing measured yet, and possibly a stale ini-persisted size from before
+    // this sizing model existed) can't render collapsed or with leftover dead space; it
+    // self-corrects to the real content height from frame 2 onward regardless.
+    private float desiredHeight = 80f;
+
     public ArrowWindow(
         INavigationProvider navigator,
         ModuleRegistry modules,
@@ -64,13 +71,22 @@ internal sealed unsafe class ArrowWindow : Window
     {
         Flags = cfg.ArrowLocked ? SharedFlags | ImGuiWindowFlags.NoMove : SharedFlags;
 
-        // Width stays whatever the player last dragged it to (or the min floor); height is
-        // never user-set — it's re-measured from actual content every frame at the end of
-        // Draw() below and re-applied here as a floor so the very first frame (nothing
-        // measured yet, and possibly a stale ini-persisted size from before this sizing model
-        // existed) can't render collapsed or with leftover dead space.
+        // Width is freely user-resizable (drag the side/corner grips) between the min floor and
+        // unbounded; height is pinned to desiredHeight via EQUAL min/max, so ImGui's own
+        // resize-grip/edge-drag clamps any attempted vertical drag straight back to that exact
+        // value every frame — dragging the bottom edge or the corner simply has no vertical
+        // effect, with no oscillation, because nothing else ever calls SetWindowSize/fights this
+        // constraint (unlike an ImGuiCond.Always SetWindowSize call at the end of Draw, which
+        // rubber-banded against the corner grip's own same-frame resize). desiredHeight is
+        // re-measured from actual content at the end of every Draw (see
+        // MeasureHeightForNextFrame) — a standard one-frame-lag auto-height idiom that
+        // self-corrects within one frame regardless of what a stale ini-persisted size held.
         var minWidth = MinWidthUnscaled * ImGuiHelpers.GlobalScale;
-        SizeConstraints = new() { MinimumSize = new(minWidth, 0f), MaximumSize = new(float.MaxValue, float.MaxValue) };
+        SizeConstraints = new()
+        {
+            MinimumSize = new(minWidth, desiredHeight),
+            MaximumSize = new(float.MaxValue, desiredHeight),
+        };
     }
 
     public override void Draw()
@@ -109,24 +125,7 @@ internal sealed unsafe class ArrowWindow : Window
         DrawUnlocksButton();
         ControllerHint.Draw(inputModeCfg, saveConfig);
 
-        FitHeightToContent();
-    }
-
-    /// <summary>Auto-fit height, resizable width: re-measures this frame's actual content
-    /// height (cursor Y at the end of Draw, plus the window's bottom padding) and re-applies
-    /// the window size — current width unchanged, height set to what was just measured — via
-    /// <see cref="ImGui.SetWindowSize(Vector2, ImGuiCond)"/>. That call targets the *next*
-    /// frame's layout (this frame's has already happened), so it's a standard one-frame-lag
-    /// auto-height idiom; running it every single frame with <see cref="ImGuiCond.Always"/>
-    /// means any stale/ini-persisted height (including from before this sizing model existed)
-    /// self-corrects within one frame and stays correct from then on. Width is read back from
-    /// <see cref="ImGui.GetWindowSize"/> rather than tracked separately, so an in-progress user
-    /// resize-drag is preserved exactly, never fought.</summary>
-    private static void FitHeightToContent()
-    {
-        var width = ImGui.GetWindowSize().X;
-        var height = ImGui.GetCursorPosY() + ImGui.GetStyle().WindowPadding.Y;
-        ImGui.SetWindowSize(new Vector2(width, height), ImGuiCond.Always);
+        MeasureHeightForNextFrame();
     }
 
     private static void CenteredText(string text)
@@ -205,6 +204,13 @@ internal sealed unsafe class ArrowWindow : Window
             }
         }
     }
+
+    /// <summary>Stores this frame's actual content height (cursor Y at the end of Draw, plus the
+    /// window's bottom padding) into <see cref="desiredHeight"/> for next frame's PreDraw to pin
+    /// via SizeConstraints — see the comment there for why a stored-and-reapplied constraint is
+    /// used instead of an explicit SetWindowSize call.</summary>
+    private void MeasureHeightForNextFrame() =>
+        desiredHeight = ImGui.GetCursorPosY() + ImGui.GetStyle().WindowPadding.Y;
 
     /// <summary>Vertical breathing room between the window's sections. A little more generous in
     /// Controller mode for couch readability (spec §4) than the mouse-mode default.</summary>

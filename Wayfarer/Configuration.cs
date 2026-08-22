@@ -25,8 +25,9 @@ public sealed class InputModeConfig
 {
     public InputModeOverride Override { get; set; } = InputModeOverride.Auto;
 
-    /// <summary>Set once the player dismisses the one-time hint explaining LB+LS-click
-    /// (Dalamud's global gamepad-nav toggle). Shown in both windows' first draw until then.</summary>
+    /// <summary>Set once the player dismisses the one-time hint explaining L1+L3 (LB + left-stick
+    /// click on Xbox pads) — Dalamud's global gamepad-nav toggle. Shown in both windows' first
+    /// draw until then.</summary>
     public bool ControllerHintDismissed { get; set; }
 }
 
