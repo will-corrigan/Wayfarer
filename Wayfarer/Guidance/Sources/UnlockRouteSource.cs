@@ -14,6 +14,11 @@ internal sealed unsafe class UnlockRouteSource(IGuidanceArbiter arbiter) : IGuid
 {
     private const uint QuestRowIdOffset = 65536;
 
+    /// <summary>Declared, not performed — see <see cref="HuntingSource"/>. One bool marks each stop
+    /// as the route advances; the framework owns the flag and gives the player's own back
+    /// afterwards.</summary>
+    private static readonly ObjectiveAffordances MarkTheStop = new(MapFlag: true);
+
     private GuidanceChain<PickupTarget>? chain;
 
     /// <summary>True for a multi-stop route (progress is worth showing), false for a single
@@ -66,6 +71,7 @@ internal sealed unsafe class UnlockRouteSource(IGuidanceArbiter arbiter) : IGuid
                 UnlockRoutePlan.Detail(leg.QuestName, leg.GiverName),
                 UnlockRoutePlan.SourceLabel),
             progress,
+            MarkTheStop,
             QuestId: leg.QuestRowId);
 
         return new GuidanceOffer(objective, GuidanceEngagement.Engaged);

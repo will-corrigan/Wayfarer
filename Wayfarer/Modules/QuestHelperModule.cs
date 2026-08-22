@@ -18,6 +18,7 @@ internal sealed class QuestHelperModule(
     WindowSystem windows,
     ICommandManager commands,
     QuestHelperConfig cfg,
+    GuidanceConfig guidanceCfg,
     Action saveConfig,
     QuestNavigator navigator,
     ArrowWindow arrowWindow,
@@ -72,6 +73,51 @@ internal sealed class QuestHelperModule(
             saveConfig();
         }
 
+        DrawSizeSliders();
+
+        var hideCombat = cfg.ArrowHideInCombat;
+        if (ImGui.Checkbox("Hide in combat", ref hideCombat))
+        {
+            cfg.ArrowHideInCombat = hideCombat;
+            saveConfig();
+        }
+
+        var hideDuty = cfg.ArrowHideInDuty;
+        if (ImGui.Checkbox("Hide in duties", ref hideDuty))
+        {
+            cfg.ArrowHideInDuty = hideDuty;
+            saveConfig();
+        }
+
+        var mapFlag = guidanceCfg.MarkObjectiveWithMapFlag;
+        if (ImGui.Checkbox("Mark the current target with the map flag (restores your own flag afterwards)", ref mapFlag))
+        {
+            guidanceCfg.MarkObjectiveWithMapFlag = mapFlag;
+            saveConfig();
+        }
+
+        var clickTp = cfg.ClickTeleportEnabled;
+        if (ImGui.Checkbox("Click-to-teleport (the plugin's only server-affecting action)", ref clickTp))
+        {
+            cfg.ClickTeleportEnabled = clickTp;
+            saveConfig();
+        }
+
+        DrawContextMenuModeCombo();
+    }
+
+    public void Dispose()
+    {
+        if (Enabled)
+        {
+            Disable();
+        }
+    }
+
+    /// <summary>The two independent size sliders: the arrow graphic and the widget's text. Both
+    /// save on release rather than on every dragged frame.</summary>
+    private void DrawSizeSliders()
+    {
         var scale = cfg.ArrowScale;
         ImGui.SetNextItemWidth(160 * ImGuiHelpers.GlobalScale);
         if (ImGui.SliderFloat("Arrow size", ref scale, 0.5f, 2.0f, "%.1fx"))
@@ -94,37 +140,6 @@ internal sealed class QuestHelperModule(
         if (ImGui.IsItemDeactivatedAfterEdit())
         {
             saveConfig();
-        }
-
-        var hideCombat = cfg.ArrowHideInCombat;
-        if (ImGui.Checkbox("Hide in combat", ref hideCombat))
-        {
-            cfg.ArrowHideInCombat = hideCombat;
-            saveConfig();
-        }
-
-        var hideDuty = cfg.ArrowHideInDuty;
-        if (ImGui.Checkbox("Hide in duties", ref hideDuty))
-        {
-            cfg.ArrowHideInDuty = hideDuty;
-            saveConfig();
-        }
-
-        var clickTp = cfg.ClickTeleportEnabled;
-        if (ImGui.Checkbox("Click-to-teleport (the plugin's only server-affecting action)", ref clickTp))
-        {
-            cfg.ClickTeleportEnabled = clickTp;
-            saveConfig();
-        }
-
-        DrawContextMenuModeCombo();
-    }
-
-    public void Dispose()
-    {
-        if (Enabled)
-        {
-            Disable();
         }
     }
 

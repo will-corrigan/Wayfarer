@@ -233,6 +233,13 @@ dotnet_diagnostic.MA0048.severity = none
 # INavigationProvider downgrades below.
 dotnet_diagnostic.MA0046.severity = none
 
+[Wayfarer.Core/Guidance/MapFlagCoordinator.cs]
+# MapFlagSnapshot is a small companion record to MapFlagCoordinator itself - one
+# save-and-restore concept, kept in one file rather than two near-empty ones.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Guidance/ChainPlanner.cs]
 # ZoneOrderPolicy is a small companion enum to ChainPlanner itself - one
 # plan-ordering concept, kept in one file rather than two near-empty ones (same

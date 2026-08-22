@@ -32,6 +32,24 @@ public sealed class Configuration : IPluginConfiguration
     public HuntingLogConfig HuntingLog { get; set; } = new();
 
     public InputModeConfig InputMode { get; set; } = new();
+
+    public GuidanceConfig Guidance { get; set; } = new();
+}
+
+/// <summary>Settings for the guidance framework itself — the part that decides what the arrow
+/// follows, shared by every feature that can own it.</summary>
+public sealed class GuidanceConfig
+{
+    /// <summary>Marks the current target with the game's own map flag while an explicit mode (an
+    /// unlock route, a hunt) is engaged, moving it as the plan advances — the map pin, minimap pin
+    /// and compass marker the game itself uses.
+    ///
+    /// On by default because it is what makes a chained route usable at a glance, and safe to
+    /// default on only because of the guarantee around it: the game stores exactly ONE flag and
+    /// setting it destroys the player's, so Wayfarer snapshots theirs before taking it and puts it
+    /// back the moment the route or hunt ends. Turn this off and nothing ever writes the
+    /// flag.</summary>
+    public bool MarkObjectiveWithMapFlag { get; set; } = true;
 }
 
 /// <summary>Settings for <see cref="InputModeService"/>, shared by every window that adapts to

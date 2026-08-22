@@ -20,6 +20,11 @@ internal sealed class HuntingSource(
     IClientState clientState,
     IObjectTable objects) : IGuidanceSource
 {
+    /// <summary>Declared, not performed: one bool asks the framework to mark each target as the
+    /// chain advances, and buys the save/restore of the player's own flag, the one-writer guarantee
+    /// and the change-only cadence without this class ever touching the map.</summary>
+    private static readonly ObjectiveAffordances MarkTheTarget = new(MapFlag: true);
+
     private GuidanceChain<HuntingTargetView>? chain;
     private uint? lastTerritory;
 
@@ -76,7 +81,8 @@ internal sealed class HuntingSource(
                 live.MonsterName,
                 live.IsRoutable ? $"{live.Killed}/{live.Required} killed" : live.DutyName,
                 HuntingPlan.SourceLabel(hunting.ActiveLogLabel)),
-            new ObjectiveProgress(plan.Index, plan.Total, HuntingPlan.ProgressText(live.Killed, live.Required)));
+            new ObjectiveProgress(plan.Index, plan.Total, HuntingPlan.ProgressText(live.Killed, live.Required)),
+            MarkTheTarget);
 
         return new GuidanceOffer(objective, GuidanceEngagement.Engaged);
     }

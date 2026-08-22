@@ -5,6 +5,7 @@ using Dalamud.Plugin.Services;
 using KamiToolKit;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Guidance;
+using Wayfarer.Guidance.Coordinators;
 using Wayfarer.Guidance.Sources;
 using Wayfarer.Modules;
 using Wayfarer.Windows;
@@ -31,6 +32,10 @@ public sealed class Plugin : IDalamudPlugin
     /// <see cref="UnlockChecklistModule"/> and <see cref="HuntingLogModule"/> open into it. See
     /// <see cref="NativeHubWindow"/>'s doc comment.</summary>
     private readonly NativeHubWindow hub;
+
+    /// <summary>The single writer of the game map flag — held here purely so it is unsubscribed
+    /// and the player's own flag restored on unload.</summary>
+    private readonly MapFlagCoordinator mapFlag;
 
     private readonly IPluginLog log;
 
@@ -70,6 +75,7 @@ public sealed class Plugin : IDalamudPlugin
         };
 
         var guidance = BuildGuidance(log, config, clientState, condition, objects, dataManager, hunting);
+        mapFlag = guidance.MapFlag;
 
         modules.Register(
             BuildQuestHelperModule(framework, clientState, objects, inputMode, config, SaveConfig, log, guidance),
@@ -120,6 +126,7 @@ public sealed class Plugin : IDalamudPlugin
             // unload crash + leaked hook (task 2): whatever throws or however long disposal takes
             // above, KamiToolKitLibrary.Cleanup() below is what releases the static FireCallback
             // hook, and it must always run.
+            mapFlag.Dispose();
             modules.Dispose();
             windows.RemoveAllWindows();
             hub.Dispose();
@@ -151,7 +158,19 @@ public sealed class Plugin : IDalamudPlugin
         var service = new GuidanceService(
             log, config.QuestHelper, clientState, condition, objects, arbiter, router);
         var navigator = new QuestNavigator(service, questSource, unlockSource, huntingSource);
-        return new GuidanceGraph(arbiter, questSource, unlockSource, huntingSource, navigator);
+
+        // The only writer of the game's single, destructive map flag. Objectives declare that they
+        // want to be flagged; this performs it, snapshots the player's own flag first and gives it
+        // back on exit.
+        var gameFlag = new GameMapFlag(clientState, log);
+        var flagCoordinator = new MapFlagCoordinator(
+            arbiter,
+            () => config.Guidance.MarkObjectiveWithMapFlag,
+            gameFlag.Read,
+            gameFlag.Set,
+            gameFlag.Restore).Start();
+
+        return new GuidanceGraph(arbiter, questSource, unlockSource, huntingSource, navigator, flagCoordinator);
     }
 
     private void OpenConfig() => configWindow.IsOpen = true;
@@ -185,6 +204,7 @@ public sealed class Plugin : IDalamudPlugin
             windows,
             commands,
             config.QuestHelper,
+            config.Guidance,
             saveConfig,
             guidance.Navigator,
             arrowWindow,
@@ -256,5 +276,6 @@ public sealed class Plugin : IDalamudPlugin
         QuestObjectiveSource QuestSource,
         UnlockRouteSource UnlockSource,
         HuntingSource HuntingSource,
-        QuestNavigator Navigator);
+        QuestNavigator Navigator,
+        MapFlagCoordinator MapFlag);
 }
