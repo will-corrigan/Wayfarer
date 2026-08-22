@@ -8,6 +8,16 @@ namespace Wayfarer.Core.Navigation;
 /// delegates, so this class has no Dalamud/Lumina/ClientStructs dependency.</summary>
 public static class DutyObjectiveGuidance
 {
+    /// <summary>Reason-text markers for the "duty can be queued now" case, shared with
+    /// ArrowWindow so it can pull the duty name back out of <see
+    /// cref="NavigationState.Reason"/> to render it as a clickable link without a
+    /// separate duty-name field on the wire — the row id in <see
+    /// cref="NavigationState.DutyContentFinderConditionId"/> is the only additive
+    /// state this feature needs.</summary>
+    public const string CompleteDutyPrefix = "Complete the duty: ";
+
+    public const string CompleteDutySuffix = " — queue via Duty Finder";
+
     /// <summary>Returns the dedicated duty-guidance state when <paramref
     /// name="targetTerritory"/> is duty content, or null when it isn't (the caller
     /// should fall through to its normal route-costing path unchanged).</summary>
@@ -29,7 +39,7 @@ public static class DutyObjectiveGuidance
 
         var unlocked = isInstanceContentUnlocked(duty.InstanceContentId);
         var reason = unlocked
-            ? $"Complete the duty: {duty.Name} — queue via Duty Finder"
+            ? $"{CompleteDutyPrefix}{duty.Name}{CompleteDutySuffix}"
             : $"Unlock and complete the duty: {duty.Name}";
 
         return new NavigationState
@@ -42,6 +52,7 @@ public static class DutyObjectiveGuidance
             IsPickup = isPickup,
             RouteStop = routeStop,
             RouteTotal = routeTotal,
+            DutyContentFinderConditionId = unlocked ? duty.ContentFinderConditionId : null,
         };
     }
 }

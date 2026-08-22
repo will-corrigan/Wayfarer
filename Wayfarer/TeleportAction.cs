@@ -3,8 +3,10 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
 namespace Wayfarer;
 
-/// <summary>The plugin's single game action (everything else is read-only).
-/// One deliberate user click = one teleport cast. Called only from ArrowWindow.</summary>
+/// <summary>The plugin's only SERVER-affecting action (everything else is read-only;
+/// client UI navigation, like opening the Duty Finder, is permitted — it doesn't
+/// touch the game's simulation, just the UI). One deliberate user click = one
+/// teleport cast. Called only from ArrowWindow.</summary>
 internal static unsafe class TeleportAction
 {
     public static void Execute(uint aetheryteId, QuestHelperConfig cfg, IClientState clientState, IPluginLog log)

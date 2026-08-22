@@ -6,4 +6,6 @@ namespace Wayfarer.Core.Navigation;
 /// the Father".</param>
 /// <param name="InstanceContentId">The InstanceContent row id — what
 /// UIState.IsInstanceContentUnlocked expects.</param>
-public readonly record struct DutyInfo(string Name, uint InstanceContentId);
+/// <param name="ContentFinderConditionId">The ContentFinderCondition row id — what
+/// AgentContentsFinder.OpenRegularDuty expects to queue the duty via Duty Finder.</param>
+public readonly record struct DutyInfo(string Name, uint InstanceContentId, uint ContentFinderConditionId);

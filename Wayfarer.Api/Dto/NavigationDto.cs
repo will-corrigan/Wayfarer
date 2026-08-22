@@ -49,4 +49,6 @@ public sealed class NavigationDto
     public int? RouteTotal { get; init; }
 
     public string? Reason { get; init; }
+
+    public uint? DutyContentFinderConditionId { get; init; }
 }

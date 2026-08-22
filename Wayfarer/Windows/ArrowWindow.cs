@@ -3,6 +3,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Modules;
 
@@ -10,9 +11,10 @@ namespace Wayfarer.Windows;
 
 internal sealed unsafe class ArrowWindow : Window
 {
-    private const ImGuiWindowFlags BaseFlags =
-        ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize
-        | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing;
+    private const ImGuiWindowFlags SharedFlags =
+        ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing;
+
+    private static readonly Vector4 LinkColor = new(0.4f, 0.7f, 1f, 1f);
 
     private readonly INavigationProvider navigator;
     private readonly ModuleRegistry modules;
@@ -40,6 +42,13 @@ internal sealed unsafe class ArrowWindow : Window
         IsOpen = true;              // visibility is governed by DrawConditions
         Flags = BaseFlags;
     }
+
+    // AlwaysAutoResize keeps the window snug by default; opting out (AutoSizeWidget =
+    // false) makes it manually resizable — its size then persists via ImGui's window
+    // ID the same way its position already does — and lets long text wrap instead of
+    // stretching the widget.
+    private ImGuiWindowFlags BaseFlags =>
+        cfg.AutoSizeWidget ? SharedFlags | ImGuiWindowFlags.AlwaysAutoResize : SharedFlags;
 
     public override bool DrawConditions() =>
         !cfg.WidgetHidden && !string.Equals(navigator.Current.Mode, NavigationState.Modes.Hidden, StringComparison.Ordinal);
@@ -73,6 +82,7 @@ internal sealed unsafe class ArrowWindow : Window
                 break;
         }
 
+        ImGui.Spacing();
         DrawQuestLine(state);
         DrawUnlocksButton();
     }
@@ -93,11 +103,63 @@ internal sealed unsafe class ArrowWindow : Window
     // Objective is inside instanced duty content: no arrow, no route — just say so.
     // Deliberately its own branch (not the generic default/Reason fallback) so this
     // reads as prominent, actionable guidance rather than the muted "can't help" text.
+    // When the duty can be queued right now, DutyContentFinderConditionId is set and
+    // the reason follows the fixed "Complete the duty: {name} — queue via Duty
+    // Finder" template — split on those markers so the duty name alone renders as a
+    // clickable link; every other case (not yet unlocked) just wraps the plain text.
     private static void DrawDutyObjective(NavigationState state)
     {
-        if (state.Reason is { } reason)
+        if (state.Reason is not { } reason)
         {
-            ImGui.TextWrapped(reason);
+            return;
+        }
+
+        if (state.DutyContentFinderConditionId is { } cfcId
+            && reason.StartsWith(DutyObjectiveGuidance.CompleteDutyPrefix, StringComparison.Ordinal)
+            && reason.EndsWith(DutyObjectiveGuidance.CompleteDutySuffix, StringComparison.Ordinal))
+        {
+            var name = reason[DutyObjectiveGuidance.CompleteDutyPrefix.Length..^DutyObjectiveGuidance.CompleteDutySuffix.Length];
+
+            ImGui.PushTextWrapPos(0f);
+            ImGui.TextUnformatted(DutyObjectiveGuidance.CompleteDutyPrefix);
+            ImGui.SameLine(0, 0);
+            DrawDutyLink(name, cfcId);
+            ImGui.SameLine(0, 0);
+            ImGui.TextUnformatted(DutyObjectiveGuidance.CompleteDutySuffix);
+            ImGui.PopTextWrapPos();
+            return;
+        }
+
+        ImGui.TextWrapped(reason);
+    }
+
+    // Hyperlink-style duty name: distinct color, an underline drawn under the text
+    // rect via the window draw list, a tooltip, and a click that opens the Duty
+    // Finder for that duty — client UI navigation, not a server-affecting action.
+    private static unsafe void DrawDutyLink(string name, uint cfcId)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, LinkColor);
+        ImGui.TextUnformatted(name);
+        ImGui.PopStyleColor();
+
+        var min = ImGui.GetItemRectMin();
+        var max = ImGui.GetItemRectMax();
+        ImGui.GetWindowDrawList().AddLine(
+            new Vector2(min.X, max.Y), new Vector2(max.X, max.Y), ImGui.GetColorU32(LinkColor));
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Open in Duty Finder");
+            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+        }
+
+        if (ImGui.IsItemClicked())
+        {
+            var agent = AgentContentsFinder.Instance();
+            if (agent != null)
+            {
+                agent->OpenRegularDuty(cfcId, false);
+            }
         }
     }
 
@@ -188,6 +250,10 @@ internal sealed unsafe class ArrowWindow : Window
             {
                 CenteredText($"Through: {state.EntranceName}{RemainingSuffix(state)}");
             }
+
+            // Routing info above is its own visual group — give the guidance
+            // (teleport suggestion / no-route message) below a little breathing room.
+            ImGui.Spacing();
         }
 
         if (state.AetheryteName is null)
@@ -214,6 +280,7 @@ internal sealed unsafe class ArrowWindow : Window
 
         if (state.ZoneName is { } zone)
         {
+            ImGui.Spacing();
             ImGui.TextDisabled(zone);
         }
     }
@@ -221,6 +288,7 @@ internal sealed unsafe class ArrowWindow : Window
     private void DrawQuestLine(NavigationState state)
     {
         ImGui.Separator();
+        ImGui.Spacing();
         if (state.RouteStop is { } stop && state.RouteTotal is { } total)
         {
             CenteredText($"Stop {stop} of {total}");
@@ -274,6 +342,7 @@ internal sealed unsafe class ArrowWindow : Window
         }
 
         ImGui.Separator();
+        ImGui.Spacing();
         var count = unlockModule.Unlocks.AvailableHereCount;
         var highlight = count > 0;
         if (highlight)

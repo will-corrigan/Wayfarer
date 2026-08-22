@@ -646,7 +646,7 @@ internal sealed unsafe class QuestNavigator(
                     continue;
                 }
 
-                map[cfc.TerritoryType.RowId] = new DutyInfo(name, ic.RowId);
+                map[cfc.TerritoryType.RowId] = new DutyInfo(name, ic.RowId, cfc.RowId);
             }
 
             dutyByTerritory = map;

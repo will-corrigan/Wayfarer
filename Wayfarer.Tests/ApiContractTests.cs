@@ -42,6 +42,7 @@ public class ApiContractTests
             RouteStop = 2,
             RouteTotal = 5,
             Reason = "unlock quest pickup",
+            DutyContentFinderConditionId = 456,
         };
 
         var json = JsonSerializer.Serialize(state, PluginOptions);
@@ -70,6 +71,7 @@ public class ApiContractTests
         Assert.Equal(state.RouteStop, dto.RouteStop);
         Assert.Equal(state.RouteTotal, dto.RouteTotal);
         Assert.Equal(state.Reason, dto.Reason);
+        Assert.Equal(state.DutyContentFinderConditionId, dto.DutyContentFinderConditionId);
     }
 
     [Fact]
@@ -88,6 +90,7 @@ public class ApiContractTests
         Assert.False(dto.IsPickup);
         Assert.Null(dto.RouteStop);
         Assert.Null(dto.RouteTotal);
+        Assert.Null(dto.DutyContentFinderConditionId);
     }
 
     [Fact]
