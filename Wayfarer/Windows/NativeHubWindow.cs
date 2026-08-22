@@ -45,6 +45,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private const float RowHeight = 24f;
     private const float ChecklistControlsHeight = 92f;
     private const float HuntingControlsHeight = 60f;
+    private const float ButtonHintHeight = 20f;
 
     private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
 
@@ -62,6 +63,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly IFramework framework;
     private readonly Configuration config;
     private readonly SettingsCatalog settings;
+    private readonly InputModeService inputMode;
     private readonly IPluginLog log;
 
     private readonly FilterState filter = new();
@@ -95,6 +97,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private TextButtonNode? stopButton;
     private ScrollingNode<VerticalListNode>? settingsArea;
     private CheckboxNode? firstSettingControl;
+    private TextNode? buttonHintNode;
+    private bool lastReverseConfirmCancel;
 
     public NativeHubWindow(
         IUnlockProvider unlocks,
@@ -105,6 +109,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         IFramework framework,
         Configuration config,
         SettingsCatalog settings,
+        InputModeService inputMode,
         IPluginLog log)
     {
         this.unlocks = unlocks;
@@ -115,6 +120,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         this.framework = framework;
         this.config = config;
         this.settings = settings;
+        this.inputMode = inputMode;
         this.log = log;
 
         settings.OnWindowPositionChanged += ApplyPositionPreset;
@@ -202,8 +208,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         var y = contentStart.Y + TabBarHeight + 6f;
         tabContentStart = new Vector2(contentStart.X, y);
-        tabContentSize = new Vector2(contentSize.X, contentSize.Y - (y - contentStart.Y));
+        tabContentSize = new Vector2(contentSize.X, contentSize.Y - (y - contentStart.Y) - ButtonHintHeight);
 
+        BuildButtonHint(contentStart, contentSize);
         BuildSharedList();
         BuildChecklistControls();
         BuildHuntingControls();
@@ -233,6 +240,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         stopButton = null;
         settingsArea = null;
         firstSettingControl = null;
+        buttonHintNode = null;
     }
 
     // ----- Private static helpers (grouped together — SA1204) ------------------------------
@@ -382,6 +390,43 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         bucket.Add(node);
     }
 
+    /// <summary>The game's own button-hint line, along the bottom edge. Drawn only on a controller,
+    /// where it doubles as the mode indicator: the glyphs render as Ⓐ/Ⓑ or ✕/○ according to the
+    /// player's own pad setting, so their presence and their shape both say "this window knows what
+    /// you are holding". Every glyph is paired with a word so the line still reads if the icon
+    /// does not render.</summary>
+    private void BuildButtonHint(Vector2 contentStart, Vector2 contentSize)
+    {
+        lastReverseConfirmCancel = inputMode.ReverseConfirmCancel;
+        buttonHintNode = new TextNode
+        {
+            Position = new Vector2(contentStart.X, contentStart.Y + contentSize.Y - ButtonHintHeight),
+            Size = new Vector2(contentSize.X, ButtonHintHeight),
+            FontType = FontType.Axis,
+            FontSize = 12,
+            AlignmentType = AlignmentType.Right,
+            TextColor = GameColors.Dimmed,
+            String = ControllerGlyphs.WindowHint(lastReverseConfirmCancel),
+            IsVisible = inputMode.Mode == Core.Input.InputMode.Controller,
+        };
+        AddNode(buttonHintNode);
+    }
+
+    private void RefreshButtonHint()
+    {
+        if (buttonHintNode is null)
+        {
+            return;
+        }
+
+        buttonHintNode.IsVisible = inputMode.Mode == Core.Input.InputMode.Controller;
+        if (inputMode.ReverseConfirmCancel != lastReverseConfirmCancel)
+        {
+            lastReverseConfirmCancel = inputMode.ReverseConfirmCancel;
+            buttonHintNode.String = ControllerGlyphs.WindowHint(lastReverseConfirmCancel);
+        }
+    }
+
     // ----- Shared virtual list --------------------------------------------------------------
     private void BuildSharedList()
     {
@@ -518,6 +563,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         RestoreListDownwardExit();
         UpdateStopButton();
+        RefreshButtonHint();
     }
 
     /// <summary>Undoes KamiToolKit's <c>ListNode</c> defect 1 from the outside: its downward scroll

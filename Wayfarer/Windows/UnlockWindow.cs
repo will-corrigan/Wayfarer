@@ -14,9 +14,7 @@ internal sealed class UnlockWindow(
     ModuleRegistry modules,
     IObjectTable objects,
     IClientState clientState,
-    InputModeService inputMode,
-    InputModeConfig inputModeCfg,
-    Action saveConfig) : Window("Unlocks###WayfarerUnlocks")
+    InputModeService inputMode) : Window("Unlocks###WayfarerUnlocks")
 {
     // Lumina's Quest sheet offsets row ids by this amount; QuestNavigator.FollowedOverride
     // and GetAcceptedQuests() both work in the raw (unoffset) ushort id space — see
@@ -55,17 +53,6 @@ internal sealed class UnlockWindow(
         {
             ImGui.TextWrapped("Unlock data failed to load — see the Dalamud log.");
             return;
-        }
-
-        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
-
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            // Rows below are still click-driven pending the native context-menu action surface
-            // (task A2) — reachable today only via Dalamud's stopgap gamepad-nav (see the hint
-            // above), hence this legend rather than removing the affordance outright.
-            var glyphs = inputMode.Glyphs;
-            ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
         }
 
         navigator = modules.Get<QuestHelperModule>() is { Enabled: true } questHelper

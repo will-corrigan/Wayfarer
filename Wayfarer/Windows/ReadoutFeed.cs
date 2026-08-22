@@ -1,0 +1,112 @@
+using Dalamud.Plugin.Services;
+using Wayfarer.Core.Navigation;
+using Wayfarer.Core.Ui;
+using Wayfarer.Modules;
+
+namespace Wayfarer.Windows;
+
+/// <summary>Gathers what the guidance readout should say, once, for whichever surface is drawing
+/// it. The native overlay and the ImGui fallback both read this, so the two can never disagree
+/// about what is on screen — before this existed the widget's layout logic was the only definition
+/// of the readout, and anything that replaced it would have had to reproduce it by hand.</summary>
+internal sealed class ReadoutFeed(
+    INavigationProvider navigator,
+    ModuleRegistry modules,
+    QuestHelperConfig cfg,
+    IObjectTable objects)
+{
+    private const string HuntingSourceId = "hunting";
+
+    /// <summary>Builds this frame's content. <paramref name="teleportOnClick"/> is true only where
+    /// the surface can actually be clicked — the overlay is click-through by construction, so it
+    /// never promises otherwise.</summary>
+    public ReadoutContent Compose(bool teleportOnClick)
+    {
+        var state = navigator.Current;
+        return ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = state,
+            DistanceYalms = Distance(state),
+            HuntingSummary = HuntingSummary(),
+            HuntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal),
+            NearbyUnlocks = NearbyUnlocks(),
+
+            // The ambient objective is omitted outright while an explicit mode is engaged rather
+            // than demoted to a dimmed line: the player asked for the arrow to follow a hunt or a
+            // route, and showing the quest they happen to be on alongside it is exactly the "which
+            // one is this pointing at?" confusion the readout exists to remove. The composer still
+            // supports the demoted form if that judgement is ever revisited.
+            AmbientObjectiveName = null,
+            TeleportOnClick = teleportOnClick,
+        });
+    }
+
+    /// <summary>Distance to whatever the arrow is pointing at, against the player's live position.</summary>
+    public float? Distance(NavigationState state)
+    {
+        var player = objects.LocalPlayer;
+        if (player is null)
+        {
+            return null;
+        }
+
+        var (x, z) = state.Mode switch
+        {
+            NavigationState.Modes.SameZone => (state.TargetX, state.TargetZ),
+            NavigationState.Modes.OtherZone => (state.EntranceX, state.EntranceZ),
+            _ => (null, null),
+        };
+
+        if (x is not { } tx || z is not { } tz)
+        {
+            return null;
+        }
+
+        var ty = string.Equals(state.Mode, NavigationState.Modes.SameZone, StringComparison.Ordinal)
+            ? state.TargetY
+            : null;
+
+        return NavMath.Distance(
+            tx - player.Position.X, (ty ?? player.Position.Y) - player.Position.Y, tz - player.Position.Z);
+    }
+
+    /// <summary>Whether the readout should be on screen at all.</summary>
+    public bool ShouldShow() =>
+        !cfg.WidgetHidden
+        && !string.Equals(navigator.Current.Mode, NavigationState.Modes.Hidden, StringComparison.Ordinal);
+
+    private string? HuntingSummary()
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } hunting
+            || !hunting.Config.ShowOnWidget
+            || hunting.Hunting.CurrentTarget is not { } target)
+        {
+            return null;
+        }
+
+        return $"Hunting: {target.MonsterName} {target.Killed}/{target.Required}";
+    }
+
+    private List<string> NearbyUnlocks()
+    {
+        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule
+            || !unlockModule.Config.ShowOnWidget)
+        {
+            return [];
+        }
+
+        var here = unlockModule.Unlocks.GlanceableHere;
+        if (here.Count == 0)
+        {
+            return [];
+        }
+
+        var names = new List<string>(here.Count);
+        foreach (var unlock in here)
+        {
+            names.Add(unlock.Def.Unlock);
+        }
+
+        return names;
+    }
+}

@@ -112,11 +112,6 @@ public sealed class InputModeConfig
 {
     public InputModeOverride Override { get; set; } = InputModeOverride.Auto;
 
-    /// <summary>Set once the player dismisses the one-time hint explaining L1+L3 (LB + left-stick
-    /// click on Xbox pads) — Dalamud's global gamepad-nav toggle. Shown in both windows' first
-    /// draw until then.</summary>
-    public bool ControllerHintDismissed { get; set; }
-
     /// <summary>Wires the game's own cursor-navigation graph through the Wayfarer window, so a
     /// controller drives it the way it drives every other game window.
     ///

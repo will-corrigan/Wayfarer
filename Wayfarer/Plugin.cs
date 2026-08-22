@@ -10,6 +10,7 @@ using Wayfarer.Guidance.Sources;
 using Wayfarer.Modules;
 using Wayfarer.Settings;
 using Wayfarer.Windows;
+using Wayfarer.Windows.Native;
 
 namespace Wayfarer;
 
@@ -29,10 +30,9 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ContextMenuActions contextMenuActions;
     private readonly SettingsCatalog settings;
 
-    /// <summary>The single Controller-mode native surface for the whole plugin (Checklist |
-    /// Hunting Log | Settings tabs) — owned here, not by either module, since both
-    /// <see cref="UnlockChecklistModule"/> and <see cref="HuntingLogModule"/> open into it. See
-    /// <see cref="NativeHubWindow"/>'s doc comment.</summary>
+    /// <summary>The one window the plugin has — Checklist, Hunting Log and Settings — for mouse and
+    /// controller alike. Owned here rather than by any module, since every module opens into it.
+    /// See <see cref="NativeHubWindow"/>'s doc comment.</summary>
     private readonly NativeHubWindow hub;
 
     /// <summary>The single writer of the game map flag — held here purely so it is unsubscribed
@@ -40,6 +40,12 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MapFlagCoordinator mapFlag;
 
     private readonly IPluginLog log;
+
+    /// <summary>The one overlay controller the plugin ever creates — a second would duplicate
+    /// KamiToolKit's addon-creation state machine. Built inside the quest-helper module factory
+    /// because that is where the readout's inputs are assembled, held here because it outlives any
+    /// single module and must be disposed on the framework thread exactly once.</summary>
+    private GuidanceOverlay overlay = null!;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -73,7 +79,7 @@ public sealed class Plugin : IDalamudPlugin
 
         // Declared once, rendered by the native window and by the ImGui fallback alike.
         settings = new SettingsCatalog(config, modules, SaveConfig);
-        hub = new NativeHubWindow(unlocks, hunting, modules, objects, clientState, framework, config, settings, log)
+        hub = new NativeHubWindow(unlocks, hunting, modules, objects, clientState, framework, config, settings, inputMode, log)
         {
             InternalName = "WayfarerHubNative",
             Title = "Wayfarer",
@@ -100,15 +106,7 @@ public sealed class Plugin : IDalamudPlugin
         configWindow = new(settings);
         windows.AddWindow(configWindow);
 
-        // inputMode.OnFrame runs first so windows.Draw (and every window it draws this same
-        // frame) sees the current frame's resolved Mode/Glyphs, not last frame's.
-        pluginInterface.UiBuilder.Draw += inputMode.OnFrame;
-        pluginInterface.UiBuilder.Draw += windows.Draw;
-        pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
-        pluginInterface.UiBuilder.OpenMainUi += OpenMain;
-        commands.AddHandler("/wayfarer", new(OnCommand)
-        { HelpMessage = "Open Wayfarer. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer settings\" the settings, \"/wayfarer stop\" ends the current route or hunt." });
-
+        SubscribeAndStart(pluginInterface);
         log.Information("Wayfarer loaded");
     }
 
@@ -134,6 +132,7 @@ public sealed class Plugin : IDalamudPlugin
             mapFlag.Dispose();
             modules.Dispose();
             windows.RemoveAllWindows();
+            overlay.Dispose();
             hub.Dispose();
         }
         finally
@@ -176,6 +175,23 @@ public sealed class Plugin : IDalamudPlugin
             gameFlag.Restore).Start();
 
         return new GuidanceGraph(arbiter, questSource, unlockSource, huntingSource, navigator, flagCoordinator);
+    }
+
+    private void SubscribeAndStart(IDalamudPluginInterface pluginInterface)
+    {
+        // inputMode.OnFrame runs first so windows.Draw (and every window it draws this same
+        // frame) sees the current frame's resolved Mode, not last frame's.
+        pluginInterface.UiBuilder.Draw += inputMode.OnFrame;
+        pluginInterface.UiBuilder.Draw += windows.Draw;
+        pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
+        pluginInterface.UiBuilder.OpenMainUi += OpenMain;
+
+        // The readout is native from here on. Start() marshals onto the framework thread, because
+        // every node constructor asserts it and plugin construction is not guaranteed to be on it.
+        overlay.Start();
+
+        commands.AddHandler("/wayfarer", new(OnCommand)
+        { HelpMessage = "Open Wayfarer. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer settings\" the settings, \"/wayfarer stop\" ends the current route or hunt." });
     }
 
     /// <summary>Dalamud's settings cog lands on the Settings tab of the one Wayfarer window rather
@@ -238,17 +254,16 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
+        var feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
+        overlay = new GuidanceOverlay(feed, config.QuestHelper, objects, framework, log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,
-            modules,
+            feed,
+            overlay,
             config.QuestHelper,
             objects,
             clientState,
-            log,
-            inputMode,
-            config.InputMode,
-            saveConfig,
-            () => hub.OpenTab(HubTab.Checklist));
+            log);
         return new QuestHelperModule(
             framework,
             windows,
@@ -275,7 +290,7 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
-        var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState, inputMode, config.InputMode, saveConfig);
+        var unlockWindow = new UnlockWindow(unlocks, modules, objects, clientState, inputMode);
         return new UnlockChecklistModule(
             framework,
             windows,
@@ -301,7 +316,7 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
-        var huntingWindow = new HuntingWindow(hunting, modules, objects, inputMode, config.InputMode, saveConfig);
+        var huntingWindow = new HuntingWindow(hunting, modules, objects);
         return new HuntingLogModule(
             framework,
             windows,

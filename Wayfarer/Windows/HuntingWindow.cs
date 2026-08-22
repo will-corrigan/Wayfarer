@@ -19,10 +19,7 @@ namespace Wayfarer.Windows;
 internal sealed unsafe class HuntingWindow(
     HuntingLogService hunting,
     ModuleRegistry modules,
-    IObjectTable objects,
-    InputModeService inputMode,
-    InputModeConfig inputModeCfg,
-    Action saveConfig) : Window("Hunting Log###WayfarerHunting")
+    IObjectTable objects) : Window("Hunting Log###WayfarerHunting")
 {
     private static readonly Vector4 LinkColor = new(0.4f, 0.7f, 1f, 1f);
 
@@ -37,14 +34,6 @@ internal sealed unsafe class HuntingWindow(
         {
             ImGui.TextWrapped("Hunting log data failed to load — see the Dalamud log.");
             return;
-        }
-
-        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
-
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            var glyphs = inputMode.Glyphs;
-            ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
         }
 
         if (hunting.ActiveLogLabel is not { } label)
@@ -120,13 +109,17 @@ internal sealed unsafe class HuntingWindow(
     {
         var navigator = ResolveNavigator();
         var count = hunting.HuntHereOrder.Count;
+
+        // "Hunt here" was the old label from when chaining stopped at the zone boundary, which is
+        // also why it appeared to do nothing in a zone with nothing left. A hunt now works through
+        // the whole rank, grouped by zone, so the label says what it does.
         if (navigator == null)
         {
-            ImGui.TextDisabled($"Hunt here ({count}) — enable Quest Helper to navigate");
+            ImGui.TextDisabled($"Start hunting ({count}) — enable Quest Helper to navigate");
             return;
         }
 
-        if (ImGui.Button($"Hunt here ({count})") && count > 0)
+        if (ImGui.Button($"Start hunting ({count})") && count > 0)
         {
             var targets = hunting.HuntHereOrder.Select(hunting.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
             if (targets.Count > 0)
@@ -134,9 +127,6 @@ internal sealed unsafe class HuntingWindow(
                 navigator.SetRoute(targets);
             }
         }
-
-        ImGui.SameLine();
-        ImGui.TextDisabled("chains the arrow through every remaining target in this zone, nearest first");
     }
 
     private void DrawRow(HuntingTargetView target)
