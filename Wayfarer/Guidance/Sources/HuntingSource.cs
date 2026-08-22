@@ -64,7 +64,7 @@ internal sealed class HuntingSource(
         // Same ObjectiveKey every tick while this target lives — only the position and kill count
         // are refreshed. That is what stops a live-tracked mob from re-firing every per-objective
         // side effect at frame rate.
-        var live = hunting.LiveView(leg) ?? leg;
+        var live = hunting.LiveView(leg);
         var dutyTerritory = live.Monster.Locations.Find(l => !l.Routable)?.DutyTerritoryTypeId;
         var objective = new GuidanceObjective(
             new ObjectiveKey(SourceId, KeyFor(live.Monster)),

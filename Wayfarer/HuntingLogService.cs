@@ -368,6 +368,12 @@ internal sealed unsafe class HuntingLogService
         ActiveLogLabel = null;
         NoLogReason = reason;
         CurrentRank = null;
+
+        // Nothing is tracked any more (a job change to a job with no log, a missing dataset row):
+        // clearing the page is what lets an active hunting plan finish instead of stalling on
+        // targets whose kill counts no longer mean anything.
+        currentPageRank = null;
+        killedCount = null;
         RemainingOnPage = [];
         HuntHereOrder = [];
         RemainingTargets = [];
