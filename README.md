@@ -76,6 +76,9 @@ Unlock data (levels, quest names, prerequisites) is compiled from the
 [Gamer Escape](https://ffxiv.gamerescape.com/wiki/Guide:Progression_and_Level_Locked_Content) community
 wiki. Thanks to the Gamer Escape contributors for maintaining it.
 
+Hunting log target coordinates are curated from [Hunty](https://github.com/Infiziert90/Hunty) by
+Infi (MIT). Thanks to Infi for maintaining that data.
+
 ## Third-party
 
 Native (non-ImGui) windows are built on [KamiToolKit](https://github.com/MidoriKami/KamiToolKit) by

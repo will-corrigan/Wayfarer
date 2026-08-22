@@ -21,4 +21,10 @@
     <ProjectReference Include="../Wayfarer.Api/Wayfarer.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- For HuntingDatasetShapeTests, which loads the real shipped file rather than a fixture,
+         so the fixture test can't silently drift from the packaged data. -->
+    <Content Include="../data/hunting-targets.json" Link="hunting-targets.json" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
+
 </Project>

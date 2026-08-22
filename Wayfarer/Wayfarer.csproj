@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="../data/unlocks-by-level.json" Link="unlocks-by-level.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Content Include="../data/hunting-targets.json" Link="hunting-targets.json" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
   <!-- CPM is disabled above, so the analyzer references from Directory.Build.props
        need explicit versions here (kept in sync with Directory.Packages.props). -->

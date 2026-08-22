@@ -21,6 +21,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Validate data files
+        run: |
+          node data/validate-unlocks.mjs
+          node data/validate-hunting-targets.mjs
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
