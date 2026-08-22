@@ -143,17 +143,19 @@ public static class RouteCosting
     /// covers; e.g. Foundation aetheryte suggested while standing in The Pillars — both
     /// on group 4 in the live Ishgard split city).
     ///
-    /// This check deliberately does NOT key off <paramref name="aetheryte"/>'s own
-    /// <see cref="AetherytePoint.Group"/> field — a live regression proved that
-    /// unsafe: a city's main "hub" aetheryte (exactly what the TerritoryType fallback
-    /// resolves to) can legitimately carry AethernetGroup 0 in sheet data even though
-    /// it's a full member of that city's aethernet graph, so a per-point check can
-    /// silently never suppress it. <paramref name="aetheryteTerritoryAethernetGroups"/>
-    /// is sheet truth instead: every nonzero group present ANYWHERE in the aetheryte's
-    /// home territory (i.e. its shards, which are never all zero for a real city) —
-    /// the caller builds it the same way as <paramref
-    /// name="currentTerritoryAethernetGroups"/>, from that territory's own aethernet
-    /// point list.
+    /// Two group checks cover each other's sheet quirks (both live-reproduced):
+    /// <paramref name="aetheryteTerritoryAethernetGroups"/> — every nonzero group
+    /// present ANYWHERE in the aetheryte's home territory — catches a hub point whose
+    /// own Group field is 0; the point's own <see cref="AetherytePoint.Group"/> in turn
+    /// catches a candidate whose home TERRITORY is unknown (the caller substitutes a
+    /// <see cref="uint.MaxValue"/> sentinel territory when the fallback aetheryte's
+    /// position fails to resolve, which empties the territory group set). Both compare
+    /// against <paramref name="currentTerritoryAethernetGroups"/>, which the caller
+    /// MUST derive from raw sheet rows (<see cref="AethernetGroups.ForTerritory"/>),
+    /// never from position-resolved point lists — the third live reproduction of this
+    /// bug happened because every Ishgard shard row has an unresolvable position, so a
+    /// position-filtered list for The Pillars was empty and both checks were fed an
+    /// empty current-territory set.
     ///
     /// Cross-city teleports (no overlapping group, or no network at all, e.g. an
     /// overworld/field aetheryte) are unaffected. When the aetheryte sits in neither
@@ -173,6 +175,11 @@ public static class RouteCosting
         IReadOnlyCollection<uint> aetheryteTerritoryAethernetGroups)
     {
         if (aetheryte is not { } a || aetheryteTerritory == currentTerritory)
+        {
+            return null;
+        }
+
+        if (a.Group != 0 && currentTerritoryAethernetGroups.Contains(a.Group))
         {
             return null;
         }
