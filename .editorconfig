@@ -224,6 +224,14 @@ dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.SA1649.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
+[Wayfarer.Core/Navigation/MarkerSelection.cs]
+# MarkerMatch/MarkerPoint are small companion types to MarkerSelection itself
+# (task-fix-interior-report.md fix round 2) - one marker-precedence-decision
+# concept, kept in one file rather than three near-empty ones.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Unlocks/UnlockFilters.cs]
 # Ported as a single file with its companion FilterState class, matching the
 # source repo's port map (task-2-brief.md) exactly.

@@ -227,6 +227,15 @@ public class RouteCostingTests
     }
 
     [Fact]
+    public void AethernetCandidate_Null_WhenNearestShardIsTheSameOnBothEnds()
+    {
+        // Same-territory call shape (QuestNavigator's MarkerMatch.TerritoryOnly path
+        // passes the same territory's shard list on both sides): player and objective
+        // both resolve to the plaza shard as nearest — a same-shard "hop" isn't a route.
+        Assert.Null(RouteCosting.AethernetCandidate(FoundationShards, FoundationShards, 1f, 0f, 2f, 0f));
+    }
+
+    [Fact]
     public void EntranceCandidate_Null_WhenEitherSideEmpty()
     {
         Assert.Null(RouteCosting.EntranceCandidate([], PillarsToFoundationLinks, 0f, 0f, 0f, 0f));

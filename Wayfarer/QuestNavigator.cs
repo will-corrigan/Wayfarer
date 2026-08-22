@@ -272,60 +272,62 @@ internal sealed unsafe class QuestNavigator(
             }
         }
 
-        // Prefer a marker that matches BOTH territory and map (the strict, unambiguous
-        // case); if none does, fall back to territory-only matches. The game places
-        // entrance/transition markers for interior objectives directly in the player's
-        // current outdoor zone (e.g. an NPC at the manor gate for an objective that's
-        // technically inside the manor's own interior territory) — verified live: The
-        // Man Within's marker sat in The Pillars (t419) at Fortemps Manor's entrance
-        // while the quest's sheet-recorded ToDoLocation pointed at the manor's interior
-        // territory. That marker's TerritoryTypeId matched the player's live territory,
-        // but its MapId did not necessarily match clientState.MapId (sub-area/layer
-        // numbering can differ even within one territory) — comparing both fields
-        // strictly caused this match to fail and fall through to the sheet-based
-        // OtherZone path, which then suggested a nonsensical cross-territory teleport
-        // for an objective actually reachable on foot from right here. Territory is the
-        // load-bearing signal for "is this actually walkable from where I stand right
-        // now"; MapId is treated as a tie-breaker, not a gate.
-        var bestDist = float.MaxValue;
-        (float X, float Y, float Z) best = default;
-        var bestTerritoryOnlyDist = float.MaxValue;
-        (float X, float Y, float Z) bestTerritoryOnly = default;
+        // Marker precedence is a pure decision (MarkerSelection.Select, Core-tested) —
+        // see that type's doc comments for exactly what's verified live (the Fortemps
+        // Manor entrance-marker case) versus assumed (the general territory-only
+        // shape). Summary of the three tiers below:
+        //   Exact           — same territory AND same map: walk straight there,
+        //                     unchanged from the original behavior.
+        //   TerritoryOnly   — same territory, different map (e.g. a different floor,
+        //                     OR an entrance marker for a technically-interior
+        //                     objective sitting in the player's outdoor zone — the
+        //                     marker data alone can't tell these apart). NEVER jump
+        //                     straight to a raw arrow here: try the same cross-map
+        //                     candidate routing OtherZone() uses for genuine
+        //                     cross-territory objectives (aethernet/entrance/
+        //                     teleport) first, since a real map-link entrance (e.g.
+        //                     stairs) must win over a straight line through a floor.
+        //                     Only when NO such candidate exists — the Fortemps Manor
+        //                     shape, where no cross-map route data exists at all —
+        //                     fall back to a direct arrow at the marker's own
+        //                     position as the least-bad guidance available.
+        //   None            — no marker in the player's current territory at all;
+        //                     fall through to the existing cross-territory
+        //                     (markers[0]) and static-sheet paths below.
+        var markerPoints = new List<MarkerPoint>(markers.Count);
         foreach (var m in markers)
         {
-            if (m.TerritoryId != territory)
-            {
-                continue;
-            }
-
-            var d = NavMath.Distance(m.X - pos.X, m.Y - pos.Y, m.Z - pos.Z);
-            if (d < bestTerritoryOnlyDist)
-            {
-                bestTerritoryOnly = (m.X, m.Y, m.Z);
-                bestTerritoryOnlyDist = d;
-            }
-
-            if (m.MapId != mapId)
-            {
-                continue;
-            }
-
-            if (d < bestDist)
-            {
-                best = (m.X, m.Y, m.Z);
-                bestDist = d;
-            }
+            markerPoints.Add(new(m.X, m.Y, m.Z, m.TerritoryId, m.MapId));
         }
 
-        if (bestDist == float.MaxValue && bestTerritoryOnlyDist < float.MaxValue)
+        var (markerMatch, matched) = MarkerSelection.Select(markerPoints, territory, mapId, pos.X, pos.Y, pos.Z);
+        switch (markerMatch)
         {
-            best = bestTerritoryOnly;
-            bestDist = bestTerritoryOnlyDist;
-        }
+            case MarkerMatch.Exact:
+                {
+                    var mk = matched!;
+                    var d = NavMath.Distance(mk.X - pos.X, mk.Y - pos.Y, mk.Z - pos.Z);
+                    return SameZone(questId + QuestRowIdOffset, questName, stepLabel, mk.X, mk.Y, mk.Z, d, territory, pos.X, pos.Z);
+                }
 
-        if (bestDist < float.MaxValue)
-        {
-            return SameZone(questId + QuestRowIdOffset, questName, stepLabel, best.X, best.Y, best.Z, bestDist, territory, pos.X, pos.Z);
+            case MarkerMatch.TerritoryOnly:
+                {
+                    var mk = matched!;
+                    var fallbackDist = NavMath.Distance(mk.X - pos.X, mk.Y - pos.Y, mk.Z - pos.Z);
+                    var fallback = SameZone(
+                        questId + QuestRowIdOffset, questName, stepLabel, mk.X, mk.Y, mk.Z, fallbackDist, territory, pos.X, pos.Z);
+                    return OtherZone(
+                        questId + QuestRowIdOffset,
+                        questName,
+                        stepLabel,
+                        territory,
+                        mk.MapId,
+                        mk.X,
+                        mk.Z,
+                        pos.X,
+                        pos.Z,
+                        fallbackWhenNoCandidate: fallback);
+                }
         }
 
         if (markers.Count > 0)
@@ -459,7 +461,8 @@ internal sealed unsafe class QuestNavigator(
         float pz,
         bool isPickup = false,
         int? routeStop = null,
-        int? routeTotal = null)
+        int? routeTotal = null,
+        NavigationState? fallbackWhenNoCandidate = null)
     {
         // Duty content (dungeons/trials/raids) has no aetherytes or entrances to route
         // to — route costing below would correctly find nothing and report a useless
@@ -513,6 +516,15 @@ internal sealed unsafe class QuestNavigator(
             aetheryte, aetheryteTerritory, targetTerritory, currentTerritory, tx, tz, unlocked, currentTerritoryGroups);
 
         var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
+
+        // Caller (MarkerMatch.TerritoryOnly) has an exact live-marker position and
+        // asked for it as the least-bad fallback when no real cross-map route exists —
+        // use it instead of the generic "find the entrance nearby" OtherZone message,
+        // which would throw away position data we actually have.
+        if (chosen == null && fallbackWhenNoCandidate is { } fallback)
+        {
+            return fallback;
+        }
 
         return new()
         {
