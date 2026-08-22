@@ -3,6 +3,19 @@ using Wayfarer.Core.Input;
 
 namespace Wayfarer;
 
+/// <summary>Gates when <see cref="ContextMenuActions"/> registers its "Wayfarer" submenu on the
+/// game's Default context menu. Parked feature (see <see cref="QuestHelperConfig.MenuMode"/>) —
+/// an "any right-click menu" design was tried and rejected: it's redundant for mouse players, who
+/// already have the clickable widget, so <see cref="ControllerOnly"/> is the only case with
+/// real value (a native, d-pad-navigable action surface where the widget's click affordances
+/// don't reach), and <see cref="Never"/> is the default until a better entry point is designed.</summary>
+public enum ContextMenuMode
+{
+    Never,
+    ControllerOnly,
+    Always,
+}
+
 public sealed class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
@@ -54,13 +67,11 @@ public sealed class QuestHelperConfig
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
 
-    /// <summary>Controls <see cref="ContextMenuActions"/>'s gating: true (the default) shows the
-    /// "Wayfarer" submenu on ANY Default-type context menu (any NPC/nameplate right-click, or a
-    /// controller subcommand menu) — self-target-only gating turned out unusable on a real HUD (no
-    /// solo party frame, finicky self-model right-click, F1-self-targeting rejected as a
-    /// workaround). False restores the original self-target-only behavior (own nameplate/
-    /// portrait/party-list row) for players who'd rather not see the submenu everywhere.</summary>
-    public bool MenuEverywhere { get; set; } = true;
+    /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to <see
+    /// cref="ContextMenuMode.Never"/> — the feature is parked pending a different entry-point
+    /// design (an "any right-click menu" submenu was tried and rejected as noisy for mouse
+    /// players, who already have the clickable widget). See <see cref="ContextMenuMode"/>.</summary>
+    public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.Never;
 }
 
 /// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>. Reserved for future use —

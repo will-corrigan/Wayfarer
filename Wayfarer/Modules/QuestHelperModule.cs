@@ -20,6 +20,10 @@ internal sealed class QuestHelperModule(
     QuestNavigator navigator,
     ArrowWindow arrowWindow) : IModule
 {
+    // Order matches ContextMenuMode's declaration order (Never = 0, ControllerOnly = 1,
+    // Always = 2) — ImGui.Combo indexes by position, not enum value name.
+    private static readonly string[] ContextMenuModeLabels = ["Never (default)", "Controller mode only", "Always"];
+
     public string Name => "Quest Helper";
 
     public string Description => "An on-screen arrow that guides you to your quest objective, with teleport and aethernet routing.";
@@ -103,12 +107,7 @@ internal sealed class QuestHelperModule(
             saveConfig();
         }
 
-        var menuEverywhere = cfg.MenuEverywhere;
-        if (ImGui.Checkbox("Show Wayfarer in all right-click menus", ref menuEverywhere))
-        {
-            cfg.MenuEverywhere = menuEverywhere;
-            saveConfig();
-        }
+        DrawContextMenuModeCombo();
     }
 
     public void Dispose()
@@ -116,6 +115,21 @@ internal sealed class QuestHelperModule(
         if (Enabled)
         {
             Disable();
+        }
+    }
+
+    /// <summary>Parked feature (see <see cref="ContextMenuMode"/>'s doc comment) — kept
+    /// configurable rather than removed outright since "Controller mode only" still has
+    /// real value (a native, d-pad-navigable action surface the widget can't offer).</summary>
+    private void DrawContextMenuModeCombo()
+    {
+        ImGui.TextUnformatted("Show Wayfarer in right-click menus");
+        var current = (int)cfg.MenuMode;
+        ImGui.SetNextItemWidth(200 * ImGuiHelpers.GlobalScale);
+        if (ImGui.Combo("##contextMenuMode", ref current, ContextMenuModeLabels, ContextMenuModeLabels.Length))
+        {
+            cfg.MenuMode = (ContextMenuMode)current;
+            saveConfig();
         }
     }
 }

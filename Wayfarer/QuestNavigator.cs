@@ -161,6 +161,26 @@ internal sealed unsafe class QuestNavigator(
         return null;
     }
 
+    /// <summary>Every nonzero AethernetGroup present in <paramref name="points"/> — used
+    /// to ask "does this territory's aethernet network overlap that one's?" from a
+    /// territory's FULL point list (sheet truth) rather than any single point's own
+    /// Group field, which can legitimately be 0 for a city's main hub aetheryte even
+    /// though it's a full network member (see RouteCosting.TeleportCandidate's doc
+    /// comment for the live regression this caught).</summary>
+    private static HashSet<uint> ExtractAethernetGroups(IReadOnlyList<AetherytePoint> points)
+    {
+        var groups = new HashSet<uint>();
+        foreach (var p in points)
+        {
+            if (p.Group != 0)
+            {
+                groups.Add(p.Group);
+            }
+        }
+
+        return groups;
+    }
+
     private NavigationState Compute()
     {
         if (!clientState.IsLoggedIn)
@@ -502,18 +522,27 @@ internal sealed unsafe class QuestNavigator(
         // RouteCosting.TeleportCandidate's doc comment. currentTerritoryShards already
         // carries every aethernet stop (shards AND the main aetheryte) reachable from
         // here for free; its groups are what a real teleport candidate must clear.
-        var currentTerritoryGroups = new HashSet<uint>();
-        foreach (var shard in currentTerritoryShards)
-        {
-            if (shard.Group != 0)
-            {
-                currentTerritoryGroups.Add(shard.Group);
-            }
-        }
+        var currentTerritoryGroups = ExtractAethernetGroups(currentTerritoryShards);
 
         var (aetheryte, aetheryteTerritory, unlocked) = ResolveTargetAetheryte(targetTerritory, tx, tz);
+
+        // Sheet truth for the CANDIDATE aetheryte's own home territory, not just its
+        // own point's Group field — a live regression proved the field alone unsafe
+        // (the city hub aetheryte the TerritoryType fallback resolves to can carry
+        // Group 0 even while a full member of that city's network); see
+        // RouteCosting.TeleportCandidate's doc comment.
+        var aetheryteTerritoryGroups = ExtractAethernetGroups(GetAetherytePoints(aetheryteTerritory, aethernet: true));
+
         var teleport = RouteCosting.TeleportCandidate(
-            aetheryte, aetheryteTerritory, targetTerritory, currentTerritory, tx, tz, unlocked, currentTerritoryGroups);
+            aetheryte,
+            aetheryteTerritory,
+            targetTerritory,
+            currentTerritory,
+            tx,
+            tz,
+            unlocked,
+            currentTerritoryGroups,
+            aetheryteTerritoryGroups);
 
         var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
 

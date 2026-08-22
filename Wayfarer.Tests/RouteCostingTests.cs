@@ -95,7 +95,8 @@ public class RouteCostingTests
             tx: 400f,
             tz: 0f,
             unlocked: true,
-            currentTerritoryAethernetGroups: []);
+            currentTerritoryAethernetGroups: [],
+            aetheryteTerritoryAethernetGroups: []);
 
         Assert.Null(teleport);
     }
@@ -119,7 +120,40 @@ public class RouteCostingTests
             tx: 400f,
             tz: 0f,
             unlocked: true,
-            currentTerritoryAethernetGroups: [SharedGroup]);
+            currentTerritoryAethernetGroups: [SharedGroup],
+            aetheryteTerritoryAethernetGroups: [SharedGroup]);
+
+        Assert.Null(teleport);
+    }
+
+    [Fact]
+    public void TeleportCandidate_Suppressed_WhenFallbackPointGroupIsZeroButTerritoryHasSharedNetwork()
+    {
+        // Live regression (user reproduced "Teleport to Foundation first" on the dev
+        // build containing the round-1/round-2 fix): the TerritoryType.Aetheryte
+        // fallback aetheryte's OWN sheet row can legitimately carry AethernetGroup 0
+        // (the city's "hub" aetheryte isn't itself tagged into a sub-shard group) even
+        // though it's a full member of that city's aethernet graph. Round 1's fix
+        // faithfully threads the sheet's AethernetGroup onto the constructed point —
+        // but if the sheet's own value for THAT row is 0, faithful threading still
+        // yields Group 0, and a point-only check (a.Group != 0 && ...) can never
+        // suppress it (proven red against that old signature before this fix). This is
+        // caught instead by looking at the aetheryte's TERRITORY's full shard list
+        // (sheet truth, aetheryteTerritoryAethernetGroups) rather than this one point's
+        // own field — Foundation's OTHER shards (e.g. The Forgotten Knight) are group 4
+        // even though this specific hub point reports 0.
+        var zeroGroupFallback = new AetherytePoint(70, "Ishgard Aetheryte Plaza", 0f, 0f, Foundation, Group: 0);
+
+        var teleport = RouteCosting.TeleportCandidate(
+            zeroGroupFallback,
+            aetheryteTerritory: Foundation,
+            targetTerritory: Pillars,
+            currentTerritory: Pillars,
+            tx: 400f,
+            tz: 0f,
+            unlocked: true,
+            currentTerritoryAethernetGroups: [SharedGroup],
+            aetheryteTerritoryAethernetGroups: [SharedGroup]);
 
         Assert.Null(teleport);
     }
@@ -141,7 +175,8 @@ public class RouteCostingTests
             tx: 10f,
             tz: 0f,
             unlocked: true,
-            currentTerritoryAethernetGroups: [otherCityGroup]);
+            currentTerritoryAethernetGroups: [otherCityGroup],
+            aetheryteTerritoryAethernetGroups: [SharedGroup]);
 
         Assert.NotNull(teleport);
         Assert.Equal(RouteMode.Teleport, teleport!.Mode);
@@ -160,7 +195,8 @@ public class RouteCostingTests
             tx: 10f,
             tz: 0f,
             unlocked: true,
-            currentTerritoryAethernetGroups: []);
+            currentTerritoryAethernetGroups: [],
+            aetheryteTerritoryAethernetGroups: [SharedGroup]);
 
         Assert.NotNull(teleport);
         Assert.Equal(RouteMode.Teleport, teleport!.Mode);
@@ -181,7 +217,8 @@ public class RouteCostingTests
             tx: 10f,
             tz: 0f,
             unlocked: true,
-            currentTerritoryAethernetGroups: []);
+            currentTerritoryAethernetGroups: [],
+            aetheryteTerritoryAethernetGroups: []);
 
         Assert.NotNull(teleport);
         Assert.Equal(float.MaxValue, teleport!.Cost);
@@ -245,7 +282,7 @@ public class RouteCostingTests
     [Fact]
     public void TeleportCandidate_Null_WhenAetheryteIsNull()
     {
-        Assert.Null(RouteCosting.TeleportCandidate(null, 0, Pillars, Foundation, 0f, 0f, false, []));
+        Assert.Null(RouteCosting.TeleportCandidate(null, 0, Pillars, Foundation, 0f, 0f, false, [], []));
     }
 
     [Fact]

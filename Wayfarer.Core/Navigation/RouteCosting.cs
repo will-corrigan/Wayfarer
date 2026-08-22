@@ -137,15 +137,28 @@ public static class RouteCosting
     /// aetheryte, when the aetheryte's OWN territory is where the player already
     /// stands (never recommend teleporting to here; this is the split-city
     /// TerritoryType.Aetheryte fallback bug the evidence block calls out), or when the
-    /// aetheryte's AethernetGroup matches any group already reachable from the
-    /// player's current territory — a city-network-local "teleport" is never useful
-    /// advice (a full loading screen to reach a stop the free aethernet already
-    /// covers; e.g. Foundation aetheryte suggested while standing in The Pillars —
-    /// both group 4 in the live Ishgard split city). Cross-city teleports (different
-    /// AethernetGroup, or group 0 = no network at all, e.g. an overworld/field
-    /// aetheryte) are unaffected. When the aetheryte sits in neither the current nor
-    /// the target territory (a third territory's fallback), cost is <see
-    /// cref="float.MaxValue"/> — a sentinel that makes this candidate lose to any
+    /// aetheryte's OWN TERRITORY's aethernet network overlaps a group already reachable
+    /// from the player's current territory — a city-network-local "teleport" is never
+    /// useful advice (a full loading screen to reach a stop the free aethernet already
+    /// covers; e.g. Foundation aetheryte suggested while standing in The Pillars — both
+    /// on group 4 in the live Ishgard split city).
+    ///
+    /// This check deliberately does NOT key off <paramref name="aetheryte"/>'s own
+    /// <see cref="AetherytePoint.Group"/> field — a live regression proved that
+    /// unsafe: a city's main "hub" aetheryte (exactly what the TerritoryType fallback
+    /// resolves to) can legitimately carry AethernetGroup 0 in sheet data even though
+    /// it's a full member of that city's aethernet graph, so a per-point check can
+    /// silently never suppress it. <paramref name="aetheryteTerritoryAethernetGroups"/>
+    /// is sheet truth instead: every nonzero group present ANYWHERE in the aetheryte's
+    /// home territory (i.e. its shards, which are never all zero for a real city) —
+    /// the caller builds it the same way as <paramref
+    /// name="currentTerritoryAethernetGroups"/>, from that territory's own aethernet
+    /// point list.
+    ///
+    /// Cross-city teleports (no overlapping group, or no network at all, e.g. an
+    /// overworld/field aetheryte) are unaffected. When the aetheryte sits in neither
+    /// the current nor the target territory (a third territory's fallback), cost is
+    /// <see cref="float.MaxValue"/> — a sentinel that makes this candidate lose to any
     /// other route and only survive if it's the only one on offer, rather than a real
     /// distance-based cost.</summary>
     public static RouteCandidate? TeleportCandidate(
@@ -156,16 +169,20 @@ public static class RouteCosting
         float tx,
         float tz,
         bool unlocked,
-        IReadOnlyCollection<uint> currentTerritoryAethernetGroups)
+        IReadOnlyCollection<uint> currentTerritoryAethernetGroups,
+        IReadOnlyCollection<uint> aetheryteTerritoryAethernetGroups)
     {
         if (aetheryte is not { } a || aetheryteTerritory == currentTerritory)
         {
             return null;
         }
 
-        if (a.Group != 0 && currentTerritoryAethernetGroups.Contains(a.Group))
+        foreach (var g in aetheryteTerritoryAethernetGroups)
         {
-            return null;
+            if (g != 0 && currentTerritoryAethernetGroups.Contains(g))
+            {
+                return null;
+            }
         }
 
         var cost = aetheryteTerritory == targetTerritory

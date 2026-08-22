@@ -57,7 +57,7 @@ public sealed class Plugin : IDalamudPlugin
         modules.Register(unlockChecklistModule, enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
-        contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, log);
+        contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, log);
 
         configWindow = new(modules, config, SaveConfig);
         windows.AddWindow(configWindow);
