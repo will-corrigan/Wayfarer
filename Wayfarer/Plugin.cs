@@ -28,6 +28,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WayfarerIpcProvider ipcProvider;
     private readonly InputModeService inputMode;
     private readonly ContextMenuActions contextMenuActions;
+    private readonly NamePlateMarkers namePlateMarkers;
     private readonly SettingsCatalog settings;
 
     /// <summary>The one window the plugin has — Checklist, Hunting Log and Settings — for mouse and
@@ -58,6 +59,8 @@ public sealed class Plugin : IDalamudPlugin
         IGameConfig gameConfig,
         IGamepadState gamepadState,
         IContextMenu contextMenu,
+        INamePlateGui namePlateGui,
+        ITextureProvider textureProvider,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -102,6 +105,8 @@ public sealed class Plugin : IDalamudPlugin
 
         ipcProvider = new(pluginInterface, modules, clientState);
         contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, log);
+        namePlateMarkers = new(namePlateGui, textureProvider, framework, modules, config.Guidance, log);
+        namePlateMarkers.Start();
 
         configWindow = new(settings);
         windows.AddWindow(configWindow);
@@ -119,6 +124,7 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.OpenMainUi -= OpenMain;
 
         contextMenuActions.Dispose();
+        namePlateMarkers.Dispose();
         ipcProvider.Dispose();
 
         try
