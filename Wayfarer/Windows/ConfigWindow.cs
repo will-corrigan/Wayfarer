@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
@@ -70,14 +71,26 @@ public sealed class ConfigWindow : Window
         }
     }
 
+    /// <summary>A scale setting, formatted the way the setting itself says it reads. It used to be
+    /// hardcoded to the multiplier form, so the readout's position sliders — which are percentages
+    /// of the screen — showed "50.0x".</summary>
     private static void DrawScale(SettingDefinition setting)
     {
         var value = setting.ReadValue?.Invoke() ?? setting.Minimum;
         ImGui.SetNextItemWidth(160 * ImGuiHelpers.GlobalScale);
-        if (ImGui.SliderFloat($"{setting.Label}##{setting.Id}", ref value, setting.Minimum, setting.Maximum, "%.1fx"))
+        if (ImGui.SliderFloat($"{setting.Label}##{setting.Id}", ref value, setting.Minimum, setting.Maximum, PrintfFormat(setting)))
         {
             setting.WriteValue?.Invoke(value);
         }
+    }
+
+    /// <summary>The setting's own value format, translated into the printf form ImGui wants. A
+    /// literal percent sign has to be doubled or ImGui reads it as a conversion of its own.</summary>
+    private static string PrintfFormat(SettingDefinition setting)
+    {
+        var decimals = setting.ValueFormat.Contains('.', StringComparison.Ordinal) ? 1 : 0;
+        var unit = setting.ValueUnit.Replace("%", "%%", StringComparison.Ordinal);
+        return $"%.{decimals.ToString(CultureInfo.InvariantCulture)}f{unit}";
     }
 
     private static void DrawChoice(SettingDefinition setting)
