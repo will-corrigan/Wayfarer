@@ -4,6 +4,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
+using KamiToolKit.Nodes.Simplified;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 
@@ -72,6 +73,32 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rather than against the readout: it is a mark on that line, not a button on a panel.</summary>
     private const float BaseCog = 13f;
 
+    /// <summary>The game's own drop-down sheet, and the part of it that is the little collapse
+    /// arrow the game draws on the right of every drop-down's label.
+    ///
+    /// <para>Deliberately the game's art rather than a generated mark. "It should feel more native
+    /// than the little toggle thing" is about recognition, not about pixels: a player has already
+    /// learnt that this exact arrow beside a word means "that word is a choice, and there is a list
+    /// behind it". Drawing a shape that merely resembles it teaches them nothing they already know.
+    /// These are the same three numbers KamiToolKit's own <c>DropDownNode</c> uses for its
+    /// <c>CollapseArrowNode</c>, read from the same sheet.</para>
+    ///
+    /// <para><b>Why not the whole drop-down component.</b> A <c>DropDownNode</c> would bring its
+    /// <c>DropDownA</c> nine-grid box with it, and a bordered grey field is precisely the panel this
+    /// readout does not have — what the player likes about it is that it looks like the game's own
+    /// quest tracker. The arrow alone is the part of that idiom that survives without
+    /// chrome.</para></summary>
+    private const string DropDownTexture = "ui/uld/DropDownA.tex";
+
+    /// <inheritdoc cref="DropDownTexture"/>
+    private const float BaseSwitcher = 12f;
+
+    /// <summary>The rotation the game applies to that arrow while its list is closed, taken
+    /// verbatim from the collapsed frame of <c>DropDownNode</c>'s own timeline. The switcher is
+    /// always in that state — the list it opens is the window's Following tab, not a popup on the
+    /// readout — so there is no second rotation to animate to.</summary>
+    private const float DropDownCollapsedRotation = 4.712389f;
+
     /// <summary>How visible the cog is when the pointer is not on it.
     ///
     /// <para><b>Why it is not simply hidden.</b> Revealing it on hover would be better — the player
@@ -91,7 +118,14 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private const int CogTarget = 2;
 
     /// <inheritdoc cref="TeleportTarget"/>
-    private const int FollowTarget = 4;
+    private const int SwitcherTarget = 4;
+
+    /// <summary>What is said, once, when the switcher has no art. Losing it costs the shortcut and
+    /// nothing else, which is what this says rather than making it sound fatal.</summary>
+    private const string SwitcherUnavailable =
+        "Wayfarer readout: the game's drop-down arrow could not be read, so the readout has no switcher beside "
+        + "the quest name. What is being followed is still chosen from the window's Following tab and from the "
+        + "game's own right-click menu.";
 
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
@@ -144,12 +178,20 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// affordance that does nothing is worse than none.</summary>
     private readonly ImGuiImageNode? cogNode;
 
-    /// <summary>The "choose what to follow" caret, sitting beside the cog rather than on it, or null
-    /// in a host that cannot be clicked.
+    /// <summary>The "choose what to follow" switcher — the game's own drop-down arrow, sitting
+    /// immediately to the right of the line that names what is being followed. Null in a host that
+    /// cannot be clicked.
     ///
-    /// <para>Two things it is not. It is not a menu hanging off the cog — the cog opens settings and
-    /// this opens a list, and hiding a second meaning behind one mark is how the info bar's
-    /// right-click ended up being described as unintuitive. And it is not the list itself: the
+    /// <para><b>Why it is beside the name and not beside the cog.</b> It used to share the heading
+    /// row with the cog, which put the control that changes the quest next to the control that
+    /// opens settings and nowhere near the quest. Attached to the name it reads as one sentence —
+    /// this is the quest, here is how you change it — which is what a drop-down has always been.
+    /// The cog stays on the heading: it is about the plugin, not about what the plugin is
+    /// following.</para>
+    ///
+    /// <para>Two things it is still not. It is not a menu hanging off the cog — the cog opens
+    /// settings and this opens a list, and hiding a second meaning behind one mark is how the info
+    /// bar's right-click ended up being described as unintuitive. And it is not the list itself: the
     /// readout owns exactly one objective and never carries choices, which is the rule that keeps it
     /// glanceable and click-through-able. It is the door to the list, which lives in the
     /// window.</para>
@@ -157,7 +199,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <para>Mouse only, for the same reason as the cog. A controller reaches the same list through
     /// the window's Following tab and through the Wayfarer entry in the game's own right-click
     /// menu, both of which take no cursor.</para></summary>
-    private readonly ImGuiImageNode? followNode;
+    private readonly SimpleImageNode? switcherNode;
 
     private ArrowIconVariant? loadedVariant;
     private ArrowIconVariant? loadedElevationVariant;
@@ -165,8 +207,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private bool elevationFailed;
     private bool cogLoaded;
     private bool cogFailed;
-    private bool followLoaded;
-    private bool followFailed;
+    private bool switcherFailed;
+    private bool warnedSwitcherOnce;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
@@ -216,7 +258,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
-        followNode = onFollowClicked is null ? null : BuildFollowCaret(onFollowClicked);
+        switcherNode = onFollowClicked is null ? null : BuildSwitcher(onFollowClicked);
     }
 
     /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
@@ -262,21 +304,22 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         var drawable = frame.ArrowRadians is not null && EnsureArrowTexture(frame.ArrowIcon);
         var y = LayoutWords(frame, drawable, factor, width);
-        var (bottom, firstLineCentre) = LayoutLines(frame, factor, width, gutter, y);
+        var (bottom, firstLineCentre, subject) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
         LayoutElevation(frame, arrowSize);
         LayoutHeadingControls(frame, factor, width, gutter);
+        LayoutSwitcher(factor, gutter, width - gutter, subject);
 
-        // The cog and the follow caret are live collision nodes whenever they are drawn, and the
+        // The cog and the switcher are live collision nodes whenever they are drawn, and the
         // clickable host watches this to know when the addon's collision list has to be rebuilt.
         if (cogNode is { IsVisible: true })
         {
             ClickTargets |= CogTarget;
         }
 
-        if (followNode is { IsVisible: true })
+        if (switcherNode is { IsVisible: true })
         {
-            ClickTargets |= FollowTarget;
+            ClickTargets |= SwitcherTarget;
         }
 
         var size = new Vector2(width, bottom);
@@ -321,9 +364,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             cogNode.IsVisible = false;
         }
 
-        if (followNode is not null)
+        if (switcherNode is not null)
         {
-            followNode.IsVisible = false;
+            switcherNode.IsVisible = false;
         }
 
         ClickTargets = 0;
@@ -472,37 +515,52 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return cog;
     }
 
-    /// <summary>The "choose what to follow" caret, beside the cog, wired to open the window on its
-    /// Following tab — where every followable thing is one list of rows: the main scenario, each
-    /// accepted quest, an unlock route, a hunt. The list is not duplicated here. The readout owns
-    /// exactly one objective and never carries choices; that rule is what keeps it glanceable and
-    /// is why the click-through host can exist at all.
+    /// <summary>The switcher, wired to open the window on its Following tab — where every followable
+    /// thing is one list of rows: the main scenario, each accepted quest, an unlock route, a hunt.
+    /// The list is not duplicated here. The readout owns exactly one objective and never carries
+    /// choices; that rule is what keeps it glanceable and is why the click-through host can exist at
+    /// all.
+    ///
+    /// <para>The texture is read straight out of the game's own drop-down sheet — see
+    /// <see cref="DropDownTexture"/> — rather than generated, so the mark beside the quest name is
+    /// the same mark the game puts beside every other choice the player has ever made. It is loaded
+    /// once here rather than per frame; <c>LoadTexture</c> is the toolkit's own idiom for a sheet
+    /// part and resolves the player's UI theme with it.</para>
     ///
     /// <para>Same collision treatment as the cog, and for the same reason: <c>MouseClick</c> is the
     /// only one of these events that adds <c>HasCollision</c>, so the rectangle that swallows a
-    /// world click is exactly the caret and nothing more.</para></summary>
-    private ImGuiImageNode BuildFollowCaret(Action onFollowClicked)
+    /// world click is exactly the arrow and nothing more.</para></summary>
+    private SimpleImageNode BuildSwitcher(Action onFollowClicked)
     {
-        var caret = new ImGuiImageNode
+        var switcher = new SimpleImageNode
         {
-            TextureSize = new Vector2(ChevronBitmap.Size, ChevronBitmap.Size),
-            Size = new Vector2(BaseCog, BaseCog),
-            FitTexture = true,
+            Size = new Vector2(BaseSwitcher, BaseSwitcher),
             IsVisible = false,
             Alpha = CogIdleAlpha,
-
-            // The art points up; a "there is a list behind this" caret points down.
-            Rotation = MathF.PI,
-            OriginX = BaseCog / 2f,
-            OriginY = BaseCog / 2f,
+            WrapMode = WrapMode.Stretch,
+            Rotation = DropDownCollapsedRotation,
+            OriginX = BaseSwitcher / 2f,
+            OriginY = BaseSwitcher / 2f,
         };
 
-        caret.AddEvent(AtkEventType.MouseClick, onFollowClicked);
-        caret.AddEvent(AtkEventType.MouseOver, () => caret.Alpha = 1f);
-        caret.AddEvent(AtkEventType.MouseOut, () => caret.Alpha = CogIdleAlpha);
-        caret.ShowClickableCursor = true;
-        caret.AttachNode(this);
-        return caret;
+        try
+        {
+            switcher.LoadTexture(DropDownTexture);
+            switcher.TextureCoordinates = new Vector2(44f, 0f);
+            switcher.TextureSize = new Vector2(BaseSwitcher, BaseSwitcher);
+        }
+        catch (Exception ex)
+        {
+            switcherFailed = true;
+            log.Error(ex, SwitcherUnavailable);
+        }
+
+        switcher.AddEvent(AtkEventType.MouseClick, onFollowClicked);
+        switcher.AddEvent(AtkEventType.MouseOver, () => switcher.Alpha = 1f);
+        switcher.AddEvent(AtkEventType.MouseOut, () => switcher.Alpha = CogIdleAlpha);
+        switcher.ShowClickableCursor = true;
+        switcher.AttachNode(this);
+        return switcher;
     }
 
     private void BuildLinePool()
@@ -637,20 +695,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <para>Every line, heading included, starts at the same left edge past the arrow gutter, so
     /// the readout is one block with one edge and the arrow is a mark beside it rather than
     /// something the body hangs off.</para></summary>
-    private (float Bottom, float? FirstLineCentre) LayoutLines(
+    private (float Bottom, float? FirstLineCentre, SubjectLine? Subject) LayoutLines(
         ReadoutFrame frame, float factor, float width, float gutter, float top)
     {
         var y = top;
         var count = Math.Min(frame.Content.Lines.Count, MaxLines);
         var hitBoxPlaced = false;
         float? firstLineCentre = null;
+        SubjectLine? subject = null;
         var lineWidth = width - gutter;
+
+        // The room the switcher will want, taken off the subject line before it is laid out rather
+        // than after: text that has already been measured against the full width would run under
+        // the arrow, and reserving the slot is also what makes the line truncate in the right place.
+        var reserved = switcherNode is not null && SwitcherDrawable()
+            ? Math.Max(BaseSwitcher * factor, 9f) + (BaseGap * factor * 2f)
+            : 0f;
 
         for (var i = 0; i < count; i++)
         {
             var line = frame.Content.Lines[i];
             var heading = line.Emphasis == ReadoutEmphasis.Heading;
             var fontSize = FontSizeFor(line.Emphasis) * factor;
+            var available = line.Subject ? Math.Max(lineWidth - reserved, fontSize) : lineWidth;
             y = LayoutRule(i, line, factor, gutter, lineWidth, y);
 
             // The height this line actually needs, measured, and the advance to match it. It used
@@ -658,11 +725,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             // unlock — "Something Or Other (350 yalms)" — appeared cut off: it wrapped correctly
             // into a node that had room for it, and then the next line was drawn on top of the
             // wrapped remainder, 40% of a line further up than the wrap had put it.
-            var height = LayoutLine(i, line, fontSize, gutter, lineWidth, y);
+            var height = LayoutLine(i, line, fontSize, gutter, available, y);
 
             // The arrow aligns to the first line that is not the heading — the objective, which is
             // what it is pointing at — and to that line's optical centre rather than its box.
             firstLineCentre ??= heading ? null : y + (fontSize * ArrowOpticalCentre);
+
+            // First subject only. The composer emits at most one, and a second switcher would be a
+            // second control claiming to change the same one thing.
+            if (line.Subject && subject is null)
+            {
+                subject = new SubjectLine(
+                    y, height, fontSize, Math.Min(lineNodes[i].GetTextDrawSize(line.Text).X, available));
+            }
 
             hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, gutter, lineWidth, height, y);
             y += height;
@@ -680,7 +755,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         ClickTargets = hitBoxPlaced ? TeleportTarget : 0;
-        return (y + (BaseGap * factor), firstLineCentre);
+        return (y + (BaseGap * factor), firstLineCentre, subject);
     }
 
     /// <summary>Hangs the up/down chevron off the arrow when the target is on a different level of
@@ -727,7 +802,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// the right edge rather than stacking the cog on top of the first letter.</para></summary>
     private void LayoutHeadingControls(ReadoutFrame frame, float factor, float width, float gutter)
     {
-        if (cogNode is null && followNode is null)
+        if (cogNode is null)
         {
             return;
         }
@@ -751,11 +826,41 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             : heading.Position.Y + Math.Max(((BaseHeadingSize * factor) - size) / 2f, 0f);
         var x = headingWidth > 1f ? gutter + headingWidth + gap : width - size;
 
-        // The caret comes first, closest to the words: it is about what the readout is saying,
-        // while the cog is about the plugin. Both are siblings on the heading line — the caret is
-        // not a menu hanging off the cog.
-        x = PlaceHeadingControl(followNode, EnsureFollowTexture, size, gap, x, top, width);
+        // The cog alone. The switcher used to be its neighbour here and is now beside the quest
+        // name instead — see the field's own note for why that is the whole point.
         PlaceHeadingControl(cogNode, EnsureCogTexture, size, gap, x, top, width);
+    }
+
+    /// <summary>Parks the switcher immediately to the right of the words that name what is being
+    /// followed, vertically centred on them.
+    ///
+    /// <para>Measured from where the text actually ends, and clamped to the room the line was given
+    /// — which is the same room the line was truncated into, so a name that ran out of space gets
+    /// the arrow right after its ellipsis rather than off the end of the readout.</para></summary>
+    private void LayoutSwitcher(float factor, float left, float lineWidth, SubjectLine? subject)
+    {
+        if (switcherNode is null)
+        {
+            return;
+        }
+
+        if (subject is not { } line || !SwitcherDrawable())
+        {
+            switcherNode.IsVisible = false;
+            return;
+        }
+
+        var size = Math.Max(BaseSwitcher * factor, 9f);
+        var gap = BaseGap * factor;
+        var x = left + Math.Min(line.TextWidth, lineWidth - size - gap) + gap;
+
+        switcherNode.Size = new Vector2(size, size);
+        switcherNode.OriginX = size / 2f;
+        switcherNode.OriginY = size / 2f;
+        switcherNode.Position = new Vector2(
+            Math.Clamp(x, left, left + lineWidth - size),
+            line.Top + Math.Max((line.FontSize - size) / 2f, 0f));
+        switcherNode.IsVisible = true;
     }
 
     /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are
@@ -835,39 +940,31 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
     }
 
-    /// <summary>Generates the follow caret once. A single downward chevron in plain white — the
-    /// game's own shape for "there is a list behind this" — rather than the player's arrow colour,
-    /// because it is a control and not a piece of guidance.</summary>
-    private bool EnsureFollowTexture()
+    /// <summary>Whether the switcher has a texture to draw. Unlike the generated marks this one is
+    /// read out of the game's own sheet, so it can be merely <i>late</i> rather than broken — the
+    /// resource system answers with nothing until the sheet is resident. Asking every frame is
+    /// therefore right, and costs a pointer read.</summary>
+    private bool SwitcherDrawable()
     {
-        if (followFailed)
+        if (switcherFailed || switcherNode is null)
         {
             return false;
         }
 
-        if (followLoaded)
+        if (switcherNode.ActualTextureSize != Vector2.Zero)
         {
             return true;
         }
 
-        try
+        // Not an error on its own — the sheet may simply not be resident yet — so this says so once
+        // and keeps trying rather than switching the control off for the session.
+        if (!warnedSwitcherOnce)
         {
-            var wrap = textures.CreateFromRaw(
-                RawImageSpecification.Rgba32(ChevronBitmap.Size, ChevronBitmap.Size),
-                ChevronBitmap.Render(ArrowIconVariant.White, strokes: 1),
-                "Wayfarer follow caret");
+            warnedSwitcherOnce = true;
+            log.Warning(SwitcherUnavailable);
+        }
 
-            followNode!.LoadTexture(wrap);
-            followNode.TextureSize = new Vector2(ChevronBitmap.Size, ChevronBitmap.Size);
-            followLoaded = true;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            followFailed = true;
-            log.Error(ex, "Wayfarer readout: the follow caret could not be generated, so the readout has none. What is being followed is still chosen from the window's Following tab and the game's own right-click menu.");
-            return false;
-        }
+        return false;
     }
 
     private float LayoutRule(int index, ReadoutLine line, float factor, float left, float width, float y)

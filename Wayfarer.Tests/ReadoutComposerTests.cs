@@ -295,6 +295,56 @@ public class ReadoutComposerTests
         Assert.Contains(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void The_line_that_names_what_is_followed_is_marked_as_the_subject()
+    {
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 80f });
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal("The Ul'dahn Envoy", subject.Text);
+    }
+
+    [Fact]
+    public void The_subject_is_never_the_heading_or_the_distance()
+    {
+        // Both are near neighbours that could be mistaken for it — the heading is the first line,
+        // and the distance carries the same Primary weight the name does.
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 80f });
+
+        Assert.DoesNotContain(content.Lines, line => line.Subject && line.Emphasis == ReadoutEmphasis.Heading);
+        Assert.DoesNotContain(
+            content.Lines,
+            line => line.Subject && line.Text.Contains("yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void An_idle_readout_still_has_a_subject_to_hang_the_switcher_off()
+    {
+        // "No quest followed" is exactly the moment a player wants to choose one, so the line that
+        // says it has to be a subject too — otherwise the one readout that most needs a switcher is
+        // the one readout without one.
+        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal("No quest followed", subject.Text);
+    }
+
+    [Fact]
+    public void There_is_never_more_than_one_subject()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Unlock route"),
+            HuntingSummary = "Ornery Karakul 2/3",
+            NearbyUnlocks = ["Chocobo racing"],
+            DistanceYalms = 120f,
+        });
+
+        Assert.Single(content.Lines, line => line.Subject);
+    }
+
     private static NavigationState Engaged(string sourceLabel) => new()
     {
         Mode = NavigationState.Modes.SameZone,
