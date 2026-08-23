@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Wayfarer.CatalogueGen</AssemblyName>
+    <RootNamespace>Wayfarer.CatalogueGen</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- The whole reason this resolver is a .NET tool rather than another .mjs script: the
+       name folding (QuestNameKey) and the duplicate-row tie-break (QuestNameCandidate /
+       QuestNameMatch) are the load-bearing logic, they already exist in Wayfarer.Core, and
+       they are what the shipping plugin matches with at runtime. Reimplementing them in
+       JavaScript would fork the one algorithm that has to stay identical on both sides. -->
+  <ItemGroup>
+    <ProjectReference Include="../../Wayfarer.Core/Wayfarer.Core.csproj"/>
+  </ItemGroup>
+
+  <!-- Lumina reads the game's Excel sheets straight out of sqpack. Both DLLs ship with
+       Dalamud; DALAMUD_HOME overrides the default XIVLauncher location. -->
+  <PropertyGroup>
+    <DalamudLibPath Condition="'$(DALAMUD_HOME)' != ''">$(DALAMUD_HOME)</DalamudLibPath>
+    <DalamudLibPath Condition="'$(DalamudLibPath)' == '' and '$(AppData)' != ''">$(AppData)/XIVLauncher/addon/Hooks/dev</DalamudLibPath>
+    <DalamudLibPath Condition="'$(DalamudLibPath)' == ''">$(HOME)/.xlcore/dalamud/Hooks/dev</DalamudLibPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Lumina">
+      <HintPath>$(DalamudLibPath)/Lumina.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lumina.Excel">
+      <HintPath>$(DalamudLibPath)/Lumina.Excel.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

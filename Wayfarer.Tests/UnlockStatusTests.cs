@@ -563,7 +563,7 @@ public class UnlockStatusTests
 
     /// <summary>One value of the wrong JSON kind takes the whole unlocks feature down, so the
     /// exception has to name the value that did it rather than leaving a maintainer to bisect a
-    /// 588-entry catalogue against "the JSON value could not be converted".</summary>
+    /// 586-entry catalogue against "the JSON value could not be converted".</summary>
     [Fact]
     public void Parse_WrongScalarType_ThrowsNamingTheOffendingPath()
     {

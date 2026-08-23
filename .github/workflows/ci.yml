@@ -21,9 +21,15 @@ jobs:
         with:
           submodules: recursive
 
+      # The unlock catalogue is GENERATED locally, by a developer with the game installed
+      # (scripts/build-unlock-catalogue.mjs resolves names against the game's own sqpack), and
+      # the result is committed. These runners have no game installation and never will, so CI
+      # validates the committed file and never regenerates it. Both validators read only what is
+      # in the repository. See data/README.md.
       - name: Validate data files
         run: |
           node data/validate-unlocks.mjs
+          node data/validate-catalogue-identity.mjs
           node data/validate-hunting-targets.mjs
 
       - name: Setup .NET

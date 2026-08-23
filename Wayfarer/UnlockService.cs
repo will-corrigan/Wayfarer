@@ -380,7 +380,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             var r = new ResolvedUnlock { Def = def };
             if (Bind(def, sheet, byKey) is { } bound)
             {
-                QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level);
+                QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level ?? 0);
                 r.AlternativeQuestRowIds = bound.Alternatives;
             }
 

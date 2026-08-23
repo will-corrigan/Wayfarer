@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0](https://github.com/will-corrigan/Wayfarer/compare/v0.4.0...v0.5.0) (2026-08-22)
+
+
+### Features
+
+* guidance architecture and rank-wide hunting ([ab03536](https://github.com/will-corrigan/Wayfarer/commit/ab03536db57f7fca384e04a78ded7e4c62ef4330))
+* **guidance:** add core guidance types and payload-blind arbiter ([421c2eb](https://github.com/will-corrigan/Wayfarer/commit/421c2eb0b95b29dbbf3c6d759f10737a2eaf7ce5))
+* **guidance:** flag each objective through a declared affordance ([13a0424](https://github.com/will-corrigan/Wayfarer/commit/13a042444efd02b963f1dee852d094212161d2b9))
+* **guidance:** own completion per source and fix the vanishing hunting target ([2737b56](https://github.com/will-corrigan/Wayfarer/commit/2737b5617181449bf717786e0e54171d384cbb45))
+* **hunting:** chain the whole rank, grouped by zone ([800c979](https://github.com/will-corrigan/Wayfarer/commit/800c9798373346371412ae34e882f7b0a8de85e9))
+* open the checklist and hunting log by command ([b321041](https://github.com/will-corrigan/Wayfarer/commit/b321041939167db4e92aded01655edc42a7b6c31))
+* reach the checklist and hunting log without typing ([e02f04c](https://github.com/will-corrigan/Wayfarer/commit/e02f04ca513a07921eeca549b52b6319ed2102ca))
+
+
+### Bug Fixes
+
+* **hunting:** drop tracked page state when no log is active ([fc32ae2](https://github.com/will-corrigan/Wayfarer/commit/fc32ae217cc8830ce8195b7e337c1438515d75f9))
+
 ## [0.4.0](https://github.com/will-corrigan/Wayfarer/compare/v0.3.0...v0.4.0) (2026-08-22)
 
 
