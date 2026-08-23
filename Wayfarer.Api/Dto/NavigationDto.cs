@@ -24,6 +24,10 @@ public sealed class NavigationDto
 
     public float? DistanceYalms { get; init; }
 
+    /// <summary>SameZone mode only: the game's own search-area radius in yalms for a "search this
+    /// area" quest step, or null for an ordinary point objective.</summary>
+    public float? TargetRadiusYalms { get; init; }
+
     public uint? AetheryteId { get; init; }
 
     public string? AetheryteName { get; init; }

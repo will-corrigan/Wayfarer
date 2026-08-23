@@ -35,4 +35,10 @@ public sealed record ReadoutInputs
     /// <see cref="Ui.Elevation.Classify"/> — including the judgement about whether the target's
     /// height is trustworthy enough to say anything at all. The composer only writes it down.</summary>
     public ElevationHint Elevation { get; init; }
+
+    /// <summary>Whether the player is outside or inside a "search this area" objective's circle,
+    /// already decided (with hysteresis) by <see cref="Ui.SearchArea.Classify"/>.
+    /// <see cref="SearchAreaHint.NotApplicable"/> for an ordinary point objective — the composer
+    /// only writes down what it is told, exactly as with <see cref="Elevation"/>.</summary>
+    public SearchAreaHint AreaHint { get; init; }
 }

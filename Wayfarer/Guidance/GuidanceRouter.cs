@@ -74,7 +74,7 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         if (p.Territory == ctx.Territory && p.MapId == ctx.MapId)
         {
             var d = NavMath.Distance(p.X - ctx.PlayerX, p.Y - ctx.PlayerY, p.Z - ctx.PlayerZ);
-            return SameZone(p.X, p.Y, p.Z, d, ctx);
+            return SameZone(p.X, p.Y, p.Z, d, ctx, p.Radius);
         }
 
         // Same territory, different map — a different floor, OR an entrance marker for a
@@ -88,7 +88,7 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         if (p.Territory == ctx.Territory)
         {
             var fallbackDist = NavMath.Distance(p.X - ctx.PlayerX, p.Y - ctx.PlayerY, p.Z - ctx.PlayerZ);
-            fallback = SameZone(p.X, p.Y, p.Z, fallbackDist, ctx);
+            fallback = SameZone(p.X, p.Y, p.Z, fallbackDist, ctx, p.Radius);
         }
 
         return OtherZone(objective, p.Territory, p.MapId, p.X, p.Z, ctx, fallback);
@@ -97,7 +97,11 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
     /// <summary>City aethernet routing: if hopping the entry shard nearest the player and out of
     /// the shard nearest the objective beats the direct run, retarget the arrow to the entry shard
     /// and surface the exit shard's name for the travel menu.</summary>
-    private RouteResult.SameZone SameZone(float tx, float ty, float tz, float dist, GuidanceContext ctx)
+    /// <param name="radius">The objective's own search-area radius. Deliberately NOT attached to the
+    /// aethernet-retargeted result below: once the arrow is pointing at a shard, the shard — not
+    /// the objective's circle — is what "distance" and "arrived" mean, so the area wording must not
+    /// follow it there.</param>
+    private RouteResult.SameZone SameZone(float tx, float ty, float tz, float dist, GuidanceContext ctx, float radius = 0f)
     {
         if (AethernetRoute(ctx.Territory, ctx.PlayerX, ctx.PlayerZ, tx, tz, dist) is { } route)
         {
@@ -111,7 +115,7 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
                 AethernetExitName: route.Exit.Name);
         }
 
-        return new RouteResult.SameZone(tx, ty, tz, dist);
+        return new RouteResult.SameZone(tx, ty, tz, dist, Radius: radius);
     }
 
     /// <summary>Returns (entry shard nearest the player, exit shard nearest the target)

@@ -169,7 +169,14 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
             for (var i = 0; i < (int)mi.MarkerData.LongCount; i++)
             {
                 var md = mi.MarkerData[i];
-                markers.Add(new(md.Position.X, md.Position.Y, md.Position.Z, md.TerritoryTypeId, md.MapId));
+
+                // md.Radius: the game's own "search this area" circle radius, in yalms — 0 for an
+                // ordinary point objective. Verified against the installed FFXIVClientStructs.dll
+                // (MapMarkerData, field offset 0x28, float). Dropping it here is the exact defect
+                // that sent a player an arrow with a precise-looking distance to the CENTRE of a
+                // search-area step instead of telling them it was an area to search — see
+                // MarkerPoint.Radius and everything downstream of it.
+                markers.Add(new(md.Position.X, md.Position.Y, md.Position.Z, md.TerritoryTypeId, md.MapId, md.Radius));
             }
         }
 
@@ -195,13 +202,13 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
         if (markerMatch is MarkerMatch.Exact or MarkerMatch.TerritoryOnly)
         {
             var mk = matched!;
-            return new ObjectiveDestination.WorldPoint(ctx.Territory, mk.MapId, mk.X, mk.Y, mk.Z);
+            return new ObjectiveDestination.WorldPoint(ctx.Territory, mk.MapId, mk.X, mk.Y, mk.Z, Radius: mk.Radius);
         }
 
         if (markers.Count > 0)
         {
             var m = markers[0];
-            return new ObjectiveDestination.WorldPoint(m.TerritoryId, m.MapId, m.X, m.Y, m.Z);
+            return new ObjectiveDestination.WorldPoint(m.TerritoryId, m.MapId, m.X, m.Y, m.Z, Radius: m.Radius);
         }
 
         // Static sheet fallback: quest ToDo location for the current sequence.

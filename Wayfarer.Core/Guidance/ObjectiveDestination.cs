@@ -27,7 +27,12 @@ public abstract record ObjectiveDestination
     /// <param name="IsLive">Marks a position refreshed from the live object table this tick rather
     /// than a curated coordinate — DISPLAY ONLY ("42 yalms" vs "42 yalms (route)"). Routing treats
     /// both alike.</param>
-    public sealed record WorldPoint(uint Territory, uint MapId, float X, float Y, float Z, bool IsLive = false)
+    /// <param name="Radius">The game's own search-area radius, in yalms, or 0 for an ordinary point
+    /// objective — see <see cref="Navigation.MarkerPoint.Radius"/> for where this comes from. Carried
+    /// through so a "search this area" quest step never gets the same confident, precise arrow as a
+    /// waypoint the game actually knows the exact position of.</param>
+    public sealed record WorldPoint(
+        uint Territory, uint MapId, float X, float Y, float Z, bool IsLive = false, float Radius = 0f)
         : ObjectiveDestination;
 
     /// <summary>Right zone known, no usable point in it: teleport/aethernet advice still applies,

@@ -113,6 +113,19 @@ public static class ReadoutComposer
             return AddReasonOnly(lines, state);
         }
 
+        // Inside a search-area objective's circle, the centre coordinate is no longer a place to
+        // walk to — it never was the objective, only the middle of where the game says to look. An
+        // arrow still pointing at it a few yalms away would be the same confident-but-wrong
+        // precision this feature exists to remove, so the arrow is suppressed entirely rather than
+        // dimmed: there is no more useful direction to give than "look around you", and the readout
+        // already has precedent for no arrow when there is nothing precise to point at (see
+        // AddOtherZone's teleport-only case).
+        if (inputs.AreaHint == SearchAreaHint.Inside)
+        {
+            lines.Add(new ReadoutLine("You're in the search area — look around", ReadoutEmphasis.Primary));
+            return (false, null, null, null);
+        }
+
         AddDistance(lines, inputs);
 
         if (state.AethernetExitName is { Length: > 0 } exit)
@@ -209,6 +222,24 @@ public static class ReadoutComposer
     {
         if (inputs.DistanceYalms is not { } distance)
         {
+            return;
+        }
+
+        // A search-area objective (AreaHint.Outside here — Inside returns before this is ever
+        // called) is never "arrived at" and never gets the plain distance line: the arrow points at
+        // a circle's centre, not the thing itself, so the readout says so plainly rather than
+        // implying the precision a point objective actually has. Zero/absent radius — the entire
+        // rest of this method — is completely unchanged, which is what keeps a point objective's
+        // output byte-identical to before this feature existed.
+        if (inputs.State.TargetRadiusYalms is { } radius && radius > 0f)
+        {
+            var areaText = $"Search the area · {NavMath.FormatDistance(distance)}";
+            if (Elevation.Words(inputs.Elevation) is { Length: > 0 } areaElevation)
+            {
+                areaText = $"{areaText} · {areaElevation}";
+            }
+
+            lines.Add(new ReadoutLine(areaText, ReadoutEmphasis.Primary));
             return;
         }
 
