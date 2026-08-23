@@ -323,7 +323,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 && QuestNameMatch.Resolve(candidates) is var match
                 && sheet.GetRowOrDefault(match.Best.RowId) is { } row)
             {
-                QuestFacts.From(row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level);
+                QuestFacts.From(row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level ?? 0);
                 if (match.IsAmbiguous)
                 {
                     r.AlternativeQuestRowIds = [.. match.Alternatives];
