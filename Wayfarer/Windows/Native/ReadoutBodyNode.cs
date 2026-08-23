@@ -144,8 +144,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int SubjectTarget = 8;
 
-    /// <summary>What is said, once, when the switcher has no art. Losing it costs the shortcut and
-    /// nothing else, which is what this says rather than making it sound fatal.</summary>
+    /// <summary>What is said when the switcher has no art. Losing it costs the shortcut and nothing
+    /// else, which is what this says rather than making it sound fatal.</summary>
     private const string SwitcherUnavailable =
         "Wayfarer readout: the game's drop-down arrow could not be read, so the readout has no switcher beside "
         + "the quest name. What is being followed is still chosen from the window's Following tab and from the "
@@ -1059,12 +1059,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return true;
         }
 
-        // Not an error on its own — the sheet may simply not be resident yet — so this says so once
-        // and keeps trying rather than switching the control off for the session.
-        if (!warnedSwitcherOnce)
+        // Said once, and only to somebody who asked for diagnostics — the same policy this file
+        // already applies to the arrow. A sheet that is merely not resident yet becomes resident a
+        // frame or two later, and a warning that retracts itself is worse in a log than no warning.
+        // A hard failure is not this path: LoadTexture throwing is caught where it is called, and
+        // that one is an error whether or not anybody is watching.
+        if (!warnedSwitcherOnce && diagnosticsEnabled())
         {
             warnedSwitcherOnce = true;
-            log.Warning(SwitcherUnavailable);
+            log.Debug(SwitcherUnavailable);
         }
 
         return false;
