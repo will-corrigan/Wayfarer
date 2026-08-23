@@ -36,13 +36,16 @@ namespace Wayfarer.Windows.Native;
 /// double-scaled.</summary>
 internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
+    ReadoutPlacement placement,
     Action onTeleportClicked,
+    ITextureProvider textures,
     IFramework framework,
     IPluginLog log,
     Func<bool> diagnosticsEnabled) : NativeAddon
 {
     private ReadoutBodyNode? body;
     private Vector2 lastSize;
+    private Vector2 lastPosition;
     private bool lastHadClickTarget;
     private bool broken;
 
@@ -97,7 +100,12 @@ internal sealed unsafe class ClickableReadoutAddon(
         // every time would be the loudest thing about a readout that is meant to be furniture.
         addon->DisableShowHideSoundEffects = true;
 
-        body = new ReadoutBodyNode(log, diagnosticsEnabled, onTeleportClicked)
+        body = new ReadoutBodyNode(
+            log,
+            textures,
+            diagnosticsEnabled,
+            onTeleportClicked,
+            onMoved: delta => placement.MoveTo(lastPosition + delta))
         {
             Position = Vector2.Zero,
         };
@@ -120,6 +128,9 @@ internal sealed unsafe class ClickableReadoutAddon(
 
         try
         {
+            // Before the dispose, not as part of it: the drag handle's viewport listener is the one
+            // thing NodeBase.Dispose does not clean up — see ReadoutBodyNode.StopMoving.
+            body?.StopMoving();
             body?.Dispose();
         }
         catch (Exception ex)
@@ -132,6 +143,7 @@ internal sealed unsafe class ClickableReadoutAddon(
 
         body = null;
         lastSize = Vector2.Zero;
+        lastPosition = Vector2.Zero;
         lastHadClickTarget = false;
         broken = false;
     }
@@ -167,7 +179,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
 
         var size = body!.Layout(frame);
-        var position = ReadoutPlacement.Resolve(frame.Position, size);
+        var position = placement.Resolve(size);
 
         // Only when it actually changed: SetWindowSize writes through to the game's own sizing path,
         // and rebuilding the collision list every frame for an unchanged rectangle is pure waste.
@@ -179,6 +191,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
 
         RefreshCollision();
+
+        // Remembered because a drag is reported as an offset from wherever the host currently is,
+        // and the body has no way to ask the addon where that was.
+        lastPosition = position;
         SetWindowPosition(position);
     }
 

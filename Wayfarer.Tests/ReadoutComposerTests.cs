@@ -20,7 +20,7 @@ public class ReadoutComposerTests
         var content = ReadoutComposer.Compose(Inputs(Engaged("Hunting Log · Gladiator")));
 
         var heading = Assert.Single(content.Lines, line => line.Emphasis == ReadoutEmphasis.Heading);
-        Assert.Equal("Hunting Log · Gladiator", heading.Text);
+        Assert.Equal("Hunting Log - Gladiator", heading.Text);
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public class ReadoutComposerTests
 
         var content = ReadoutComposer.Compose(Inputs(state));
 
-        Assert.Equal("Hunting Log · Gladiator — 3 of 11", content.Lines[0].Text);
+        Assert.Equal("Hunting Log - Gladiator (3 of 11)", content.Lines[0].Text);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class ReadoutComposerTests
             NearbyUnlocks = ["Chocobo racing", "Triple Triad", "The Gold Saucer"],
         });
 
-        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Unlocks nearby: 3", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "3 unlocks nearby", StringComparison.Ordinal));
         Assert.DoesNotContain(content.Lines, line => line.Text.Contains("Triple Triad", StringComparison.Ordinal));
     }
 

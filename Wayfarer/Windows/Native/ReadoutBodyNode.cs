@@ -1,9 +1,9 @@
 using System.Numerics;
+using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
-using KamiToolKit.Nodes.Simplified;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 
@@ -43,40 +43,41 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private const float BasePrimarySize = 15f;
     private const float BaseSecondarySize = 13f;
     private const float BaseMutedSize = 12f;
-    private const float BaseArrow = 34f;
+
+    /// <summary>The arrow's side, before scale. Sized against the primary line rather than against
+    /// the readout: it sits <b>in line</b> with the text now, as a left gutter, and an arrow that
+    /// towers over the words it belongs to reads as a separate object rather than as part of
+    /// one.</summary>
+    private const float BaseArrow = 22f;
+
     private const float BaseGap = 3f;
 
-    private const string ArrowTexturePath = "ui/uld/NaviMap.tex";
-
-    /// <summary>How many frames in a row the chevron is allowed to come back "not ready" before the
-    /// readout gives up on it and shows words instead. The texture is loaded through the game's own
-    /// resource system, which can legitimately not have it on the first frames after a zone change
-    /// or a login, so a single failure must not be final — but neither may this retry forever.</summary>
-    private const int TextureRetries = 120;
-
-    /// <summary>The 24x24 chevron parts on the minimap's own sheet, in <see cref="ArrowIconVariant"/>
-    /// order. These are not guesses: <c>ui/uld/NaviMap.uld</c> declares every one of them as a real
-    /// part of texture 3, and the extracted sheet shows the same chevron in amber, green, blue, red
-    /// and white at exactly these offsets.</summary>
-    private static readonly Vector2[] ArrowCoordinates =
-    [
-        new(352f, 96f),
-        new(376f, 96f),
-        new(400f, 96f),
-        new(424f, 96f),
-        new(424f, 120f),
-    ];
+    /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
+    /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
+    /// line would otherwise be dragged by a box that no longer fits it.</summary>
+    private const float MoveHandleResizeThreshold = 8f;
 
     private readonly IPluginLog log;
+    private readonly ITextureProvider textures;
 
     /// <summary>Whether the per-change readout diagnostics should be written. Off by default —
     /// see <see cref="QuestHelperConfig.LogDiagnostics"/> for why.</summary>
     private readonly Func<bool> diagnosticsEnabled;
     private readonly TextNode[] lineNodes = new TextNode[MaxLines];
     private readonly HorizontalLineNode[] ruleNodes = new HorizontalLineNode[MaxLines];
-    private readonly SimpleImageNode arrowNode;
+
+    /// <summary>The direction arrow. An <c>ImGuiImageNode</c> rather than a texture-sheet crop
+    /// because the arrow is <b>generated</b> — see <see cref="ArrowBitmap"/> for what was wrong with
+    /// cropping the minimap's sheet, which is the defect this replaces. The node owns and disposes
+    /// the texture wrap it is given.</summary>
+    private readonly ImGuiImageNode arrowNode;
+
     private readonly TextNode arrowWordsNode;
     private readonly string[] lastText = new string[MaxLines];
+
+    /// <summary>Called when the player finishes dragging the readout, with the offset they dragged
+    /// it by, in the host's own coordinates. Null in a host that cannot be dragged.</summary>
+    private readonly Action<Vector2>? onMoved;
 
     /// <summary>An invisible click target parked over whichever line is the teleport advice, or
     /// null in a host that cannot be clicked. A <c>ResNode</c> draws nothing of its own, so the
@@ -85,36 +86,39 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private readonly ResNode? teleportHitBox;
 
     private ArrowIconVariant? loadedVariant;
-    private int textureAttempts;
+    private bool arrowFailed;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
     private string? lastBearingWords;
+    private bool movable;
+    private Vector2 movableSize;
 
-    public ReadoutBodyNode(IPluginLog log, Func<bool>? diagnosticsEnabled = null, Action? onTeleportClicked = null)
+    public ReadoutBodyNode(
+        IPluginLog log,
+        ITextureProvider textures,
+        Func<bool>? diagnosticsEnabled = null,
+        Action? onTeleportClicked = null,
+        Action<Vector2>? onMoved = null)
     {
         this.log = log;
+        this.textures = textures;
         this.diagnosticsEnabled = diagnosticsEnabled ?? (static () => false);
+        this.onMoved = onMoved;
 
         // The game's own direction indicator is a plain image node whose rotation is written every
         // frame (AtkImageNode PlayerCone / PlayerConeRotation on the minimap), so this copies the
-        // mechanism rather than inventing one. The chevron comes off the minimap's own texture
-        // sheet; the origin has to be the icon's centre or it pivots around its corner.
+        // mechanism rather than inventing one. The origin has to be the arrow's centre or it pivots
+        // around its corner.
         //
-        // FitTexture is the line that makes it appear at all, and it is worth saying why. A fresh
-        // image node has WrapMode None and no image flags — every image node in the toolkit that is
-        // meant to be seen sets one or the other, and this one set neither, so it drew nothing
-        // whatever its texture coordinates were. FitTexture is the toolkit's own shorthand for the
-        // pair (AutoFit plus Stretch), and it additionally scales the 24-pixel part up to whatever
-        // size the readout asks for instead of pinning it at 24.
-        //
-        // The texture is NOT loaded here. A node constructed while the plugin loads can be
-        // constructed before login, and the game's resource system locks a texture loaded that early
-        // to the default UI theme — so the load is deferred to the first frame an arrow is actually
-        // wanted, where the variant is known and the result can be checked.
-        arrowNode = new SimpleImageNode
+        // FitTexture — AutoFit plus Stretch — means "fit the whole loaded TEXTURE into this node".
+        // That is now exactly right, and it is worth saying why it was catastrophic before: with a
+        // 448x212 texture sheet loaded and a 24x24 part selected, the part was ignored and the whole
+        // sheet was drawn squashed into 34 pixels. The arrow's texture is generated and contains
+        // nothing but the arrow, so there is no part to ignore.
+        arrowNode = new ImGuiImageNode
         {
-            TextureSize = new Vector2(24f, 24f),
+            TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size),
             Size = new Vector2(BaseArrow, BaseArrow),
             OriginX = BaseArrow / 2f,
             OriginY = BaseArrow / 2f,
@@ -123,8 +127,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         };
         arrowNode.AttachNode(this);
 
-        // The direction in words, for when the chevron cannot be drawn. A readout that says "behind
-        // you, to the left" is still guidance; an arrow that silently fails to render is not.
+        // The direction in words, for when the arrow cannot be drawn at all. A readout that says
+        // "behind you, to the left" is still guidance; an arrow that silently fails is not.
         arrowWordsNode = new TextNode
         {
             FontType = FontType.Axis,
@@ -156,16 +160,59 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     /// <summary>Lays the whole readout out for this frame and returns the size it needs, in the
     /// host's own units. The host positions and sizes itself from that; nothing else about the
-    /// readout is the host's business.</summary>
+    /// readout is the host's business.
+    ///
+    /// <para><b>The shape.</b> A heading on its own line, then a single unit: the arrow in a left
+    /// gutter, vertically centred against the first line of the block, and every other line hard
+    /// against one left edge just to its right.
+    /// <code>
+    /// Hunting Log - Warrior
+    ///  &gt;   Highland Goobbue
+    ///      1/3 killed
+    ///      56 yalms
+    /// </code>
+    /// No panel and no border: what the player likes about this readout is that it looks like the
+    /// game's own quest tracker, and a frame around it would undo exactly that.</para>
+    ///
+    /// <para><b>The gutter is always reserved</b>, whether or not there is an arrow to put in it. It
+    /// costs a couple of dozen pixels of empty space when there is nothing to point at, and it buys
+    /// a left edge that never moves — which is worth more, because the alternative is a readout that
+    /// shuffles sideways every time an objective gains or loses coordinates.</para></summary>
     public Vector2 Layout(ReadoutFrame frame)
     {
         var factor = AtkUnitBase.GetGlobalUIScale() * Math.Clamp(frame.Scale, 0.5f, 3f);
         var width = BaseWidth * factor;
-        var y = LayoutArrow(frame, factor, width);
-        y = LayoutLines(frame, factor, width, y);
+        var arrowSize = BaseArrow * factor * Math.Clamp(frame.ArrowScale, 0.5f, 2f);
+        var gutter = arrowSize + (BaseGap * factor * 2f);
 
-        Size = new Vector2(width, y);
-        return new Vector2(width, y);
+        var drawable = frame.ArrowRadians is not null && EnsureArrowTexture(frame.ArrowIcon);
+        var y = LayoutWords(frame, drawable, factor, width);
+        var (bottom, firstLineCentre) = LayoutLines(frame, factor, width, gutter, y);
+        LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
+
+        var size = new Vector2(width, bottom);
+        Size = size;
+        ApplyMoveMode(frame.MoveMode, size);
+        return size;
+    }
+
+    /// <summary>Takes the move handle down, and with it the viewport-level mouse listener behind it.
+    ///
+    /// <b>This has to be called before the node is disposed.</b> <c>NodeBase.Dispose()</c> disposes
+    /// children, clears focus and detaches — but it never calls <c>DisableEditMode</c>, so the
+    /// <c>ViewportEventListener</c> that drives dragging is registered against the game's global
+    /// viewport and belongs to a plugin that has gone. That is the exact shape of the unload crash
+    /// this plugin has already shipped once.</summary>
+    public void StopMoving()
+    {
+        if (!movable)
+        {
+            return;
+        }
+
+        movable = false;
+        OnMoveComplete = null;
+        EnableMoving = false;
     }
 
     /// <summary>Hides every child. Used when there is nothing to say — the readout disappears
@@ -238,38 +285,92 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
     }
 
-    private float LayoutArrow(ReadoutFrame frame, float factor, float width)
+    /// <summary>Turns the game's own HUD-Layout move handle on and off around the readout.
+    ///
+    /// <para>KamiToolKit's <c>EnableMoving</c> builds the handle once, at the size the node had at
+    /// that moment, and registers a viewport-level mouse listener that marks clicks inside it as
+    /// handled. Both facts shape what happens here: the handle has to be rebuilt when the readout
+    /// changes size, and the whole thing has to be off unless the player asked for it, or the
+    /// readout would silently eat world clicks and camera drags underneath itself.</para></summary>
+    private void ApplyMoveMode(bool wanted, Vector2 size)
+    {
+        if (onMoved is null)
+        {
+            return;
+        }
+
+        if (!wanted)
+        {
+            StopMoving();
+            return;
+        }
+
+        var resize = movable && Vector2.Distance(size, movableSize) > MoveHandleResizeThreshold;
+        if (movable && !resize)
+        {
+            return;
+        }
+
+        if (resize)
+        {
+            EnableMoving = false;
+        }
+
+        movable = true;
+        movableSize = size;
+        OnMoveComplete = _ =>
+        {
+            onMoved(Position);
+            Position = Vector2.Zero;
+        };
+        EnableMoving = true;
+    }
+
+    /// <summary>Puts the arrow in the gutter, level with the middle of the first line of the block.
+    /// It takes no vertical space of its own — that is the whole point of the inline layout — so
+    /// this runs after the lines have been placed and simply parks it beside them.</summary>
+    private void LayoutArrow(ReadoutFrame frame, bool drawable, float size, float gutter, float? lineCentre)
     {
         if (frame.ArrowRadians is not { } radians)
         {
             arrowNode.IsVisible = false;
-            arrowWordsNode.IsVisible = false;
             ReportArrow(frame.ArrowHidden);
-            return 0f;
+            return;
+        }
+
+        if (!drawable)
+        {
+            arrowNode.IsVisible = false;
+            ReportArrow(ArrowHiddenReason.TextureUnavailable);
+            return;
         }
 
         // The arrow-size setting has to be applied here as well as the text-size one: before this
         // it moved nothing at all on the readout that is actually on screen, because only the ImGui
         // fallback ever read it.
-        var size = BaseArrow * factor * Math.Clamp(frame.ArrowScale, 0.5f, 2f);
-        if (EnsureArrowTexture(frame.ArrowIcon))
+        arrowNode.Size = new Vector2(size, size);
+        arrowNode.OriginX = size / 2f;
+        arrowNode.OriginY = size / 2f;
+        arrowNode.Position = new Vector2(
+            (gutter - size) / 2f,
+            (lineCentre ?? (size / 2f)) - (size / 2f));
+        arrowNode.Rotation = radians;
+        arrowNode.IsVisible = true;
+        ReportArrow(ArrowHiddenReason.None);
+        ReportBearing(radians);
+    }
+
+    /// <summary>The words fallback, on its own full-width line above the block. Only ever on screen
+    /// when the arrow could not be generated at all — which, since the arrow is now computed rather
+    /// than loaded, means something has gone genuinely wrong rather than merely slowly. It keeps its
+    /// old full-width line rather than trying to fit "behind you, to the left" into a 25-pixel
+    /// gutter.</summary>
+    private float LayoutWords(ReadoutFrame frame, bool drawable, float factor, float width)
+    {
+        if (drawable || frame.ArrowRadians is not { } radians)
         {
             arrowWordsNode.IsVisible = false;
-            arrowNode.Size = new Vector2(size, size);
-            arrowNode.OriginX = size / 2f;
-            arrowNode.OriginY = size / 2f;
-            arrowNode.Position = new Vector2((width / 2f) - (size / 2f), 0f);
-            arrowNode.Rotation = radians;
-            arrowNode.IsVisible = true;
-            ReportArrow(ArrowHiddenReason.None);
-            ReportBearing(radians);
-            return size + (BaseGap * factor);
-        }
-
-        arrowNode.IsVisible = false;
-        if (textureAttempts >= TextureRetries)
-        {
-            ReportArrow(ArrowHiddenReason.TextureUnavailable);
+            return 0f;
         }
 
         var height = (BasePrimarySize + 2f) * factor;
@@ -282,25 +383,40 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return height + (BaseGap * factor);
     }
 
-    private float LayoutLines(ReadoutFrame frame, float factor, float width, float top)
+    /// <summary>Lays out every line and reports how tall the readout ended up, plus the vertical
+    /// centre of the first line of the block — which is what the arrow is aligned against.
+    ///
+    /// <para>Headings run the full width from the left edge; everything else is indented past the
+    /// arrow gutter, so the block has one left edge and reads as a single object hanging off the
+    /// arrow.</para></summary>
+    private (float Bottom, float? FirstLineCentre) LayoutLines(
+        ReadoutFrame frame, float factor, float width, float gutter, float top)
     {
         var y = top;
         var count = Math.Min(frame.Content.Lines.Count, MaxLines);
         var hitBoxPlaced = false;
+        float? firstLineCentre = null;
 
         for (var i = 0; i < count; i++)
         {
             var line = frame.Content.Lines[i];
+            var heading = line.Emphasis == ReadoutEmphasis.Heading;
+            var left = heading ? 0f : gutter;
+            var lineWidth = width - left;
             var fontSize = FontSizeFor(line.Emphasis) * factor;
-            y = LayoutRule(i, line, factor, width, y);
+            y = LayoutRule(i, line, factor, left, lineWidth, y);
 
             // Two lines' worth of height so a wrapped line has somewhere to go. WordWrap needs a
-            // fixed width and grows downward into whatever height the node has.
+            // fixed width and grows downward into whatever height the node has; the advance below is
+            // the single-line height, so an unwrapped line does not leave a blank one under it.
             var height = (fontSize + 2f) * 2f;
-            LayoutLine(i, line, fontSize, width, height, y);
+            LayoutLine(i, line, fontSize, left, lineWidth, height, y);
 
-            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, width, height, y);
-            y += height * 0.6f;
+            var advance = height * 0.6f;
+            firstLineCentre ??= heading ? null : y + (advance / 2f);
+
+            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, left, lineWidth, height, y);
+            y += advance;
         }
 
         for (var i = count; i < MaxLines; i++)
@@ -315,10 +431,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         HasLiveClickTarget = hitBoxPlaced;
-        return y + (BaseGap * factor);
+        return (y + (BaseGap * factor), firstLineCentre);
     }
 
-    private float LayoutRule(int index, ReadoutLine line, float factor, float width, float y)
+    private float LayoutRule(int index, ReadoutLine line, float factor, float left, float width, float y)
     {
         if (!line.Separated)
         {
@@ -328,12 +444,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         y += BaseGap * factor * 2f;
         ruleNodes[index].Size = new Vector2(width, 4f);
-        ruleNodes[index].Position = new Vector2(0f, y);
+        ruleNodes[index].Position = new Vector2(left, y);
         ruleNodes[index].IsVisible = true;
         return y + (BaseGap * factor) + 4f;
     }
 
-    private void LayoutLine(int index, ReadoutLine line, float fontSize, float width, float height, float y)
+    private void LayoutLine(
+        int index, ReadoutLine line, float fontSize, float left, float width, float height, float y)
     {
         var node = lineNodes[index];
         node.FontType = FontFor(line.Emphasis);
@@ -350,7 +467,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         node.Size = new Vector2(width, height);
-        node.Position = new Vector2(0f, y);
+        node.Position = new Vector2(left, y);
         node.IsVisible = true;
     }
 
@@ -363,7 +480,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// not the surface — and placing a hit box on it gave the player a hand cursor over words that
     /// would then politely refuse to do anything.</para></summary>
     private bool TryPlaceHitBox(
-        ReadoutFrame frame, ReadoutLine line, bool alreadyPlaced, float width, float height, float y)
+        ReadoutFrame frame, ReadoutLine line, bool alreadyPlaced, float left, float width, float height, float y)
     {
         if (alreadyPlaced || teleportHitBox is null || !frame.ClickableTeleport || line.Action != ReadoutLineAction.Teleport)
         {
@@ -371,45 +488,59 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         teleportHitBox.Size = new Vector2(width, height * 0.6f);
-        teleportHitBox.Position = new Vector2(0f, y);
+        teleportHitBox.Position = new Vector2(left, y);
         teleportHitBox.IsVisible = true;
         return true;
     }
 
-    /// <summary>Loads the chosen chevron if it is not already loaded, and reports whether one can
-    /// actually be drawn. Reloading on a variant change is what makes the setting apply live; the
-    /// bounded retry is what stops a texture that is merely late (a zone change, a fresh login) from
-    /// being mistaken for one that is missing.</summary>
+    /// <summary>Generates the arrow for the chosen colour and hands it to the image node, if it is
+    /// not already loaded. Reloading on a variant change is what makes the setting apply live.
+    ///
+    /// <para>Unlike a texture read out of the game's resource system, this one cannot be merely
+    /// <i>late</i> — the pixels are computed here and uploaded synchronously — so there is no retry
+    /// loop and no "not ready yet" state. It either works or it throws, and if it throws the readout
+    /// falls back to saying the direction in words and never tries again this session.</para></summary>
     private bool EnsureArrowTexture(ArrowIconVariant variant)
     {
-        var index = (int)variant;
-        if (index < 0 || index >= ArrowCoordinates.Length)
+        if (arrowFailed)
         {
-            index = 0;
+            return false;
         }
 
-        if (loadedVariant != (ArrowIconVariant)index)
-        {
-            loadedVariant = (ArrowIconVariant)index;
-            textureAttempts = 0;
-            arrowNode.TextureCoordinates = ArrowCoordinates[index];
-            arrowNode.LoadTexture(ArrowTexturePath);
-        }
-
-        // Zero means "invalid or not ready" — the toolkit's own words for it.
-        if (arrowNode.ActualTextureSize != Vector2.Zero)
+        if (loadedVariant == variant)
         {
             return true;
         }
 
-        if (textureAttempts < TextureRetries)
+        try
         {
-            textureAttempts++;
-            arrowNode.LoadTexture(ArrowTexturePath);
-            arrowNode.TextureCoordinates = ArrowCoordinates[index];
-        }
+            var pixels = ArrowBitmap.Render(variant);
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(ArrowBitmap.Size, ArrowBitmap.Size),
+                pixels,
+                $"Wayfarer arrow ({variant})");
 
-        return false;
+            // Takes ownership: the node disposes the previous wrap and this one with itself.
+            arrowNode.LoadTexture(wrap);
+            arrowNode.TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size);
+            loadedVariant = variant;
+
+            if (arrowNode.ActualTextureSize == Vector2.Zero)
+            {
+                log.Warning(
+                    "Wayfarer readout: the generated direction arrow reports no texture size after being "
+                    + "uploaded. It is still being drawn; if there is a blank space where the arrow should "
+                    + "be, this line is why.");
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            arrowFailed = true;
+            log.Error(ex, "Wayfarer readout: the direction arrow could not be generated — showing the direction in words instead.");
+            return false;
+        }
     }
 
     /// <summary>Logs why there is (or is no longer) an arrow, once per change of reason. Deliberately
@@ -435,8 +566,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             ArrowHiddenReason.NotRequested => "Wayfarer readout: no direction arrow — nothing active has a direction to point at.",
             ArrowHiddenReason.NoTargetCoordinates => "Wayfarer readout: no direction arrow — the active objective has no target coordinates.",
             ArrowHiddenReason.NoPlayer => "Wayfarer readout: no direction arrow — there is no local player to measure a bearing from.",
-            _ => $"Wayfarer readout: the direction chevron could not be loaded from {ArrowTexturePath} after "
-                + $"{TextureRetries} attempts — showing the direction in words instead.",
+            _ => "Wayfarer readout: the direction arrow could not be generated — showing the direction in words instead.",
         };
 
         if (reason == ArrowHiddenReason.TextureUnavailable)
@@ -455,20 +585,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         log.Debug(message);
     }
 
-    /// <summary>Writes down what the chevron is currently claiming, so the one thing about it that
+    /// <summary>Writes down what the arrow is currently claiming, so the one thing about it that
     /// cannot be settled by reading the code can be settled by looking at the screen once.
     ///
     /// <para><c>NavMath.ArrowAngle</c> is defined as "0 = straight up", and the words fallback is
-    /// built from the same number, so the words are right by construction. The image node is not:
-    /// the angle is handed straight to <c>Rotation</c>, which is only correct if the chevron in
-    /// <c>ui/uld/NaviMap.tex</c> points straight up at rest — likely, and unverified. If it does
-    /// not, every arrow is wrong by a fixed multiple of 90 degrees while the words stay right,
-    /// which is a quiet way to send someone the wrong way.</para>
-    ///
-    /// <para>So: on every change of compass direction, this logs the rotation being applied and the
-    /// direction it is supposed to mean. Compare one line against the arrow on screen and the
-    /// question is closed — if the readout says "north-east" and the chevron points down-right, the
-    /// rest orientation is a quarter turn out.</para></summary>
+    /// built from the same number. The arrow art is now generated by <see cref="ArrowBitmap"/>,
+    /// which draws it pointing straight up and centred in its own image, so the rest orientation is
+    /// a property of this codebase rather than an assumption about a game asset — there is no offset
+    /// to get wrong. This line stays anyway, because "the arrow and the words disagree" is still the
+    /// cheapest possible check that the bearing itself is right.</para></summary>
     private void ReportBearing(float radians)
     {
         if (!diagnosticsEnabled())
@@ -485,9 +610,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         lastBearingWords = words;
         var degrees = radians * 180f / MathF.PI;
         log.Debug(
-            $"Wayfarer readout: chevron rotation {degrees:F0}° = {words}. The art at " +
-            $"{ArrowCoordinates[0].X},{ArrowCoordinates[0].Y} of {ArrowTexturePath} is assumed to point " +
-            "straight up unrotated; if the arrow on screen and these words disagree by a quarter turn, " +
-            "that assumption is what is wrong.");
+            $"Wayfarer readout: arrow rotation {degrees:F0}° = {words}. The arrow is drawn pointing straight " +
+            "up unrotated; if the arrow on screen and these words disagree, the bearing is what is wrong.");
     }
 }

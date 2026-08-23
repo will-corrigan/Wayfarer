@@ -58,12 +58,17 @@ public static class ReadoutComposer
 
         // "Stop 3 of 11" belongs on the mode line, not on the objective: it describes the plan the
         // mode is executing, and putting it here is what makes an ordered chain legible at a glance.
+        // Parenthesised rather than dash-separated because the heading may already carry a dash
+        // ("Hunting Log - Warrior"), and because the em dash that used to be here is not a character
+        // the heading font can be relied on to draw — see HeadingText.
         if (state.RouteStop is { } stop && state.RouteTotal is { } total)
         {
-            label = $"{label} — {stop} of {total}";
+            label = $"{label} ({stop} of {total})";
         }
 
-        lines.Add(new ReadoutLine(label, ReadoutEmphasis.Heading));
+        // The last thing the heading passes through, so nothing downstream can reintroduce a glyph
+        // Trump Gothic cannot draw.
+        lines.Add(new ReadoutLine(HeadingText.Plain(label), ReadoutEmphasis.Heading));
     }
 
     private static void AddObjective(List<ReadoutLine> lines, NavigationState state)
@@ -228,7 +233,13 @@ public static class ReadoutComposer
         // the names and their distances, because that is the moment they are useful.
         if (inputs.State.Engaged)
         {
-            lines.Add(new ReadoutLine($"Unlocks nearby: {inputs.NearbyUnlocks.Count}", ReadoutEmphasis.Muted, separated));
+            // Phrased the way the game phrases a count — "3 unlocks nearby", not "Unlocks nearby:
+            // 3" — and kept in sentence case because it is content, not a label.
+            var count = inputs.NearbyUnlocks.Count;
+            lines.Add(new ReadoutLine(
+                count == 1 ? "1 unlock nearby" : $"{count} unlocks nearby",
+                ReadoutEmphasis.Muted,
+                separated));
             return;
         }
 

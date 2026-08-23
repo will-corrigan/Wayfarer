@@ -77,10 +77,15 @@ internal sealed class DtrEntry(
         entry = null;
     }
 
+    /// <summary>Says what every part of the entry means, because a glyph on the info bar has no
+    /// room to explain itself and the player asked — reasonably — why there was an aetheryte on it
+    /// while the target was fifty-six yalms away in the same zone.</summary>
     private static SeString BuildTooltip() =>
         new SeStringBuilder()
-            .AddText("Wayfarer — left-click opens the checklist, right-click opens settings, shift-click stops the current hunt or route. "
-                + "An exclamation mark means there is something you can pick up in this zone.")
+            .AddText("Wayfarer. The crystal means the next step uses the aetheryte network - the words beside it say "
+                + "where. No crystal means walk there, and the numbers are how far through and how far left. "
+                + "An exclamation mark means there is an unlock you can pick up in this zone. "
+                + "Left-click opens the checklist, right-click opens settings, shift-click stops the current hunt or route.")
             .Build();
 
     private static SeString BuildText(DtrText text)
@@ -90,6 +95,9 @@ internal sealed class DtrEntry(
         // The alert first, because it is the thing that has to catch the eye without being read.
         // ExclamationRectangle is the game's own "there is a quest here" marker — the same shape a
         // player already scans for over an NPC's head, which is exactly the association wanted.
+        // It is emitted from exactly one condition — DtrComposer sets UnlocksNearby only when the
+        // unlock count the READOUT is given is non-zero — so the bar cannot claim a pickup the
+        // readout has been told to keep quiet about.
         if (text.UnlocksNearby)
         {
             builder.AddIcon(BitmapFontIcon.ExclamationRectangle);
@@ -103,14 +111,12 @@ internal sealed class DtrEntry(
         return builder.AddText(text.Text).Build();
     }
 
-    // Every value here is an icon the game itself already uses elsewhere for the same idea, kept
-    // to a plain "no icon" default rather than guessing at glyphs nobody has seen on the bar.
-    private static BitmapFontIcon? Icon(DtrGlyph glyph) => glyph switch
-    {
-        DtrGlyph.Hunting => BitmapFontIcon.NotoriousMonster,
-        DtrGlyph.Route => BitmapFontIcon.Aetheryte,
-        _ => null,
-    };
+    // One glyph, one meaning: the aetheryte crystal appears when, and only when, the next step is a
+    // teleport or an aethernet hop. It used to mean "a route is in progress", which is how it came
+    // to sit beside a target fifty-six yalms away in the same zone. Everything else is words, and
+    // that is deliberate — see DtrGlyph.
+    private static BitmapFontIcon? Icon(DtrGlyph glyph) =>
+        glyph == DtrGlyph.Aetheryte ? BitmapFontIcon.Aetheryte : null;
 
     private void OnFrame(IFramework tick)
     {

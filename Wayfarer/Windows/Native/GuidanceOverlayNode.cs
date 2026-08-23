@@ -21,24 +21,40 @@ namespace Wayfarer.Windows.Native;
 internal sealed class GuidanceOverlayNode : OverlayNode
 {
     private readonly Func<ReadoutFrame?> provider;
+    private readonly ReadoutPlacement placement;
     private readonly IPluginLog log;
     private readonly ReadoutBodyNode body;
 
     private bool broken;
 
-    public GuidanceOverlayNode(Func<ReadoutFrame?> provider, IPluginLog log, Func<bool> diagnosticsEnabled)
+    public GuidanceOverlayNode(
+        Func<ReadoutFrame?> provider,
+        ReadoutPlacement placement,
+        ITextureProvider textures,
+        IPluginLog log,
+        Func<bool> diagnosticsEnabled)
     {
         this.provider = provider;
+        this.placement = placement;
         this.log = log;
 
         // No click handler: an overlay is click-through by construction, so offering one would be
         // a lie. The body renders identically either way.
-        body = new ReadoutBodyNode(log, diagnosticsEnabled);
+        //
+        // Dragging is not the same case, and this is the one thing the overlay does accept a mouse
+        // for. It runs off a VIEWPORT event listener rather than this addon's collision list, so it
+        // works without making the overlay clickable, focusable or reachable by a controller — and
+        // it is only ever wired up while the player has explicitly turned move mode on.
+        body = new ReadoutBodyNode(log, textures, diagnosticsEnabled, onMoved: delta => placement.MoveTo(Position + delta));
         body.AttachNode(this);
     }
 
     /// <inheritdoc/>
     public override OverlayLayer OverlayLayer => OverlayLayer.BehindUserInterface;
+
+    /// <summary>Takes the drag handle down before this node is disposed — see
+    /// <see cref="ReadoutBodyNode.StopMoving"/> for why that cannot wait for disposal itself.</summary>
+    public void StopMoving() => body.StopMoving();
 
     /// <inheritdoc/>
     protected override void OnUpdate()
@@ -70,9 +86,12 @@ internal sealed class GuidanceOverlayNode : OverlayNode
         }
 
         IsVisible = true;
+
+        // The body owns its own Position: while the player is dragging it, that is where the drag
+        // lives, and resetting it here every frame would pin the readout under the cursor instead of
+        // letting it move.
         var size = body.Layout(frame);
-        body.Position = Vector2.Zero;
         Size = size;
-        Position = ReadoutPlacement.Resolve(frame.Position, size);
+        Position = placement.Resolve(size);
     }
 }

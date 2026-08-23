@@ -1,6 +1,7 @@
 using Wayfarer.Core.Input;
 using Wayfarer.Core.Ui;
 using Wayfarer.Modules;
+using Wayfarer.Windows.Native;
 
 namespace Wayfarer.Settings;
 
@@ -13,31 +14,47 @@ namespace Wayfarer.Settings;
 /// both with no further work — which is the fix for the class of defect where a per-module
 /// <c>DrawConfig</c> checkbox existed only inside Dalamud's mouse-driven config window and was
 /// therefore unreachable for a controller player.</summary>
-internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modules, Action saveConfig)
+internal sealed class SettingsCatalog(
+    Configuration config, ModuleRegistry modules, ReadoutPlacement placement, Action saveConfig)
 {
-    private static readonly string[] InputModeLabels = ["Automatic", "Mouse and keyboard", "Controller"];
+    private static readonly string[] InputModeLabels = ["Automatic", "Mouse and Keyboard", "Controller"];
 
     private static readonly InputModeOverride[] InputModeValues =
         [InputModeOverride.Auto, InputModeOverride.Mouse, InputModeOverride.Controller];
 
+    // Top Centre first: it is the default, and it is the one placement on a stock 16:9 HUD that is
+    // clear of both the minimap and the quest tracker. "Custom" is not offered as something to cycle
+    // to — it is what the readout becomes once the player has actually moved it.
     private static readonly string[] ReadoutPositionLabels =
-        ["Follow the quest tracker", "Upper left", "Upper right", "Lower left", "Lower right"];
+    [
+        "Top Centre",
+        "Top Left",
+        "Top Right",
+        "Bottom Left",
+        "Bottom Centre",
+        "Bottom Right",
+        "Follow the Quest Tracker",
+        "Where You Put It",
+    ];
 
     private static readonly ReadoutPosition[] ReadoutPositionValues =
     [
-        ReadoutPosition.FollowQuestTracker,
+        ReadoutPosition.TopCentre,
         ReadoutPosition.TopLeft,
         ReadoutPosition.TopRight,
         ReadoutPosition.BottomLeft,
+        ReadoutPosition.BottomCentre,
         ReadoutPosition.BottomRight,
+        ReadoutPosition.FollowQuestTracker,
+        ReadoutPosition.Custom,
     ];
 
-    // Plain colour names, in ArrowIconVariant's declaration order — the five are the same chevron in
-    // five colours, so the colour is the only thing there is to say about them.
+    // Plain colour names, in ArrowIconVariant's declaration order — the five are the same drawn
+    // arrow in five colours, so the colour is the only thing there is to say about them.
     private static readonly string[] ArrowIconLabels = ["Amber", "Green", "Blue", "Red", "White"];
 
     private static readonly string[] WindowPositionLabels =
-        ["Center", "Upper left", "Upper right", "Lower left", "Lower right"];
+        ["Centre", "Top Left", "Top Right", "Bottom Left", "Bottom Right"];
 
     private static readonly HubPositionPreset[] WindowPositionValues =
     [
@@ -53,12 +70,12 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
     // "does this read as a real quest marker over a monster" is the one question in this whole
     // feature that only an eye can answer — see GuidanceConfig.NamePlateMarkerIcon.
     private static readonly string[] MarkerIconLabels =
-        ["Quest in progress", "Quest available", "Main scenario", "Look here"];
+        ["Quest in Progress", "Quest Available", "Main Scenario", "Look Here"];
 
     private static readonly int[] MarkerIconValues = [71223, 71221, 71203, 60094];
 
     // Positional, matching ContextMenuMode's declaration order.
-    private static readonly string[] ContextMenuLabels = ["Never", "On a controller", "Always"];
+    private static readonly string[] ContextMenuLabels = ["Never", "On a Controller", "Always"];
 
     /// <summary>Raised when the window-position setting changes, so the window can move at once
     /// rather than on the next open.</summary>
@@ -72,12 +89,13 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingSection("Features", BuildModuleSettings()),
         new SettingSection("Guidance", BuildGuidanceSettings()),
         new SettingSection("Readout", BuildReadoutSettings()),
+        new SettingSection("Readout Position", BuildReadoutPositionSettings()),
         new SettingSection("Controls", BuildControlSettings()),
     ];
 
     // A stored value that is no longer offered (a hand-edited config, or an option removed in a
     // later version) reads back as the first entry rather than as an out-of-range index.
-    private static int IndexOf(int[] values, int value)
+    private static int IndexOf<T>(T[] values, T value)
     {
         var index = Array.IndexOf(values, value);
         return index < 0 ? 0 : index;
@@ -113,7 +131,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "guidance.mapFlag",
-            Label = "Mark the target with the map flag",
+            Label = "Mark the Target with the Map Flag",
             Description = "Restores your own flag when the route ends.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkObjectiveWithMapFlag,
@@ -122,7 +140,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "guidance.namePlates",
-            Label = "Mark targets above their heads",
+            Label = "Mark Targets Above Their Heads",
             Description = "Uses the game's own quest marker. Never replaces a marker the game put there.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkTargetsOnNameplates,
@@ -140,7 +158,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "questHelper.logDiagnostics",
-            Label = "Write readout diagnostics to the log",
+            Label = "Write Readout Diagnostics to the Log",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.LogDiagnostics,
             WriteFlag = Write(value => config.QuestHelper.LogDiagnostics = value),
@@ -148,7 +166,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "guidance.clickTeleport",
-            Label = "Teleport when the readout's aetheryte is clicked",
+            Label = "Teleport When the Readout's Aetheryte Is Clicked",
             Description = "The only thing Wayfarer ever does that the server sees.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.ClickTeleportEnabled,
@@ -164,7 +182,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.show",
-            Label = "Show the readout",
+            Label = "Show the Readout",
             Kind = SettingKind.Toggle,
             ReadFlag = () => !config.QuestHelper.WidgetHidden,
             WriteFlag = Write(value => config.QuestHelper.WidgetHidden = !value),
@@ -172,7 +190,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.dtr",
-            Label = "Show the Wayfarer entry in the server info bar",
+            Label = "Show the Wayfarer Entry in the Server Info Bar",
             Description = "Left-click opens the checklist, right-click opens settings. The one entry point that's always on screen no matter how the readout above is set.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => !config.QuestHelper.DtrHidden,
@@ -180,17 +198,8 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         },
         new SettingDefinition
         {
-            Id = "readout.position",
-            Label = "Position",
-            Kind = SettingKind.Choice,
-            Options = ReadoutPositionLabels,
-            ReadOption = () => Array.IndexOf(ReadoutPositionValues, config.QuestHelper.ReadoutPosition),
-            WriteOption = Write(index => config.QuestHelper.ReadoutPosition = ReadoutPositionValues[index]),
-        },
-        new SettingDefinition
-        {
             Id = "readout.textScale",
-            Label = "Text size",
+            Label = "Text Size",
             Kind = SettingKind.Scale,
             Minimum = 0.8f,
             Maximum = 2.0f,
@@ -201,8 +210,8 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.arrowIcon",
-            Label = "Direction arrow style",
-            Description = "Which of the minimap's own direction chevrons the arrow is cut from. Takes effect at once.",
+            Label = "Arrow Colour",
+            Description = "Which colour the direction arrow is drawn in. Takes effect at once.",
             Kind = SettingKind.Choice,
             Options = ArrowIconLabels,
             ReadOption = () => (int)config.QuestHelper.ArrowIcon,
@@ -211,7 +220,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.arrowScale",
-            Label = "Arrow size",
+            Label = "Arrow Size",
             Kind = SettingKind.Scale,
             Minimum = 0.5f,
             Maximum = 2.0f,
@@ -221,12 +230,72 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         },
     ];
 
+    /// <summary>The readout's own position, as its own section — a preset to start from, two
+    /// sliders that move it a step at a time, and the mouse's drag mode.
+    ///
+    /// <para><b>Why sliders and not a drag alone.</b> The player this was reported by is on a
+    /// controller, with no cursor at all. These are <c>FloatSliderNode</c>s, which the game's own
+    /// slider component steps with the d-pad, and every step writes and saves at once — so the
+    /// readout moves live as they hold a direction, which is the only way to aim it without being
+    /// able to see a cursor. They read back as a percentage of the usable screen rather than a pixel
+    /// count, which is also how they survive a resolution change.</para></summary>
+    private IReadOnlyList<SettingDefinition> BuildReadoutPositionSettings() =>
+    [
+        new SettingDefinition
+        {
+            Id = "readout.position",
+            Label = "Position",
+            Description = "A starting point. Nudging it below, or dragging it, keeps wherever you leave it.",
+            Kind = SettingKind.Choice,
+            Options = ReadoutPositionLabels,
+            ReadOption = () => IndexOf(ReadoutPositionValues, config.QuestHelper.ReadoutPosition),
+            WriteOption = Write(index => config.QuestHelper.ReadoutPosition = ReadoutPositionValues[index]),
+        },
+        new SettingDefinition
+        {
+            Id = "readout.positionX",
+            Label = "Across the Screen",
+            Description = "0% is hard left, 100% is hard right. Moves the readout as you change it.",
+            Kind = SettingKind.Scale,
+            Minimum = 0f,
+            Maximum = 100f,
+            Step = 1f,
+            ValueFormat = "0",
+            ValueUnit = "%",
+            ReadValue = () => placement.FractionX * 100f,
+            WriteValue = value => placement.SetFractionX(value / 100f),
+        },
+        new SettingDefinition
+        {
+            Id = "readout.positionY",
+            Label = "Down the Screen",
+            Description = "0% is hard top, 100% is hard bottom.",
+            Kind = SettingKind.Scale,
+            Minimum = 0f,
+            Maximum = 100f,
+            Step = 1f,
+            ValueFormat = "0",
+            ValueUnit = "%",
+            ReadValue = () => placement.FractionY * 100f,
+            WriteValue = value => placement.SetFractionY(value / 100f),
+        },
+        new SettingDefinition
+        {
+            Id = "readout.moveMode",
+            Label = "Move the Readout with the Mouse",
+            Description = "Puts a HUD-Layout style handle on the readout so you can drag it. Turn it off when you're done — while it's on, clicks on the readout move it instead of going through to the world.",
+            Kind = SettingKind.Toggle,
+            ReadFlag = () => config.QuestHelper.ReadoutMoveMode,
+            WriteFlag = Write(value => config.QuestHelper.ReadoutMoveMode = value),
+        },
+    ];
+
     private IReadOnlyList<SettingDefinition> BuildReadoutContent() =>
     [
         new SettingDefinition
         {
             Id = "readout.unlocks",
-            Label = "Show nearby unlocks",
+            Label = "Show Nearby Unlocks",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.UnlockChecklist.ShowOnWidget,
             WriteFlag = Write(value => config.UnlockChecklist.ShowOnWidget = value),
@@ -234,7 +303,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.hunting",
-            Label = "Show hunting progress",
+            Label = "Show Hunting Progress",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.HuntingLog.ShowOnWidget,
             WriteFlag = Write(value => config.HuntingLog.ShowOnWidget = value),
@@ -242,7 +311,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.hideInCombat",
-            Label = "Hide in combat",
+            Label = "Hide in Combat",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.ArrowHideInCombat,
             WriteFlag = Write(value => config.QuestHelper.ArrowHideInCombat = value),
@@ -250,7 +319,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.hideInDuty",
-            Label = "Hide in duties",
+            Label = "Hide in Duties",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.ArrowHideInDuty,
             WriteFlag = Write(value => config.QuestHelper.ArrowHideInDuty = value),
@@ -258,7 +327,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "readout.native",
-            Label = "Draw the readout with the game's own text",
+            Label = "Draw the Readout with the Game's Own Text",
             Description = "Turn this off to fall back to the old plugin-drawn widget.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.UseNativeReadout,
@@ -275,13 +344,13 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
             Description = "Automatic follows whichever device you used last.",
             Kind = SettingKind.Choice,
             Options = InputModeLabels,
-            ReadOption = () => Array.IndexOf(InputModeValues, config.InputMode.Override),
+            ReadOption = () => IndexOf(InputModeValues, config.InputMode.Override),
             WriteOption = Write(index => config.InputMode.Override = InputModeValues[index]),
         },
         new SettingDefinition
         {
             Id = "input.cursorNavigation",
-            Label = "Move around this window with the d-pad",
+            Label = "Move Around This Window with the D-Pad",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.InputMode.CursorNavigation,
             WriteFlag = Write(value => config.InputMode.CursorNavigation = value),
@@ -289,7 +358,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "input.contextMenu",
-            Label = "Show Wayfarer in the game's menus",
+            Label = "Show Wayfarer in the Game's Menus",
             Description = "The only way to reach Wayfarer's actions without a cursor.",
             Kind = SettingKind.Choice,
             Options = ContextMenuLabels,
@@ -299,10 +368,10 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         new SettingDefinition
         {
             Id = "window.position",
-            Label = "Window position",
+            Label = "Window Position",
             Kind = SettingKind.Choice,
             Options = WindowPositionLabels,
-            ReadOption = () => Array.IndexOf(WindowPositionValues, config.Hub.Position),
+            ReadOption = () => IndexOf(WindowPositionValues, config.Hub.Position),
             WriteOption = index =>
             {
                 config.Hub.Position = WindowPositionValues[index];

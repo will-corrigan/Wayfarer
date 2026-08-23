@@ -18,7 +18,9 @@ public sealed class SettingDefinition
     /// <summary>Stable identifier, used for logging and for tests — never shown to the player.</summary>
     public required string Id { get; init; }
 
-    /// <summary>The player-facing label, in the game's own sentence case.</summary>
+    /// <summary>The player-facing label, in Title Case — the game titles its own settings, tabs and
+    /// headings that way, and a plugin sitting beside them that does not looks like a plugin.
+    /// Descriptions are the exception and stay in sentence case, because they are sentences.</summary>
     public required string Label { get; init; }
 
     /// <summary>One line of explanation, shown under the control where a presentation has room.</summary>
@@ -56,6 +58,15 @@ public sealed class SettingDefinition
     /// <summary><see cref="SettingKind.Scale"/> only.</summary>
     public Action<float>? WriteValue { get; init; }
 
+    /// <summary><see cref="SettingKind.Scale"/> only — how the value reads to the player. Defaults
+    /// to the multiplier form ("1.2x") the size settings use; the readout's position sliders are
+    /// percentages of the screen, which is a different thing entirely and has to say so.</summary>
+    public string ValueFormat { get; init; } = "0.0";
+
+    /// <summary><see cref="SettingKind.Scale"/> only — the unit appended to
+    /// <see cref="ValueFormat"/>.</summary>
+    public string ValueUnit { get; init; } = "x";
+
     /// <summary>The current value as the player would read it. Shared by both presentations so a
     /// setting reads identically wherever it is shown — the native cycle button's label and the
     /// ImGui row's trailing text are the same string.</summary>
@@ -63,7 +74,7 @@ public sealed class SettingDefinition
     {
         SettingKind.Toggle => ReadFlag?.Invoke() == true ? "On" : "Off",
         SettingKind.Choice => OptionLabel(ReadOption?.Invoke() ?? 0),
-        SettingKind.Scale => (ReadValue?.Invoke() ?? 0f).ToString("0.0", CultureInfo.CurrentCulture) + "x",
+        SettingKind.Scale => (ReadValue?.Invoke() ?? 0f).ToString(ValueFormat, CultureInfo.CurrentCulture) + ValueUnit,
         _ => string.Empty,
     };
 

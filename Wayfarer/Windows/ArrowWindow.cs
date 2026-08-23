@@ -192,8 +192,8 @@ internal sealed unsafe class ArrowWindow : Window
 
         var hunting = huntingModule.Hunting;
         var label = hunting.ActiveLogLabel is null
-            ? "Hunting log"
-            : $"Hunting log ({hunting.RemainingOnPage.Count})";
+            ? "Hunting Log"
+            : $"Hunting Log ({hunting.RemainingOnPage.Count})";
 
         if (sameLine)
         {
