@@ -482,6 +482,59 @@ public class UnlockStatusTests
         Assert.Equal("nice", defs[1].Priority);   // enrichment default
         Assert.False(defs[1].Cosmetic);
         Assert.Null(defs[1].Quest);
+        Assert.Null(defs[0].Requires);
+        Assert.Equal("unverified", defs[1].Confidence);   // never assume a claim is backed
+        Assert.Empty(defs[1].Sources);
+    }
+
+    [Fact]
+    public void Parse_ReadsCuratedRequirementsAndProvenance()
+    {
+        const string json = """
+        {"unlocks":[
+          {"level":50,"unlock":"Firebird (Mount)","type":"mount","quest":"Fiery Wings, Fiery Hearts",
+           "description":"A collectible mount.","priority":"optional","cosmetic":true,
+           "requires":{"label":"all seven Heavensward Extreme-trial Lanner mounts",
+                       "mounts":[{"id":76,"name":"Rose Lanner","from":"Thok ast Thok (Extreme)"}],
+                       "minions":[{"id":1,"name":"Wind-up Kirin","from":null}],
+                       "items":[{"id":2002052,"name":"Firebird Whistle","count":1,"keyItem":true}],
+                       "jobs":[{"id":18,"name":"Fisher","level":61}],
+                       "minLevel":80},
+           "confidence":"single-source","sources":["gamerescape:progression-guide","game-data:Quest#67086"]}
+        ]}
+        """;
+        var def = Assert.Single(UnlockDataset.Parse(json));
+        Assert.NotNull(def.Requires);
+        var req = def.Requires;
+        Assert.Equal("all seven Heavensward Extreme-trial Lanner mounts", req.Label);
+        Assert.False(req.Unverifiable);
+        Assert.Equal(80, req.MinLevel);
+        Assert.Equal(new UnlockRequirement.Collectible(76, "Rose Lanner", "Thok ast Thok (Extreme)"), Assert.Single(req.Mounts));
+        Assert.Equal(1u, Assert.Single(req.Minions).Id);
+        Assert.True(Assert.Single(req.Items).KeyItem);
+        Assert.Equal(61, Assert.Single(req.Jobs).Level);
+        Assert.True(req.HasCheckableRequirement);
+        Assert.Equal("single-source", def.Confidence);
+        Assert.Equal(2, def.Sources.Count);
+    }
+
+    [Fact]
+    public void Parse_ReadsAnUnverifiableRequirement()
+    {
+        const string json = """
+        {"unlocks":[
+          {"level":70,"unlock":"Emanation (Extreme) Trial Access","type":"trial","quest":"Talk about Lakshmi",
+           "description":"A single-boss fight for eight players.","priority":"nice","cosmetic":false,
+           "requires":{"label":"unlocked by talking to an NPC, which leaves no record","unverifiable":true},
+           "confidence":"unverified","sources":["gamerescape:progression-guide"]}
+        ]}
+        """;
+        var def = Assert.Single(UnlockDataset.Parse(json));
+        Assert.NotNull(def.Requires);
+        var req = def.Requires;
+        Assert.True(req.Unverifiable);
+        Assert.False(req.HasCheckableRequirement);
+        Assert.Empty(req.Mounts);
     }
 
     private static UnlockGateContext Ctx(
