@@ -5,8 +5,9 @@ namespace Wayfarer.Core.Guidance;
 /// quest reads and composes these into a <see cref="GuidanceChain{T}"/>.</summary>
 public static class UnlockRoutePlan
 {
-    /// <summary>The mode indicator shown whenever an unlock route owns the arrow.</summary>
-    public const string SourceLabel = "Unlock route";
+    /// <summary>The mode indicator shown whenever an unlock route owns the arrow. Title case, like
+    /// every other heading the game draws.</summary>
+    public const string SourceLabel = "Unlock Route";
 
     /// <summary>A pickup leg is done once its quest has been ACCEPTED (the player walked to the
     /// giver and took it — the whole point of the route) or was already COMPLETE (the route was

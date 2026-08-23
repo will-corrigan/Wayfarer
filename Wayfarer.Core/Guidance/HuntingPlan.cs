@@ -13,10 +13,19 @@ public static class HuntingPlan
 
     public static string ProgressText(int killed, int required) => $"{killed}/{required}";
 
-    /// <summary>"Hunting Log · Gladiator" — the mode indicator. Falls back to the bare log name
-    /// when the active log has not resolved yet.</summary>
+    /// <summary>"Hunting Log - Gladiator" — the mode indicator. Falls back to the bare log name
+    /// when the active log has not resolved yet.
+    ///
+    /// <para>Two things here are fixes for what the heading actually looked like on screen:
+    /// <c>"Hunting Log tt warrior"</c>. The separator was a middle dot, which the heading font
+    /// (Trump Gothic) does not carry — see <see cref="Ui.HeadingText"/> — and the log name is the raw
+    /// <c>ClassJob</c> sheet text, which the game stores in lower case and title-cases itself at draw
+    /// time. Casing here as well as at the read boundary is deliberate: it is idempotent, and it puts
+    /// the whole heading under test rather than under a live sheet read.</para></summary>
     public static string SourceLabel(string? activeLogLabel) =>
-        activeLogLabel is { Length: > 0 } label ? $"Hunting Log · {label}" : "Hunting Log";
+        activeLogLabel is { Length: > 0 } label
+            ? Ui.HeadingText.Plain($"Hunting Log - {Ui.DisplayNames.TitleCase(label)}")
+            : "Hunting Log";
 
     /// <summary>Where a target is. Duty-gated targets — the 25 Grand-Company-Elite ones that live
     /// inside instanced content and have no overworld coordinate — become

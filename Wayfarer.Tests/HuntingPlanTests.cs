@@ -17,11 +17,34 @@ public class HuntingPlanTests
 
     [Fact]
     public void SourceLabel_NamesTheActiveLog() =>
-        Assert.Equal("Hunting Log · Gladiator", HuntingPlan.SourceLabel("Gladiator"));
+        Assert.Equal("Hunting Log - Gladiator", HuntingPlan.SourceLabel("Gladiator"));
 
     [Fact]
     public void SourceLabel_FallsBackWhenTheLogIsNotResolvedYet() =>
         Assert.Equal("Hunting Log", HuntingPlan.SourceLabel(null));
+
+    /// <summary>The heading read "Hunting Log tt warrior" on screen: the ClassJob sheet stores job
+    /// names in lower case and the game title-cases them at draw time, and the separator was a
+    /// middle dot the heading font cannot draw. Both halves are pinned here, for a plain class log,
+    /// for an evolved job (which shares its base class's log but reports its own name), and for a
+    /// Grand Company Elite log.</summary>
+    [Theory]
+    [InlineData("gladiator", "Hunting Log - Gladiator")]
+    [InlineData("warrior", "Hunting Log - Warrior")]
+    [InlineData("marauder", "Hunting Log - Marauder")]
+    [InlineData("white mage", "Hunting Log - White Mage")]
+    [InlineData("Maelstrom Elite", "Hunting Log - Maelstrom Elite")]
+    [InlineData("Order of the Twin Adder Elite", "Hunting Log - Order of the Twin Adder Elite")]
+    public void SourceLabel_IsTitleCasedAndDrawableByTheHeadingFont(string activeLog, string expected)
+    {
+        var label = HuntingPlan.SourceLabel(activeLog);
+
+        Assert.Equal(expected, label);
+        foreach (var c in label)
+        {
+            Assert.InRange(c, ' ', '~');
+        }
+    }
 
     [Fact]
     public void RoutableTarget_ProducesWorldPoint()

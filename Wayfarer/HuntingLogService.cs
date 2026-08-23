@@ -568,14 +568,19 @@ internal sealed unsafe class HuntingLogService
             ? DisplayNames.TitleCase(n)
             : $"Monster {bNpcNameId}";
 
+    // Title-cased for the same reason MonsterName above is, and it is the same defect: the ClassJob
+    // sheet stores "warrior" and the game title-cases it at draw time, so the readout's heading read
+    // "Hunting Log tt warrior" while every game window beside it said "Warrior". This is the one
+    // place the log's name enters the plugin — the readout heading, the hub's Hunting Log tab and
+    // the ImGui window all read what this returns.
     private string ClassJobName(uint classJobId) =>
         dataManager.GetExcelSheet<ClassJob>().GetRowOrDefault(classJobId)?.Name.ExtractText() is { Length: > 0 } n
-            ? n
+            ? DisplayNames.TitleCase(n)
             : $"Job {classJobId}";
 
     private string GrandCompanyName(uint grandCompanyId) =>
         dataManager.GetExcelSheet<GrandCompany>().GetRowOrDefault(grandCompanyId)?.Name.ExtractText() is { Length: > 0 } n
-            ? n
+            ? DisplayNames.TitleCase(n)
             : $"Grand Company {grandCompanyId}";
 
     /// <summary>Territory → duty name/CFC id, built once from the <c>InstanceContent</c> sheet —
