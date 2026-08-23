@@ -46,6 +46,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private const float ChecklistControlsHeight = 92f;
     private const float HuntingHeaderHeight = 28f;
     private const float HuntingControlsHeight = 64f;
+    private const float QuestControlsHeight = 96f;
     private const float ButtonHintHeight = 20f;
 
     // All four are screen pixels, not addon units — see ComputeDefaultSize for why the difference
@@ -67,6 +68,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private readonly IUnlockProvider unlocks;
     private readonly HuntingLogService hunting;
+    private readonly ReadoutFeed feed;
     private readonly ModuleRegistry modules;
     private readonly IObjectTable objects;
     private readonly IClientState clientState;
@@ -79,6 +81,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly FilterState filter = new();
     private readonly List<NodeBase> checklistNodes = [];
     private readonly List<NodeBase> huntingNodes = [];
+    private readonly List<NodeBase> questNodes = [];
     private readonly List<NodeBase> settingsNodes = [];
     private readonly List<HubListRow> rows = [];
     private readonly List<(HubListRow Row, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
@@ -90,6 +93,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private Vector2 tabContentSize;
     private int lastChecklistSignature;
     private int lastHuntingSignature;
+    private int lastQuestSignature;
     private int lastPopulatedRows;
     private bool navigationWarningLogged;
 
@@ -104,16 +108,25 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private TextNode? huntingHeaderNode;
     private TextButtonNode? huntHereButton;
 
+    private VerticalListNode? questControls;
+    private TextNode? questHeaderNode;
+    private TextButtonNode? followMsqButton;
+    private TextButtonNode? teleportButton;
+    private TextButtonNode? dutyFinderButton;
+    private TextButtonNode? questStopButton;
+
     private TextButtonNode? stopButton;
     private TextButtonNode? huntingStopButton;
     private ScrollingNode<VerticalListNode>? settingsArea;
     private CheckboxNode? firstSettingControl;
     private TextNode? buttonHintNode;
     private bool lastReverseConfirmCancel;
+    private string lastTeleportLabel = string.Empty;
 
     public NativeHubWindow(
         IUnlockProvider unlocks,
         HuntingLogService hunting,
+        ReadoutFeed feed,
         ModuleRegistry modules,
         IObjectTable objects,
         IClientState clientState,
@@ -125,6 +138,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         this.unlocks = unlocks;
         this.hunting = hunting;
+        this.feed = feed;
         this.modules = modules;
         this.objects = objects;
         this.clientState = clientState;
@@ -214,6 +228,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         };
         hubTabs.AddTab("Checklist", () => SelectTab(HubTab.Checklist));
         hubTabs.AddTab("Hunting Log", () => SelectTab(HubTab.Hunting));
+        hubTabs.AddTab("Quests", () => SelectTab(HubTab.Quests));
         hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
         AddNode(hubTabs);
 
@@ -223,6 +238,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         BuildSharedList();
         BuildChecklistControls();
         BuildHuntingControls();
+        BuildQuestControls();
         BuildSettingsTab();
 
         SelectTab(pendingTab);
@@ -237,6 +253,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Clear();
         checklistNodes.Clear();
         huntingNodes.Clear();
+        questNodes.Clear();
         settingsNodes.Clear();
         hubTabs = null;
         list = null;
@@ -248,6 +265,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         huntHereButton = null;
         stopButton = null;
         huntingStopButton = null;
+        questControls = null;
+        questHeaderNode = null;
+        followMsqButton = null;
+        teleportButton = null;
+        dutyFinderButton = null;
+        questStopButton = null;
         settingsArea = null;
         firstSettingControl = null;
         buttonHintNode = null;
@@ -294,6 +317,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         HubTab.Checklist => ChecklistControlsHeight,
         HubTab.Hunting => HuntingControlsHeight,
+        HubTab.Quests => QuestControlsHeight,
         _ => 0f,
     };
 
@@ -309,6 +333,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         HubTab.Checklist => "Checklist",
         HubTab.Hunting => "Hunting Log",
+        HubTab.Quests => "Quests",
         _ => "Settings",
     };
 
@@ -571,6 +596,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             huntingControls.Size = new Vector2(tabContentSize.X, HuntingControlsHeight);
         }
 
+        if (questControls is not null)
+        {
+            questControls.Position = tabContentStart;
+            questControls.Size = new Vector2(tabContentSize.X, QuestControlsHeight);
+        }
+
         if (settingsArea is not null)
         {
             settingsArea.Position = tabContentStart;
@@ -680,6 +711,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         SetBucketVisible(checklistNodes, tab == HubTab.Checklist);
         SetBucketVisible(huntingNodes, tab == HubTab.Hunting);
+        SetBucketVisible(questNodes, tab == HubTab.Quests);
         SetBucketVisible(settingsNodes, tab == HubTab.Settings);
 
         PositionTabContent();
@@ -691,6 +723,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 break;
             case HubTab.Hunting:
                 RebuildHunting();
+                break;
+            case HubTab.Quests:
+                RebuildQuests();
                 break;
             default:
                 RebuildSettings();
@@ -718,6 +753,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             case HubTab.Hunting:
                 huntHereButton?.SetFocus();
                 break;
+            case HubTab.Quests:
+                followMsqButton?.SetFocus();
+                break;
             default:
                 firstSettingControl?.SetFocus();
                 break;
@@ -743,6 +781,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 else
                 {
                     RefreshHuntingDistances();
+                }
+
+                break;
+            case HubTab.Quests:
+                if (ComputeQuestSignature() != lastQuestSignature)
+                {
+                    RebuildQuests();
+                }
+                else
+                {
+                    RefreshQuestActions();
                 }
 
                 break;
@@ -1377,6 +1426,306 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         if (huntingStopButton is not null && huntingStopButton.IsEnabled != engaged)
         {
             huntingStopButton.IsEnabled = engaged;
+        }
+
+        if (questStopButton is not null && questStopButton.IsEnabled != engaged)
+        {
+            questStopButton.IsEnabled = engaged;
+        }
+    }
+
+    // ----- Quests tab ------------------------------------------------------------------------
+
+    /// <summary>The tab that gives guidance the two things a click-through overlay physically
+    /// cannot have: a choice of what to follow, and buttons.
+    ///
+    /// <b>Choosing a quest</b> was lost in the move to the native readout — the picker lived in a
+    /// popup on the old ImGui widget, and <c>GetAcceptedQuests</c>/<c>FollowedOverride</c> were left
+    /// with no caller at all. It is a tab rather than a popup because a popup has to be registered
+    /// into the host addon's focusable nodes before a cursor can enter it, and a popup a controller
+    /// cannot reach is the exact trap this window exists to avoid. Here the quests are ordinary list
+    /// rows: a mouse clicks them, a d-pad walks them.
+    ///
+    /// <b>Teleport and Duty Finder</b> are here for the mouse player. The readout recommends
+    /// "Teleport to Horizon first" and the overlay it is drawn on is click-through by construction,
+    /// so before this the only way to act on that advice was the game's context menu — which is
+    /// off by default for a mouse. These are real buttons on a real window, reachable with either
+    /// device, and they run the same <see cref="TeleportAction"/> gate the context menu does.</summary>
+    private void BuildQuestControls()
+    {
+        questControls = new VerticalListNode
+        {
+            FitWidth = true,
+            ItemSpacing = 4f,
+            Position = tabContentStart,
+            Size = new Vector2(tabContentSize.X, QuestControlsHeight),
+        };
+
+        questHeaderNode = BuildHeadingNode(string.Empty);
+        questControls.AddNode(questHeaderNode);
+        questControls.AddNode(BuildQuestFollowRow());
+        questControls.AddNode(BuildQuestActionRow());
+
+        AddTabNode(questNodes, questControls);
+    }
+
+    private AlignedHorizontalListNode BuildQuestFollowRow()
+    {
+        var row = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+
+        followMsqButton = new TextButtonNode
+        {
+            Width = 220f,
+            Height = 24f,
+            String = "Follow the main scenario",
+            OnClick = OnFollowMsqClicked,
+        };
+        row.AddNode(followMsqButton);
+
+        questStopButton = new TextButtonNode
+        {
+            Width = 110f,
+            Height = 24f,
+            String = "Stop",
+            IsEnabled = false,
+            OnClick = OnStopClicked,
+        };
+        row.AddNode(questStopButton);
+
+        return row;
+    }
+
+    private AlignedHorizontalListNode BuildQuestActionRow()
+    {
+        var row = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+
+        teleportButton = new TextButtonNode
+        {
+            Width = 230f,
+            Height = 24f,
+            String = "Teleport",
+            IsEnabled = false,
+            OnClick = OnTeleportClicked,
+        };
+        row.AddNode(teleportButton);
+
+        dutyFinderButton = new TextButtonNode
+        {
+            Width = 150f,
+            Height = 24f,
+            String = "Duty Finder",
+            IsEnabled = false,
+            OnClick = OnDutyFinderClicked,
+        };
+        row.AddNode(dutyFinderButton);
+
+        return row;
+    }
+
+    private void OnFollowMsqClicked()
+    {
+        if (ResolveNavigator() is not { } navigator)
+        {
+            return;
+        }
+
+        navigator.ClearPickup();
+        navigator.FollowedOverride = null;
+        RebuildQuests();
+    }
+
+    private void OnTeleportClicked()
+    {
+        if (ResolveNavigator()?.Current.AetheryteId is { } aetheryteId)
+        {
+            TeleportAction.Execute(aetheryteId, config.QuestHelper, clientState, log);
+        }
+    }
+
+    private void OnDutyFinderClicked() => OpenDuty(ResolveNavigator()?.Current.DutyContentFinderConditionId);
+
+    private void RebuildQuests()
+    {
+        if (list is null || questControls is null)
+        {
+            return;
+        }
+
+        var navigator = ResolveNavigator();
+        var content = feed.Compose(teleportOnClick: false);
+
+        rows.Clear();
+        distanceRows.Clear();
+        AddGuidanceUnavailableNote(navigator);
+        SetQuestHeader(content);
+        AddGuidanceLines(content);
+        AddAcceptedQuestRows(navigator);
+
+        if (rows.Count == 0)
+        {
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing to follow right now." });
+        }
+
+        RefreshQuestActions();
+        PublishRows(questControls);
+        lastQuestSignature = ComputeQuestSignature();
+    }
+
+    /// <summary>The guidance heading, verbatim — the same words the readout puts at the top of the
+    /// HUD, so the tab and the HUD can never disagree about what is being followed.</summary>
+    private void SetQuestHeader(ReadoutContent content)
+    {
+        if (questHeaderNode is null)
+        {
+            return;
+        }
+
+        var heading = "Wayfarer";
+        foreach (var line in content.Lines)
+        {
+            if (line.Emphasis == ReadoutEmphasis.Heading)
+            {
+                heading = line.Text;
+                break;
+            }
+        }
+
+        questHeaderNode.String = heading;
+        questHeaderNode.Height = HuntingHeaderHeight;
+        questControls?.RecalculateLayout();
+    }
+
+    // The readout's own lines, minus the heading that is already above them. Display only: they say
+    // what the guidance is doing, and the buttons beside them are what acts on it.
+    private void AddGuidanceLines(ReadoutContent content)
+    {
+        foreach (var line in content.Lines)
+        {
+            if (line.Emphasis != ReadoutEmphasis.Heading)
+            {
+                rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = line.Text });
+            }
+        }
+    }
+
+    private void AddAcceptedQuestRows(QuestNavigator? navigator)
+    {
+        if (navigator is null)
+        {
+            return;
+        }
+
+        var accepted = navigator.GetAcceptedQuests();
+        rows.Add(new HubListRow
+        {
+            Kind = HubRowKind.Heading,
+            Label = "Accepted quests",
+            Detail = $"{accepted.Count}",
+        });
+
+        if (accepted.Count == 0)
+        {
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "You have not accepted any quests." });
+            return;
+        }
+
+        var followed = navigator.FollowedOverride;
+        foreach (var (id, name) in accepted)
+        {
+            var isFollowed = followed == id;
+            var questId = id;
+            rows.Add(new HubListRow
+            {
+                Kind = HubRowKind.Entry,
+                Label = isFollowed ? $"{name}  (following)" : name,
+                Detail = navigator.GetAcceptedQuestObjective(questId) ?? string.Empty,
+                LabelColor = isFollowed ? GameColors.Good : null,
+                Activate = () => FollowQuest(questId),
+            });
+        }
+    }
+
+    private void FollowQuest(ushort questId)
+    {
+        if (ResolveNavigator() is not { } navigator)
+        {
+            return;
+        }
+
+        navigator.ClearPickup();
+        navigator.FollowedOverride = questId;
+
+        // Deliberately not rebuilding from here. This runs inside the list's own activation
+        // callback, and republishing OptionsList can rebuild the very row node whose handler is
+        // executing. ComputeQuestSignature folds in the followed quest, so the background poll
+        // repaints on the next tick — which is how the checklist rows behave too.
+    }
+
+    /// <summary>Keeps the four action buttons honest against the live guidance snapshot, without
+    /// rebuilding the list under the cursor. Labels are only assigned when they actually change:
+    /// assigning one builds a SeString, and this runs every tick the tab is open.</summary>
+    private void RefreshQuestActions()
+    {
+        var navigator = ResolveNavigator();
+        var state = navigator?.Current;
+
+        if (followMsqButton is not null)
+        {
+            followMsqButton.IsEnabled = navigator is not null
+                && (navigator.FollowedOverride is not null || state?.Engaged == true);
+        }
+
+        UpdateTeleportButton(state);
+
+        if (dutyFinderButton is not null)
+        {
+            dutyFinderButton.IsEnabled = state?.DutyContentFinderConditionId is not null;
+        }
+    }
+
+    private void UpdateTeleportButton(NavigationState? state)
+    {
+        if (teleportButton is null)
+        {
+            return;
+        }
+
+        var offered = config.QuestHelper.ClickTeleportEnabled
+            && state is { AetheryteUnlocked: true, AetheryteId: not null }
+            && state.AetheryteName is { Length: > 0 };
+
+        var label = offered ? $"Teleport to {state!.AetheryteName}" : "Teleport";
+        if (!string.Equals(label, lastTeleportLabel, StringComparison.Ordinal))
+        {
+            lastTeleportLabel = label;
+            teleportButton.String = label;
+        }
+
+        teleportButton.IsEnabled = offered;
+    }
+
+    private int ComputeQuestSignature()
+    {
+        var navigator = ResolveNavigator();
+        if (navigator is null)
+        {
+            return 0;
+        }
+
+        var state = navigator.Current;
+        unchecked
+        {
+            var hash = 17;
+            hash = (hash * 31) + (navigator.FollowedOverride ?? 0);
+            hash = (hash * 31) + (state.QuestName?.GetHashCode(StringComparison.Ordinal) ?? 0);
+            hash = (hash * 31) + (state.StepLabel?.GetHashCode(StringComparison.Ordinal) ?? 0);
+            hash = (hash * 31) + state.Mode.GetHashCode(StringComparison.Ordinal);
+            hash = (hash * 31) + (state.Engaged ? 1 : 0);
+
+            // The accepted-quest list itself is not folded in: reading it allocates, and this runs
+            // every tick. Accepting or finishing a quest changes the followed quest's name, step or
+            // mode in practice, and the tab rebuilds whole on every open regardless.
+            return hash;
         }
     }
 

@@ -219,6 +219,42 @@ public class ReadoutComposerTests
     }
 
     [Fact]
+    public void Nearby_unlocks_never_exceed_the_line_budget()
+    {
+        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
+        var many = Enumerable.Range(0, 12).Select(i => $"Unlock {i} (30 yalms)").ToList();
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { NearbyUnlocks = many });
+
+        var shown = content.Lines.Count(line => line.Text.StartsWith("Unlock ", StringComparison.Ordinal));
+        Assert.Equal(ReadoutComposer.MaxNearbyUnlockLines, shown);
+    }
+
+    [Fact]
+    public void Nearby_unlocks_are_display_only_and_never_take_the_arrow()
+    {
+        // They are context, not guidance: naming them must not make one of them the thing the
+        // arrow is pointing at, and must not add a second direction indicator.
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.SameZone,
+            SourceLabel = "Main Scenario",
+            TargetX = 10f,
+            TargetZ = 20f,
+        };
+
+        var content = ReadoutComposer.Compose(
+            Inputs(state) with { NearbyUnlocks = ["Chocobo racing (30 yalms)"], DistanceYalms = 80f });
+
+        Assert.True(content.ShowArrow);
+        Assert.Equal(10f, content.TargetX);
+        Assert.Equal(20f, content.TargetZ);
+        Assert.All(
+            content.Lines.Where(line => line.Text.Contains("Chocobo", StringComparison.Ordinal)),
+            line => Assert.Equal(ReadoutEmphasis.Muted, line.Emphasis));
+    }
+
+    [Fact]
     public void An_arrival_reads_as_words_rather_than_a_meaningless_bearing()
     {
         var state = new NavigationState

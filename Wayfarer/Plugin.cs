@@ -53,9 +53,8 @@ public sealed class Plugin : IDalamudPlugin
     /// single module and must be disposed on the framework thread exactly once.</summary>
     private GuidanceOverlay overlay = null!;
 
-    /// <summary>What the readout, its ImGui fallback and <see cref="dtrEntry"/> all compose their
-    /// own presentation from — held here purely so <see cref="dtrEntry"/> can be wired to it after
-    /// <see cref="BuildQuestHelperModule"/> creates it.</summary>
+    /// <summary>What the readout, its ImGui fallback, <see cref="dtrEntry"/> and the window's Quests
+    /// tab all compose their own presentation from, so no two of them can say different things.</summary>
     private ReadoutFeed feed = null!;
 
     public Plugin(
@@ -93,20 +92,14 @@ public sealed class Plugin : IDalamudPlugin
 
         // Declared once, rendered by the native window and by the ImGui fallback alike.
         settings = new SettingsCatalog(config, modules, SaveConfig);
-        hub = new NativeHubWindow(unlocks, hunting, modules, objects, clientState, framework, config, settings, inputMode, log)
-        {
-            InternalName = "WayfarerHubNative",
-            Title = "Wayfarer",
-
-            // Explicitly empty. KamiToolKit draws a subtitle beside the title and defaults it to the
-            // plugin name passed to Initialize above, which is what made the title bar read
-            // "Wayfarer Wayfarer" — its own guidance is to drop it when the window's title is
-            // already the plugin's name, and here it is.
-            Subtitle = string.Empty,
-        };
 
         var guidance = BuildGuidance(log, config, clientState, condition, objects, dataManager, hunting);
         mapFlag = guidance.MapFlag;
+
+        // Built here, before the window that reads it: the readout, its ImGui fallback, the info-bar
+        // entry and the window's Quests tab all compose their presentation from this one feed.
+        feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
+        hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, inputMode, log);
 
         modules.Register(
             BuildQuestHelperModule(framework, clientState, objects, inputMode, config, SaveConfig, log, guidance),
@@ -221,8 +214,8 @@ public sealed class Plugin : IDalamudPlugin
         {
             HelpMessage = "Shortcut for the Wayfarer window and its Stop button — everything here is also a click or "
                 + "a d-pad press away: the server info bar entry, the plugin list, and the window's own controls. "
-                + "\"/wayfarer hunt\" opens the hunting log, \"/wayfarer settings\" the settings, \"/wayfarer stop\" "
-                + "ends the current route or hunt.",
+                + "\"/wayfarer hunt\" opens the hunting log, \"/wayfarer quests\" the quest list and its teleport "
+                + "button, \"/wayfarer settings\" the settings, \"/wayfarer stop\" ends the current route or hunt.",
         });
     }
 
@@ -261,6 +254,9 @@ public sealed class Plugin : IDalamudPlugin
             case "unlocks" or "checklist":
                 modules.Get<UnlockChecklistModule>()?.OpenChecklist();
                 break;
+            case "quest" or "quests":
+                OpenHub(HubTab.Quests, () => configWindow.IsOpen = true);
+                break;
             case "settings" or "config":
                 OpenConfig();
                 break;
@@ -272,6 +268,28 @@ public sealed class Plugin : IDalamudPlugin
                 break;
         }
     }
+
+    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.</summary>
+    private NativeHubWindow BuildHub(
+        IUnlockProvider unlocks,
+        HuntingLogService hunting,
+        IObjectTable objects,
+        IClientState clientState,
+        IFramework framework,
+        Configuration config,
+        InputModeService inputMode,
+        IPluginLog log) =>
+        new(unlocks, hunting, feed, modules, objects, clientState, framework, config, settings, inputMode, log)
+        {
+            InternalName = "WayfarerHubNative",
+            Title = "Wayfarer",
+
+            // Explicitly empty. KamiToolKit draws a subtitle beside the title and defaults it to the
+            // plugin name passed to KamiToolKitLibrary.Initialize, which is what made the title bar
+            // read "Wayfarer Wayfarer" — its own guidance is to drop the subtitle when the window's
+            // title is already the plugin's name, and here it is.
+            Subtitle = string.Empty,
+        };
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.
     /// Left-click reuses the exact path the plugin list's own main button takes
@@ -301,7 +319,6 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
-        feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         overlay = new GuidanceOverlay(feed, config.QuestHelper, objects, framework, log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,

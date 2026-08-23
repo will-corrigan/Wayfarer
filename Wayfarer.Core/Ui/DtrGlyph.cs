@@ -15,7 +15,4 @@ public enum DtrGlyph
 
     /// <summary>An ordered route (a hunt chain or an unlock route) is stepping through stops.</summary>
     Route,
-
-    /// <summary>Nothing is engaged, and there is at least one unlock available right here.</summary>
-    Unlocks,
 }

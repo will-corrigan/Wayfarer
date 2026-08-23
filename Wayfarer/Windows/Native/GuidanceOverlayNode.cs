@@ -34,9 +34,10 @@ namespace Wayfarer.Windows.Native;
 internal sealed unsafe class GuidanceOverlayNode : OverlayNode
 {
     // Enough for a heading plus the deepest readout the composer can produce (objective, step,
-    // distance, two routing lines, zone, and the muted context block). Pooled rather than
+    // distance, two routing lines, zone, and the muted context block — a hunting summary, the
+    // ambient objective and up to ReadoutComposer.MaxNearbyUnlockLines unlocks). Pooled rather than
     // allocated per frame: nothing in a per-frame path should allocate.
-    private const int MaxLines = 10;
+    private const int MaxLines = 12;
 
     private const float BaseWidth = 320f;
     private const float BaseHeadingSize = 20f;

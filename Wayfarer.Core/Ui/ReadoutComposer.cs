@@ -24,6 +24,12 @@ namespace Wayfarer.Core.Ui;
 /// </list></summary>
 public static class ReadoutComposer
 {
+    /// <summary>How many "available here" unlocks the readout will name at once. The service that
+    /// supplies them already keeps to the nearest few, but the budget is enforced here as well
+    /// because it is a property of the readout — legibility at TV distance — rather than of the
+    /// unlock scan, and this is where it can be tested.</summary>
+    public const int MaxNearbyUnlockLines = 3;
+
     public static ReadoutContent Compose(ReadoutInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
@@ -222,7 +228,7 @@ public static class ReadoutComposer
 
         // Engaged: one count, because the player asked to be guided somewhere and a list of other
         // things to do is exactly the clutter that made the old widget hard to read. Ambient:
-        // the names, because that is the moment they are useful.
+        // the names and their distances, because that is the moment they are useful.
         if (inputs.State.Engaged)
         {
             lines.Add(new ReadoutLine($"Unlocks nearby: {inputs.NearbyUnlocks.Count}", ReadoutEmphasis.Muted, separated));
@@ -230,10 +236,17 @@ public static class ReadoutComposer
         }
 
         var first = separated;
+        var shown = 0;
         foreach (var unlock in inputs.NearbyUnlocks)
         {
+            if (shown == MaxNearbyUnlockLines)
+            {
+                return;
+            }
+
             lines.Add(new ReadoutLine(unlock, ReadoutEmphasis.Muted, first));
             first = false;
+            shown++;
         }
     }
 

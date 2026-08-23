@@ -110,10 +110,14 @@ public sealed class GuidanceConfig
     /// <summary>Puts the game's own quest-marker icon over the heads of hunting-log targets and
     /// unlock quest givers, through the same nameplate channel the game uses for quest availability.
     ///
-    /// Off by default, deliberately: a marker over the wrong monsters is worse than no marker, and
-    /// nobody has been able to look at this on a screen yet. See <see cref="NamePlateMarkerIcon"/>
+    /// <b>On by default.</b> This is the strongest form of "it should be obvious there is something
+    /// near me I can grab" — a marker over the giver's head is read without opening anything, in the
+    /// place the player already looks. Three guarantees are what make defaulting it on safe: the
+    /// icon id is validated against the game's own texture table before it is ever written (a bad
+    /// value degrades to no marker), a plate the game has already marked is never overwritten, and
+    /// the match set is limited to the current zone's targets. See <see cref="NamePlateMarkerIcon"/>
     /// for the companion escape hatch.</summary>
-    public bool MarkTargetsOnNameplates { get; set; }
+    public bool MarkTargetsOnNameplates { get; set; } = true;
 
     /// <summary>Which icon the nameplate marker uses. A setting rather than a constant because
     /// whether an icon "looks right" above a monster is the one thing that cannot be settled

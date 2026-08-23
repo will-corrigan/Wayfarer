@@ -19,26 +19,32 @@ public static class DtrComposer
     {
         ArgumentNullException.ThrowIfNull(inputs);
 
+        // The alert rides alongside whatever is engaged rather than replacing it. It is not
+        // guidance and never competes with the active objective — it is the "there is something to
+        // grab near you" signal, and it has to survive being in the middle of something, because
+        // being in the middle of something is when the player is walking past things.
+        var alert = inputs.NearbyUnlockCount > 0;
+
         if (inputs.Engaged)
         {
             if (inputs.RouteStop is { } stop && inputs.RouteTotal is { } total)
             {
-                return new DtrText($"Stop {stop}/{total}", DtrGlyph.Route);
+                return new DtrText($"Stop {stop}/{total}", DtrGlyph.Route, alert);
             }
 
             if (inputs.HuntingIsPrimary && inputs.HuntingLabel is { Length: > 0 } hunting)
             {
-                return new DtrText(hunting, DtrGlyph.Hunting);
+                return new DtrText(hunting, DtrGlyph.Hunting, alert);
             }
 
-            return DtrText.Wayfarer;
+            return alert ? new DtrText("Wayfarer", DtrGlyph.None, true) : DtrText.Wayfarer;
         }
 
         return inputs.NearbyUnlockCount switch
         {
             0 => DtrText.Wayfarer,
-            1 => new DtrText("1 unlock here", DtrGlyph.Unlocks),
-            var n => new DtrText($"{n} unlocks here", DtrGlyph.Unlocks),
+            1 => new DtrText("1 unlock here", DtrGlyph.None, true),
+            var n => new DtrText($"{n} unlocks here", DtrGlyph.None, true),
         };
     }
 }

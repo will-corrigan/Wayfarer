@@ -8,7 +8,7 @@ namespace Wayfarer.Core.Ui;
 ///
 /// <code>
 ///   0        reserved — "no navigation"
-///   1..3     hub tab bar (Checklist | Hunting Log | Settings)
+///   1..4     hub tab bar (Checklist | Hunting Log | Quests | Settings)
 ///   10..39   the active tab's control region: filter chips, action buttons, or — on the Settings
 ///            tab — every setting control, numbered top to bottom by the walker
 ///   40       the list node itself (its upward scroll sentinel)
@@ -21,8 +21,8 @@ public static class HubNavPlan
     /// — tab 0 sits <b>on</b> the bar's own index, it does not follow it.</summary>
     public const int TabBar = 1;
 
-    /// <summary>Checklist, Hunting Log, Settings.</summary>
-    public const int TabCount = 3;
+    /// <summary>Checklist, Hunting Log, Quests, Settings.</summary>
+    public const int TabCount = 4;
 
     /// <summary>First index of the active tab's control region.</summary>
     public const int Region = 10;

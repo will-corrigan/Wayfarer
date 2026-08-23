@@ -122,6 +122,15 @@ internal sealed class ReadoutFeed(
         return $"Hunting: {target.MonsterName} {target.Killed}/{target.Required}";
     }
 
+    /// <summary>The unlocks available in this zone right now, with a live distance to each —
+    /// restored from the pre-rewrite widget, where this was the thing that made opening the
+    /// checklist optional.
+    ///
+    /// Read straight off <see cref="UnlockService.GlanceableHere"/>, which the module already keeps
+    /// to the nearest few and recomputes only on a zone or level change. Nothing here rescans; only
+    /// the distance is recomputed, and that is the same arithmetic the arrow already pays for.
+    /// These are display lines and nothing more — they carry no direction and cannot become the
+    /// active objective, which is what keeps the one-active-objective rule intact.</summary>
     private List<string> NearbyUnlocks()
     {
         if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule
@@ -136,10 +145,21 @@ internal sealed class ReadoutFeed(
             return [];
         }
 
+        var player = objects.LocalPlayer;
         var names = new List<string>(here.Count);
         foreach (var unlock in here)
         {
-            names.Add(unlock.Def.Unlock);
+            if (player is null)
+            {
+                names.Add(unlock.Def.Unlock);
+                continue;
+            }
+
+            var distance = NavMath.Distance(
+                unlock.GiverX - player.Position.X,
+                unlock.GiverY - player.Position.Y,
+                unlock.GiverZ - player.Position.Z);
+            names.Add($"{unlock.Def.Unlock} ({NavMath.FormatDistance(distance)})");
         }
 
         return names;

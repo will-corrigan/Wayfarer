@@ -76,15 +76,25 @@ internal sealed class DtrEntry(
 
     private static SeString BuildTooltip() =>
         new SeStringBuilder()
-            .AddText("Wayfarer — left-click opens the checklist, right-click opens settings, shift-click stops the current hunt or route.")
+            .AddText("Wayfarer — left-click opens the checklist, right-click opens settings, shift-click stops the current hunt or route. "
+                + "An exclamation mark means there is something you can pick up in this zone.")
             .Build();
 
     private static SeString BuildText(DtrText text)
     {
         var builder = new SeStringBuilder();
+
+        // The alert first, because it is the thing that has to catch the eye without being read.
+        // ExclamationRectangle is the game's own "there is a quest here" marker — the same shape a
+        // player already scans for over an NPC's head, which is exactly the association wanted.
+        if (text.UnlocksNearby)
+        {
+            builder.AddIcon(BitmapFontIcon.ExclamationRectangle);
+        }
+
         if (Icon(text.Glyph) is { } icon)
         {
-            builder.AddIcon(icon).AddText(" ");
+            builder.AddIcon(icon);
         }
 
         return builder.AddText(text.Text).Build();
@@ -96,7 +106,6 @@ internal sealed class DtrEntry(
     {
         DtrGlyph.Hunting => BitmapFontIcon.NotoriousMonster,
         DtrGlyph.Route => BitmapFontIcon.Aetheryte,
-        DtrGlyph.Unlocks => BitmapFontIcon.GoldStar,
         _ => null,
     };
 

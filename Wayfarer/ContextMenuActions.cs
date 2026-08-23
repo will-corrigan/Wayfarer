@@ -122,11 +122,25 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem { Name = "Stop", OnClicked = _ => navigator.ClearPickup() });
         }
-        else if (modules.Get<UnlockChecklistModule>() is { Enabled: true } routableModule)
+        else
         {
-            AddStartRouteItem(items, navigator, routableModule);
+            // Switching into hunting is meant to be one deliberate act, not a hunt through tabs —
+            // so it sits here, beside Stop, which is the one act that ends it. The same pair exists
+            // on the window's Hunting Log tab; this is the version that needs no cursor.
+            AddStartHuntItem(items, navigator);
+
+            if (modules.Get<UnlockChecklistModule>() is { Enabled: true } routableModule)
+            {
+                AddStartRouteItem(items, navigator, routableModule);
+            }
         }
 
+        AddWindowItems(items, navigator, state);
+        return items;
+    }
+
+    private void AddWindowItems(List<IMenuItem> items, QuestNavigator navigator, NavigationState state)
+    {
         if (modules.Get<UnlockChecklistModule>() is { Enabled: true } unlockModule)
         {
             items.Add(new MenuItem
@@ -155,8 +169,6 @@ internal sealed class ContextMenuActions : IDisposable
                 OnClicked = _ => navigator.FollowedOverride = null,
             });
         }
-
-        return items;
     }
 
     private void AddTeleportItem(List<IMenuItem> items, NavigationState state)
@@ -186,6 +198,40 @@ internal sealed class ContextMenuActions : IDisposable
                 OnClicked = _ => DutyFinderAction.Execute(cfcId),
             });
         }
+    }
+
+    /// <summary>"Start hunting" — the deliberate switch into hunting mode, with the rank's remaining
+    /// count so the player can see there is something to switch into. Runs the identical path the
+    /// window's own "Start hunting" button does, so both produce the same chained route through the
+    /// same guidance machinery.</summary>
+    private void AddStartHuntItem(List<IMenuItem> items, QuestNavigator navigator)
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule)
+        {
+            return;
+        }
+
+        var order = huntingModule.Hunting.HuntHereOrder;
+        if (order.Count == 0)
+        {
+            return;
+        }
+
+        items.Add(new MenuItem
+        {
+            Name = $"Start hunting ({order.Count})",
+            OnClicked = _ =>
+            {
+                var targets = order.Select(huntingModule.Hunting.ToPickupTarget)
+                                   .Where(t => t != null)
+                                   .Select(t => t!)
+                                   .ToList();
+                if (targets.Count > 0)
+                {
+                    navigator.SetRoute(targets);
+                }
+            },
+        });
     }
 
     /// <summary>"Start unlock route" when at least one available, locatable unlock exists to route

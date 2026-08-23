@@ -65,14 +65,37 @@ public class DtrComposerTests
     }
 
     [Fact]
-    public void Nearby_unlocks_are_only_shown_while_nothing_is_engaged()
+    public void Nearby_unlocks_are_named_while_nothing_is_engaged()
     {
         var idle = DtrComposer.Compose(new DtrInputs { NearbyUnlockCount = 3 });
-        var engaged = DtrComposer.Compose(new DtrInputs { Engaged = true, NearbyUnlockCount = 3 });
 
         Assert.Equal("3 unlocks here", idle.Text);
-        Assert.Equal(DtrGlyph.Unlocks, idle.Glyph);
-        Assert.Equal(DtrText.Wayfarer, engaged);
+        Assert.True(idle.UnlocksNearby);
+    }
+
+    [Fact]
+    public void The_alert_survives_being_in_the_middle_of_something()
+    {
+        // Passive, not guidance: the mode keeps the text and the glyph, and the alert rides
+        // alongside it — walking past a pickup while on a route is exactly when it is useful.
+        var route = DtrComposer.Compose(new DtrInputs
+        {
+            Engaged = true,
+            RouteStop = 3,
+            RouteTotal = 11,
+            NearbyUnlockCount = 2,
+        });
+
+        Assert.Equal("Stop 3/11", route.Text);
+        Assert.Equal(DtrGlyph.Route, route.Glyph);
+        Assert.True(route.UnlocksNearby);
+    }
+
+    [Fact]
+    public void Nothing_nearby_means_no_alert()
+    {
+        Assert.False(DtrComposer.Compose(new DtrInputs { Engaged = true }).UnlocksNearby);
+        Assert.False(DtrComposer.Compose(new DtrInputs()).UnlocksNearby);
     }
 
     [Fact]
