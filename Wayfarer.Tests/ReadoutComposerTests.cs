@@ -295,6 +295,90 @@ public class ReadoutComposerTests
         Assert.Contains(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
     }
 
+    // --- Search-area objectives: the reported bug was an arrow sent 66 yalms at the CENTRE of a
+    // "search this area" quest step with a precise-looking distance, as though it were a waypoint. ---
+    [Fact]
+    public void Outside_a_search_area_the_readout_says_it_is_an_area_and_gives_the_distance_to_it()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 66f, AreaHint = SearchAreaHint.Outside });
+
+        Assert.True(content.ShowArrow);
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Search the area · 66 yalms", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "66 yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Outside_a_search_area_the_elevation_words_still_ride_along()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with
+            {
+                DistanceYalms = 66f,
+                AreaHint = SearchAreaHint.Outside,
+                Elevation = ElevationHint.Above,
+            });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Search the area · 66 yalms · above you", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Outside_a_search_area_never_says_arrived_no_matter_how_close_the_centre_is()
+    {
+        // The centre is not the objective, so being near it is not "arriving" — that would imply a
+        // precision the game itself did not give.
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 2f, AreaHint = SearchAreaHint.Outside });
+
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.StartsWith("Search the area", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Inside_a_search_area_the_readout_stops_pointing_at_the_centre()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 4f, AreaHint = SearchAreaHint.Inside });
+
+        Assert.False(content.ShowArrow);
+        Assert.Null(content.TargetX);
+        Assert.Null(content.TargetZ);
+    }
+
+    [Fact]
+    public void Inside_a_search_area_the_readout_says_to_look_around_rather_than_naming_a_distance()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 4f, AreaHint = SearchAreaHint.Inside });
+
+        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("yalms", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.Contains("look around", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void A_zero_radius_objective_is_byte_identical_to_before_this_feature_existed()
+    {
+        // TargetRadiusYalms null (the default for every objective this field did not exist for) and
+        // AreaHint left at its default (NotApplicable) must reproduce EXACTLY the pre-existing
+        // point-objective output — this is the compatibility guarantee the whole feature depends on.
+        var pointState = SameZone();
+        var withoutArea = ReadoutComposer.Compose(Inputs(pointState) with { DistanceYalms = 56f });
+        var explicitlyNotApplicable = ReadoutComposer.Compose(
+            Inputs(pointState) with { DistanceYalms = 56f, AreaHint = SearchAreaHint.NotApplicable });
+
+        Assert.Contains(withoutArea.Lines, line => string.Equals(line.Text, "56 yalms", StringComparison.Ordinal));
+        Assert.Equal(
+            withoutArea.Lines.Select(l => l.Text),
+            explicitlyNotApplicable.Lines.Select(l => l.Text),
+            StringComparer.Ordinal);
+        Assert.Equal(withoutArea.ShowArrow, explicitlyNotApplicable.ShowArrow);
+        Assert.Equal(withoutArea.TargetX, explicitlyNotApplicable.TargetX);
+        Assert.Equal(withoutArea.TargetZ, explicitlyNotApplicable.TargetZ);
+    }
+
+    private static NavigationState SearchAreaState() => SameZone() with { TargetRadiusYalms = 20f };
+
     private static NavigationState Engaged(string sourceLabel) => new()
     {
         Mode = NavigationState.Modes.SameZone,

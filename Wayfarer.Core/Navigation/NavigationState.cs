@@ -26,6 +26,13 @@ public sealed record NavigationState
 
     public float? DistanceYalms { get; init; }
 
+    /// <summary>SameZone mode only: the game's own search-area radius around
+    /// (<see cref="TargetX"/>, <see cref="TargetZ"/>), in yalms, for a quest step drawn as a circle
+    /// on the map rather than a precise waypoint. Null for an ordinary point objective — including
+    /// every objective this field did not exist for, so an older or unaware consumer sees exactly
+    /// the point-objective behaviour it always had.</summary>
+    public float? TargetRadiusYalms { get; init; }
+
     public uint? AetheryteId { get; init; }
 
     public string? AetheryteName { get; init; }

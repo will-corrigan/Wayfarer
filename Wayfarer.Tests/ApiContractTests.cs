@@ -30,6 +30,7 @@ public class ApiContractTests
             TargetY = 2.5f,
             TargetZ = 3.5f,
             DistanceYalms = 42.1f,
+            TargetRadiusYalms = 20.5f,
             AetheryteId = 9,
             AetheryteName = "Ul'dah - Steps of Nald",
             AetheryteUnlocked = true,
@@ -70,6 +71,7 @@ public class ApiContractTests
         Assert.Equal(state.TargetY, dto.TargetY);
         Assert.Equal(state.TargetZ, dto.TargetZ);
         Assert.Equal(state.DistanceYalms, dto.DistanceYalms);
+        Assert.Equal(state.TargetRadiusYalms, dto.TargetRadiusYalms);
         Assert.Equal(state.AetheryteId, dto.AetheryteId);
         Assert.Equal(state.AetheryteName, dto.AetheryteName);
         Assert.Equal(state.AetheryteUnlocked, dto.AetheryteUnlocked);
@@ -114,6 +116,7 @@ public class ApiContractTests
         Assert.Null(dto.ObjectiveKey);
         Assert.Null(dto.ProgressText);
         Assert.False(dto.IsLiveTarget);
+        Assert.Null(dto.TargetRadiusYalms);
     }
 
     /// <summary>The other half of the additive-change argument: a NEWER provider sending fields
@@ -155,6 +158,7 @@ public class ApiContractTests
         Assert.Null(dto.RouteStop);
         Assert.Null(dto.RouteTotal);
         Assert.Null(dto.DutyContentFinderConditionId);
+        Assert.Null(dto.TargetRadiusYalms);
     }
 
     [Fact]

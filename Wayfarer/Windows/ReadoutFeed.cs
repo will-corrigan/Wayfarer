@@ -24,6 +24,12 @@ internal sealed class ReadoutFeed(
     /// threshold is not enough.</summary>
     private ElevationHint lastElevation;
 
+    /// <summary>What the readout said about a search-area objective last frame, which is what
+    /// supplies the hysteresis in <see cref="Core.Ui.SearchArea.Classify"/> — the same reasoning as
+    /// <see cref="lastElevation"/>, for the same reason: a boundary crossed on foot flickers without
+    /// it.</summary>
+    private SearchAreaHint lastSearchArea = SearchAreaHint.Outside;
+
     /// <summary>The last target position a ground height was resolved for, and the answer. One
     /// collision raycast per changed target rather than one per frame: the target only moves when
     /// the objective changes or a live-tracked mob walks.</summary>
@@ -41,16 +47,30 @@ internal sealed class ReadoutFeed(
     public ReadoutContent Compose(bool teleportOnClick)
     {
         var state = navigator.Current;
+        var distance = Distance(state);
         return ReadoutComposer.Compose(new ReadoutInputs
         {
             State = state,
-            DistanceYalms = Distance(state),
+            DistanceYalms = distance,
             HuntingSummary = HuntingSummary(),
             HuntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal),
             NearbyUnlocks = NearbyUnlocks(),
             TeleportOnClick = teleportOnClick,
             Elevation = TargetElevation(state),
+            AreaHint = AreaHint(state, distance),
         });
+    }
+
+    /// <summary>Whether the player is outside or inside a search-area objective's circle right now
+    /// — the distance passed in is the same one already computed for the arrow/distance line, so
+    /// this measures against exactly the point the readout is otherwise treating as the target's
+    /// position (the circle's centre).</summary>
+    public SearchAreaHint AreaHint(NavigationState state, float? distanceYalms)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        lastSearchArea = Core.Ui.SearchArea.Classify(distanceYalms, state.TargetRadiusYalms, lastSearchArea);
+        return lastSearchArea;
     }
 
     /// <summary>Whether the arrow's target is meaningfully above or below the player right now.

@@ -27,6 +27,34 @@ public class GuidanceProjectionTests
     }
 
     [Fact]
+    public void SameZoneRoute_WithRadius_CarriesTargetRadiusYalms()
+    {
+        var objective = Objective("quest", "196", new ObjectiveDestination.WorldPoint(129, 129, 1f, 2f, 3f));
+
+        var state = GuidanceProjection.Build(
+            objective,
+            GuidanceEngagement.Ambient,
+            new RouteResult.SameZone(1f, 2f, 3f, 66f, Radius: 20f));
+
+        Assert.Equal(20f, state.TargetRadiusYalms);
+    }
+
+    [Fact]
+    public void SameZoneRoute_WithZeroRadius_LeavesTargetRadiusYalmsNull()
+    {
+        // The default-shape route every existing call site produces: TargetRadiusYalms must come
+        // out null, not 0 — a point objective must not start carrying a "search area" signal.
+        var objective = Objective("quest", "196", new ObjectiveDestination.WorldPoint(129, 129, 1f, 2f, 3f));
+
+        var state = GuidanceProjection.Build(
+            objective,
+            GuidanceEngagement.Ambient,
+            new RouteResult.SameZone(1f, 2f, 3f, 42.5f));
+
+        Assert.Null(state.TargetRadiusYalms);
+    }
+
+    [Fact]
     public void SameZoneRoute_ViaAethernet_CarriesEntryAndExitShards()
     {
         var objective = Objective("quest", "196", new ObjectiveDestination.WorldPoint(129, 129, 1f, 2f, 3f));
