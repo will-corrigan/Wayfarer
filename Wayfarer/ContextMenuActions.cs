@@ -11,10 +11,11 @@ namespace Wayfarer;
 /// that inherits the game's own d-pad focus navigation, no cursor required.
 ///
 /// This is the controller's action surface. A controller gets the click-through readout, which by
-/// construction carries no affordances, so this is where starting a hunt, stopping one, reaching
-/// the checklist and taking the teleport the readout is recommending all live without a cursor and
-/// without typing a command. A mouse clicks the readout itself, which is why this is off for a
-/// mouse by default. <see cref="QuestHelperConfig.MenuMode"/> therefore
+/// construction carries no affordances — not even the settings cog a mouse gets, because a cog on a
+/// surface that cannot be clicked would be a lie — so this is where starting a hunt, stopping one,
+/// reaching the unlocks list, opening settings and taking the teleport the readout is recommending
+/// all live without a cursor and without typing a command. A mouse clicks the readout itself, which
+/// is why this is off for a mouse by default. <see cref="QuestHelperConfig.MenuMode"/> therefore
 /// defaults to <see cref="ContextMenuMode.ControllerOnly"/> — evaluated fresh via
 /// <see cref="InputModeService.Mode"/> on every
 /// menu open (not registered/unregistered on mode flips, since checking is cheap and avoids a
@@ -43,6 +44,7 @@ internal sealed class ContextMenuActions : IDisposable
     private readonly QuestHelperConfig cfg;
     private readonly IClientState clientState;
     private readonly InputModeService inputMode;
+    private readonly Action openSettings;
     private readonly IPluginLog log;
 
     private bool loggedMenuFailure;
@@ -54,6 +56,7 @@ internal sealed class ContextMenuActions : IDisposable
         QuestHelperConfig cfg,
         IClientState clientState,
         InputModeService inputMode,
+        Action openSettings,
         IPluginLog log)
     {
         this.contextMenu = contextMenu;
@@ -62,6 +65,7 @@ internal sealed class ContextMenuActions : IDisposable
         this.cfg = cfg;
         this.clientState = clientState;
         this.inputMode = inputMode;
+        this.openSettings = openSettings;
         this.log = log;
         contextMenu.OnMenuOpened += OnMenuOpened;
     }
@@ -179,6 +183,15 @@ internal sealed class ContextMenuActions : IDisposable
                 OnClicked = _ => huntingModule.OpenLog(),
             });
         }
+
+        // The controller's answer to the readout's settings cog. A mouse clicks the cog on the
+        // readout itself; a controller cannot, because its readout is the click-through overlay —
+        // so the same one press lands here instead of behind a walk through the plugin list.
+        items.Add(new MenuItem
+        {
+            Name = "Open settings",
+            OnClicked = _ => openSettings(),
+        });
 
         // Nothing to reset when nothing is engaged and no override is set — following the MSQ is
         // already exactly what's happening. The "Stop" item above already covers the engaged case.

@@ -23,6 +23,11 @@ namespace Wayfarer.Windows.Native;
 /// away on the game's own context menu and on the window's Quests tab.</description></item>
 /// </list>
 ///
+/// The same asymmetry decides where the settings cog goes: onto the clickable host only. Nothing on
+/// the overlay can be clicked, so a cog there would be an affordance that does nothing. A controller
+/// reaches Settings through the game's own context menu, through the Wayfarer window's Settings tab,
+/// and through <c>/wayfarer settings</c>.
+///
 /// The failure modes are what make this safe to do at all: a host that never attaches draws nothing,
 /// and "nothing appears" is recoverable. If the clickable addon cannot be created the overlay covers
 /// mouse players too — read-only, but there. And whenever the host this player's device would
@@ -38,6 +43,7 @@ internal sealed class GuidanceOverlay(
     IClientState clientState,
     IFramework framework,
     ITextureProvider textures,
+    Action onSettingsClicked,
     IPluginLog log) : IDisposable
 {
     private OverlayController? controller;
@@ -192,6 +198,7 @@ internal sealed class GuidanceOverlay(
                 () => BuildFrame(forClickableHost: true),
                 placement,
                 Teleport,
+                onSettingsClicked,
                 textures,
                 framework,
                 log,

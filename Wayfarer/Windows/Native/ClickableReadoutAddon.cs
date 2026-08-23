@@ -30,6 +30,11 @@ namespace Wayfarer.Windows.Native;
 /// invisible. Be closed by Esc: <c>RespectCloseAll</c> is off. Make a sound, or offer a title-bar
 /// menu: both off.
 ///
+/// <b>The settings cog.</b> The readout carries one, and only here. The player asked to be able to
+/// reach Settings from the readout instead of going through the plugin list, and this host is the one
+/// that can receive the click. The overlay deliberately does not draw one — see
+/// <see cref="ReadoutBodyNode"/>.
+///
 /// <b>Scale.</b> The game renders a normal addon at the player's interface scale, while the body
 /// multiplies that scale in by hand (it was written for an overlay, which is de-scaled to raw
 /// pixels). Applying the same de-scaling here is what keeps the two hosts identical instead of
@@ -38,6 +43,7 @@ internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
     ReadoutPlacement placement,
     Action onTeleportClicked,
+    Action onSettingsClicked,
     ITextureProvider textures,
     IFramework framework,
     IPluginLog log,
@@ -105,7 +111,8 @@ internal sealed unsafe class ClickableReadoutAddon(
             textures,
             diagnosticsEnabled,
             onTeleportClicked,
-            onMoved: delta => placement.MoveTo(lastPosition + delta))
+            onMoved: delta => placement.MoveTo(lastPosition + delta),
+            onSettingsClicked: onSettingsClicked)
         {
             Position = Vector2.Zero,
         };

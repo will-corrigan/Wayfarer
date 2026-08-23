@@ -123,7 +123,7 @@ public sealed class Plugin : IDalamudPlugin
             enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
-        contextMenuActions = new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, log);
+        contextMenuActions = BuildContextMenuActions(contextMenu, objects, clientState, config, log);
         namePlateMarkers = new(namePlateGui, textureProvider, framework, modules, config.Guidance, log);
         namePlateMarkers.Start();
 
@@ -308,6 +308,17 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
+    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.
+    /// "Open settings" is the controller's counterpart of the readout's cog — see
+    /// <see cref="Windows.Native.ReadoutBodyNode"/> for why the overlay cannot carry one.</summary>
+    private ContextMenuActions BuildContextMenuActions(
+        IContextMenu contextMenu,
+        IObjectTable objects,
+        IClientState clientState,
+        Configuration config,
+        IPluginLog log) =>
+        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, log);
+
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.</summary>
     private NativeHubWindow BuildHub(
         IUnlockProvider unlocks,
@@ -364,6 +375,7 @@ public sealed class Plugin : IDalamudPlugin
             services.ClientState,
             services.Framework,
             services.Textures,
+            OpenConfig,
             log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,

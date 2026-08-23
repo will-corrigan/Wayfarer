@@ -52,6 +52,21 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private const float BaseGap = 3f;
 
+    /// <summary>The settings cog's side, before scale. Sized against the heading it sits beside
+    /// rather than against the readout: it is a mark on that line, not a button on a panel.</summary>
+    private const float BaseCog = 13f;
+
+    /// <summary>How visible the cog is when the pointer is not on it.
+    ///
+    /// <para><b>Why it is not simply hidden.</b> Revealing it on hover would be better — the player
+    /// asked for exactly that — but the only thing that can tell this readout the pointer is over it
+    /// is a collision rectangle, and a collision rectangle over the whole readout would swallow the
+    /// world clicks and camera drags underneath it. That is the same trap the drag handle is a
+    /// deliberate mode for. So the cog carries its own small collision and nothing else does: it is
+    /// barely there until the pointer finds it, and it eats nothing but its own thirteen
+    /// pixels.</para></summary>
+    private const float CogIdleAlpha = 0.4f;
+
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
     /// line would otherwise be dragged by a box that no longer fits it.</summary>
@@ -85,8 +100,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rectangle and the hand cursor over that one line.</summary>
     private readonly ResNode? teleportHitBox;
 
+    /// <summary>The settings cog, or null in a host that cannot be clicked. Drawing one on the
+    /// click-through overlay would be a lie: the controller's readout takes no input at all, and an
+    /// affordance that does nothing is worse than none.</summary>
+    private readonly ImGuiImageNode? cogNode;
+
     private ArrowIconVariant? loadedVariant;
     private bool arrowFailed;
+    private bool cogLoaded;
+    private bool cogFailed;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
@@ -99,7 +121,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         ITextureProvider textures,
         Func<bool>? diagnosticsEnabled = null,
         Action? onTeleportClicked = null,
-        Action<Vector2>? onMoved = null)
+        Action<Vector2>? onMoved = null,
+        Action? onSettingsClicked = null)
     {
         this.log = log;
         this.textures = textures;
@@ -150,6 +173,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             teleportHitBox.ShowClickableCursor = true;
             teleportHitBox.AttachNode(this);
         }
+
+        cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
     }
 
     /// <summary>Whether a clickable target is on screen right now. The host watches this: the
@@ -189,6 +214,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var y = LayoutWords(frame, drawable, factor, width);
         var (bottom, firstLineCentre) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
+        LayoutCog(frame, factor, width);
+
+        // The cog is a live collision node whenever it is drawn, and the clickable host watches
+        // this to know when the addon's collision list has to be rebuilt.
+        HasLiveClickTarget |= cogNode is { IsVisible: true };
 
         var size = new Vector2(width, bottom);
         Size = size;
@@ -226,6 +256,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             teleportHitBox.IsVisible = false;
         }
 
+        if (cogNode is not null)
+        {
+            cogNode.IsVisible = false;
+        }
+
         HasLiveClickTarget = false;
 
         for (var i = 0; i < MaxLines; i++)
@@ -256,6 +291,35 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private static FontType FontFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? FontType.TrumpGothic : FontType.Axis;
+
+    /// <summary>The settings cog, wired to open the window on its Settings tab.
+    ///
+    /// <para><c>MouseClick</c> is the only one of these events that blocks: <c>MouseOver</c> and
+    /// <c>MouseOut</c> ask the toolkit for <c>EmitsEvents</c> and <c>RespondToMouse</c> alone, while
+    /// <c>MouseClick</c> adds <c>HasCollision</c>. The rectangle that swallows a world click is
+    /// therefore exactly the cog and nothing more — which is the whole reason the readout can carry
+    /// one at all.</para></summary>
+    private ImGuiImageNode BuildCog(Action onSettingsClicked)
+    {
+        // Same generated-texture treatment as the arrow — see CogBitmap. FitTexture is correct here
+        // for the same reason it is correct there: the whole texture IS the icon, so there is no
+        // part for AutoFit to ignore.
+        var cog = new ImGuiImageNode
+        {
+            TextureSize = new Vector2(CogBitmap.Size, CogBitmap.Size),
+            Size = new Vector2(BaseCog, BaseCog),
+            FitTexture = true,
+            IsVisible = false,
+            Alpha = CogIdleAlpha,
+        };
+
+        cog.AddEvent(AtkEventType.MouseClick, onSettingsClicked);
+        cog.AddEvent(AtkEventType.MouseOver, () => cog.Alpha = 1f);
+        cog.AddEvent(AtkEventType.MouseOut, () => cog.Alpha = CogIdleAlpha);
+        cog.ShowClickableCursor = true;
+        cog.AttachNode(this);
+        return cog;
+    }
 
     private void BuildLinePool()
     {
@@ -432,6 +496,84 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         HasLiveClickTarget = hitBoxPlaced;
         return (y + (BaseGap * factor), firstLineCentre);
+    }
+
+    /// <summary>Parks the settings cog at the end of the heading, which is where the game puts a
+    /// panel's own controls and the one place on this readout that is never text.
+    ///
+    /// <para>Measured rather than pinned to the right-hand edge: the readout's box is a fixed 320
+    /// units wide while its heading is usually a third of that, so a cog in the corner would float
+    /// in empty space with nothing to belong to. The box is invisible; the words are the object.
+    /// A measurement that comes back as nothing — the node has not been drawn yet — falls back to
+    /// the right edge rather than stacking the cog on top of the first letter.</para></summary>
+    private void LayoutCog(ReadoutFrame frame, float factor, float width)
+    {
+        if (cogNode is null)
+        {
+            return;
+        }
+
+        if (!EnsureCogTexture())
+        {
+            cogNode.IsVisible = false;
+            return;
+        }
+
+        var size = Math.Max(BaseCog * factor, 9f);
+        var gap = BaseGap * factor * 2f;
+        var heading = frame.Content.Lines.Count > 0
+            && frame.Content.Lines[0].Emphasis == ReadoutEmphasis.Heading
+            && lineNodes[0].IsVisible
+                ? lineNodes[0]
+                : null;
+
+        var headingWidth = heading is null ? 0f : heading.GetTextDrawSize().X;
+        var position = headingWidth > 1f
+            ? new Vector2(
+                Math.Clamp(headingWidth + gap, 0f, width - size),
+                heading!.Position.Y + Math.Max(((BaseHeadingSize * factor) - size) / 2f, 0f))
+            : new Vector2(width - size, 0f);
+
+        cogNode.Size = new Vector2(size, size);
+        cogNode.Position = position;
+        cogNode.IsVisible = true;
+    }
+
+    /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are
+    /// computed here and uploaded synchronously, so it either works or it throws, and if it throws
+    /// there is simply no cog — the window is still on the info bar entry, the plugin list, the
+    /// game's own context menu and <c>/wayfarer settings</c>.</summary>
+    private bool EnsureCogTexture()
+    {
+        if (cogFailed)
+        {
+            return false;
+        }
+
+        if (cogLoaded)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(CogBitmap.Size, CogBitmap.Size),
+                CogBitmap.Render(),
+                "Wayfarer settings cog");
+
+            // Takes ownership: the node disposes the wrap with itself.
+            cogNode!.LoadTexture(wrap);
+            cogNode.TextureSize = new Vector2(CogBitmap.Size, CogBitmap.Size);
+            cogLoaded = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            cogFailed = true;
+            log.Error(ex, "Wayfarer readout: the settings cog could not be generated, so the readout has none. Settings are still on the info bar entry, the plugin list and /wayfarer settings.");
+            return false;
+        }
     }
 
     private float LayoutRule(int index, ReadoutLine line, float factor, float left, float width, float y)
