@@ -1,3 +1,4 @@
+using System.Numerics;
 using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Ui;
@@ -22,6 +23,20 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
     private readonly Dictionary<uint, bool> resolved = [];
 
     private bool loggedFailure;
+
+    /// <summary>The size an icon is authored at, which is what an image node's part rectangle has to
+    /// be or it samples past the edge of the texture and draws a band of nothing.
+    ///
+    /// <para>Read off the loaded texture when the game can answer immediately; this is the seed for
+    /// when it cannot. The three blocks this plugin draws from were measured against the live
+    /// install: the 60640 padlock composites are 24x24, the 63xxx Hunting Log creature portraits are
+    /// 48x48, and the 71000 markers are 32x32.</para></summary>
+    public static Vector2 SourceSize(uint iconId) => iconId switch
+    {
+        >= 60000 and < 61000 => new Vector2(24f, 24f),
+        >= 63000 and < 64000 => new Vector2(48f, 48f),
+        _ => new Vector2(32f, 32f),
+    };
 
     /// <summary>The id to draw, or 0 when it could not be resolved and the caller should fall back
     /// to words. Never throws: a texture lookup must not be the thing that stops a list from being

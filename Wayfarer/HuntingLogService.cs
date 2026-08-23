@@ -40,6 +40,11 @@ internal sealed unsafe class HuntingLogService
 
     private Dictionary<uint, (string Name, uint ContentFinderConditionId)>? dutyByTerritory;
 
+    /// <summary>BNpcName row id to the Hunting Log's own creature icon, built once on first use.
+    /// Lazy rather than eager because the sheet is 850 rows and a player who never opens the log
+    /// should not pay for it at load.</summary>
+    private Dictionary<uint, uint>? monsterIcons;
+
     private HuntingDataset? dataset;
 
     /// <summary>Live kill count reader and the page it belongs to, as of the last
@@ -498,7 +503,8 @@ internal sealed unsafe class HuntingLogService
             IsLivePosition: false,
             DutyName: null,
             DutyContentFinderConditionId: null,
-            ZoneName: ZoneName(loc.TerritoryTypeId));
+            ZoneName: ZoneName(loc.TerritoryTypeId),
+            IconId: IconFor(monster.BNpcNameId));
     }
 
     private HuntingTargetView BuildDutyView(HuntingMonster monster, Func<int, int, int> killedCount, HuntingRank pageRank)
@@ -520,7 +526,8 @@ internal sealed unsafe class HuntingLogService
             IsLivePosition: false,
             DutyName: duty?.Name ?? "an instanced Grand Company duty",
             DutyContentFinderConditionId: duty?.ContentFinderConditionId,
-            ZoneName: loc?.DutyTerritoryTypeId is { } dutyTerritory ? ZoneName(dutyTerritory) : null);
+            ZoneName: loc?.DutyTerritoryTypeId is { } dutyTerritory ? ZoneName(dutyTerritory) : null,
+            IconId: IconFor(monster.BNpcNameId));
     }
 
     /// <summary>Refreshes <see cref="CurrentTarget"/>'s position from a live <c>IObjectTable</c>
@@ -583,6 +590,53 @@ internal sealed unsafe class HuntingLogService
     // enters the plugin: the hub rows, the readout's hunting line, the nameplate marker match and
     // the info-bar entry all read the name this method resolved. The sheet stores "dragonfly"; the
     // game's own Hunting Log shows "Dragonfly" — see DisplayNames.
+
+    /// <summary>The Hunting Log's own creature art, keyed the way the dataset is keyed.
+    ///
+    /// <para><c>MonsterNoteTarget</c> is the sheet the vanilla Hunting Log draws its pictures from,
+    /// and it exists for no other purpose: every one of the 362 rows a <c>MonsterNote</c> actually
+    /// references carries a non-zero icon, in the 63xxx block, at 48x48 with a 96x96 high-resolution
+    /// variant beside it. So "can we show the images like the actual hunting log?" needs no fallback
+    /// design — there is no entry without art. One is shipped anyway, because a future patch can add
+    /// a row before it adds a picture.</para>
+    ///
+    /// <para><b>The honest caveat.</b> These are creature-<i>family</i> icons: about a hundred
+    /// distinct pictures cover all 362 entries, and a grounded pirate and a grounded raider share
+    /// one. That is not a limitation being imposed here — it is what the vanilla log shows, because
+    /// it is the only art the sheet has. Two rows on the same rank can legitimately carry the same
+    /// picture, and inventing per-monster art to "fix" that would be inventing something the game
+    /// does not have.</para></summary>
+    private uint IconFor(uint bNpcNameId)
+    {
+        monsterIcons ??= BuildMonsterIcons();
+        return monsterIcons.GetValueOrDefault(bNpcNameId, 0u);
+    }
+
+    private Dictionary<uint, uint> BuildMonsterIcons()
+    {
+        var icons = new Dictionary<uint, uint>();
+        try
+        {
+            foreach (var row in dataManager.GetExcelSheet<MonsterNoteTarget>())
+            {
+                var nameId = row.BNpcName.RowId;
+                if (nameId != 0 && row.Icon != 0)
+                {
+                    // First win: the sheet can name the same creature twice and the pictures agree,
+                    // so re-reading a later row would cost a write for no change.
+                    icons.TryAdd(nameId, (uint)row.Icon);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Built once, so one line. The log still works without pictures; it looks like it did
+            // before, which is a worse log rather than a broken one.
+            log.Warning(ex, "Wayfarer hunting: the monster art sheet could not be read, so the log's rows will have no pictures.");
+        }
+
+        return icons;
+    }
 
     /// <summary>The target's territory as the game names it. Null rather than a placeholder when
     /// the row does not resolve: the row's second line simply carries less, which is better than

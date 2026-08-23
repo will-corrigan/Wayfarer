@@ -1858,6 +1858,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 // to be and where it was the first thing to be ellipsised away.
                 Description = HuntingRowWhere(target),
                 Detail = $"{target.Killed}/{target.Required}",
+                IconId = HuntingRowIcon(target),
+                StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Available),
                 Pane = BuildHuntingDetail(target, navigator),
                 Hover = PublishDetail,
                 Activate = target.DutyContentFinderConditionId is null
@@ -1872,6 +1874,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Label = target.MonsterName,
             Description = HuntingRowWhere(target),
             Detail = $"{target.Killed}/{target.Required}",
+            IconId = HuntingRowIcon(target),
+            StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Available),
             Pane = BuildHuntingDetail(target, navigator),
             Hover = PublishDetail,
             Activate = navigator is null ? null : () =>
@@ -1886,6 +1890,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         distanceRows.Add((row, target.Monster));
         return row;
     }
+
+    /// <summary>The picture in a hunting row's left column: the creature's own art while there is
+    /// still something to kill, the green check once there is not.
+    ///
+    /// <para>That swap is the vanilla Hunting Log's own behaviour, not an invention — the art is the
+    /// entry's identity and the checkmark replaces it on completion. The icon still goes through the
+    /// same runtime validation every other icon does, so a creature whose art a patch has moved
+    /// falls back to the row saying its state in words rather than to a hole in the column.</para></summary>
+    private uint HuntingRowIcon(HuntingTargetView target) =>
+        target.Killed >= target.Required
+            ? statusIcons.Resolve(UnlockStatusDisplay.CompleteIcon)
+            : statusIcons.Resolve(target.IconId);
 
     /// <summary>What the pane says about one hunting target. The same component the Unlocks tab
     /// uses, so "what is selected" is described the same way whichever list the player is in.</summary>
@@ -1913,9 +1929,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             Title = target.MonsterName,
             Kind = $"{target.Killed} of {target.Required} killed",
-            StatusIconId = done
-                ? statusIcons.Resolve(UnlockStatusDisplay.CompleteIcon)
-                : statusIcons.For(UnlockStatus.Available),
+            StatusIconId = HuntingRowIcon(target),
             StatusSentence = done
                 ? "Complete — this one is done."
                 : $"{target.Required - target.Killed} left to kill.",

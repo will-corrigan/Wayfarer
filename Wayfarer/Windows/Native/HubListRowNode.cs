@@ -187,18 +187,6 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     private static string Prefixed(string word, string description) =>
         description.Length == 0 ? word : $"{word} — {description}";
 
-    /// <summary>The size the icon is authored at, which is what the part's UV rectangle has to be
-    /// or the node samples past the edge of the texture. Read off the loaded texture when the game
-    /// can answer immediately; otherwise seeded from the block the id belongs to — the 60640
-    /// padlock composites are 24x24, the 71000 markers and the 63xxx monster portraits are larger —
-    /// and corrected on the next assignment if the seed was wrong.</summary>
-    private static float SourceSize(uint iconId) => iconId switch
-    {
-        >= 60000 and < 61000 => 24f,
-        >= 63000 and < 64000 => 48f,
-        _ => 32f,
-    };
-
     private void PublishHover()
     {
         if (ItemData is { } data)
@@ -218,9 +206,12 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
 
         iconNode.IconId = iconId;
 
+        // The part rectangle has to match the size the icon is authored at, or the node samples past
+        // the edge of the texture and draws a band of nothing. Prefer what the game says the loaded
+        // texture is; fall back to the block the id belongs to when it cannot answer yet, and
+        // correct itself on the next assignment if the seed was wrong.
         var actual = iconNode.ActualTextureSize;
-        var source = actual.X > 0f && actual.Y > 0f ? actual : new Vector2(SourceSize(iconId), SourceSize(iconId));
-        iconNode.TextureSize = source;
+        iconNode.TextureSize = actual.X > 0f && actual.Y > 0f ? actual : HubStatusIcons.SourceSize(iconId);
     }
 
     private void Layout()

@@ -147,6 +147,14 @@ internal sealed class HubDetailPaneNode : ResNode
         if (detail.StatusIconId != 0)
         {
             statusIconNode.IconId = detail.StatusIconId;
+
+            // Same rule as the row's icon column: the part rectangle has to match the size the icon
+            // is authored at, and the Hunting Log's creature art is 48x48 where a status marker is
+            // 32x32, so a fixed rectangle would crop one or pad the other.
+            var actual = statusIconNode.ActualTextureSize;
+            statusIconNode.TextureSize = actual.X > 0f && actual.Y > 0f
+                ? actual
+                : HubStatusIcons.SourceSize(detail.StatusIconId);
         }
 
         statusNode.String = detail.StatusSentence;

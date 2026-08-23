@@ -11,7 +11,10 @@ namespace Wayfarer;
 ///
 /// <para><see cref="ZoneName"/> is the target's own territory, not the player's: a hunting row that
 /// says only "0 / 3" cannot be told apart from the row above it, and the zone is the fact that
-/// makes it a place you can go rather than a name you have to look up.</para></summary>
+/// makes it a place you can go rather than a name you have to look up.
+///
+/// <para><see cref="IconId"/> is the Hunting Log's own creature art, from the sheet the vanilla log
+/// draws it from. 0 only if a future patch adds an entry before it adds a picture.</para></summary>
 internal sealed record HuntingTargetView(
     HuntingMonster Monster,
     string MonsterName,
@@ -25,7 +28,8 @@ internal sealed record HuntingTargetView(
     bool IsLivePosition,
     string? DutyName,
     uint? DutyContentFinderConditionId,
-    string? ZoneName = null)
+    string? ZoneName = null,
+    uint IconId = 0)
 {
     /// <summary>True when this target has a usable world position to route/arrow toward — false
     /// only for the Grand-Company-Elite duty-gated records; every other target is text-only.</summary>
