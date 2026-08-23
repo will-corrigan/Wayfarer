@@ -41,23 +41,36 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <summary>The most rows one line is allowed to wrap into.</summary>
     private const float MaxWrappedLines = 3f;
 
-    private const float BaseWidth = 320f;
-    private const float BaseHeadingSize = 20f;
-    private const float BasePrimarySize = 15f;
-    private const float BaseSecondarySize = 13f;
-    private const float BaseMutedSize = 12f;
+    /// <summary>The readout box, at the width the game gives its own always-on overlay — the quest
+    /// tracker is 400 wide (ToDoList root <c>#1</c>) and every line in it 372.</summary>
+    private const float BaseWidth = GameMetrics.Hud.Width;
+
+    /// <summary>The heading. The tracker's own emphasis size is Axis 18 (ToDoList <c>1005 #5</c>,
+    /// <c>1012 #3</c>); 20 was a window-title size on a heads-up element.</summary>
+    private const float BaseHeadingSize = GameMetrics.Type.DetailTitleSize;
+
+    /// <summary>The tracker sets its quest titles and its objective lines in the same Axis 14 and
+    /// separates them by colour, not by size (ToDoList <c>1004</c>, <c>1005</c>, <c>1007</c>). So do
+    /// these two.</summary>
+    private const float BasePrimarySize = GameMetrics.Hud.LineSize;
+
+    /// <inheritdoc cref="BasePrimarySize"/>
+    private const float BaseSecondarySize = GameMetrics.Hud.LineSize;
+
+    /// <summary>Counts and qualifiers. ToDoList <c>1008 #7</c> is Axis 12.</summary>
+    private const float BaseMutedSize = GameMetrics.Hud.MetaSize;
 
     /// <summary>The arrow's side, before scale.
     ///
-    /// <para>Sized against the primary line rather than against the readout: it sits <b>in line</b>
-    /// with the text, as a left gutter, and an arrow that towers over the words it belongs to reads
-    /// as a separate object rather than as part of one. 17 is <see cref="BasePrimarySize"/> plus
-    /// two — one line's worth — so the arrow occupies exactly the height of the line it is aligned
-    /// to. It was 22, which overhung that line top and bottom and is what "the arrow position and
-    /// sizing is a bit awkward" was about.</para></summary>
-    private const float BaseArrow = 17f;
+    /// <para>The size of the quest tracker's own markers — ToDoList <c>1003 #4</c>, <c>1008 #5</c>
+    /// and <c>1012 #4</c> are all 24x24 — sitting in the same 28-wide gutter the tracker reserves for
+    /// them. It sits <b>in line</b> with the text, as a left gutter, rather than towering over the
+    /// words it belongs to.</para></summary>
+    private const float BaseArrow = GameMetrics.Hud.IconSize;
 
-    private const float BaseGap = 3f;
+    /// <summary>The readout's spacing unit. Half of what the tracker leaves either side of its icon
+    /// column: its gutter is 28 for a 24-wide marker.</summary>
+    private const float BaseGap = (GameMetrics.Hud.Gutter - GameMetrics.Hud.IconSize) / 2f;
 
     /// <summary>Where the arrow's centre sits on its line, as a fraction of that line's font size
     /// measured down from the text's top edge.
@@ -621,9 +634,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return 0f;
         }
 
-        var height = (BasePrimarySize + 2f) * factor;
+        // The tracker's own leading, two over the font size.
+        const float Leading = GameMetrics.Hud.LineLeading - GameMetrics.Hud.LineSize;
+        var height = (BasePrimarySize + Leading) * factor;
         arrowWordsNode.FontSize = (uint)Math.Max(BasePrimarySize * factor, 8f);
-        arrowWordsNode.LineSpacing = (uint)Math.Max((BasePrimarySize * factor) + 2f, 10f);
+        arrowWordsNode.LineSpacing = (uint)Math.Max((BasePrimarySize * factor) + Leading, 10f);
         arrowWordsNode.String = NavMath.DescribeDirection(radians);
         arrowWordsNode.Size = new Vector2(width, height);
         arrowWordsNode.Position = new Vector2(0f, 0f);
@@ -879,10 +894,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         y += BaseGap * factor * 2f;
-        ruleNodes[index].Size = new Vector2(width, 4f);
+        ruleNodes[index].Size = new Vector2(width, GameMetrics.Window.RuleHeight);
         ruleNodes[index].Position = new Vector2(left, y);
         ruleNodes[index].IsVisible = true;
-        return y + (BaseGap * factor) + 4f;
+        return y + (BaseGap * factor) + GameMetrics.Window.RuleHeight;
     }
 
     /// <summary>Lays out one line and reports the height it took — which is the height it needs,
@@ -901,7 +916,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         // One number for both the wrap spacing and the advance, so a wrapped line's second row and
         // the line after it cannot disagree about where they are.
-        var step = Math.Max(fontSize + 4f, 11f);
+        //
+        // The tracker leads its lines by two over the font — Axis 14 at 16 in ToDoList 1004/1005/1007,
+        // Axis 12 at 14 in 1008/1009 — against the four this used, which is the "text spacing is
+        // huge" complaint: a heads-up element leads far tighter than a window does.
+        var step = Math.Max(fontSize + (GameMetrics.Hud.LineLeading - GameMetrics.Hud.LineSize), 11f);
         node.LineSpacing = (uint)step;
         node.TextColor = ColorFor(line.Emphasis);
         node.TextOutlineColor = OutlineFor(line.Emphasis);

@@ -2,6 +2,7 @@ using System.Numerics;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Interfaces;
 using KamiToolKit.Nodes;
+using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Windows.Native;
 
@@ -19,21 +20,6 @@ namespace Wayfarer.Windows.Native;
 /// truncated.</para></summary>
 internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListItemNode
 {
-    private const float Padding = 8f;
-
-    /// <summary>Width of the right-hand caption on line one. Wider than the old gutter because it
-    /// now carries two short tokens instead of three facts, and the name beside it has plenty to
-    /// give up.</summary>
-    private const float TrailingWidth = 168f;
-
-    private const float LineGap = 6f;
-
-    /// <summary>The state column. 24px is the size the game's own 60640-block padlock composites
-    /// are authored at, and the 71000 markers downsample to it cleanly.</summary>
-    private const float IconSize = 24f;
-
-    private const float IconColumn = IconSize + 8f;
-
     private readonly IconImageNode iconNode;
     private readonly TextNode labelNode;
     private readonly TextNode trailingNode;
@@ -46,7 +32,7 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     {
         iconNode = new IconImageNode
         {
-            Size = new Vector2(IconSize, IconSize),
+            Size = new Vector2(GameMetrics.Row.IconSize, GameMetrics.Row.IconSize),
             FitTexture = true,
             IsVisible = false,
         };
@@ -55,7 +41,8 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         labelNode = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = 14,
+            FontSize = GameMetrics.Type.BodySize,
+            LineSpacing = GameMetrics.Type.BodyLine,
             AlignmentType = AlignmentType.Left,
             TextFlags = TextFlags.Ellipsis,
             TextColor = GameColors.ListText,
@@ -65,7 +52,8 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         trailingNode = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = 12,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
             AlignmentType = AlignmentType.Right,
             TextFlags = TextFlags.Ellipsis,
             TextColor = GameColors.Dimmed,
@@ -75,7 +63,8 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         descriptionNode = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = 12,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
             AlignmentType = AlignmentType.Left,
 
             // Ellipsis rather than a hand-rolled character budget: the game's own text engine
@@ -95,15 +84,14 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         AddEvent(AtkEventType.MouseOver, PublishHover);
     }
 
-    /// <summary>Row height, a per-type constant because the list virtualizes on it. Two lines of
-    /// Axis at 14/12pt with the game's own row padding, which halves the visible row count against
-    /// the old 26px — deliberately: ten-foot guidance is "density comparable to a phone, not a
-    /// desktop", and the section headings already in the list are what keep a long one navigable.
+    /// <summary>Row height, a per-type constant because the list virtualizes on it. The game's own
+    /// Axis-14 row (24) stacked on its own Axis-12 row (24) — see
+    /// <see cref="GameMetrics.Row.EntryHeight"/>. Section headings are shorter in the game but have
+    /// to share this height, because the list can only virtualize on one.
     ///
     /// <para>Deliberately not a setting. A knob for row height is a design decision being deferred
-    /// to the player, and the number wants changing once after somebody has looked at a TV, not
-    /// per install.</para></summary>
-    public static float ItemHeight => 44f;
+    /// to the player, and the number is the game's, not ours.</para></summary>
+    public static float ItemHeight => GameMetrics.Row.EntryHeight;
 
     /// <inheritdoc/>
     public override void Update()
@@ -134,12 +122,16 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
             : itemData.Description;
 
         labelNode.TextColor = itemData.LabelColor ?? DefaultColor(itemData.Kind);
-        labelNode.FontSize = itemData.Kind switch
-        {
-            HubRowKind.Heading => 15u,
-            HubRowKind.Note => 12u,
-            _ => 14u,
-        };
+
+        // A section header is set in the same Axis 14 as an entry — Journal's own header row does
+        // exactly that and leans on the icon and the count beside it to do the separating, rather
+        // than on a size the rest of the list does not use.
+        labelNode.FontSize = itemData.Kind == HubRowKind.Note
+            ? GameMetrics.Type.SecondarySize
+            : GameMetrics.Type.BodySize;
+        labelNode.LineSpacing = itemData.Kind == HubRowKind.Note
+            ? GameMetrics.Type.SecondaryLine
+            : GameMetrics.Type.BodyLine;
 
         // A note is prose, not a list entry: it is allowed to use both lines and it must wrap
         // rather than ellipsise, because the whole point of a note ("turn Quest Helper on to be
@@ -187,6 +179,25 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     private static string Prefixed(string word, string description) =>
         description.Length == 0 ? word : $"{word} — {description}";
 
+    private static RowShape Shape(HubRowKind kind) => kind switch
+    {
+        HubRowKind.Heading => RowShape.Section,
+        HubRowKind.Note => RowShape.Note,
+        _ => RowShape.Entry,
+    };
+
+    private static void Place(TextNode node, ScreenRect rect)
+    {
+        node.IsVisible = !rect.IsEmpty;
+        if (rect.IsEmpty)
+        {
+            return;
+        }
+
+        node.Position = new Vector2(rect.X, rect.Y);
+        node.Size = new Vector2(rect.Width, rect.Height);
+    }
+
     private void PublishHover()
     {
         if (ItemData is { } data)
@@ -216,49 +227,20 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
 
     private void Layout()
     {
-        var lineHeight = Math.Max((Height - LineGap) / 2f, 1f);
+        // Every rectangle comes from RowLayout, which is measured against the game's own tree-list
+        // rows and clipped to the row's own box — so nothing here can put a node outside it.
+        var shape = Shape(kind);
+        var blocks = RowLayout.Compose(shape, Width, Height, hasIcon && shape == RowShape.Entry);
 
-        // The text column starts after the state column on entry rows and at the padding on the
-        // others — a heading with a 32px indent and nothing in it reads as a broken row.
-        var textLeft = kind == HubRowKind.Entry ? Padding + IconColumn : Padding;
-        var textWidth = Math.Max(Width - textLeft - Padding, 0f);
-
-        iconNode.IsVisible = hasIcon && kind == HubRowKind.Entry;
-        iconNode.Position = new Vector2(Padding, Math.Max((Height - IconSize) / 2f, 0f));
-
-        switch (kind)
+        iconNode.IsVisible = !blocks.Icon.IsEmpty;
+        if (!blocks.Icon.IsEmpty)
         {
-            case HubRowKind.Note:
-                // Both lines, one wrapping block.
-                labelNode.Position = new Vector2(textLeft, 2f);
-                labelNode.Size = new Vector2(textWidth, Math.Max(Height - 4f, 1f));
-                trailingNode.IsVisible = false;
-                descriptionNode.IsVisible = false;
-                return;
-
-            case HubRowKind.Heading:
-                // One line, centred in the row's height — a heading has no second line to balance
-                // against, and floating it at the top would leave it orphaned above a gap.
-                labelNode.Position = new Vector2(textLeft, (Height - lineHeight) / 2f);
-                labelNode.Size = new Vector2(Math.Max(textWidth - TrailingWidth - Padding, 0f), lineHeight);
-                trailingNode.IsVisible = true;
-                trailingNode.Position = new Vector2(Width - Padding - TrailingWidth, (Height - lineHeight) / 2f);
-                trailingNode.Size = new Vector2(TrailingWidth, lineHeight);
-                descriptionNode.IsVisible = false;
-                return;
-
-            default:
-                labelNode.Position = new Vector2(textLeft, 2f);
-                labelNode.Size = new Vector2(Math.Max(textWidth - TrailingWidth - Padding, 0f), lineHeight);
-
-                trailingNode.IsVisible = true;
-                trailingNode.Position = new Vector2(Width - Padding - TrailingWidth, 3f);
-                trailingNode.Size = new Vector2(TrailingWidth, lineHeight);
-
-                descriptionNode.IsVisible = true;
-                descriptionNode.Position = new Vector2(textLeft, lineHeight + LineGap - 2f);
-                descriptionNode.Size = new Vector2(textWidth, lineHeight);
-                return;
+            iconNode.Position = new Vector2(blocks.Icon.X, blocks.Icon.Y);
+            iconNode.Size = new Vector2(blocks.Icon.Width, blocks.Icon.Height);
         }
+
+        Place(labelNode, blocks.Label);
+        Place(trailingNode, blocks.Trailing);
+        Place(descriptionNode, blocks.Description);
     }
 }

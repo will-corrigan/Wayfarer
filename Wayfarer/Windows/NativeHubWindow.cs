@@ -42,8 +42,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     // for why FollowedOverride/GetAcceptedQuestObjective work in the raw (unoffset) ushort space.
     private const uint QuestRowIdOffset = 65536;
 
-    private const float TabBarHeight = 26f;
-    private const float TabBarGap = 6f;
+    /// <summary>The tab bar. The game's own category selectors are 36-pixel radio buttons (Journal
+    /// <c>1025</c>, ContentsFinder <c>1029</c>); KamiToolKit's <c>TabBarNode</c> draws a flat strip
+    /// rather than that art, so it takes the height of a control instead.</summary>
+    private const float TabBarHeight = GameMetrics.Control.DropDownHeight;
+
+    private const float TabBarGap = GameMetrics.Window.RuleGap;
 
     /// <summary>The Following strip, above the tab bar and on screen whatever tab is open.
     ///
@@ -53,15 +57,33 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// feature worked and the affordance was invisible. A tab is a <i>place</i>, not a state: it can
     /// say where to go to change something, but it cannot say what the current value is, and the
     /// question was both halves at once.</para></summary>
-    private const float StripHeight = 26f;
+    private const float StripHeight = GameMetrics.Control.ButtonHeight;
 
-    private const float StripGap = 4f;
-    private const float RowHeight = 24f;
-    private const float ChecklistControlsHeight = 92f;
-    private const float HuntingHeaderHeight = 28f;
-    private const float HuntingControlsHeight = 64f;
-    private const float QuestControlsHeight = 96f;
-    private const float ButtonHintHeight = 20f;
+    private const float StripGap = GameMetrics.Window.RuleGap;
+
+    /// <summary>The floor any content area is clamped to — one of the game's own list rows, because
+    /// a tab body shorter than a single row is not a tab body.</summary>
+    private const float RowHeight = GameMetrics.Row.Height;
+
+    /// <summary>Section headings inside a tab. Journal's own section row sets TrumpGothic 23 in a
+    /// 28-tall box (<c>1021 #3</c>), and the Duty Finder's title block does the same at 26
+    /// (<c>#24</c>). The taller of the two, because a 22-pixel box was measured in-game to clip this
+    /// face's outline top and bottom.</summary>
+    private const float HuntingHeaderHeight = GameMetrics.Row.SectionHeight;
+
+    private const float ChecklistControlsHeight =
+        HuntingHeaderHeight + GameMetrics.Control.ButtonHeight + GameMetrics.Window.BlockGap
+        + (GameMetrics.Control.CheckboxHeight * 2f) + (GameMetrics.Window.RuleGap * 2f);
+
+    private const float HuntingControlsHeight =
+        HuntingHeaderHeight + GameMetrics.Control.ButtonHeight + GameMetrics.Window.RuleGap;
+
+    private const float QuestControlsHeight =
+        HuntingHeaderHeight + (GameMetrics.Control.ButtonHeight * 2f) + (GameMetrics.Window.RuleGap * 2f);
+
+    /// <summary>The controller button-hint line along the bottom. One line of the game's dimmed
+    /// caption face (Journal <c>1022 #2</c> is Axis 12 in a 21-tall box).</summary>
+    private const float ButtonHintHeight = GameMetrics.Row.SecondaryTextHeight;
 
     // All four are screen pixels, not addon units — see ComputeDefaultSize for why the difference
     // matters. The width cap is absolute rather than a fraction of the viewport because a fraction
@@ -190,6 +212,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         this.inputMode = inputMode;
         this.log = log;
 
+        // The inset the game gives its own window contents. Journal and the Duty Finder both start
+        // everything 16 in from the frame; KamiToolKit's default is 8, and applies X symmetrically
+        // where the game uses 16/14 — a two-pixel difference on the right that nothing depends on.
+        ContentPadding = new Vector2(GameMetrics.Window.InsetLeft, GameMetrics.Window.BlockGap);
+
         settings.OnWindowPositionChanged += ApplyPositionPreset;
     }
 
@@ -250,7 +277,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             AddOwnedNode(new TextNode
             {
                 Position = ContentStartPosition,
-                Size = new Vector2(ContentSize.X, 40f),
+                Size = new Vector2(ContentSize.X, GameMetrics.Row.EntryHeight),
                 String = "Wayfarer could not load its data.",
             });
             return;
@@ -412,7 +439,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// is a guarantee rather than a hope.</para></summary>
     private static float ClampListHeight(float wanted)
     {
-        var perRow = HubListRowNode.ItemHeight + 1f;
+        var perRow = HubListRowNode.ItemHeight + GameMetrics.Row.Spacing;
         return Math.Min(wanted, HubNavPlan.MaxListPoolSize * perRow);
     }
 
@@ -584,8 +611,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         TextButtonNode? node = null;
         node = new TextButtonNode
         {
-            Height = 24f,
-            Width = 320f,
+            Height = GameMetrics.Control.ButtonHeight,
+
+            // Widened by ApplySettingWidths to the container; this is only the seed.
+            Width = GameMetrics.Control.ButtonWidthLarge,
             String = $"{setting.Label}: {setting.CurrentValueText()}",
             OnClick = () =>
             {
@@ -599,13 +628,23 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return node;
     }
 
+    /// <summary>A row of buttons, at the game's own button height with the smallest gap that reads
+    /// as two buttons — see <see cref="GameMetrics.Control.ButtonGap"/> for why the game's own zero
+    /// does not work here.</summary>
+    private static AlignedHorizontalListNode NewActionRow() => new()
+    {
+        Height = GameMetrics.Control.ButtonHeight,
+        FitToContentHeight = true,
+        ItemSpacing = GameMetrics.Control.ButtonGap,
+    };
+
     private static AlignedHorizontalListNode BuildFilterRow(IEnumerable<CheckboxNode> chips)
     {
         var row = new AlignedHorizontalListNode
         {
-            Height = 22f,
+            Height = GameMetrics.Control.CheckboxHeight,
             FitToContentHeight = true,
-            ItemSpacing = 10f,
+            ItemSpacing = GameMetrics.Window.BlockGap,
         };
 
         foreach (var chip in chips)
@@ -632,7 +671,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         Height = HuntingHeaderHeight,
         FontType = FontType.TrumpGothic,
-        FontSize = 20,
+        FontSize = GameMetrics.Type.TitleSize,
         AlignmentType = AlignmentType.TopLeft,
         TextColor = GameColors.Heading,
         TextOutlineColor = GameColors.HeadingEdge,
@@ -672,7 +711,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Position = new Vector2(contentStart.X, contentStart.Y + contentSize.Y - ButtonHintHeight),
             Size = new Vector2(contentSize.X, ButtonHintHeight),
             FontType = FontType.Axis,
-            FontSize = 12,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
             AlignmentType = AlignmentType.Right,
             TextColor = GameColors.Dimmed,
             String = ControllerGlyphs.WindowHint(lastReverseConfirmCancel),
@@ -713,7 +753,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             NavLeft = HubNavPlan.TabBar,
             NavRight = HubNavPlan.TabBar,
 
-            ItemSpacing = 1f,
+            ItemSpacing = GameMetrics.Row.Spacing,
 
             // Suppresses ListNode's "selection follows scroll", which otherwise raises OnClick for
             // every row a held d-pad scrolls past — on this window that would fire navigation at
@@ -740,7 +780,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         stripLabelNode = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = 13,
+            FontSize = GameMetrics.Type.BodySize,
+            LineSpacing = GameMetrics.Type.BodyLine,
             AlignmentType = AlignmentType.Left,
             TextFlags = TextFlags.Ellipsis,
             TextColor = GameColors.ListText,
@@ -750,15 +791,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         stripControls = new AlignedHorizontalListNode
         {
-            Height = 24f,
+            Height = GameMetrics.Control.ButtonHeight,
             FitToContentHeight = true,
-            ItemSpacing = 6f,
+            ItemSpacing = GameMetrics.Control.ButtonGap,
         };
 
         stripControls.AddNode(new TextButtonNode
         {
-            Width = 90f,
-            Height = 22f,
+            Width = GameMetrics.Control.ButtonWidthSmall,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Change",
 
             // Goes to the tab that owns the choice rather than opening a popup: a popup has to be
@@ -770,8 +811,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // The one Stop, on the same line that says what is running. There used to be three.
         stripStopButton = new TextButtonNode
         {
-            Width = 80f,
-            Height = 22f,
+            Width = GameMetrics.Control.ButtonWidthSmall,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Stop",
             IsEnabled = false,
             OnClick = OnStopClicked,
@@ -974,17 +1015,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        const float ControlsWidth = 90f + 6f + 80f;
+        // The two buttons the strip carries, plus the gap between them — derived rather than
+        // restated, so moving a button width cannot leave the strip label overlapping it.
+        const float ControlsWidth =
+            (GameMetrics.Control.ButtonWidthSmall * 2f) + GameMetrics.Control.ButtonGap;
 
-        stripControls.Position = new Vector2(tabContentStart.X + tabContentSize.X - ControlsWidth, top + 2f);
-        stripControls.Size = new Vector2(ControlsWidth, StripHeight - 2f);
+        stripControls.Position = new Vector2(tabContentStart.X + tabContentSize.X - ControlsWidth, top);
+        stripControls.Size = new Vector2(ControlsWidth, StripHeight);
         stripControls.RecalculateLayout();
 
         if (stripLabelNode is not null)
         {
-            stripLabelNode.Position = new Vector2(tabContentStart.X, top + 4f);
+            stripLabelNode.Position = new Vector2(tabContentStart.X, top + GameMetrics.Row.TextTop);
             stripLabelNode.Size = new Vector2(
-                Math.Max(tabContentSize.X - ControlsWidth - 8f, 0f), StripHeight - 4f);
+                Math.Max(tabContentSize.X - ControlsWidth - GameMetrics.Window.BlockGap, 0f),
+                GameMetrics.Row.TextHeight);
         }
     }
 
@@ -1069,11 +1114,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // allowed to ask for a screen it does not have. Past the cap the list scrolls, which is the
         // behaviour that was missing.
         //
-        // 14 rather than the previous 24 because the rows are now 44px instead of 26px: 14 × 45 is
-        // the same 630px of list the old cap asked for, so the window this produces is the same
-        // height it already was. Changing the row height without changing this would have grown the
-        // default window by 40%, which is one of the sizing fixes already on main being undone.
-        var count = Math.Clamp(rows.Count, 1, 14);
+        // Expressed as a list height rather than a row count, so it does not have to be re-derived
+        // every time the row height moves: 630 addon units is the amount of list the window has
+        // always asked for, and the cap is however many of the game's rows fit in it.
+        const float MaxListHeight = 630f;
+        var maxRows = (int)(MaxListHeight / (HubListRowNode.ItemHeight + spacing));
+        var count = Math.Clamp(rows.Count, 1, Math.Max(maxRows, 1));
         return (count * (HubListRowNode.ItemHeight + spacing)) + spacing;
     }
 
@@ -1481,7 +1527,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         checklistControls = new VerticalListNode
         {
             FitWidth = true,
-            ItemSpacing = 4f,
+            ItemSpacing = GameMetrics.Window.RuleGap,
             Position = tabContentStart,
             Size = new Vector2(tabContentSize.X, ChecklistControlsHeight),
         };
@@ -1495,15 +1541,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private AlignedHorizontalListNode BuildChecklistActionRow()
     {
-        var row = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+        var row = NewActionRow();
 
         // A cycling button rather than a nested tab bar: a TabBarNode consumes one index per tab,
         // which the walker (which numbers one index per element) cannot account for — nesting one
         // inside a numbered region would overlap the elements that follow it.
         groupButton = new TextButtonNode
         {
-            Width = 140f,
-            Height = 24f,
+            Width = GameMetrics.Control.ButtonWidthMedium,
+            Height = GameMetrics.Control.ButtonHeight,
             String = $"Group: {GroupModes[groupMode]}",
             OnClick = () =>
             {
@@ -1515,8 +1561,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         routeButton = new TextButtonNode
         {
-            Width = 150f,
-            Height = 24f,
+            Width = GameMetrics.Control.ButtonWidthMedium,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Route Me",
             OnClick = OnRouteClicked,
         };
@@ -1533,7 +1579,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         yield return new CheckboxNode
         {
-            Height = 20f,
+            Height = GameMetrics.Control.CheckboxHeight,
             String = "Complete",
             IsChecked = filter.ShowDone,
             OnClick = isOn =>
@@ -1548,7 +1594,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             var chipKey = key;
             yield return new CheckboxNode
             {
-                Height = 20f,
+                Height = GameMetrics.Control.CheckboxHeight,
                 String = label,
                 IsChecked = filter.Categories.Contains(chipKey),
                 OnClick = isOn =>
@@ -1567,7 +1613,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             var chipKey = key;
             yield return new CheckboxNode
             {
-                Height = 20f,
+                Height = GameMetrics.Control.CheckboxHeight,
                 String = label,
                 IsChecked = filter.Priorities.Contains(chipKey),
                 OnClick = isOn =>
@@ -1866,7 +1912,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         huntingControls = new VerticalListNode
         {
             FitWidth = true,
-            ItemSpacing = 4f,
+            ItemSpacing = GameMetrics.Window.RuleGap,
             Position = tabContentStart,
             Size = new Vector2(tabContentSize.X, HuntingControlsHeight),
         };
@@ -1874,11 +1920,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         huntingHeaderNode = BuildHeadingNode(string.Empty);
         huntingControls.AddNode(huntingHeaderNode);
 
-        var actions = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+        var actions = NewActionRow();
         huntHereButton = new TextButtonNode
         {
-            Width = 170f,
-            Height = 24f,
+            Width = GameMetrics.Control.ButtonWidthLarge,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Start Hunting",
             OnClick = OnHuntClicked,
         };
@@ -2135,7 +2181,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         questControls = new VerticalListNode
         {
             FitWidth = true,
-            ItemSpacing = 4f,
+            ItemSpacing = GameMetrics.Window.RuleGap,
             Position = tabContentStart,
             Size = new Vector2(tabContentSize.X, QuestControlsHeight),
         };
@@ -2150,12 +2196,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private AlignedHorizontalListNode BuildQuestFollowRow()
     {
-        var row = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+        var row = NewActionRow();
 
         followMsqButton = new TextButtonNode
         {
-            Width = 220f,
-            Height = 24f,
+            Width = GameMetrics.Control.ButtonWidthLarge,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Follow the Main Scenario",
             OnClick = OnFollowMsqClicked,
         };
@@ -2165,12 +2211,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private AlignedHorizontalListNode BuildQuestActionRow()
     {
-        var row = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
+        var row = NewActionRow();
 
         teleportButton = new TextButtonNode
         {
-            Width = 230f,
-            Height = 24f,
+            Width = GameMetrics.Control.ButtonWidthLarge,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Teleport",
             IsEnabled = false,
             OnClick = OnTeleportClicked,
@@ -2179,8 +2225,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         dutyFinderButton = new TextButtonNode
         {
-            Width = 150f,
-            Height = 24f,
+            Width = GameMetrics.Control.ButtonWidthMedium,
+            Height = GameMetrics.Control.ButtonHeight,
             String = "Duty Finder",
             IsEnabled = false,
             OnClick = OnDutyFinderClicked,
@@ -2548,7 +2594,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             // edge — which is the reported "the sliders clip outside the border". The widths are set
             // explicitly instead, by ApplySettingWidths, which reserves the bar's gutter. Leaving
             // FitWidth on would simply undo that on the next layout pass.
-            ContentNode = { FitWidth = false, FitContents = true, ItemSpacing = 4f },
+            ContentNode = { FitWidth = false, FitContents = true, ItemSpacing = GameMetrics.Window.RuleGap },
             AutoHideScrollBar = true,
             Position = tabContentStart,
             Size = tabContentSize,
@@ -2703,7 +2749,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         var node = new CheckboxNode
         {
-            Height = 22f,
+            Height = GameMetrics.Control.CheckboxHeight,
             String = setting.Label,
             IsChecked = setting.ReadFlag?.Invoke() ?? false,
             OnClick = value => setting.WriteFlag?.Invoke(value),

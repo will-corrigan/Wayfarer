@@ -20,6 +20,15 @@ public readonly record struct ScreenRect(float X, float Y, float Width, float He
 
     public bool IsEmpty => Width <= 0f || Height <= 0f;
 
+    /// <summary>Whether this rectangle lies wholly inside <paramref name="parent"/>. An empty
+    /// rectangle is contained by anything: a hidden node has no geometry to escape with.</summary>
+    public bool ContainedBy(ScreenRect parent) =>
+        IsEmpty
+        || (X >= parent.X
+            && Y >= parent.Y
+            && Right <= parent.Right
+            && Bottom <= parent.Bottom);
+
     public bool Overlaps(ScreenRect other) =>
         !IsEmpty
         && !other.IsEmpty

@@ -31,8 +31,8 @@ namespace Wayfarer.Windows.Native;
 /// preset change and a resolution change without anything having to tell them.</para></summary>
 internal sealed class SettingSliderNode : VerticalListNode
 {
-    private const float CaptionHeight = 18f;
-    private const float SliderHeight = 24f;
+    private const float CaptionHeight = GameMetrics.Row.SecondaryTextHeight;
+    private const float SliderHeight = GameMetrics.Control.DropDownHeight;
 
     private readonly SettingDefinition setting;
     private readonly TextNode caption;
@@ -54,13 +54,14 @@ internal sealed class SettingSliderNode : VerticalListNode
 
         FitWidth = true;
         FitContents = true;
-        ItemSpacing = 2f;
+        ItemSpacing = GameMetrics.Row.Padding;
 
         caption = new TextNode
         {
             Height = CaptionHeight,
             FontType = FontType.Axis,
-            FontSize = 12,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
             AlignmentType = AlignmentType.TopLeft,
             TextColor = GameColors.ListText,
             TextOutlineColor = GameColors.BodyEdge,

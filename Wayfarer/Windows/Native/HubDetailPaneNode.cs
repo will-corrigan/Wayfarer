@@ -31,20 +31,11 @@ namespace Wayfarer.Windows.Native;
 /// — and it is why there is no permanent legend anywhere else.</para></summary>
 internal sealed class HubDetailPaneNode : ResNode
 {
-    /// <summary>How much of the window the pane takes. A little over the design's "lower third" at
-    /// the default height, and a fixed number rather than a fraction so the list above it does not
-    /// change size as the window is resized.</summary>
-    public const float PaneHeight = 158f;
+    /// <summary>How much of the window the pane takes: everything a fully populated entry needs at
+    /// the game's own block heights, and a fixed number rather than a fraction so the list above it
+    /// does not change size as the window is resized.</summary>
+    public static readonly float PaneHeight = DetailPaneLayout.NaturalHeight;
 
-    private const float Padding = 8f;
-    private const float TitleHeight = 24f;
-    private const float StatusHeight = 18f;
-    private const float LineHeight = 16f;
-    private const float ButtonHeight = 24f;
-    private const float ButtonWidth = 150f;
-    private const float StatusIconSize = 20f;
-    private const int MaxBodyLines = 4;
-    private const int MaxRequirementLines = 3;
     private const int MaxActions = 3;
 
     private readonly HorizontalLineNode rule;
@@ -61,16 +52,24 @@ internal sealed class HubDetailPaneNode : ResNode
     private readonly TextButtonNode[] actionButtons = new TextButtonNode[MaxActions];
 
     private HubRowDetail? current;
+    private bool hasStatusIcon;
+    private bool hasFrom;
+    private bool hasProvenance;
+    private int wantedBodyLines = DetailPaneLayout.MaxBodyLines;
+    private int wantedRequirementLines;
 
     public HubDetailPaneNode()
     {
         rule = new HorizontalLineNode();
         rule.AttachNode(this);
 
+        // The detail title is the game's own — JournalDetail sets its heading in Axis 18 at leading
+        // 20, not in the window-title face. TrumpGothic belongs on the window's own title bar.
         titleNode = new TextNode
         {
-            FontType = FontType.TrumpGothic,
-            FontSize = 20,
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.DetailTitleSize,
+            LineSpacing = GameMetrics.Type.DetailTitleLine,
             AlignmentType = AlignmentType.TopLeft,
             TextFlags = TextFlags.Edge | TextFlags.Ellipsis,
             TextColor = GameColors.Heading,
@@ -81,7 +80,8 @@ internal sealed class HubDetailPaneNode : ResNode
         kindNode = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = 12,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
             AlignmentType = AlignmentType.TopRight,
             TextFlags = TextFlags.Ellipsis,
             TextColor = GameColors.Dimmed,
@@ -90,29 +90,32 @@ internal sealed class HubDetailPaneNode : ResNode
 
         statusIconNode = new IconImageNode
         {
-            Size = new Vector2(StatusIconSize, StatusIconSize),
+            Size = new Vector2(GameMetrics.Detail.HeadingIconSize, GameMetrics.Detail.HeadingIconSize),
             FitTexture = true,
             IsVisible = false,
         };
         statusIconNode.AttachNode(this);
 
-        statusNode = BuildBodyText(13, GameColors.ListText, TextFlags.Ellipsis);
+        statusNode = BuildBodyText(GameMetrics.Type.BodySize, GameColors.ListText, TextFlags.Ellipsis);
         statusNode.AttachNode(this);
 
-        bodyNode = BuildBodyText(13, GameColors.Body, TextFlags.WordWrap | TextFlags.MultiLine);
+        bodyNode = BuildBodyText(
+            GameMetrics.Type.BodySize, GameColors.Body, TextFlags.WordWrap | TextFlags.MultiLine);
         bodyNode.AttachNode(this);
 
-        requirementsLabelNode = BuildBodyText(12, GameColors.Heading, TextFlags.Ellipsis);
-        requirementsLabelNode.String = "Requirements not met";
+        requirementsLabelNode = BuildBodyText(
+            GameMetrics.Type.SecondarySize, GameColors.Heading, TextFlags.Ellipsis);
+        requirementsLabelNode.String = "Requirements";
         requirementsLabelNode.AttachNode(this);
 
-        requirementsNode = BuildBodyText(12, GameColors.Dimmed, TextFlags.WordWrap | TextFlags.MultiLine);
+        requirementsNode = BuildBodyText(
+            GameMetrics.Type.SecondarySize, GameColors.Dimmed, TextFlags.WordWrap | TextFlags.MultiLine);
         requirementsNode.AttachNode(this);
 
-        fromNode = BuildBodyText(12, GameColors.ListText, TextFlags.Ellipsis);
+        fromNode = BuildBodyText(GameMetrics.Type.SecondarySize, GameColors.ListText, TextFlags.Ellipsis);
         fromNode.AttachNode(this);
 
-        provenanceNode = BuildBodyText(12, GameColors.Dimmed, TextFlags.Ellipsis);
+        provenanceNode = BuildBodyText(GameMetrics.Type.SecondarySize, GameColors.Dimmed, TextFlags.Ellipsis);
         provenanceNode.AttachNode(this);
 
         actionRow = BuildActionRow();
@@ -143,8 +146,8 @@ internal sealed class HubDetailPaneNode : ResNode
         titleNode.String = HeadingText.Plain(detail.Title);
         kindNode.String = detail.Kind;
 
-        statusIconNode.IsVisible = detail.StatusIconId != 0;
-        if (detail.StatusIconId != 0)
+        hasStatusIcon = detail.StatusIconId != 0;
+        if (hasStatusIcon)
         {
             statusIconNode.IconId = detail.StatusIconId;
 
@@ -159,16 +162,14 @@ internal sealed class HubDetailPaneNode : ResNode
 
         statusNode.String = detail.StatusSentence;
         bodyNode.String = detail.Body;
+        wantedBodyLines = detail.Body.Length == 0 ? 0 : DetailPaneLayout.MaxBodyLines;
 
-        var requirements = Join(detail.Requirements, MaxRequirementLines);
-        requirementsLabelNode.IsVisible = requirements.Length > 0;
-        requirementsNode.IsVisible = requirements.Length > 0;
-        requirementsNode.String = requirements;
+        requirementsNode.String = Join(detail.Requirements, out wantedRequirementLines);
 
-        fromNode.IsVisible = detail.From.Length > 0;
+        hasFrom = detail.From.Length > 0;
         fromNode.String = detail.From;
 
-        provenanceNode.IsVisible = detail.Provenance.Length > 0;
+        hasProvenance = detail.Provenance.Length > 0;
         provenanceNode.String = detail.Provenance;
 
         ApplyActions(detail.Actions);
@@ -183,19 +184,44 @@ internal sealed class HubDetailPaneNode : ResNode
         Layout();
     }
 
-    /// <summary>Joins up to <paramref name="max"/> lines into one wrapping block, with an honest
-    /// tail when there are more. Truncating silently would be the same defect as the row's
-    /// ellipsised gutter: the player cannot tell there was more.</summary>
-    private static string Join(IReadOnlyList<string> lines, int max)
+    /// <summary>Joins the requirement lines into one wrapping block, with an honest tail when there
+    /// are more than fit. Truncating silently would be the same defect as the row's ellipsised
+    /// gutter: the player cannot tell there was more.</summary>
+    private static string Join(IReadOnlyList<string> lines, out int drawn)
     {
         if (lines.Count == 0)
         {
+            drawn = 0;
             return string.Empty;
         }
 
-        var shown = Math.Min(lines.Count, max);
+        var shown = Math.Min(lines.Count, DetailPaneLayout.MaxRequirementLines);
         var text = string.Join('\n', lines.Take(shown).Select(line => $"• {line}"));
-        return lines.Count > shown ? $"{text}\n• and {lines.Count - shown} more" : text;
+        if (lines.Count <= shown)
+        {
+            drawn = shown;
+            return text;
+        }
+
+        // The tail costs a line of its own, so it replaces the last bullet rather than being added
+        // past the budget — which is how the block used to run out of the bottom of the pane.
+        drawn = shown;
+        return shown <= 1
+            ? $"• and {lines.Count} more"
+            : $"{string.Join('\n', lines.Take(shown - 1).Select(line => $"• {line}"))}"
+                + $"\n• and {lines.Count - shown + 1} more";
+    }
+
+    private static void Place(TextNode node, ScreenRect rect)
+    {
+        node.IsVisible = !rect.IsEmpty;
+        if (rect.IsEmpty)
+        {
+            return;
+        }
+
+        node.Position = new Vector2(rect.X, rect.Y);
+        node.Size = new Vector2(rect.Width, rect.Height);
     }
 
     private static TextNode BuildBodyText(uint size, Vector4 color, TextFlags flags) => new()
@@ -205,7 +231,9 @@ internal sealed class HubDetailPaneNode : ResNode
         AlignmentType = AlignmentType.TopLeft,
         TextFlags = flags,
         TextColor = color,
-        LineSpacing = size + 3,
+        LineSpacing = size == GameMetrics.Type.BodySize
+            ? GameMetrics.Type.BodyLine
+            : GameMetrics.Type.SecondaryLine,
     };
 
     /// <summary>The status vocabulary, shown before the cursor has touched anything. This is the
@@ -215,8 +243,8 @@ internal sealed class HubDetailPaneNode : ResNode
     {
         titleNode.String = HeadingText.Plain("Wayfarer");
         kindNode.String = string.Empty;
-        statusIconNode.IsVisible = false;
-        statusNode.String = "Move the cursor over an entry to see what it is and what it needs.";
+        hasStatusIcon = false;
+        statusNode.String = "Move the cursor over an entry.";
 
         bodyNode.String =
             $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Available)} — you can start this now\n"
@@ -225,10 +253,10 @@ internal sealed class HubDetailPaneNode : ResNode
             + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.LevelLocked)} — the entry says what is missing\n"
             + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.UnknownGate)} — Wayfarer isn't certain about this one";
 
-        requirementsLabelNode.IsVisible = false;
-        requirementsNode.IsVisible = false;
-        fromNode.IsVisible = false;
-        provenanceNode.IsVisible = false;
+        wantedBodyLines = DetailPaneLayout.MaxBodyLines;
+        wantedRequirementLines = 0;
+        hasFrom = false;
+        hasProvenance = false;
 
         ApplyActions([]);
         Layout();
@@ -240,17 +268,17 @@ internal sealed class HubDetailPaneNode : ResNode
     {
         var row = new AlignedHorizontalListNode
         {
-            Height = ButtonHeight,
+            Height = GameMetrics.Control.ButtonHeight,
             FitToContentHeight = true,
-            ItemSpacing = 8f,
+            ItemSpacing = GameMetrics.Control.ButtonGap,
         };
 
         for (var i = 0; i < MaxActions; i++)
         {
             actionButtons[i] = new TextButtonNode
             {
-                Width = ButtonWidth,
-                Height = ButtonHeight,
+                Width = GameMetrics.Control.ButtonWidthMedium,
+                Height = GameMetrics.Control.ButtonHeight,
                 IsVisible = false,
             };
             row.AddNode(actionButtons[i]);
@@ -287,61 +315,44 @@ internal sealed class HubDetailPaneNode : ResNode
 
     private void Layout()
     {
-        var inner = Math.Max(Width - (Padding * 2f), 0f);
-        var y = 0f;
+        // Every rectangle comes from DetailPaneLayout, which allocates the pane's blocks into a
+        // fixed content box in priority order and returns nothing outside it. Blocks that did not
+        // fit come back empty and are hidden rather than drawn off the bottom edge, which is what
+        // used to happen to the requirement bullets.
+        var blocks = DetailPaneLayout.Compose(
+            Width,
+            Height,
+            hasStatusIcon,
+            wantedBodyLines,
+            wantedRequirementLines,
+            hasFrom,
+            hasProvenance);
 
-        rule.Position = new Vector2(0f, y);
-        rule.Size = new Vector2(Width, 4f);
-        y += 8f;
+        rule.Position = new Vector2(blocks.Rule.X, blocks.Rule.Y);
+        rule.Size = new Vector2(blocks.Rule.Width, blocks.Rule.Height);
 
-        titleNode.Position = new Vector2(Padding, y);
-        titleNode.Size = new Vector2(Math.Max(inner * 0.62f, 0f), TitleHeight);
-        kindNode.Position = new Vector2(Padding + (inner * 0.62f), y + 4f);
-        kindNode.Size = new Vector2(Math.Max(inner * 0.38f, 0f), LineHeight);
-        y += TitleHeight;
+        Place(titleNode, blocks.Title);
+        Place(kindNode, blocks.Kind);
 
-        // The status icon and its sentence read as one line: the shape and the words for the same
-        // fact, side by side, which is the pairing the whole status vocabulary rests on.
-        statusIconNode.Position = new Vector2(Padding, y - 1f);
-        statusNode.Position = new Vector2(Padding + StatusIconSize + 6f, y);
-        statusNode.Size = new Vector2(Math.Max(inner - StatusIconSize - 6f, 0f), StatusHeight);
-        y += StatusHeight + 4f;
-
-        var bodyHeight = LineHeight * MaxBodyLines;
-        bodyNode.Position = new Vector2(Padding, y);
-        bodyNode.Size = new Vector2(inner, bodyHeight);
-        y += bodyHeight + 2f;
-
-        if (requirementsLabelNode.IsVisible)
+        statusIconNode.IsVisible = !blocks.StatusIcon.IsEmpty;
+        if (!blocks.StatusIcon.IsEmpty)
         {
-            requirementsLabelNode.Position = new Vector2(Padding, y);
-            requirementsLabelNode.Size = new Vector2(inner, LineHeight);
-            y += LineHeight;
-
-            var requirementHeight = LineHeight * MaxRequirementLines;
-            requirementsNode.Position = new Vector2(Padding + 8f, y);
-            requirementsNode.Size = new Vector2(Math.Max(inner - 8f, 0f), requirementHeight);
-            y += requirementHeight;
+            statusIconNode.Position = new Vector2(blocks.StatusIcon.X, blocks.StatusIcon.Y);
+            statusIconNode.Size = new Vector2(blocks.StatusIcon.Width, blocks.StatusIcon.Height);
         }
 
-        if (fromNode.IsVisible)
-        {
-            fromNode.Position = new Vector2(Padding, y);
-            fromNode.Size = new Vector2(inner, LineHeight);
-            y += LineHeight;
-        }
-
-        if (provenanceNode.IsVisible)
-        {
-            provenanceNode.Position = new Vector2(Padding, y);
-            provenanceNode.Size = new Vector2(inner, LineHeight);
-        }
+        Place(statusNode, blocks.Status);
+        Place(bodyNode, blocks.Body);
+        Place(requirementsLabelNode, blocks.RequirementsLabel);
+        Place(requirementsNode, blocks.Requirements);
+        Place(fromNode, blocks.From);
+        Place(provenanceNode, blocks.Provenance);
 
         // The button row is pinned to the bottom edge rather than flowed after the text: it is the
         // one thing on the pane whose position must not depend on how much this particular entry
         // had to say, because a d-pad reaching it should not have to look for it.
-        actionRow.Position = new Vector2(Padding, Math.Max(Height - ButtonHeight - Padding, 0f));
-        actionRow.Size = new Vector2(inner, ButtonHeight);
+        actionRow.Position = new Vector2(blocks.Actions.X, blocks.Actions.Y);
+        actionRow.Size = new Vector2(blocks.Actions.Width, blocks.Actions.Height);
         actionRow.RecalculateLayout();
     }
 }
