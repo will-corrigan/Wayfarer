@@ -10,6 +10,15 @@ public sealed class UnlockDefinition
 
     public string? Quest { get; set; }
 
+    /// <summary>Quest sheet row ids, any ONE of which completes this unlock — the Grand Company,
+    /// starting-city and relic-weapon variants, where a character does exactly one of the set.
+    ///
+    /// <para>Row ids rather than a name, because the name is precisely what was ambiguous: the
+    /// game ships three quests called <c>The Company You Keep</c> and matching on the string
+    /// picked one arbitrarily, which told two thirds of characters they had not done something
+    /// they had. Empty for the ordinary case of one quest, one unlock.</para></summary>
+    public List<uint> QuestAnyOf { get; set; } = [];
+
     public string? QuestKind { get; set; }
 
     public string? Notes { get; set; }

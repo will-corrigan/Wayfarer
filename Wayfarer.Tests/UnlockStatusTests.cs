@@ -21,7 +21,7 @@ public class UnlockStatusTests
         { "Sightseeing Log Expansion", [52, 60, 70, 80, 90] },
         { "Stone, Sky, Sea Access", [60, 70, 80, 90, 100] },
         { "Main Scenario Quest Continuation", [60, 70, 80, 90] },
-        { "Role Quests Access", [70, 85, 92, 105] },
+        { "Role Quests Access", [70, 85, 92] },
         { "Levequest Expansion", [70, 80, 90] },
         { "Relic Gear Access", [89, 99] },
     };

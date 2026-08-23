@@ -258,6 +258,47 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         return classJobs;
     }
 
+    /// <summary>Picks the Quest row an entry's gates are read from, and the set of rows any one of
+    /// which would count as having done it.
+    ///
+    /// <para>Two ways in, in this order. A catalogue <c>questAnyOf</c> is an explicit statement of
+    /// the set, re-derived from the guide's own link targets and confirmed against each quest
+    /// page's infobox — it beats the name, because the name is what was ambiguous in the first
+    /// place. Otherwise the entry names one quest and the name index answers, which may itself
+    /// turn out to be ambiguous.</para></summary>
+    private static (Quest Row, List<uint> Alternatives)? Bind(
+        UnlockDefinition def, ExcelSheet<Quest> sheet, Dictionary<string, List<QuestNameCandidate>> byKey)
+    {
+        if (def.QuestAnyOf.Count > 0)
+        {
+            var live = new List<uint>(def.QuestAnyOf.Count);
+            foreach (var id in def.QuestAnyOf)
+            {
+                if (sheet.GetRowOrDefault(id) is not null)
+                {
+                    live.Add(id);
+                }
+            }
+
+            // Gates are read off one row and every row in the set is the same quest wearing a
+            // different Grand Company's name, so the lowest id is as good as any and is stable.
+            return live.Count > 0 && sheet.GetRowOrDefault(live[0]) is { } anyOfRow
+                ? (anyOfRow, live)
+                : null;
+        }
+
+        if (def.Quest is not { } questName
+            || !byKey.TryGetValue(QuestNameKey.For(questName), out var candidates))
+        {
+            return null;
+        }
+
+        var match = QuestNameMatch.Resolve(candidates);
+        return sheet.GetRowOrDefault(match.Best.RowId) is { } row
+            ? (row, match.IsAmbiguous ? [.. match.Alternatives] : [])
+            : null;
+    }
+
     /// <summary>Groups every named Quest row under its folded name key, carrying the two facts
     /// that separate a live row from a retired one when a name is duplicated: whether the row is
     /// in the journal, and how many other quests depend on it. Building the inbound-reference
@@ -337,16 +378,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         foreach (var def in defs)
         {
             var r = new ResolvedUnlock { Def = def };
-            if (def.Quest is { } questName
-                && byKey.TryGetValue(QuestNameKey.For(questName), out var candidates)
-                && QuestNameMatch.Resolve(candidates) is var match
-                && sheet.GetRowOrDefault(match.Best.RowId) is { } row)
+            if (Bind(def, sheet, byKey) is { } bound)
             {
-                QuestFacts.From(row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level);
-                if (match.IsAmbiguous)
-                {
-                    r.AlternativeQuestRowIds = [.. match.Alternatives];
-                }
+                QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level);
+                r.AlternativeQuestRowIds = bound.Alternatives;
             }
 
             entries.Add(r);

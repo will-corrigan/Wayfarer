@@ -1,27 +1,8 @@
 {
   "source": "https://ffxiv.gamerescape.com/wiki/Guide:Progression_and_Level_Locked_Content (and its per-expansion continuation pages: Heavensward/Stormblood/Shadowbringers/Endwalker/Dawntrail/Evercold Progression and Level Locked Content)",
   "fetched": "2026-08-09",
-  "notes": "Community-maintained wiki guide, parsed programmatically — see reference/unlocks-workflow.md for the caveat and the xivapi Quest sheet backstop. The site splits this guide by expansion (the URL given only covers ARR levels 1-50); all six pages were fetched and merged here to reach level 110. Quest names are cleaned of the wiki's own disambiguation suffixes (e.g. per-starting-city variants like 'Simply the Hest (Limsa Lominsa)' become 'Simply the Hest') to match the game's actual quest names, but have NOT been cross-checked against xivapi's Quest sheet — verify before treating an exact name as ground truth. Entries with 3 alternative quests (one per starting city/Grand Company) are split into separate array entries sharing the same level+unlock; see each entry's notes for AND-chain / prerequisite / alternative caveats. The newest section (Evercold, levels 100-110) is a still-being-documented wiki stub as of the fetch date: many of its entries have quest: null with a 'wiki placeholder (???)' note. REPAIRED 2026-08-23: quest names reconciled against the live Quest sheet. 33 wiki placeholder/duplicate rows removed. Every entry now carries a `confidence` and a `sources` list: `verified` means the quest name resolves to exactly one live Quest row, so the wiki and the game agree and the game supplies the gates; `single-source` means only one source establishes the link, or the requirement is curated from a server-side condition the client cannot read; `unverified` means nothing in the game data backs the entry, and it carries `requires.unverifiable` so it is never reported as available.",
+  "notes": "Community-maintained wiki guide, parsed programmatically — see reference/unlocks-workflow.md for the caveat and the xivapi Quest sheet backstop. The site splits this guide by expansion (the URL given only covers ARR levels 1-50); all six pages were fetched and merged here to reach level 110. Quest names are cleaned of the wiki's own disambiguation suffixes (e.g. per-starting-city variants like 'Simply the Hest (Limsa Lominsa)' become 'Simply the Hest') to match the game's actual quest names, but have NOT been cross-checked against xivapi's Quest sheet — verify before treating an exact name as ground truth. Entries with 3 alternative quests (one per starting city/Grand Company) are split into separate array entries sharing the same level+unlock; see each entry's notes for AND-chain / prerequisite / alternative caveats. The newest section (Evercold, levels 100-110) is a still-being-documented wiki stub as of the fetch date: many of its entries have quest: null with a 'wiki placeholder (???)' note. REPAIRED 2026-08-23: quest names reconciled against the live Quest sheet. 33 wiki placeholder/duplicate rows removed. Every entry now carries a `confidence` and a `sources` list: `verified` means the quest name resolves to exactly one live Quest row, so the wiki and the game agree and the game supplies the gates; `single-source` means only one source establishes the link, or the requirement is curated from a server-side condition the client cannot read; `unverified` means nothing in the game data backs the entry, and it carries `requires.unverifiable` so it is never reported as available. RECOVERED 2026-08-23: re-derived from the guide's LINK TARGETS rather than its rendered text, which is what the original scrape threw away. 87 entries that named something the game has no row for were re-grounded: 41 to a single quest, 7 to a \"quest-any-of\" set, 32 to the prerequisite duty behind a Wandering Minstrel dialogue label, 6 to the treasure map they are entered with, and 1 to its duty alone. 2 unreleased-expansion rows removed. 19 corrections: 5 duties typed as mounts because their name begins with the word \"Mount\", 2 per-starting-city quests that need a \"quest-any-of\" set, and 12 levels the original scrape inferred from the previous expansion's cap for guide sections that state no level at all. Two new fields. `questAnyOf` is a list of Quest row ids any ONE of which completes the unlock, for the cases where the game ships several identically-named rows and only the character knows which is theirs. `requires.duties` is a list of InstanceContent row ids that must be CLEARED; those entries keep `requires.unverifiable` because clearing the duty opens the door but leaves no record of whether the player walked through it. 8 further items need a human ruling and are deliberately untouched — see catalogue-recovery-review.json in the controller-wave spec folder.",
   "unlocks": [
-    {
-      "level": 0,
-      "unlock": "Bastion Specialization",
-      "type": "system",
-      "quest": null,
-      "questKind": "sidequest",
-      "notes": "Wiki placeholder — quest name not yet documented (\"???\") as of fetch date.",
-      "description": "A wiki placeholder for Bastion, an upcoming job announced for the next expansion (Evercold) — full unlock details were not public as of this data's fetch date.",
-      "priority": "optional",
-      "cosmetic": false,
-      "requires": {
-        "label": "no unlocking quest is recorded for this entry",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
-      "sources": [
-        "gamerescape:progression-guide"
-      ]
-    },
     {
       "level": 1,
       "unlock": "Hunting Logs",
@@ -145,6 +126,11 @@
       "unlock": "Guildhests",
       "type": "system",
       "quest": "Simply the Hest",
+      "questAnyOf": [
+        65594,
+        65595,
+        65596
+      ],
       "questKind": "other",
       "notes": "One of 3 alternative quests (e.g. per starting city/path) — player completes only one.",
       "description": "Unlocks Guildhests — short, structured tutorial duties for small groups that teach core dungeon mechanics (like avoiding AoEs or protecting an NPC) with clear-cut objectives.",
@@ -162,19 +148,26 @@
       "level": 10,
       "unlock": "Duty Roulette: Guildhests",
       "type": "system",
-      "quest": "Basic Training: Enemy Parties",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "Adds Guildhests to the Duty Roulette — queue for a random Guildhest once a day for a bonus reward on top of the normal loot.",
       "priority": "essential",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Basic Training: Enemy Parties' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Basic Training: Enemy Parties; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 10001,
+            "name": "Basic Training: Enemy Parties"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#42"
       ]
     },
     {
@@ -389,19 +382,27 @@
       "level": 15,
       "unlock": "Party Finder System",
       "type": "system",
-      "quest": "Sastasha",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "Opens the Party Finder, a public listing where you can post or join groups for dungeons, raids, hunts, and other group content instead of relying only on random matchmaking.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Sastasha' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Sastasha; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 4,
+            "name": "Sastasha"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#4",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -524,6 +525,11 @@
       "unlock": "Retainer Ventures",
       "type": "system",
       "quest": "An Ill-conceived Venture",
+      "questAnyOf": [
+        66968,
+        66969,
+        66970
+      ],
       "questKind": "sidequest",
       "notes": "One of 3 alternative quests (e.g. per starting city/path) — player completes only one.",
       "description": "Lets you send a Retainer out on a timed \"venture\" to fetch items or gil on their own, instead of only using them to sell on the Market Board.",
@@ -606,18 +612,23 @@
       "unlock": "Grand Company Selection",
       "type": "system",
       "quest": "The Company You Keep",
+      "questAnyOf": [
+        66216,
+        66217,
+        66218
+      ],
       "questKind": "other",
       "notes": "Per-path variant (e.g. Grand Company): Immortal Flames, Maelstrom, Twin Adder.",
       "description": "Lets you pledge to one of the three Grand Companies (Maelstrom, Order of the Twin Adder, or Immortal Flames). Membership unlocks Company Seals, Squadrons, ranks, and Grand Company-exclusive gear and quests.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the game ships several quests named 'The Company You Keep', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#66218",
+        "game-data:Quest#66217",
+        "game-data:Quest#66216",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -625,18 +636,23 @@
       "unlock": "Chocobo Mount Access",
       "type": "mount",
       "quest": "My Little Chocobo",
+      "questAnyOf": [
+        66236,
+        66237,
+        66238
+      ],
       "questKind": "other",
       "notes": "Per-path variant (e.g. Grand Company): Immortal Flames, Maelstrom, Twin Adder.",
       "description": "A collectible mount: Chocobo Mount Access. Once obtained, summon it from your mount list (Character menu) to travel faster around zones.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the game ships several quests named 'My Little Chocobo', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#66238",
+        "game-data:Quest#66237",
+        "game-data:Quest#66236",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -807,18 +823,23 @@
       "unlock": "PvP Access",
       "type": "system",
       "quest": "A Pup No Longer",
+      "questAnyOf": [
+        66640,
+        66641,
+        66642
+      ],
       "questKind": "other",
       "notes": "Per-path variant (e.g. Grand Company): Immortal Flames, Maelstrom, Twin Adder.",
       "description": "Unlocks player-vs-player content — Frontline and other PvP modes become queueable, with their own separate gear, levels, and rewards from regular PvE.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the game ships several quests named 'A Pup No Longer', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#66642",
+        "game-data:Quest#66640",
+        "game-data:Quest#66641",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -1146,18 +1167,25 @@
       "unlock": "The Dzemael Darkhold Dungeon Access",
       "type": "dungeon",
       "quest": "Shadows Uncast",
+      "questAnyOf": [
+        66515,
+        66664,
+        66665,
+        66666
+      ],
       "questKind": "other",
       "notes": "Per-path variant (e.g. Grand Company): Fort of Fear, Immortal Flames, Maelstrom, Twin Adder.",
       "description": "A 4-player instanced dungeon (level 44). Run it once for the story; later it joins your daily roulette pool.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the game ships several quests named 'Shadows Uncast', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#66515",
+        "game-data:Quest#66666",
+        "game-data:Quest#66664",
+        "game-data:Quest#66665",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -1245,18 +1273,23 @@
       "unlock": "Adventurer Squadrons",
       "type": "system",
       "quest": "Squadron and Commander",
+      "questAnyOf": [
+        67925,
+        67926,
+        67927
+      ],
       "questKind": "other",
       "notes": null,
       "description": "Unlocks Squadrons — recruit a small team of NPC soldiers through your Grand Company, then send them on solo \"Command Missions\" or bring them into certain dungeons as AI party members.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the game ships several quests named 'Squadron and Commander', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67925",
+        "game-data:Quest#67926",
+        "game-data:Quest#67927",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -1264,37 +1297,40 @@
       "unlock": "The Hunt",
       "type": "system",
       "quest": "Let the Hunt Begin",
+      "questAnyOf": [
+        67099,
+        67100,
+        67101
+      ],
       "questKind": "sidequest",
       "notes": null,
       "description": "Unlocks Hunt Bills — bounty boards for tough, marked monsters (\"hunt marks\") scattered around the world. Defeat the marked monster and turn in the bill for currency used on hunt-exclusive rewards.",
       "priority": "essential",
       "cosmetic": false,
-      "requires": {
-        "label": "the game ships several quests named 'Let the Hunt Begin', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67099",
+        "game-data:Quest#67100",
+        "game-data:Quest#67101",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 50,
       "unlock": "Ceremony of Eternal Bonding",
       "type": "system",
-      "quest": "Sanctum Acolyte",
+      "quest": "The Ties That Bind",
       "questKind": "other",
       "notes": "Requires completing all of: The Ties that Bind, Sanctum Acolyte (sequential; last main-chain quest used as completion marker).",
       "description": "Unlocks in-game weddings — the Ceremony of Eternal Bonding lets you and another player (or an NPC, solo) hold a formal wedding ceremony with exclusive attire and rewards.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the catalogue records 'Sanctum Acolyte' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67114",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -1514,19 +1550,27 @@
       "level": 50,
       "unlock": "Duty Roulette: Main Scenario",
       "type": "system",
-      "quest": "The Praetorium",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "Adds Main Scenario Quest dungeons to the Duty Roulette — queue once a day for a random story dungeon for a bonus reward.",
       "priority": "essential",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'The Praetorium' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing the Praetorium; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 86,
+            "name": "the Praetorium"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#16",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -1972,18 +2016,23 @@
       "unlock": "Frontline Access",
       "type": "system",
       "quest": "Like Civilized Men and Women",
+      "questAnyOf": [
+        67063,
+        67064,
+        67065
+      ],
       "questKind": "other",
       "notes": "Per-path variant (e.g. Grand Company): Immortal Flames, Maelstrom, Twin Adder.",
       "description": "Unlocks Frontline, a 24-vs-24-vs-24 large-scale PvP mode with its own objectives, separate from small-scale Crystalline Conflict PvP.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the game ships several quests named 'Like Civilized Men and Women', one per Grand Company, and which one applies depends on a choice your character made",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67065",
+        "game-data:Quest#67064",
+        "game-data:Quest#67063",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -2396,66 +2445,60 @@
       "level": 50,
       "unlock": "Sundrop Dance Emote",
       "type": "emote",
-      "quest": "Vanu Vanu Beast Tribe",
+      "quest": "Sundrop the Beat",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Sundrop the Beat, Vanu Vanu Beast Tribe (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Sundrop Dance. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Vanu Vanu Beast Tribe' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67705",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 50,
       "unlock": "Moogle Dance Emote",
       "type": "emote",
-      "quest": "Moogle Beast Tribe",
+      "quest": "Piecing Together the Past",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Piecing Together the Past, Moogle Beast Tribe (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Moogle Dance. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Moogle Beast Tribe' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67862",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 50,
       "unlock": "Moonlift Dance Emote",
       "type": "emote",
-      "quest": "Heavensward Beast Tribe",
+      "quest": "Eternity, Loyalty, Honesty",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Eternity, Loyalty, Honesty, Heavensward Beast Tribe (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Moonlift Dance. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Heavensward Beast Tribe' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67921",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
-      "level": 50,
+      "level": 60,
       "unlock": "Haurchefant (Emote)",
       "type": "emote",
       "quest": "The Burdens We Bear",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A collectible emote: Haurchefant (Emote). Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
@@ -2469,66 +2512,60 @@
       "level": 50,
       "unlock": "Spectacles Emote",
       "type": "emote",
-      "quest": "Scholasticate",
+      "quest": "Letters from No One",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Letters from No One, Scholasticate (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Spectacles. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Scholasticate' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67899",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 50,
       "unlock": "Inspector's Eyeglasses Glamour Item",
       "type": "system",
-      "quest": "Scholasticate",
+      "quest": "Letters from No One",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Letters from No One, Scholasticate (sequential; last main-chain quest used as completion marker).",
       "description": "A quest-reward glamour item (an eyeglasses accessory look). Store it in your Glamour Chest to use with the Glamour system regardless of its actual stats.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Scholasticate' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67899",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 50,
       "unlock": "Scholasticate Coat Glamour Item",
       "type": "system",
-      "quest": "Scholasticate",
+      "quest": "The Life and Lies of Father Saturnois",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: The Life and Lies of Father Saturnois, Scholasticate (sequential; last main-chain quest used as completion marker).",
       "description": "A quest-reward glamour item (a coat outfit look). Store it in your Glamour Chest to use with the Glamour system regardless of its actual stats.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Scholasticate' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67900",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
-      "level": 50,
+      "level": 60,
       "unlock": "Redbill Scarf Glamour Item",
       "type": "system",
       "quest": "A Redbill Farewell",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A quest-reward glamour item (a scarf accessory look). Store it in your Glamour Chest to use with the Glamour system regardless of its actual stats.",
       "priority": "optional",
       "cosmetic": true,
@@ -2539,12 +2576,12 @@
       ]
     },
     {
-      "level": 50,
+      "level": 60,
       "unlock": "Accompaniment Node (Minion)",
       "type": "minion",
       "quest": "Do It for Gilly",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level disputed: Quest#67649 is also cited by The Fractal Continuum Dungeon Access at level 60, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level disputed: Quest#67649 is also cited by The Fractal Continuum Dungeon Access at level 60, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A collectible minion: Accompaniment Node. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
@@ -2558,38 +2595,34 @@
       "level": 50,
       "unlock": "Gigi (Minion)",
       "type": "minion",
-      "quest": "Hildibrand",
+      "quest": "If I Could Turn Back Time",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: If I Could Turn Back Time, Hildibrand (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible minion: Gigi. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Hildibrand' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67908",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 50,
       "unlock": "Anima (Minion)",
       "type": "minion",
-      "quest": "Anima",
+      "quest": "Body and Soul",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Body and Soul, Anima (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible minion: Anima. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Anima' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67934",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -2718,19 +2751,17 @@
       "level": 52,
       "unlock": "Sightseeing Log Expansion",
       "type": "system",
-      "quest": "Kester Ironheart",
+      "quest": "Where the Chocobos Roam",
       "questKind": "msq",
       "notes": "Prerequisite: Where the Chocobos Roam.",
       "description": "Adds new scenic vistas to the Sightseeing Log for this expansion's zones — visit each one for a small one-time reward.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the catalogue records 'Kester Ironheart' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67145",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -3057,19 +3088,17 @@
       "level": 60,
       "unlock": "A Gentleman Falls, Rather than Flies",
       "type": "system",
-      "quest": "Further Hildibrand Adventures",
+      "quest": "A Gentleman Falls, Rather than Flies",
       "questKind": "msq",
       "notes": "Requires completing all of: Heavensward, Further Hildibrand Adventures (sequential; last main-chain quest used as completion marker).",
       "description": "Continues the comedic Hildibrand side-story questline — optional, light-hearted detective story content separate from the main plot.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the catalogue records 'Further Hildibrand Adventures' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67762",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -3175,19 +3204,27 @@
       "level": 60,
       "unlock": "The Aquapolis Access",
       "type": "system",
-      "quest": "Dragonskin Treasure Map",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A hidden instanced dungeon found via a rare treasure map drop rather than through normal progression — a bonus dungeon for treasure-hunting Disciples of the Land.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Dragonskin Treasure Map' here, which is not the name of a quest in the game's data",
+        "label": "entered with a Timeworn Dragonskin Map, never from a quest",
+        "items": [
+          {
+            "id": 12243,
+            "name": "Timeworn Dragonskin Map"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#179",
+        "game-data:Item#12243"
       ]
     },
     {
@@ -3738,28 +3775,26 @@
       "level": 60,
       "unlock": "Sightseeing Log Expansion",
       "type": "system",
-      "quest": "Ulger Ironheart",
+      "quest": "A Haven for the Bold",
       "questKind": "msq",
       "notes": "Prerequisite: A Haven for the Bold.",
       "description": "Adds new scenic vistas to the Sightseeing Log for this expansion's zones — visit each one for a small one-time reward.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the catalogue records 'Ulger Ironheart' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#67985",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
-      "level": 60,
+      "level": 69,
       "unlock": "Head Bandage Glamour Item",
       "type": "system",
       "quest": "Ant Juice",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A quest-reward glamour item (a head-wrap accessory look). Store it in your Glamour Chest to use with the Glamour system regardless of its actual stats.",
       "priority": "optional",
       "cosmetic": true,
@@ -3773,95 +3808,85 @@
       "level": 60,
       "unlock": "Yanxian Merchant's Haori Glamour Item",
       "type": "system",
-      "quest": "Doman Reconstruction",
+      "quest": "Lighting the Way",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Lighting the Way, Doman Reconstruction (sequential; last main-chain quest used as completion marker).",
       "description": "A quest-reward glamour item (a haori outfit look). Store it in your Glamour Chest to use with the Glamour system regardless of its actual stats.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Doman Reconstruction' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68689",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 60,
       "unlock": "Hum Emote",
       "type": "emote",
-      "quest": "Four Lords",
+      "quest": "The Fire-bird Down Below",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: The Fire-bird Down Below, Four Lords (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Hum. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Four Lords' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68688",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 60,
       "unlock": "Manderville Mambo Emote",
       "type": "emote",
-      "quest": "Hildibrand",
+      "quest": "Don't Do the Dewprism",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Don't Do the Dewprism, Hildibrand (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Manderville Mambo. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Hildibrand' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68704",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 60,
       "unlock": "Gratuity Emote",
       "type": "emote",
-      "quest": "Stormblood Beast Tribe",
+      "quest": "What a Wonder-full World",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: What a Wonder-full World, Stormblood Beast Tribe (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible emote: Gratuity. Once obtained, perform it with its emote command (e.g. typed in chat or from the Emotes menu) for roleplay or fun — purely cosmetic, no gameplay effect.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Stormblood Beast Tribe' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68700",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 60,
       "unlock": "Wind-up Alpha Minion",
       "type": "minion",
-      "quest": "Omega",
+      "quest": "To Kweh under Distant Skies",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: To Kweh Under Distant Skies, Omega (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible minion: Wind-up Alpha. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Omega' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68693",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -4526,57 +4551,81 @@
       "level": 70,
       "unlock": "The Lost Canals of Uznair Access",
       "type": "system",
-      "quest": "Gazelleskin Treasure Map",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A hidden instanced dungeon found via a rare treasure map drop rather than normal progression — a bonus dungeon for treasure-hunting Disciples of the Land.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Gazelleskin Treasure Map' here, which is not the name of a quest in the game's data",
+        "label": "entered with a Timeworn Gazelleskin Map, never from a quest",
+        "items": [
+          {
+            "id": 17836,
+            "name": "Timeworn Gazelleskin Map"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#268",
+        "game-data:Item#17836"
       ]
     },
     {
       "level": 70,
       "unlock": "The Hidden Canals of Uznair Access",
       "type": "system",
-      "quest": "Timeworn Thief's Map",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A hidden instanced dungeon found via a rare treasure map drop rather than normal progression — a bonus dungeon for treasure-hunting Disciples of the Land.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Timeworn Thief's Map' here, which is not the name of a quest in the game's data",
+        "label": "entered with a Timeworn Thief's Map, never from a quest",
+        "items": [
+          {
+            "id": 19770,
+            "name": "Timeworn Thief's Map"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#276",
+        "game-data:Item#19770"
       ]
     },
     {
       "level": 70,
       "unlock": "The Shifting Altars of Uznair Access",
       "type": "system",
-      "quest": "Gazelleskin Treasure Map",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A hidden instanced dungeon found via a rare treasure map drop rather than normal progression — a bonus dungeon for treasure-hunting Disciples of the Land.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Gazelleskin Treasure Map' here, which is not the name of a quest in the game's data",
+        "label": "entered with a Timeworn Gazelleskin Map, never from a quest",
+        "items": [
+          {
+            "id": 17836,
+            "name": "Timeworn Gazelleskin Map"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#586",
+        "game-data:Item#17836"
       ]
     },
     {
@@ -4711,38 +4760,34 @@
       "level": 70,
       "unlock": "Emanation (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Lakshmi",
+      "quest": "Songs in the Key of Kugane",
       "questKind": "other",
       "notes": "Prerequisite: Songs in the Key of Kugane.",
       "description": "A single-boss fight for 8 players (level 70). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Lakshmi, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68479",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 70,
       "unlock": "The Pool of Tribute (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Susano",
+      "quest": "Songs in the Key of Kugane",
       "questKind": "other",
       "notes": "Prerequisite: Songs in the Key of Kugane.",
       "description": "A single-boss fight for 8 players (level 70). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Susano, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#68479",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -4829,19 +4874,28 @@
       "level": 70,
       "unlock": "The Minstrel's Ballad: Shinryu's Domain Trial Access",
       "type": "trial",
-      "quest": "Talk about Shinryu",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Royal Menagerie.",
       "description": "A single-boss fight for 8 players (level 70).",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Shinryu, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Royal Menagerie; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20045,
+            "name": "the Royal Menagerie"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#278",
+        "game-data:ContentFinderCondition#239",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -4960,19 +5014,28 @@
       "level": 70,
       "unlock": "The Jade Stoa (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Byakko",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Jade Stoa.",
       "description": "A single-boss fight for 8 players (level 70). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Byakko, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Jade Stoa; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20051,
+            "name": "the Jade Stoa"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#291",
+        "game-data:ContentFinderCondition#290",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -4995,19 +5058,28 @@
       "level": 70,
       "unlock": "The Unending Coil of Bahamut (Ultimate) Access",
       "type": "system",
-      "quest": "Deltascape V4.0 (Savage)",
+      "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about Bahamut, Deltascape V4.0 (Savage) (sequential; last main-chain quest used as completion marker).",
       "description": "Access to an Ultimate raid — the hardest 8-player content in the game, a long, unforgiving fight meant for a dedicated, well-practiced static group.",
       "priority": "optional",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Deltascape V4.0 (Savage)' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Deltascape V4.0 (Savage); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 30056,
+            "name": "Deltascape V4.0 (Savage)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#280",
+        "game-data:ContentFinderCondition#259",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -5030,19 +5102,28 @@
       "level": 70,
       "unlock": "The Minstrel's Ballad: Tsukuyomi's Pain Trial Access",
       "type": "trial",
-      "quest": "Talk about Tsukuyomi",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Castrum Fluminis.",
       "description": "A single-boss fight for 8 players (level 70).",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Tsukuyomi, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Castrum Fluminis; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20055,
+            "name": "Castrum Fluminis"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#538",
+        "game-data:ContentFinderCondition#537",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -5097,19 +5178,28 @@
       "level": 70,
       "unlock": "Hells' Kier (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Suzaku",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Hells' Kier.",
       "description": "A single-boss fight for 8 players (level 70). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Suzaku, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Hells' Kier; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20057,
+            "name": "Hells' Kier"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#597",
+        "game-data:ContentFinderCondition#596",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -5132,19 +5222,28 @@
       "level": 70,
       "unlock": "The Weapon's Refrain (Ultimate) Access",
       "type": "system",
-      "quest": "Sigmascape V4.0 (Savage)",
+      "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about the Ultima Weapon, Sigmascape V4.0 (Savage) (sequential; last main-chain quest used as completion marker).",
       "description": "Access to an Ultimate raid — the hardest 8-player content in the game, a long, unforgiving fight meant for a dedicated, well-practiced static group.",
       "priority": "optional",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Sigmascape V4.0 (Savage)' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Sigmascape V4.0 (Savage); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 30066,
+            "name": "Sigmascape V4.0 (Savage)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#539",
+        "game-data:ContentFinderCondition#295",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -5199,19 +5298,28 @@
       "level": 70,
       "unlock": "The Wreath of Snakes (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Seiryu",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Wreath of Snakes.",
       "description": "A single-boss fight for 8 players (level 70). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Seiryu, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Wreath of Snakes; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20060,
+            "name": "the Wreath of Snakes"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#638",
+        "game-data:ContentFinderCondition#637",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6309,38 +6417,34 @@
       "level": 80,
       "unlock": "The Dancing Plague (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Titania",
+      "quest": "Minstrel from Another Mother",
       "questKind": "other",
       "notes": "Prerequisite: Minstrel from Another Mother.",
       "description": "A single-boss fight for 8 players (level 80). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Titania, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69198",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 80,
       "unlock": "The Crown of the Immaculate (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Innocence",
+      "quest": "Minstrel from Another Mother",
       "questKind": "other",
       "notes": "Prerequisite: Minstrel from Another Mother.",
       "description": "A single-boss fight for 8 players (level 80). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Innocence, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69198",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6395,19 +6499,28 @@
       "level": 80,
       "unlock": "The Minstrel's Ballad: Hades's Elegy Trial Access",
       "type": "trial",
-      "quest": "Talk about Hades",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Dying Gasp.",
       "description": "A single-boss fight for 8 players (level 80).",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Hades, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Dying Gasp; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20066,
+            "name": "the Dying Gasp"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#693",
+        "game-data:ContentFinderCondition#687",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6462,19 +6575,28 @@
       "level": 80,
       "unlock": "Cinder Drift (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about the Ruby Weapon",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Cinder Drift.",
       "description": "A single-boss fight for 8 players (level 80). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about the Ruby Weapon, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Cinder Drift; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20068,
+            "name": "Cinder Drift"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#718",
+        "game-data:ContentFinderCondition#717",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6561,19 +6683,28 @@
       "level": 80,
       "unlock": "The Epic of Alexander (Ultimate) Access",
       "type": "system",
-      "quest": "Eden's Gate: Sepulture (Savage)",
+      "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about Alexander, Eden's Gate: Sepulture (Savage) (sequential; last main-chain quest used as completion marker).",
       "description": "Access to an Ultimate raid — the hardest 8-player content in the game, a long, unforgiving fight meant for a dedicated, well-practiced static group.",
       "priority": "optional",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Eden's Gate: Sepulture (Savage)' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Eden's Gate: Sepulture (Savage); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 30085,
+            "name": "Eden's Gate: Sepulture (Savage)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#694",
+        "game-data:ContentFinderCondition#690",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6596,19 +6727,28 @@
       "level": 80,
       "unlock": "The Seat of Sacrifice (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about the Warrior of Light",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Seat of Sacrifice.",
       "description": "A single-boss fight for 8 players (level 80). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about the Warrior of Light, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Seat of Sacrifice; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20071,
+            "name": "the Seat of Sacrifice"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#739",
+        "game-data:ContentFinderCondition#738",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6647,19 +6787,28 @@
       "level": 80,
       "unlock": "Castrum Marinum (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about the Emerald Weapon",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Castrum Marinum.",
       "description": "A single-boss fight for 8 players (level 80). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about the Emerald Weapon, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Castrum Marinum; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20073,
+            "name": "Castrum Marinum"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#763",
+        "game-data:ContentFinderCondition#762",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6698,19 +6847,28 @@
       "level": 80,
       "unlock": "The Cloud Deck (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about the Diamond Weapon",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Cloud Deck.",
       "description": "A single-boss fight for 8 players (level 80). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about the Diamond Weapon, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Cloud Deck; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20075,
+            "name": "the Cloud Deck"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#782",
+        "game-data:ContentFinderCondition#781",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -6906,12 +7064,12 @@
       ]
     },
     {
-      "level": 80,
+      "level": 90,
       "unlock": "Golden Dhyata minion",
       "type": "minion",
       "quest": "The Meeting of Minds",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A collectible minion: Golden Dhyata. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
@@ -6954,12 +7112,12 @@
       ]
     },
     {
-      "level": 80,
+      "level": 90,
       "unlock": "Yakaku Attire",
       "type": "system",
       "quest": "An Auspicious Opportunity",
       "questKind": "other",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A quest-reward glamour outfit. Store it in your Glamour Chest to use with the Glamour system regardless of its actual stats.",
       "priority": "optional",
       "cosmetic": true,
@@ -6989,19 +7147,17 @@
       "level": 80,
       "unlock": "Wind-up PuPu minion",
       "type": "minion",
-      "quest": "Hildibrand",
+      "quest": "Not from Around Here",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Not from Around Here, Hildibrand (sequential; last main-chain quest used as completion marker).",
       "description": "A collectible minion: Wind-up PuPu. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
-      "requires": {
-        "label": "the catalogue records 'Hildibrand' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70291",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -7069,12 +7225,12 @@
       ]
     },
     {
-      "level": 80,
+      "level": 90,
       "unlock": "Wayfarer's Barding",
       "type": "system",
       "quest": "More Precious than Gil",
       "questKind": "other",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A quest-reward Chocobo Barding — cosmetic armor for your Chocobo companion/mount that changes its look without affecting stats.",
       "priority": "optional",
       "cosmetic": true,
@@ -7085,12 +7241,12 @@
       ]
     },
     {
-      "level": 80,
+      "level": 90,
       "unlock": "Tataru's Bespoke Framer's Kit",
       "type": "system",
       "quest": "More Precious than Gil",
       "questKind": "other",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A cosmetic customization kit for your Adventurer Plate (character profile card) — unlocks extra frame, border, and background options.",
       "priority": "optional",
       "cosmetic": true,
@@ -7101,12 +7257,12 @@
       ]
     },
     {
-      "level": 80,
+      "level": 90,
       "unlock": "UFO Mount",
       "type": "mount",
       "quest": "Gentlemen at Heart",
       "questKind": "other",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level disputed: Quest#70336 is also cited by The Gilded Araya Trial Access at level 90, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level disputed: Quest#70336 is also cited by The Gilded Araya Trial Access at level 90, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A collectible mount: UFO. Once obtained, summon it from your mount list (Character menu) to travel faster around zones.",
       "priority": "optional",
       "cosmetic": true,
@@ -7782,57 +7938,71 @@
       "level": 90,
       "unlock": "The Manderville Weapons Access",
       "type": "system",
-      "quest": "Hildibrand Quests",
+      "quest": "Make It a Manderville",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Make It a Manderville, Hildibrand Quests (sequential; last main-chain quest used as completion marker).",
       "description": "Starts the Endwalker relic weapon (Manderville) questline — a long, often comedic chain of quests that gradually upgrades a weapon's appearance and stats.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "the catalogue records 'Hildibrand Quests' here, which is not the name of a quest in the game's data",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70188",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "The Excitatron 6000 Access",
       "type": "system",
-      "quest": "Kumbhiraskin Treasure Map",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A hidden instanced dungeon found via a rare treasure map drop rather than normal progression — an 8-player bonus dungeon with unique mount and minion rewards.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Kumbhiraskin Treasure Map' here, which is not the name of a quest in the game's data",
+        "label": "entered with a Timeworn Kumbhiraskin Map, never from a quest",
+        "items": [
+          {
+            "id": 36612,
+            "name": "Timeworn Kumbhiraskin Map"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#819",
+        "game-data:Item#36612"
       ]
     },
     {
       "level": 90,
       "unlock": "The Shifting Gymnasion Agonon Access",
       "type": "system",
-      "quest": "Ophiotauroskin Treasure Map",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A hidden instanced dungeon found via a rare treasure map drop rather than normal progression — an 8-player bonus dungeon with a roulette-wheel gimmick and unique rewards.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Ophiotauroskin Treasure Map' here, which is not the name of a quest in the game's data",
+        "label": "entered with a Timeworn Ophiotauroskin Map, never from a quest",
+        "items": [
+          {
+            "id": 39591,
+            "name": "Timeworn Ophiotauroskin Map"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#909",
+        "game-data:Item#39591"
       ]
     },
     {
@@ -7855,133 +8025,119 @@
       "level": 90,
       "unlock": "The Minstrel's Ballad: Zodiark's Fall Extreme Trial Access",
       "type": "trial",
-      "quest": "Talk about Zodiark",
+      "quest": "I Wandered Sharlayan as a Minstrel",
       "questKind": "other",
       "notes": "Prerequisite: I Wandered Sharlayan as a Minstrel.",
       "description": "A single-boss fight for 8 players (level 90).",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Zodiark, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69707",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "The Minstrel's Ballad: Hydaelyn's Call Extreme Trial Access",
       "type": "trial",
-      "quest": "Talk about Hydaelyn",
+      "quest": "I Wandered Sharlayan as a Minstrel",
       "questKind": "other",
       "notes": "Prerequisite: I Wandered Sharlayan as a Minstrel.",
       "description": "A single-boss fight for 8 players (level 90).",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Hydaelyn, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69707",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Ultima's Bane (Unreal) Access",
       "type": "system",
-      "quest": "Patch 6.1",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 6.1 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (Ultima's Bane), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 6.1 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Containment Bay S1T7 (Unreal) Access",
       "type": "system",
-      "quest": "Patch 6.2",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 6.2 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (Containment Bay S1T7), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 6.2 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Containment Bay P1T6 (Unreal) Access",
       "type": "system",
-      "quest": "Patch 6.3",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 6.3 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (Containment Bay P1T6), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 6.3 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Containment Bay Z1T9 (Unreal) Access",
       "type": "system",
-      "quest": "Patch 6.4",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 6.4 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (Containment Bay Z1T9), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 6.4 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "The Singularity Reactor (Unreal) Access",
       "type": "system",
-      "quest": "Patch 6.5",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 6.5 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (The Singularity Reactor), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 6.5 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -8036,19 +8192,28 @@
       "level": 90,
       "unlock": "The Minstrel's Ballad: Endsinger's Aria Extreme Trial Access",
       "type": "trial",
-      "quest": "Talk about the Endsinger",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Final Day.",
       "description": "A single-boss fight for 8 players (level 90).",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about the Endsinger, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Final Day; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20079,
+            "name": "the Final Day"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#846",
+        "game-data:ContentFinderCondition#796",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -8151,44 +8316,62 @@
       "level": 90,
       "unlock": "Dragonsong's Reprise (Ultimate) Access",
       "type": "system",
-      "quest": "Asphodelos: The Fourth Circle (Savage)",
+      "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about the Dragonsong War, Asphodelos: The Fourth Circle (Savage) (sequential; last main-chain quest used as completion marker).",
       "description": "Access to an Ultimate raid — the hardest 8-player content in the game, a long, unforgiving fight meant for a dedicated, well-practiced static group.",
       "priority": "optional",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Asphodelos: The Fourth Circle (Savage)' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Asphodelos: The Fourth Circle (Savage); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 30108,
+            "name": "Asphodelos: The Fourth Circle (Savage)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#788",
+        "game-data:ContentFinderCondition#801",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Storm's Crown (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Barbariccia",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Storm's Crown.",
       "description": "A single-boss fight for 8 players (level 90). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Barbariccia, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Storm's Crown; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20084,
+            "name": "Storm's Crown"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#871",
+        "game-data:ContentFinderCondition#870",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Mount Ordeals Trial Access",
-      "type": "mount",
+      "type": "trial",
       "quest": "Desires Untold",
       "questKind": "msq",
       "notes": null,
@@ -8237,38 +8420,56 @@
       "level": 90,
       "unlock": "Another Sil'dihn Subterrane Criterion Dungeon Access",
       "type": "dungeon",
-      "quest": "Talk about the Sil'dihn Subterrane",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Sil'dihn Subterrane.",
       "description": "The replayable Criterion Dungeon version of a Variant Dungeon (level 90), played with a fixed 4-player party (no solo/duo). Clearing it rewards unique gear and items not available elsewhere.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about the Sil'dihn Subterrane, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Sil'dihn Subterrane; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 36001,
+            "name": "the Sil'dihn Subterrane"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#878",
+        "game-data:ContentFinderCondition#868",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Mount Ordeals (Extreme) Trial Access",
-      "type": "mount",
-      "quest": "Talk about Rubicante",
+      "type": "trial",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Mount Ordeals.",
       "description": "An 8-player trial (a Final Fantasy I throwback fight, level 90) at Extreme difficulty that rewards a unique mount on clear.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Rubicante, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Mount Ordeals; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20086,
+            "name": "Mount Ordeals"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#924",
+        "game-data:ContentFinderCondition#886",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -8290,7 +8491,7 @@
     {
       "level": 90,
       "unlock": "Mount Rokkon Variant Dungeon Access",
-      "type": "mount",
+      "type": "dungeon",
       "quest": "Mononoke Aware",
       "questKind": "sidequest",
       "notes": null,
@@ -8387,57 +8588,84 @@
       "level": 90,
       "unlock": "Another Sil'dihn Subterrane (Savage) Criterion Dungeon Access",
       "type": "dungeon",
-      "quest": "The novelization of the Sil'dihn Subterrane",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Another Sil'dihn Subterrane.",
       "description": "The replayable Criterion Dungeon version of a Variant Dungeon (level 90), played with a fixed 4-player party (no solo/duo). This \"Savage\" tier is the hardest version, with strict raid-style mechanics.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by reading the Sil'dihn Subterrane, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Another Sil'dihn Subterrane; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 37001,
+            "name": "Another Sil'dihn Subterrane"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#879",
+        "game-data:ContentFinderCondition#878",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "The Omega Protocol (Ultimate) Access",
       "type": "system",
-      "quest": "Abyssos: The Eighth Circle (Savage)",
+      "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about Omega, Abyssos: The Eighth Circle (Savage) (sequential; last main-chain quest used as completion marker).",
       "description": "Access to an Ultimate raid — the hardest 8-player content in the game, a long, unforgiving fight meant for a dedicated, well-practiced static group.",
       "priority": "optional",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Abyssos: The Eighth Circle (Savage)' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing Abyssos: The Eighth Circle (Savage); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 30123,
+            "name": "Abyssos: The Eighth Circle (Savage)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#908",
+        "game-data:ContentFinderCondition#884",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "The Voidcast Dais (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Golbez",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Voidcast Dais.",
       "description": "A single-boss fight for 8 players (level 90). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Golbez, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Voidcast Dais; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20089,
+            "name": "the Voidcast Dais"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#950",
+        "game-data:ContentFinderCondition#949",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -8491,96 +8719,141 @@
     {
       "level": 90,
       "unlock": "Another Mount Rokkon Criterion Dungeon Access",
-      "type": "mount",
-      "quest": "Talk about Mount Rokkon",
+      "type": "dungeon",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Mount Rokkon.",
       "description": "The replayable 4-player Criterion Dungeon version of Mount Rokkon (level 90). Clearing it can reward a unique mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Mount Rokkon, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Mount Rokkon; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 36002,
+            "name": "Mount Rokkon"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#946",
+        "game-data:ContentFinderCondition#945",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Another Aloalo Island Criterion Dungeon Access",
       "type": "dungeon",
-      "quest": "Talk about Aloalo Island",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Aloalo Island.",
       "description": "The replayable Criterion Dungeon version of a Variant Dungeon (level 90), played with a fixed 4-player party (no solo/duo). Clearing it rewards unique gear and items not available elsewhere.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Aloalo Island, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Aloalo Island; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 36003,
+            "name": "Aloalo Island"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#979",
+        "game-data:ContentFinderCondition#961",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "The Abyssal Fracture (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Zeromus",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Abyssal Fracture.",
       "description": "A single-boss fight for 8 players (level 90). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Zeromus, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Abyssal Fracture; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20091,
+            "name": "the Abyssal Fracture"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#965",
+        "game-data:ContentFinderCondition#964",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Another Mount Rokkon (Savage) Criterion Dungeon Access",
-      "type": "mount",
-      "quest": "The novelization of Mount Rokkon",
+      "type": "dungeon",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Another Mount Rokkon.",
       "description": "The replayable 4-player Criterion Dungeon version of Mount Rokkon (level 90). This \"Savage\" tier is the hardest version. Clearing it can reward a unique mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by reading Mount Rokkon, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Another Mount Rokkon; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 37003,
+            "name": "Another Mount Rokkon"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#947",
+        "game-data:ContentFinderCondition#946",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 90,
       "unlock": "Another Aloalo Island (Savage) Criterion Dungeon Access",
       "type": "dungeon",
-      "quest": "The novelization of Aloalo Island",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Another Aloalo Island.",
       "description": "The replayable Criterion Dungeon version of a Variant Dungeon (level 90), played with a fixed 4-player party (no solo/duo). This \"Savage\" tier is the hardest version, with strict raid-style mechanics.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by reading Aloalo Island, which leaves no record this plugin can read",
+        "label": "unlocked by clearing Another Aloalo Island; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 37005,
+            "name": "Another Aloalo Island"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#980",
+        "game-data:ContentFinderCondition#979",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -8792,12 +9065,12 @@
       ]
     },
     {
-      "level": 90,
+      "level": 100,
       "unlock": "The Deathservant",
       "type": "system",
       "quest": "When Death Comes to Dinner",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level taken from the quest this entry binds; the guide section it came from states none.",
       "description": "A quest reward item from a lighthearted Dawntrail side questline — mainly a novelty/cosmetic prize.",
       "priority": "optional",
       "cosmetic": false,
@@ -8843,19 +9116,20 @@
       "level": 91,
       "unlock": "The Final Verse Access",
       "type": "system",
-      "quest": "Pilgrim's Traverse",
+      "quest": null,
       "questKind": "other",
       "notes": null,
       "description": "A bonus boss encounter waiting on floor 99 of Pilgrim's Traverse, with a reward chamber on floor 100 for those who reach it.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'Pilgrim's Traverse' here, which is not the name of a quest in the game's data",
+        "label": "the duty is identified; the gate itself is not machine-checkable from the guide",
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#1065"
       ]
     },
     {
@@ -9396,38 +9670,34 @@
       "level": 100,
       "unlock": "Everkeep (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Zoraal Ja",
+      "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
       "description": "A single-boss fight for 8 players (level 100). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Zoraal Ja, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70540",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "Worqor Lar Dor (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Valigarmanda",
+      "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
       "description": "A single-boss fight for 8 players (level 100). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Valigarmanda, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70540",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -9482,76 +9752,68 @@
       "level": 100,
       "unlock": "The Jade Stoa (Unreal) Access",
       "type": "system",
-      "quest": "Patch 7.1",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 7.1 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (The Jade Stoa), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 7.1 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "Hells' Kier (Unreal) Access",
       "type": "system",
-      "quest": "Patch 7.2",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 7.2 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (Hells' Kier), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 7.2 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "The Wreath of Snakes (Unreal) Access",
       "type": "system",
-      "quest": "Patch 7.3",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 7.3 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (The Wreath of Snakes), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 7.3 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "Tsukuyomi's Pain (Unreal) Access",
       "type": "system",
-      "quest": "Patch 7.4",
+      "quest": "Fantastic Mr. Faux",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Fantastic Mr. Faux, Patch 7.4 (sequential; last main-chain quest used as completion marker).",
       "description": "A revived, rebalanced version of an older Extreme trial (Tsukuyomi's Pain), fought by an 8-player party for relic-weapon materials and a mount.",
       "priority": "optional",
       "cosmetic": false,
-      "requires": {
-        "label": "rotates with Patch 7.4 rather than being unlocked once",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#69501",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -9574,38 +9836,34 @@
       "level": 100,
       "unlock": "The Minstrel's Ballad: Sphene's Burden Trial Access",
       "type": "trial",
-      "quest": "Talk about the Queen Eternal",
+      "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
       "description": "A single-boss fight for 8 players (level 100).",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about the Queen Eternal, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70540",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "The Cloud of Darkness (Chaotic) Raid Access",
       "type": "alliance-raid",
-      "quest": "Talk about the Cloud of Darkness",
+      "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
       "description": "A large multi-boss raid for 24 players, split into three teams of 8 (level 100). This \"Chaotic\" difficulty is a brutal, newer tier that requires tight coordination across all three parties.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about the Cloud of Darkness, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70540",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -9676,38 +9934,45 @@
       "level": 100,
       "unlock": "Futures Rewritten (Ultimate) Access",
       "type": "system",
-      "quest": "AAC Light-heavyweight M4 (Savage)",
+      "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about the Flood of Light, AAC Light-heavyweight M4 (Savage) (sequential; last main-chain quest used as completion marker).",
       "description": "Access to an Ultimate raid — the hardest 8-player content in the game, a long, unforgiving fight meant for a dedicated, well-practiced static group.",
       "priority": "optional",
       "cosmetic": false,
       "requires": {
-        "label": "the catalogue records 'AAC Light-heavyweight M4 (Savage)' here, which is not the name of a quest in the game's data",
+        "label": "unlocked by clearing AAC Light-heavyweight M4 (Savage); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 30142,
+            "name": "AAC Light-heavyweight M4 (Savage)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#1006",
+        "game-data:ContentFinderCondition#992",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "Recollection (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Zelenia",
+      "quest": "Descent to the Foundation",
       "questKind": "other",
       "notes": "Prerequisite: Descent to the Foundation.",
       "description": "A single-boss fight for 8 players (level 100). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Zelenia, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70840",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -9778,38 +10043,45 @@
       "level": 100,
       "unlock": "The Minstrel's Ballad: Necron's Embrace Trial Access",
       "type": "trial",
-      "quest": "Talk about Necron",
+      "quest": "A Terminal Invitation",
       "questKind": "other",
       "notes": "Prerequisite: A Terminal Invitation.",
       "description": "A single-boss fight for 8 players (level 100).",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about Necron, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70907",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
       "level": 100,
       "unlock": "The Windward Wilds (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about Guardian Arkveld",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Windward Wilds.",
       "description": "A single-boss fight for 8 players (level 100). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about Guardian Arkveld, which leaves no record this plugin can read",
+        "label": "unlocked by clearing the Windward Wilds; whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 20102,
+            "name": "the Windward Wilds"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:ContentFinderCondition#1044",
+        "game-data:ContentFinderCondition#1043",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -9848,19 +10120,17 @@
       "level": 100,
       "unlock": "Hell on Rails (Extreme) Trial Access",
       "type": "trial",
-      "quest": "Talk about the Doomtrain",
+      "quest": "Where We Call Home",
       "questKind": "other",
       "notes": "Prerequisite: Where We Call Home.",
       "description": "A single-boss fight for 8 players (level 100). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "requires": {
-        "label": "unlocked in game by talking to an NPC about the Doomtrain, which leaves no record this plugin can read",
-        "unverifiable": true
-      },
-      "confidence": "unverified",
+      "confidence": "verified",
       "sources": [
-        "gamerescape:progression-guide"
+        "gamerescape:progression-guide",
+        "game-data:Quest#70969",
+        "gamerescape:linked-page-infobox"
       ]
     },
     {
@@ -9899,35 +10169,28 @@
       "level": 100,
       "unlock": "Another Merchant's Tale Criterion Dungeon Access",
       "type": "dungeon",
-      "quest": "Talk about The Merchant's Tale",
+      "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Merchant's Tale (Advanced).",
       "description": "The replayable Criterion Dungeon version of a Variant Dungeon (level 100), played with a fixed 4-player party (no solo/duo). Clearing it rewards unique gear and items not available elsewhere.",
       "priority": "nice",
       "cosmetic": false,
       "requires": {
-        "label": "unlocked in game by talking to an NPC about The Merchant's Tale, which leaves no record this plugin can read",
+        "label": "unlocked by clearing The Merchant's Tale (Advanced); whether you have taken the unlock itself is not something the game lets a plugin read",
+        "duties": [
+          {
+            "id": 38001,
+            "name": "The Merchant's Tale (Advanced)"
+          }
+        ],
         "unverifiable": true
       },
       "confidence": "unverified",
       "sources": [
-        "gamerescape:progression-guide"
-      ]
-    },
-    {
-      "level": 105,
-      "unlock": "Role Quests Access",
-      "type": "system",
-      "quest": "Uncouth Customers",
-      "questKind": "sidequest",
-      "notes": "Level disputed: Quest#70353 is also cited by Role Quests Access at level 92, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
-      "description": "Story quests written for your character's role (Tank, Healer, Melee/Ranged/Magic DPS) rather than a specific job — they deepen the expansion's narrative and can grant useful role actions.",
-      "priority": "nice",
-      "cosmetic": false,
-      "confidence": "single-source",
-      "sources": [
         "gamerescape:progression-guide",
-        "game-data:Quest#70353"
+        "game-data:ContentFinderCondition#1079",
+        "game-data:ContentFinderCondition#1084",
+        "gamerescape:linked-page-infobox"
       ]
     }
   ]
