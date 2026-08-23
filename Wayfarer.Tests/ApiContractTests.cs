@@ -47,6 +47,7 @@ public class ApiContractTests
             DutyContentFinderConditionId = 456,
             SourceId = "unlocks",
             SourceLabel = "Unlock route",
+            SourceName = "Unlock",
             Engaged = true,
             ObjectiveKey = "unlocks:65821",
             ProgressText = "2 of 5 targets",
@@ -88,6 +89,7 @@ public class ApiContractTests
         Assert.Equal(state.DutyContentFinderConditionId, dto.DutyContentFinderConditionId);
         Assert.Equal(state.SourceId, dto.SourceId);
         Assert.Equal(state.SourceLabel, dto.SourceLabel);
+        Assert.Equal(state.SourceName, dto.SourceName);
         Assert.Equal(state.Engaged, dto.Engaged);
         Assert.Equal(state.ObjectiveKey, dto.ObjectiveKey);
         Assert.Equal(state.ProgressText, dto.ProgressText);
@@ -112,6 +114,7 @@ public class ApiContractTests
         Assert.True(dto.IsPickup);
         Assert.Null(dto.SourceId);
         Assert.Null(dto.SourceLabel);
+        Assert.Null(dto.SourceName);
         Assert.False(dto.Engaged);
         Assert.Null(dto.ObjectiveKey);
         Assert.Null(dto.ProgressText);

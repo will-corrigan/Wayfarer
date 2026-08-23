@@ -21,6 +21,12 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
 {
     private const uint QuestRowIdOffset = 65536;
 
+    /// <summary>What this module calls itself on the readout's banner, which prints "Current" in
+    /// front of it — "Current Quest". The same word whether the quest is the player's own pick or
+    /// the head of the main scenario: which of the two it is belongs to the mode label below, not to
+    /// the module's name. See <see cref="ObjectiveCopy.SourceName"/>.</summary>
+    private const string ModuleName = "Quest";
+
     public string SourceId => "quest";
 
     /// <summary>The player's explicit quest pick, or null to follow the main scenario. Cleared
@@ -53,7 +59,8 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
             new ObjectiveCopy(
                 QuestName(questId),
                 stepLabel,
-                FollowedQuest is null ? "Main Scenario" : "Followed quest"),
+                FollowedQuest is null ? "Main Scenario" : "Followed quest",
+                ModuleName),
             QuestId: questId + QuestRowIdOffset);
 
         return new GuidanceOffer(objective, GuidanceEngagement.Ambient);

@@ -9,6 +9,13 @@ namespace Wayfarer.Core.Guidance;
 /// can answer "is this monster done?", so nothing outside it is asked.</summary>
 public static class HuntingPlan
 {
+    /// <summary>What this module calls itself on the readout's banner, which prints "Current" in
+    /// front of it — "Current Hunting Log". Deliberately without the job qualifier that
+    /// <see cref="SourceLabel"/> carries: the banner's pill names the KIND of thing being tracked,
+    /// and which log it came from is a fact about the objective, not about the module. See
+    /// <see cref="ObjectiveCopy.SourceName"/>.</summary>
+    public const string SourceName = "Hunting Log";
+
     public static bool IsComplete(int killed, int required) => killed >= required;
 
     public static string ProgressText(int killed, int required) => $"{killed}/{required}";

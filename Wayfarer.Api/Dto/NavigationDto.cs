@@ -57,6 +57,11 @@ public sealed class NavigationDto
     /// <summary>Mode indicator text, non-null whenever <see cref="Engaged"/> is true.</summary>
     public string? SourceLabel { get; init; }
 
+    /// <summary>What the owning module calls itself — "Quest", "Unlock", "Hunting Log" — as against
+    /// <see cref="SourceLabel"/>, which describes this objective's context. Null when nothing owns
+    /// the arrow.</summary>
+    public string? SourceName { get; init; }
+
     /// <summary>An explicit mode (a route, a hunt) is active rather than the followed quest.</summary>
     public bool Engaged { get; init; }
 

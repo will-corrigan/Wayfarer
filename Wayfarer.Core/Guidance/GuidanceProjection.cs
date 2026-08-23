@@ -30,6 +30,7 @@ public static class GuidanceProjection
             StepLabel = objective.Copy.Detail,
             SourceId = objective.Key.SourceId,
             SourceLabel = objective.Copy.SourceLabel,
+            SourceName = objective.Copy.SourceName,
             Engaged = engaged,
 
             // Wire meaning unchanged from when this was "guiding to an unlock-quest pickup": true

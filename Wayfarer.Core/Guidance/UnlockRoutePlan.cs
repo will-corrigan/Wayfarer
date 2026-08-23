@@ -9,6 +9,12 @@ public static class UnlockRoutePlan
     /// every other heading the game draws.</summary>
     public const string SourceLabel = "Unlock Route";
 
+    /// <summary>What this module calls itself on the readout's banner, which prints "Current" in
+    /// front of it — "Current Unlock". Singular, because the banner names the one thing being
+    /// tracked, and without "Route" because the banner is worn for a single pickup as well as for a
+    /// multi-stop plan. See <see cref="ObjectiveCopy.SourceName"/>.</summary>
+    public const string SourceName = "Unlock";
+
     /// <summary>A pickup leg is done once its quest has been ACCEPTED (the player walked to the
     /// giver and took it — the whole point of the route) or was already COMPLETE (the route was
     /// planned from stale data, or the player did it another way). This is the unlock source's

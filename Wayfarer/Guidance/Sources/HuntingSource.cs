@@ -80,7 +80,8 @@ internal sealed class HuntingSource(
             new ObjectiveCopy(
                 live.MonsterName,
                 live.IsRoutable ? $"{live.Killed}/{live.Required} killed" : live.DutyName,
-                HuntingPlan.SourceLabel(hunting.ActiveLogLabel)),
+                HuntingPlan.SourceLabel(hunting.ActiveLogLabel),
+                HuntingPlan.SourceName),
             new ObjectiveProgress(plan.Index, plan.Total, HuntingPlan.ProgressText(live.Killed, live.Required)),
             MarkTheTarget);
 

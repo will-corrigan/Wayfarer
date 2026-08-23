@@ -77,6 +77,13 @@ public sealed record NavigationState
     /// because this readout is the only mode indicator the player has.</summary>
     public string? SourceLabel { get; init; }
 
+    /// <summary>What the owning MODULE calls itself, in Title Case and in the singular — "Quest",
+    /// "Unlock", "Hunting Log" — as against <see cref="SourceLabel"/>, which describes this
+    /// particular objective's context. Supplied by the source; see
+    /// <see cref="Guidance.ObjectiveCopy.SourceName"/> for why it is never derived from
+    /// <see cref="SourceId"/> anywhere downstream. Null when nothing owns the arrow.</summary>
+    public string? SourceName { get; init; }
+
     /// <summary>An explicit mode is active (a route, a hunt) rather than the ambient followed
     /// quest. Presentations MUST offer a reachable exit whenever this is true.</summary>
     public bool Engaged { get; init; }

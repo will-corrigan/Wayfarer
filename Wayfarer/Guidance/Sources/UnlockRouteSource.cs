@@ -69,7 +69,8 @@ internal sealed unsafe class UnlockRouteSource(IGuidanceArbiter arbiter) : IGuid
             new ObjectiveCopy(
                 UnlockRoutePlan.Headline(leg.UnlockName),
                 UnlockRoutePlan.Detail(leg.QuestName, leg.GiverName),
-                UnlockRoutePlan.SourceLabel),
+                UnlockRoutePlan.SourceLabel,
+                UnlockRoutePlan.SourceName),
             progress,
             MarkTheStop,
             QuestId: leg.QuestRowId);
