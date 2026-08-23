@@ -87,6 +87,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly List<HubListRow> rows = [];
     private readonly List<(HubListRow Row, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
 
+    /// <summary>Which "what does this need?" rows the player has opened, keyed by unlock and
+    /// level. A controller has no hover, so an entry that is waiting on a list of collectibles
+    /// has to be able to show that list on confirm instead.</summary>
+    private readonly HashSet<string> expandedRequirements = new(StringComparer.Ordinal);
+
     private int groupMode;
     private HubTab pendingTab = HubTab.Checklist;
     private HubTab currentTab = HubTab.Checklist;
@@ -356,9 +361,20 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         UnlockStatus.Accepted => ("Accepted", GameColors.ListText),
         UnlockStatus.Available => ("Available", GameColors.Good),
         UnlockStatus.LockedOut => ("Missed", GameColors.Bad),
-        UnlockStatus.UnknownGate => ("Unknown", GameColors.Dimmed),
+
+        // Two shades of "not yet", both dimmed like every other locked state — the word carries
+        // the meaning, so the palette stays the three signals it already had.
+        UnlockStatus.CollectionLocked => ("Collect", GameColors.Dimmed),
+        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("Unknown", GameColors.Dimmed),
         _ => ("Locked", GameColors.Dimmed),
     };
+
+    /// <summary>True when confirming the row has something to say rather than somewhere to go:
+    /// the entry is held up by requirements, and the player deserves to see which.</summary>
+    private static bool Explains(ResolvedUnlock u) =>
+        u.Status is UnlockStatus.CollectionLocked or UnlockStatus.RequirementsUnknown;
+
+    private static string RequirementKey(ResolvedUnlock u) => $"{u.Def.Unlock}|{u.Def.Level}";
 
     private static IEnumerable<ResolvedUnlock> OrderInGroup(IEnumerable<ResolvedUnlock> group) =>
         group.OrderBy(u => u.Status switch
@@ -371,9 +387,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             UnlockStatus.GrandCompanyLocked => 5,
             UnlockStatus.BeastTribeLocked => 6,
             UnlockStatus.MountLocked => 7,
-            UnlockStatus.UnknownGate => 8,
-            UnlockStatus.LockedOut => 9,
-            _ => 10,
+            UnlockStatus.CollectionLocked => 8,
+            UnlockStatus.RequirementsUnknown => 9,
+            UnlockStatus.UnknownGate => 10,
+            UnlockStatus.LockedOut => 11,
+            _ => 12,
         }).ThenBy(u => u.QuestLevel);
 
     private static void OpenDuty(uint? cfcId)
@@ -1094,6 +1112,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             foreach (var u in OrderInGroup(group))
             {
                 rows.Add(BuildChecklistRow(u, navigator));
+                AddRequirementRows(u);
             }
         }
 
@@ -1156,12 +1175,45 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Label = $"{u.Def.Unlock}{giver}",
             Detail = $"{where}Lv{u.QuestLevel} · {label}",
             LabelColor = color,
-            Activate = navigator is null ? null : () => OnChecklistRowActivated(u),
+
+            // An explainable row stays confirmable even with guidance off: there is nowhere to
+            // navigate to, but there is still something to read.
+            Activate = navigator is null && !Explains(u) ? null : () => OnChecklistRowActivated(u),
         };
+    }
+
+    /// <summary>The opened-out requirement lines under an entry that is waiting on something.
+    /// Inert notes, indented, so they read as belonging to the row above.</summary>
+    private void AddRequirementRows(ResolvedUnlock u)
+    {
+        if (!Explains(u) || !expandedRequirements.Contains(RequirementKey(u)))
+        {
+            return;
+        }
+
+        var lines = u.MissingRequirements.Count > 0
+            ? u.MissingRequirements
+            : [u.LockReason ?? u.Def.Requires?.Label ?? "this plugin can't tell what this needs"];
+        foreach (var line in lines)
+        {
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = $"    {line}" });
+        }
     }
 
     private void OnChecklistRowActivated(ResolvedUnlock u)
     {
+        if (Explains(u))
+        {
+            var key = RequirementKey(u);
+            if (!expandedRequirements.Remove(key))
+            {
+                expandedRequirements.Add(key);
+            }
+
+            RebuildChecklist();
+            return;
+        }
+
         var navigator = ResolveNavigator();
         if (navigator is null)
         {
@@ -1193,7 +1245,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             rows.Add(new HubListRow
             {
                 Kind = HubRowKind.Note,
-                Label = u.Def.Unlock,
+                Label = u.Def.Requires?.Label is { Length: > 0 } why ? $"{u.Def.Unlock} — {why}" : u.Def.Unlock,
                 Detail = $"Lv{u.Def.Level}",
             });
         }
