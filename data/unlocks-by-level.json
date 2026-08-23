@@ -10549,7 +10549,7 @@
           {
             "id": 77,
             "name": "Round Lanner",
-            "from": "The Singularity Reactor (Extreme)"
+            "from": "The Minstrel's Ballad: Thordan's Reign"
           },
           {
             "id": 78,
@@ -10592,7 +10592,7 @@
       "priority": "optional",
       "cosmetic": true,
       "requires": {
-        "label": "all six Stormblood Extreme-trial kamuy mounts",
+        "label": "all seven Stormblood Extreme-trial kamuy mounts",
         "mounts": [
           {
             "id": 115,
@@ -10623,6 +10623,11 @@
             "id": 172,
             "name": "Euphonious Kamuy",
             "from": "Hells' Kier (Extreme)"
+          },
+          {
+            "id": 182,
+            "name": "Hallowed Kamuy",
+            "from": "The Wreath of Snakes (Extreme)"
           }
         ]
       },
@@ -10645,7 +10650,7 @@
       "priority": "optional",
       "cosmetic": true,
       "requires": {
-        "label": "all six Shadowbringers Extreme-trial gwiber mounts",
+        "label": "all seven Shadowbringers Extreme-trial gwiber mounts",
         "mounts": [
           {
             "id": 189,
@@ -10676,6 +10681,11 @@
             "id": 238,
             "name": "Emerald Gwiber",
             "from": "Castrum Marinum (Extreme)"
+          },
+          {
+            "id": 249,
+            "name": "Diamond Gwiber",
+            "from": "The Cloud Deck (Extreme)"
           }
         ]
       },
@@ -10698,7 +10708,7 @@
       "priority": "optional",
       "cosmetic": true,
       "requires": {
-        "label": "all five Endwalker Extreme-trial lynx mounts",
+        "label": "all seven Endwalker Extreme-trial lynx mounts",
         "mounts": [
           {
             "id": 261,
@@ -10709,6 +10719,11 @@
             "id": 262,
             "name": "Lynx of Divine Light",
             "from": "The Minstrel's Ballad: Hydaelyn's Call"
+          },
+          {
+            "id": 293,
+            "name": "Bluefeather Lynx",
+            "from": "The Minstrel's Ballad: Endsinger's Aria"
           },
           {
             "id": 306,
@@ -10724,6 +10739,11 @@
             "id": 325,
             "name": "Lynx of Fallen Shadow",
             "from": "The Voidcast Dais (Extreme)"
+          },
+          {
+            "id": 332,
+            "name": "Lynx of Abyssal Grief",
+            "from": "The Abyssal Fracture (Extreme)"
           }
         ]
       },
@@ -10731,6 +10751,63 @@
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#70331",
+        "game-data:Mount",
+        "script-gated:curated"
+      ]
+    },
+    {
+      "category": "Dawntrail Unique Quest Rewards",
+      "unlock": "Wings of Legacy (Mount)",
+      "type": "mount",
+      "quest": "The Wing Spirit Cometh",
+      "questKind": "sidequest",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "description": "A collectible mount: Wings of Legacy. Once obtained, summon it from your mount list (Character menu) to travel faster around zones.",
+      "priority": "optional",
+      "cosmetic": true,
+      "requires": {
+        "label": "all seven Dawntrail Extreme-trial Wings mounts",
+        "mounts": [
+          {
+            "id": 345,
+            "name": "Wings of Ruin",
+            "from": "Worqor Lar Dor (Extreme)"
+          },
+          {
+            "id": 346,
+            "name": "Wings of Resolve",
+            "from": "Everkeep (Extreme)"
+          },
+          {
+            "id": 363,
+            "name": "Wings of Eternity",
+            "from": "The Minstrel's Ballad: Sphene's Burden"
+          },
+          {
+            "id": 389,
+            "name": "Wings of the Knighthood",
+            "from": "Recollection (Extreme)"
+          },
+          {
+            "id": 407,
+            "name": "Wings of Death",
+            "from": "The Minstrel's Ballad: Necron's Embrace"
+          },
+          {
+            "id": 422,
+            "name": "Wings of Mist",
+            "from": "Hell on Rails (Extreme)"
+          },
+          {
+            "id": 444,
+            "name": "Wings of Nihility",
+            "from": "The Unmaking (Extreme)"
+          }
+        ]
+      },
+      "confidence": "single-source",
+      "sources": [
+        "game-data:Quest#71005",
         "game-data:Mount",
         "script-gated:curated"
       ]

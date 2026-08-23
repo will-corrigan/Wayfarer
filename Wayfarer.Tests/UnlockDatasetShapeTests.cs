@@ -67,13 +67,20 @@ public class UnlockDatasetShapeTests
 
     /// <summary>The trophy mounts are the case that cannot be fixed by looking harder: the guide
     /// gives no level and the quest that grants them is a hidden level-1 reward row, so any number
-    /// printed against them would be a fabrication. They are categorised instead.</summary>
+    /// printed against them would be a fabrication. They are categorised instead. Six now, not
+    /// five: "Wings of Legacy (Mount)" (Dawntrail's "The Wing Spirit Cometh", Quest#71005) was
+    /// missing from the catalogue entirely until the trophy-mount reconciliation added it — see
+    /// data/README.md and TrophyMountRequirementTests.</summary>
     [Fact]
     public void TheTrophyMountsHaveNoLevelAndAreCategorised()
     {
         var levelless = Load().FindAll(d => d.Level is null);
         Assert.NotEmpty(levelless);
-        foreach (var name in new[] { "Firebird (Mount)", "Kamuy of the Nine Tails (Mount)", "Landerwaffe (Mount)", "Apocryphal Bahamut (Mount)" })
+        foreach (var name in new[]
+        {
+            "Firebird (Mount)", "Kamuy of the Nine Tails (Mount)", "Landerwaffe (Mount)",
+            "Apocryphal Bahamut (Mount)", "Wings of Legacy (Mount)",
+        })
         {
             var d = levelless.Find(x => string.Equals(x.Unlock, name, StringComparison.Ordinal));
             Assert.True(d is not null, $"expected '{name}' to carry no level");

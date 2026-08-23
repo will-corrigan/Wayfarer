@@ -7,7 +7,11 @@ const MAX_LEVEL = 110;
 // Two fewer than the 588 the first regeneration produced: both belonged to the unreleased-
 // expansion guide page, which is the previous expansion's page with the quest names blanked, and
 // neither described content that exists. See data/README.md.
-const EXPECTED = 586;
+//
+// +1 for "The Wing Spirit Cometh" (Quest#71005, Wings of Legacy): a real, live Dawntrail trophy-
+// mount quest the wiki guide does not list, added by the generator's committed-overrides
+// mechanism — see NEW_TROPHY_MOUNT_ENTRIES in scripts/build-unlock-catalogue.mjs.
+const EXPECTED = 587;
 let errors = 0;
 const err = (m) => { console.error(m); errors++; };
 if (!Array.isArray(d.unlocks) || d.unlocks.length !== EXPECTED) err(`unlocks length ${d.unlocks?.length} != ${EXPECTED}`);
