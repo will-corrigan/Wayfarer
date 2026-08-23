@@ -158,6 +158,12 @@ public sealed class QuestHelperConfig
     /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
     public bool WidgetHidden { get; set; }
 
+    /// <summary>Hides Wayfarer's entry in Dalamud's server info bar. Off by default: the readout
+    /// is click-through by design and the ImGui fallback only ever appears once that readout is
+    /// off, so the bar entry is normally the plugin's one always-visible, always-clickable way
+    /// back in — see <see cref="Windows.DtrEntry"/>.</summary>
+    public bool DtrHidden { get; set; }
+
     /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to
     /// <see cref="ContextMenuMode.ControllerOnly"/>: the readout is a click-through overlay and can
     /// carry no affordances at all, so a controller player needs one native, d-pad-navigable place

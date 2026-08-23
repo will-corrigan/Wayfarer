@@ -3,7 +3,6 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Modules;
@@ -16,7 +15,7 @@ namespace Wayfarer.Windows;
 /// Controller-mode counterpart (spec §5). Duty-gated (non-routable) Grand Company Elite targets
 /// render their duty name as a clickable "Open in Duty Finder" link instead of a Go button,
 /// mirroring <see cref="ArrowWindow"/>'s own duty-objective link.</summary>
-internal sealed unsafe class HuntingWindow(
+internal sealed class HuntingWindow(
     HuntingLogService hunting,
     ModuleRegistry modules,
     IObjectTable objects) : Window("Hunting Log###WayfarerHunting")
@@ -91,11 +90,24 @@ internal sealed unsafe class HuntingWindow(
 
         if (ImGui.IsItemClicked())
         {
-            var agent = AgentContentsFinder.Instance();
-            if (agent != null)
-            {
-                agent->OpenRegularDuty(id, false);
-            }
+            DutyFinderAction.Execute(id);
+        }
+    }
+
+    // The universal exit, mirrored from the hub window's own Stop button — this window is only
+    // ever on screen when that one could not be created, and a hunt started from here (or a route
+    // or single pickup started elsewhere) still needs a way out of it right here.
+    private static void DrawStopButton(QuestNavigator navigator)
+    {
+        if (!navigator.Current.Engaged)
+        {
+            return;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Stop"))
+        {
+            navigator.ClearPickup();
         }
     }
 
@@ -127,6 +139,8 @@ internal sealed unsafe class HuntingWindow(
                 navigator.SetRoute(targets);
             }
         }
+
+        DrawStopButton(navigator);
     }
 
     private void DrawRow(HuntingTargetView target)

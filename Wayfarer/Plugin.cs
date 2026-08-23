@@ -31,6 +31,11 @@ public sealed class Plugin : IDalamudPlugin
     private readonly NamePlateMarkers namePlateMarkers;
     private readonly SettingsCatalog settings;
 
+    /// <summary>The plugin's one entry in Dalamud's server info bar — see its own doc comment for
+    /// why it exists. Built from the same <see cref="ReadoutFeed"/> the readout and its ImGui
+    /// fallback already share, so all three surfaces read from one place.</summary>
+    private readonly DtrEntry dtrEntry;
+
     /// <summary>The one window the plugin has — Checklist, Hunting Log and Settings — for mouse and
     /// controller alike. Owned here rather than by any module, since every module opens into it.
     /// See <see cref="NativeHubWindow"/>'s doc comment.</summary>
@@ -48,6 +53,11 @@ public sealed class Plugin : IDalamudPlugin
     /// single module and must be disposed on the framework thread exactly once.</summary>
     private GuidanceOverlay overlay = null!;
 
+    /// <summary>What the readout, its ImGui fallback and <see cref="dtrEntry"/> all compose their
+    /// own presentation from — held here purely so <see cref="dtrEntry"/> can be wired to it after
+    /// <see cref="BuildQuestHelperModule"/> creates it.</summary>
+    private ReadoutFeed feed = null!;
+
     public Plugin(
         IDalamudPluginInterface pluginInterface,
         IFramework framework,
@@ -61,6 +71,7 @@ public sealed class Plugin : IDalamudPlugin
         IContextMenu contextMenu,
         INamePlateGui namePlateGui,
         ITextureProvider textureProvider,
+        IDtrBar dtrBar,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -108,6 +119,9 @@ public sealed class Plugin : IDalamudPlugin
         namePlateMarkers = new(namePlateGui, textureProvider, framework, modules, config.Guidance, log);
         namePlateMarkers.Start();
 
+        dtrEntry = BuildDtrEntry(dtrBar, framework, config.QuestHelper);
+        dtrEntry.Start();
+
         configWindow = new(settings);
         windows.AddWindow(configWindow);
 
@@ -123,6 +137,7 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.OpenConfigUi -= OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi -= OpenMain;
 
+        dtrEntry.Dispose();
         contextMenuActions.Dispose();
         namePlateMarkers.Dispose();
         ipcProvider.Dispose();
@@ -197,7 +212,12 @@ public sealed class Plugin : IDalamudPlugin
         overlay.Start();
 
         commands.AddHandler("/wayfarer", new(OnCommand)
-        { HelpMessage = "Open Wayfarer. \"/wayfarer hunt\" opens the hunting log, \"/wayfarer settings\" the settings, \"/wayfarer stop\" ends the current route or hunt." });
+        {
+            HelpMessage = "Shortcut for the Wayfarer window and its Stop button — everything here is also a click or "
+                + "a d-pad press away: the server info bar entry, the plugin list, and the window's own controls. "
+                + "\"/wayfarer hunt\" opens the hunting log, \"/wayfarer settings\" the settings, \"/wayfarer stop\" "
+                + "ends the current route or hunt.",
+        });
     }
 
     /// <summary>Dalamud's settings cog lands on the Settings tab of the one Wayfarer window rather
@@ -247,6 +267,21 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
+    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.
+    /// Left-click reuses the exact path the plugin list's own main button takes
+    /// (<see cref="OpenMain"/>); right-click is the settings equivalent of the Dalamud cog
+    /// (<see cref="OpenConfig"/>); shift-click is the same universal exit
+    /// <c>/wayfarer stop</c> and the hub's own Stop buttons use.</summary>
+    private DtrEntry BuildDtrEntry(IDtrBar dtrBar, IFramework framework, QuestHelperConfig cfg) => new(
+        dtrBar,
+        feed,
+        cfg,
+        framework,
+        () => modules.Get<UnlockChecklistModule>()?.OpenChecklist(),
+        OpenConfig,
+        () => modules.Get<QuestHelperModule>()?.Navigator.ClearPickup(),
+        log);
+
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
     /// builds the widget (with its Controller-mode "Open Wayfarer ▸" entry point wired straight to
     /// <see cref="hub"/>) and its owning module.</summary>
@@ -260,12 +295,14 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
-        var feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
+        feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         overlay = new GuidanceOverlay(feed, config.QuestHelper, objects, framework, log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,
             feed,
             overlay,
+            modules,
+            inputMode,
             config.QuestHelper,
             objects,
             clientState,

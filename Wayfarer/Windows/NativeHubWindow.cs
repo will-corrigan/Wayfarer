@@ -1,6 +1,5 @@
 using System.Numerics;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
@@ -95,6 +94,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private TextButtonNode? huntHereButton;
 
     private TextButtonNode? stopButton;
+    private TextButtonNode? huntingStopButton;
     private ScrollingNode<VerticalListNode>? settingsArea;
     private CheckboxNode? firstSettingControl;
     private TextNode? buttonHintNode;
@@ -238,6 +238,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         huntingHeaderNode = null;
         huntHereButton = null;
         stopButton = null;
+        huntingStopButton = null;
         settingsArea = null;
         firstSettingControl = null;
         buttonHintNode = null;
@@ -311,15 +312,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private static void OpenDuty(uint? cfcId)
     {
-        if (cfcId is not { } id)
+        if (cfcId is { } id)
         {
-            return;
-        }
-
-        var agent = AgentContentsFinder.Instance();
-        if (agent != null)
-        {
-            agent->OpenRegularDuty(id, false);
+            DutyFinderAction.Execute(id);
         }
     }
 
@@ -1022,6 +1017,20 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             OnClick = OnHuntClicked,
         };
         actions.AddNode(huntHereButton);
+
+        // Its own Stop button rather than relying on the Checklist tab's — a player who started a
+        // hunt from here and stayed on this tab must not have to switch tabs to find the one way
+        // out of it. Both buttons drive the same universal exit (see OnStopClicked) and both are
+        // kept in lockstep by UpdateStopButton.
+        huntingStopButton = new TextButtonNode
+        {
+            Width = 110f,
+            Height = 24f,
+            String = "Stop",
+            IsEnabled = false,
+            OnClick = OnStopClicked,
+        };
+        actions.AddNode(huntingStopButton);
         huntingControls.AddNode(actions);
 
         AddTabNode(huntingNodes, huntingControls);
@@ -1166,15 +1175,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private void UpdateStopButton()
     {
-        if (stopButton is null)
-        {
-            return;
-        }
-
         var engaged = ResolveNavigator()?.Current.Engaged == true;
-        if (stopButton.IsEnabled != engaged)
+        if (stopButton is not null && stopButton.IsEnabled != engaged)
         {
             stopButton.IsEnabled = engaged;
+        }
+
+        if (huntingStopButton is not null && huntingStopButton.IsEnabled != engaged)
+        {
+            huntingStopButton.IsEnabled = engaged;
         }
     }
 

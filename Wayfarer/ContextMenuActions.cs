@@ -110,22 +110,25 @@ internal sealed class ContextMenuActions : IDisposable
         var navigator = questHelper.Navigator;
         var state = navigator.Current;
 
-        if (string.Equals(state.Mode, NavigationState.Modes.OtherZone, StringComparison.Ordinal)
-            && cfg.ClickTeleportEnabled
-            && state.AetheryteUnlocked
-            && state.AetheryteId is { } aetheryteId
-            && state.AetheryteName is { } aetheryteName)
+        AddTeleportItem(items, state);
+
+        // The universal exit, shown whenever anything is engaged — a chained unlock route, a
+        // single unlock pickup or a hunt alike, since ClearPickup() (guidance.Arbiter.ReleaseAll())
+        // is the one release valve for all three. Offered here rather than only as a route-specific
+        // "Cancel route" (the previous behaviour) because a single, unchained pickup or an active
+        // hunt is just as much "something the player asked for" that needs a way out, and this is
+        // the only entry point a controller has by default.
+        if (state.Engaged)
         {
-            items.Add(new MenuItem
-            {
-                Name = $"Teleport to {aetheryteName}",
-                OnClicked = _ => TeleportAction.Execute(aetheryteId, cfg, clientState, log),
-            });
+            items.Add(new MenuItem { Name = "Stop", OnClicked = _ => navigator.ClearPickup() });
+        }
+        else if (modules.Get<UnlockChecklistModule>() is { Enabled: true } routableModule)
+        {
+            AddStartRouteItem(items, navigator, routableModule);
         }
 
         if (modules.Get<UnlockChecklistModule>() is { Enabled: true } unlockModule)
         {
-            AddUnlockRouteItem(items, navigator, unlockModule, state);
             items.Add(new MenuItem
             {
                 Name = "Open checklist",
@@ -142,37 +145,55 @@ internal sealed class ContextMenuActions : IDisposable
             });
         }
 
-        // Nothing to reset when neither an override nor a pickup/route is active — following the
-        // MSQ is already exactly what's happening.
-        if (navigator.FollowedOverride is not null || navigator.Pickup is not null)
+        // Nothing to reset when nothing is engaged and no override is set — following the MSQ is
+        // already exactly what's happening. The "Stop" item above already covers the engaged case.
+        if (!state.Engaged && navigator.FollowedOverride is not null)
         {
             items.Add(new MenuItem
             {
                 Name = "Follow MSQ",
-                OnClicked = _ =>
-                {
-                    navigator.ClearPickup();
-                    navigator.FollowedOverride = null;
-                },
+                OnClicked = _ => navigator.FollowedOverride = null,
             });
         }
 
         return items;
     }
 
-    /// <summary>"Cancel route" while a multi-stop route is active (same RouteTotal-not-null check
-    /// as the ArrowWindow quest picker's popup), otherwise "Start unlock route" when at least one
-    /// available, locatable unlock exists to route through — the same predicate and ordering
-    /// (<see cref="RoutePlanner.Order"/>) as UnlockWindow's "Route me" button.</summary>
-    private void AddUnlockRouteItem(
-        List<IMenuItem> items, QuestNavigator navigator, UnlockChecklistModule unlockModule, NavigationState state)
+    private void AddTeleportItem(List<IMenuItem> items, NavigationState state)
     {
-        if (state.RouteTotal is not null)
+        if (string.Equals(state.Mode, NavigationState.Modes.OtherZone, StringComparison.Ordinal)
+            && cfg.ClickTeleportEnabled
+            && state.AetheryteUnlocked
+            && state.AetheryteId is { } aetheryteId
+            && state.AetheryteName is { } aetheryteName)
         {
-            items.Add(new MenuItem { Name = "Cancel route", OnClicked = _ => navigator.ClearPickup() });
-            return;
+            items.Add(new MenuItem
+            {
+                Name = $"Teleport to {aetheryteName}",
+                OnClicked = _ => TeleportAction.Execute(aetheryteId, cfg, clientState, log),
+            });
         }
 
+        // The guided quest's objective is inside instanced content it can be queued for right now
+        // (see DutyObjectiveGuidance) — this and the readout's own clickable duty line
+        // (ArrowWindow.DrawSecondary) are the only two ways to reach it; a controller has only
+        // this one, since the readout is click-through.
+        if (state.DutyContentFinderConditionId is { } cfcId)
+        {
+            items.Add(new MenuItem
+            {
+                Name = "Open Duty Finder",
+                OnClicked = _ => DutyFinderAction.Execute(cfcId),
+            });
+        }
+    }
+
+    /// <summary>"Start unlock route" when at least one available, locatable unlock exists to route
+    /// through — the same predicate and ordering (<see cref="RoutePlanner.Order"/>) as
+    /// UnlockWindow's "Route me" button. Only ever offered while nothing is already engaged (see
+    /// the caller) — the "Stop" item is what ends a route once one is running.</summary>
+    private void AddStartRouteItem(List<IMenuItem> items, QuestNavigator navigator, UnlockChecklistModule unlockModule)
+    {
         var routable = unlockModule.Unlocks.Entries
             .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null)
             .ToList();

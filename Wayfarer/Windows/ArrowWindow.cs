@@ -4,8 +4,10 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
+using Wayfarer.Modules;
 using Wayfarer.Windows.Native;
 
 namespace Wayfarer.Windows;
@@ -19,9 +21,13 @@ namespace Wayfarer.Windows;
 /// live here — and that were the actual cause of the "half the text is cut off" complaint — are
 /// gone with it.
 ///
-/// It keeps one thing the overlay physically cannot have: a clickable teleport line. An overlay is
-/// click-through by construction, which is exactly why it can never be in the way, so that
-/// convenience only exists on this surface.</summary>
+/// It keeps what the overlay physically cannot have: clickable teleport and duty-finder lines, and
+/// the entry buttons at the bottom that open the checklist, open the hunting log and stop whatever
+/// mode is engaged. An overlay is click-through by construction, which is exactly why it can never
+/// be in the way — but it also means that whenever this window is the one on screen (the overlay
+/// off, or unavailable), it must be a genuinely usable way back into Wayfarer on its own, not just
+/// a readout. See <see cref="DtrEntry"/> for the surface that covers the same job while the overlay
+/// <i>is</i> active.</summary>
 internal sealed unsafe class ArrowWindow : Window
 {
     private const ImGuiWindowFlags SharedFlags =
@@ -33,6 +39,8 @@ internal sealed unsafe class ArrowWindow : Window
     private readonly INavigationProvider navigator;
     private readonly ReadoutFeed feed;
     private readonly GuidanceOverlay overlay;
+    private readonly ModuleRegistry modules;
+    private readonly InputModeService inputMode;
     private readonly QuestHelperConfig cfg;
     private readonly IObjectTable objects;
     private readonly IClientState clientState;
@@ -47,6 +55,8 @@ internal sealed unsafe class ArrowWindow : Window
         INavigationProvider navigator,
         ReadoutFeed feed,
         GuidanceOverlay overlay,
+        ModuleRegistry modules,
+        InputModeService inputMode,
         QuestHelperConfig cfg,
         IObjectTable objects,
         IClientState clientState,
@@ -56,6 +66,8 @@ internal sealed unsafe class ArrowWindow : Window
         this.navigator = navigator;
         this.feed = feed;
         this.overlay = overlay;
+        this.modules = modules;
+        this.inputMode = inputMode;
         this.cfg = cfg;
         this.objects = objects;
         this.clientState = clientState;
@@ -98,6 +110,8 @@ internal sealed unsafe class ArrowWindow : Window
             DrawLine(line);
         }
 
+        DrawEntryButtons();
+
         desiredHeight = ImGui.GetCursorPosY() + ImGui.GetStyle().WindowPadding.Y;
     }
 
@@ -111,6 +125,100 @@ internal sealed unsafe class ArrowWindow : Window
         }
 
         ImGui.TextWrapped(text);
+    }
+
+    // The fallback's own way back into Wayfarer — restored after the native-overlay rewrite
+    // dropped them along with the rest of this window's bespoke layout (see the class doc
+    // comment). A mouse can click these directly; a controller gets the same information as
+    // plain text, exactly like the old widget did, because the game's own context menu (see
+    // ContextMenuMode) is that player's real entry point and a stray focusable ImGui button here
+    // would just be a second, worse one.
+    private void DrawEntryButtons()
+    {
+        var drewChecklist = DrawChecklistButton();
+        var drewHunting = DrawHuntingButton(sameLine: drewChecklist);
+        var drewStop = DrawStopButton(sameLine: drewChecklist || drewHunting);
+
+        if (drewChecklist || drewHunting || drewStop)
+        {
+            ImGui.Spacing();
+        }
+    }
+
+    // The universal exit, mirrored from the hub window's own Stop buttons (see
+    // NativeHubWindow.OnStopClicked) so a route or hunt started while this fallback happens to be
+    // the one on screen has a way out of it right here too, rather than only through the hub.
+    private bool DrawStopButton(bool sameLine)
+    {
+        if (!navigator.Current.Engaged)
+        {
+            return false;
+        }
+
+        if (sameLine)
+        {
+            ImGui.SameLine();
+        }
+
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            ImGui.TextUnformatted("Stop");
+        }
+        else if (ImGui.SmallButton("Stop"))
+        {
+            navigator.ClearPickup();
+        }
+
+        return true;
+    }
+
+    private bool DrawChecklistButton()
+    {
+        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule)
+        {
+            return false;
+        }
+
+        const string label = "Open Wayfarer ▸";
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            ImGui.TextUnformatted(label);
+        }
+        else if (ImGui.SmallButton(label))
+        {
+            unlockModule.OpenChecklist();
+        }
+
+        return true;
+    }
+
+    private bool DrawHuntingButton(bool sameLine)
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule)
+        {
+            return false;
+        }
+
+        var hunting = huntingModule.Hunting;
+        var label = hunting.ActiveLogLabel is null
+            ? "Hunting log"
+            : $"Hunting log ({hunting.RemainingOnPage.Count})";
+
+        if (sameLine)
+        {
+            ImGui.SameLine();
+        }
+
+        if (inputMode.Mode == InputMode.Controller)
+        {
+            ImGui.TextUnformatted(label);
+        }
+        else if (ImGui.SmallButton(label))
+        {
+            huntingModule.OpenLog();
+        }
+
+        return true;
     }
 
     private void DrawLine(ReadoutLine line)
@@ -146,8 +254,9 @@ internal sealed unsafe class ArrowWindow : Window
         }
     }
 
-    // The one affordance this surface has that the overlay does not: the teleport advice is
-    // clickable here. Everything else is plain text — a readout is for reading.
+    // The affordances this surface has that the overlay does not: the teleport advice and the
+    // "complete this duty" line are both clickable here. Everything else is plain text — a
+    // readout is for reading.
     private void DrawSecondary(ReadoutLine line)
     {
         var state = navigator.Current;
@@ -159,6 +268,25 @@ internal sealed unsafe class ArrowWindow : Window
             if (ImGui.Selectable(line.Text))
             {
                 TeleportAction.Execute(id, cfg, clientState, log);
+            }
+
+            return;
+        }
+
+        // The composer's own marker for "duty can be queued now" (see
+        // DutyObjectiveGuidance.CompleteDutyPrefix's doc comment) — the row id lives on the
+        // navigation state, not the line itself, so this is the one place both are in scope.
+        if (state.DutyContentFinderConditionId is { } cfcId
+            && line.Text.StartsWith(DutyObjectiveGuidance.CompleteDutyPrefix, StringComparison.Ordinal))
+        {
+            if (ImGui.Selectable(line.Text))
+            {
+                DutyFinderAction.Execute(cfcId);
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Open in Duty Finder");
             }
 
             return;

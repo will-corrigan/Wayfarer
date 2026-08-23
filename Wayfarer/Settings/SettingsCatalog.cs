@@ -159,6 +159,15 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         },
         new SettingDefinition
         {
+            Id = "readout.dtr",
+            Label = "Show the Wayfarer entry in the server info bar",
+            Description = "Left-click opens the checklist, right-click opens settings. The one entry point that's always on screen no matter how the readout above is set.",
+            Kind = SettingKind.Toggle,
+            ReadFlag = () => !config.QuestHelper.DtrHidden,
+            WriteFlag = Write(value => config.QuestHelper.DtrHidden = !value),
+        },
+        new SettingDefinition
+        {
             Id = "readout.position",
             Label = "Position",
             Kind = SettingKind.Choice,

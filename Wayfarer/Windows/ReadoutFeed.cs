@@ -75,6 +75,41 @@ internal sealed class ReadoutFeed(
         !cfg.WidgetHidden
         && !string.Equals(navigator.Current.Mode, NavigationState.Modes.Hidden, StringComparison.Ordinal);
 
+    /// <summary>Builds this frame's server info bar text. Unlike <see cref="Compose"/>, this is
+    /// never gated on <see cref="ShouldShow"/> — the bar entry is the plugin's one always-visible
+    /// surface precisely because the readout itself can be hidden or click-through.</summary>
+    public DtrText ComposeDtr()
+    {
+        var state = navigator.Current;
+        var huntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal);
+        return DtrComposer.Compose(new DtrInputs
+        {
+            Engaged = state.Engaged,
+            RouteStop = state.RouteStop,
+            RouteTotal = state.RouteTotal,
+            HuntingIsPrimary = huntingIsPrimary,
+            HuntingLabel = huntingIsPrimary ? DtrHuntingLabel() : null,
+            NearbyUnlockCount = NearbyUnlocks().Count,
+        });
+    }
+
+    // "Rank 2 4/5" — the hunting rank the game itself reports (see HuntingWindow's identical
+    // "rank {N}" wording) alongside the current target's kill count, already short enough for the
+    // bar. Rank is occasionally unknown (e.g. between log reads) without the target itself being
+    // gone, so it degrades to the kill count alone rather than disappearing.
+    private string? DtrHuntingLabel()
+    {
+        if (modules.Get<HuntingLogModule>() is not { Enabled: true } hunting
+            || hunting.Hunting.CurrentTarget is not { } target)
+        {
+            return null;
+        }
+
+        return hunting.Hunting.CurrentRank is { } rank
+            ? $"Rank {rank} {target.Killed}/{target.Required}"
+            : $"{target.Killed}/{target.Required}";
+    }
+
     private string? HuntingSummary()
     {
         if (modules.Get<HuntingLogModule>() is not { Enabled: true } hunting

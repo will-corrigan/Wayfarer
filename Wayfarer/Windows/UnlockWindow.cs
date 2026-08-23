@@ -216,8 +216,27 @@ internal sealed class UnlockWindow(
             ImGui.SetTooltip("Guides you through picking up every quest shown above, nearest first. The arrow advances automatically as you accept each one.");
         }
 
+        DrawStopButton();
+
         ImGui.SameLine();
         ImGui.TextDisabled("chains the arrow through every available pickup shown");
+    }
+
+    // The universal exit, mirrored from the hub window's own Stop button — this window is only
+    // ever on screen when that one could not be created, and whatever engaged the arrow (a route
+    // started from here, a hunt, or a single pickup) still needs a way out of it right here.
+    private void DrawStopButton()
+    {
+        if (navigator?.Current.Engaged != true)
+        {
+            return;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Stop"))
+        {
+            navigator.ClearPickup();
+        }
     }
 
     private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupEntries(List<ResolvedUnlock> visible) =>
