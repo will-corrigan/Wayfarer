@@ -2,6 +2,7 @@ using System.Text.Json;
 using Wayfarer.Api;
 using Wayfarer.Api.Dto;
 using Wayfarer.Core.Navigation;
+using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
 
@@ -247,6 +248,28 @@ public class ApiContractTests
         Assert.Equal("essential", row.Priority);
         Assert.Equal("system", row.Category);
         Assert.Equal("Change how gear looks.", row.Description);
+    }
+
+    // UnlockRowDto.Status is a plain string, so a new status is an additive change on the wire —
+    // but only if the names consumers will start seeing are actually the ones the enum produces.
+    [Theory]
+    [InlineData(UnlockStatus.CollectionLocked, "CollectionLocked")]
+    [InlineData(UnlockStatus.RequirementsUnknown, "RequirementsUnknown")]
+    public void GetUnlocks_CarriesTheNewStatuses_AsPlainStrings(UnlockStatus status, string wireValue)
+    {
+        Assert.Equal(wireValue, status.ToString());
+        var json = $$"""
+            [{"unlock":"Firebird (Mount)","status":"{{wireValue}}",
+              "lockReason":"requires 7 more of all seven Heavensward Extreme-trial Lanner mounts; next: Rose Lanner — Thok ast Thok (Extreme)",
+              "quest":"Fiery Wings, Fiery Hearts","giver":null,"level":50,"zone":"Idyllshire",
+              "priority":"optional","category":"cosmetic","description":"A collectible mount."}]
+            """;
+        var client = new WayfarerClient(() => WayfarerIpc.ApiVersion, () => "{}", (_, _) => json);
+
+        var row = Assert.Single(client.GetUnlocks());
+
+        Assert.Equal(wireValue, row.Status);
+        Assert.Contains("Rose Lanner", row.LockReason, StringComparison.Ordinal);
     }
 
     [Fact]

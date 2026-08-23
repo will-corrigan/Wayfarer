@@ -28,6 +28,18 @@ public enum UnlockStatus
     /// <summary>Gated behind a requirement this plugin doesn't model (festival window,
     /// personal house ownership, ...). Never reported as Available.</summary>
     UnknownGate,
+
+    /// <summary>Gated behind owning a curated set of collectibles — Extreme-trial trophy mounts,
+    /// minions, key items — that the Quest sheet does not record. The player is told exactly what
+    /// is missing; see <see cref="UnlockDefinition.Requires"/>.</summary>
+    CollectionLocked,
+
+    /// <summary>The plugin has a quest row for this entry but cannot establish what it takes to
+    /// get it: the row carries no gate at all and nothing is curated, or several rows share the
+    /// name and only the character knows which is theirs, or a requirement id doesn't resolve.
+    /// This is the honest answer, and it exists because "I found no gate" was previously reported
+    /// as "go and get it".</summary>
+    RequirementsUnknown,
 }
 
 /// <summary>An unlock entry after the plugin has matched it against game data.
@@ -119,6 +131,38 @@ public sealed class ResolvedUnlock
     /// Available.</summary>
     public bool HasUnmodeledGate { get; set; }
 
+    /// <summary><c>ClassJobRequired</c>: one job that must be levelled to <see cref="QuestLevel"/>
+    /// whatever the <c>ClassJobCategory0</c> mask allows. Only one catalogue entry uses it
+    /// (Spearfishing needs Fisher), and ignoring it showed that entry as available to a character
+    /// who had never touched Fisher.</summary>
+    public uint? HardRequiredJobRowId { get; set; }
+
+    public string? HardRequiredJobName { get; set; }
+
+    /// <summary><c>QuestAcceptAdditionCondition</c>: extra accept-time prerequisite quests that
+    /// live in their own sheet rather than in <c>PreviousQuest</c>. Always AND — the sheet has no
+    /// join column and none of its 58 rows imply otherwise.</summary>
+    public List<uint> AcceptConditionQuestRowIds { get; set; } = [];
+
+    public List<string> AcceptConditionQuestNames { get; set; } = [];
+
+    /// <summary>True when an accept condition names an id that isn't a Quest row. That is an
+    /// unknown requirement, not an absent one.</summary>
+    public bool HasUnresolvedAcceptCondition { get; set; }
+
+    /// <summary>True when the matched Quest row records no requirement of any kind — no level
+    /// above 1, no prerequisite, no duty, no job, nothing. Quest row 67086 looks exactly like
+    /// this and still needs seven Extreme-trial mounts, because its real condition lives in a
+    /// server-side accept script. An entry in this state must never be called available on the
+    /// strength of the absence: without curated <see cref="UnlockDefinition.Requires"/> data it
+    /// reports <see cref="UnlockStatus.RequirementsUnknown"/>.</summary>
+    public bool HasNoDiscoverableGate { get; set; }
+
+    /// <summary>Everything a curated requirement found missing, in order, phrased for the player
+    /// ("Rose Lanner — Thok ast Thok (Extreme)"). The lock reason names the first; the window
+    /// shows this whole list on demand, which is the entire point of curating it.</summary>
+    public List<string> MissingRequirements { get; set; } = [];
+
     public uint? GiverTerritory { get; set; }
 
     public uint? GiverMap { get; set; }
@@ -175,6 +219,13 @@ public sealed class ResolvedUnlock
         RequiredMountId = RequiredMountId,
         RequiredMountName = RequiredMountName,
         HasUnmodeledGate = HasUnmodeledGate,
+        HardRequiredJobRowId = HardRequiredJobRowId,
+        HardRequiredJobName = HardRequiredJobName,
+        AcceptConditionQuestRowIds = AcceptConditionQuestRowIds,
+        AcceptConditionQuestNames = AcceptConditionQuestNames,
+        HasUnresolvedAcceptCondition = HasUnresolvedAcceptCondition,
+        HasNoDiscoverableGate = HasNoDiscoverableGate,
+        MissingRequirements = MissingRequirements,
         GiverTerritory = GiverTerritory,
         GiverMap = GiverMap,
         GiverX = GiverX,

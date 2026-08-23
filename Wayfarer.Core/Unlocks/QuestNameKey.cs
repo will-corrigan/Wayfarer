@@ -33,7 +33,7 @@ public static class QuestNameKey
             return string.Empty;
         }
 
-        var folded = FoldCharacters(name.Normalize(NormalizationForm.FormKC));
+        var folded = FoldPunctuation(FoldGlyphs(name.Normalize(NormalizationForm.FormKC)));
         var collapsed = CollapseWhitespace(folded);
         if (collapsed.EndsWith(AuthoringSuffix, StringComparison.Ordinal))
         {
@@ -43,13 +43,29 @@ public static class QuestNameKey
         return collapsed.ToLowerInvariant();
     }
 
-    /// <summary>One pass over the string doing three folds: private-use journal icon glyphs become
-    /// a separator (so the following word doesn't fuse onto the previous one); zero-width and
-    /// invisible characters that survive a copy-paste out of a wiki page are dropped (one
-    /// catalogue entry shipped with a trailing <c>U+200E</c> LEFT-TO-RIGHT MARK); and the
-    /// punctuation the two sources disagree on — curly and modifier apostrophes, curly quotes, and
-    /// the whole dash family including the minus sign — collapses onto its ASCII form.</summary>
-    private static string FoldCharacters(string name)
+    /// <summary>The same name with the journal icon glyph and the invisibles taken off, but its
+    /// capitalisation and punctuation left alone — for showing to the player. Lock reasons name
+    /// prerequisite quests straight from the sheet, and without this they read
+    /// "needs quest '<c>[glyph]</c> Fugitive of Fear'".</summary>
+    public static string Display(string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return string.Empty;
+        }
+
+        var collapsed = CollapseWhitespace(FoldGlyphs(name));
+        return collapsed.EndsWith(AuthoringSuffix, StringComparison.Ordinal)
+            ? collapsed[..^AuthoringSuffix.Length].TrimEnd()
+            : collapsed;
+    }
+
+    /// <summary>Private-use journal icon glyphs become a separator (so the following word doesn't
+    /// fuse onto the previous one), and the zero-width and invisible characters that survive a
+    /// copy-paste out of a wiki page are dropped — one catalogue entry shipped with a trailing
+    /// <c>U+200E</c> LEFT-TO-RIGHT MARK. Nothing here changes a character the player can see, so
+    /// it is safe for display as well as for keying.</summary>
+    private static string FoldGlyphs(string name)
     {
         var sb = new StringBuilder(name.Length);
         foreach (var c in name)
@@ -61,19 +77,30 @@ public static class QuestNameKey
                     break;
                 case '\u200B' or '\u200C' or '\u200D' or '\u200E' or '\u200F' or '\uFEFF' or '\u00AD':
                     break;
-                case '\u2018' or '\u2019' or '\u02BC' or '\u00B4' or '`':
-                    sb.Append('\'');
-                    break;
-                case '\u201C' or '\u201D':
-                    sb.Append('"');
-                    break;
-                case (>= '\u2010' and <= '\u2015') or '\u2212':
-                    sb.Append('-');
-                    break;
                 default:
                     sb.Append(c);
                     break;
             }
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>The punctuation the two sources disagree on — curly and modifier apostrophes,
+    /// curly quotes, and the whole dash family including the minus sign — collapses onto its ASCII
+    /// form. Key-only: unlike <see cref="FoldGlyphs"/> this does change what a player would read.</summary>
+    private static string FoldPunctuation(string name)
+    {
+        var sb = new StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            sb.Append(c switch
+            {
+                '\u2018' or '\u2019' or '\u02BC' or '\u00B4' or '`' => '\'',
+                '\u201C' or '\u201D' => '"',
+                (>= '\u2010' and <= '\u2015') or '\u2212' => '-',
+                _ => c,
+            });
         }
 
         return sb.ToString();

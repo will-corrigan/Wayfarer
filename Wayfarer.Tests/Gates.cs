@@ -16,7 +16,10 @@ internal static class Gates
         Func<uint, bool>? isInstanceContentCompleted = null,
         Func<uint, bool>? isInstanceContentUnlocked = null,
         Func<byte, byte>? getBeastTribeRank = null,
-        Func<uint, bool>? isMountUnlocked = null) => new(
+        Func<uint, bool>? isMountUnlocked = null,
+        Func<uint, bool>? isMinionUnlocked = null,
+        Func<uint, int>? getOwnedItemCount = null,
+        Func<uint, int>? getKeyItemCount = null) => new(
             playerLevel,
             playerGrandCompany,
             playerGrandCompanyRank,
@@ -26,5 +29,8 @@ internal static class Gates
             isInstanceContentCompleted ?? (_ => false),
             isInstanceContentUnlocked ?? (_ => true),
             getBeastTribeRank ?? (_ => 0),
-            isMountUnlocked ?? (_ => false));
+            isMountUnlocked ?? (_ => false),
+            isMinionUnlocked ?? (_ => false),
+            getOwnedItemCount ?? (_ => 0),
+            getKeyItemCount ?? (_ => 0));
 }

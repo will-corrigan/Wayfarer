@@ -16,7 +16,7 @@ public class UnlockStatusTests
     public void UnmatchedIsUnverified()
     {
         var all = new List<ResolvedUnlock> { Make("Mystery", null, 10) };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 50));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 50));
         Assert.Equal(UnlockStatus.Unverified, all[0].Status);
     }
 
@@ -24,7 +24,7 @@ public class UnlockStatusTests
     public void CompleteIsDone_EvenAboveLevel()
     {
         var all = new List<ResolvedUnlock> { Make("Glamours", 65754, 90) };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 15, isQuestComplete: id => id == 65754));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 15, isQuestComplete: id => id == 65754));
         Assert.Equal(UnlockStatus.Done, all[0].Status);
     }
 
@@ -34,7 +34,7 @@ public class UnlockStatusTests
         var a = Make("Glamours", 100, 15);
         var b = Make("Glamours", 200, 15);
         var all = new List<ResolvedUnlock> { a, b };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20, isQuestComplete: id => id == 200));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestComplete: id => id == 200));
         Assert.Equal(UnlockStatus.Done, a.Status);
         Assert.Equal(UnlockStatus.Done, b.Status);
     }
@@ -43,7 +43,7 @@ public class UnlockStatusTests
     public void AcceptedBeatsAvailable()
     {
         var all = new List<ResolvedUnlock> { Make("X", 100, 10) };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20, isQuestAccepted: id => id == 100));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestAccepted: id => id == 100));
         Assert.Equal(UnlockStatus.Accepted, all[0].Status);
     }
 
@@ -54,7 +54,7 @@ public class UnlockStatusTests
         var all = new List<ResolvedUnlock> { Make("X", 100, 60, 900) };
         UnlockStatusCalculator.Compute(
             all,
-            Ctx(
+            Gates.Ctx(
                 playerLevel: 20,
                 isQuestComplete: id =>
                 {
@@ -74,7 +74,7 @@ public class UnlockStatusTests
     public void IncompletePrereq_IsQuestLocked_WithName()
     {
         var all = new List<ResolvedUnlock> { Make("X", 100, 10, 900, 901) };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20, isQuestComplete: id => id == 900));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestComplete: id => id == 900));
         Assert.Equal(UnlockStatus.QuestLocked, all[0].Status);
         Assert.Equal("needs quest 'Quest 901'", all[0].LockReason);
     }
@@ -85,7 +85,7 @@ public class UnlockStatusTests
         var u = Make("X", 100, 10, 900, 901);
         u.PrereqJoin = 2;
         var all = new List<ResolvedUnlock> { u };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20, isQuestComplete: id => id == 901));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestComplete: id => id == 901));
         Assert.Equal(UnlockStatus.Available, all[0].Status);
     }
 
@@ -95,7 +95,7 @@ public class UnlockStatusTests
         var u = Make("X", 100, 10, 900, 901);
         u.PrereqJoin = 2;
         var all = new List<ResolvedUnlock> { u };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20));
         Assert.Equal(UnlockStatus.QuestLocked, all[0].Status);
         Assert.Equal("needs quest 'Quest 900' or 'Quest 901'", all[0].LockReason);
     }
@@ -104,7 +104,7 @@ public class UnlockStatusTests
     public void EverythingMet_IsAvailable()
     {
         var all = new List<ResolvedUnlock> { Make("X", 100, 10, 900) };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20, isQuestComplete: id => id == 900));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestComplete: id => id == 900));
         Assert.Equal(UnlockStatus.Available, all[0].Status);
     }
 
@@ -116,7 +116,7 @@ public class UnlockStatusTests
         u.LockoutQuestNames = ["Path A", "Path B"];
         u.LockoutJoin = 2;
         var all = new List<ResolvedUnlock> { u };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20, isQuestComplete: id => id == 701));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestComplete: id => id == 701));
         Assert.Equal(UnlockStatus.LockedOut, all[0].Status);
         Assert.Equal("no longer obtainable — 'Path B' already completed", all[0].LockReason);
     }
@@ -129,7 +129,7 @@ public class UnlockStatusTests
         u.LockoutQuestNames = ["Path A"];
         u.LockoutJoin = 2;
         var all = new List<ResolvedUnlock> { u };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 1, isQuestComplete: id => id == 700));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 1, isQuestComplete: id => id == 700));
         Assert.Equal(UnlockStatus.LockedOut, all[0].Status);
     }
 
@@ -141,7 +141,7 @@ public class UnlockStatusTests
         u.LockoutQuestNames = ["Path A"];
         u.LockoutJoin = 2;
         var all = new List<ResolvedUnlock> { u };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 20));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20));
         Assert.Equal(UnlockStatus.Available, all[0].Status);
     }
 
@@ -150,7 +150,7 @@ public class UnlockStatusTests
     {
         var u = Make("X", 100, 50);
         var all = new List<ResolvedUnlock> { u };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 55));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 55));
         Assert.Equal(UnlockStatus.Available, all[0].Status);
     }
 
@@ -165,7 +165,7 @@ public class UnlockStatusTests
         u.RequiredJobNames = ["Weaver"];
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(
+        var ctx = Gates.Ctx(
             playerLevel: 90,
             getClassJobLevel: jobId => jobId == WeaverJobRowId ? 1 : 0);
         UnlockStatusCalculator.Compute(all, ctx);
@@ -182,7 +182,7 @@ public class UnlockStatusTests
         u.RequiredJobNames = ["Weaver", "Culinarian"];
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(
+        var ctx = Gates.Ctx(
             playerLevel: 90,
             getClassJobLevel: jobId => jobId switch
             {
@@ -203,7 +203,7 @@ public class UnlockStatusTests
         u.RequiredJobNames = ["Weaver", "Culinarian"];
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, getClassJobLevel: _ => 5);
+        var ctx = Gates.Ctx(playerLevel: 90, getClassJobLevel: _ => 5);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
@@ -230,7 +230,7 @@ public class UnlockStatusTests
         u.AltRequiredJobLevel = 0; // the "category1 isn't real" flag
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(
+        var ctx = Gates.Ctx(
             playerLevel: 90,
             getClassJobLevel: jobId => jobId switch
             {
@@ -260,13 +260,13 @@ public class UnlockStatusTests
         // A player with only Miner at level 1 (no Disciple of the Hand levels at all) qualifies
         // via the real category1 alternative.
         var minerOnly = new List<ResolvedUnlock> { u };
-        var minerCtx = Ctx(playerLevel: 90, getClassJobLevel: jobId => jobId == MinerJobRowId ? 1 : 0);
+        var minerCtx = Gates.Ctx(playerLevel: 90, getClassJobLevel: jobId => jobId == MinerJobRowId ? 1 : 0);
         UnlockStatusCalculator.Compute(minerOnly, minerCtx);
         Assert.Equal(UnlockStatus.Available, minerOnly[0].Status);
 
         // A player with only Warrior at level 90 (neither category) is locked out of both.
         var warriorOnly = new List<ResolvedUnlock> { u };
-        var warriorCtx = Ctx(playerLevel: 90, getClassJobLevel: jobId => jobId == WarriorJobRowId ? 90 : 0);
+        var warriorCtx = Gates.Ctx(playerLevel: 90, getClassJobLevel: jobId => jobId == WarriorJobRowId ? 90 : 0);
         UnlockStatusCalculator.Compute(warriorOnly, warriorCtx);
         Assert.Equal(UnlockStatus.LevelLocked, warriorOnly[0].Status);
     }
@@ -281,7 +281,7 @@ public class UnlockStatusTests
         u.InstanceContentNames = ["The Praetorium"];
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(
+        var ctx = Gates.Ctx(
             playerLevel: 90,
             isInstanceContentUnlocked: _ => true,
             isInstanceContentCompleted: _ => false);
@@ -299,7 +299,7 @@ public class UnlockStatusTests
         u.InstanceContentNames = ["The Praetorium"];
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, isInstanceContentUnlocked: _ => false, isInstanceContentCompleted: _ => false);
+        var ctx = Gates.Ctx(playerLevel: 90, isInstanceContentUnlocked: _ => false, isInstanceContentCompleted: _ => false);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.InstanceLocked, all[0].Status);
@@ -315,7 +315,7 @@ public class UnlockStatusTests
         u.InstanceContentJoin = 1;
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, isInstanceContentCompleted: id => id == 1, isInstanceContentUnlocked: _ => true);
+        var ctx = Gates.Ctx(playerLevel: 90, isInstanceContentCompleted: id => id == 1, isInstanceContentUnlocked: _ => true);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.InstanceLocked, all[0].Status);
@@ -330,7 +330,7 @@ public class UnlockStatusTests
         u.InstanceContentNames = ["Dungeon One", "Dungeon Two"];
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, isInstanceContentCompleted: id => id == 1, isInstanceContentUnlocked: _ => true);
+        var ctx = Gates.Ctx(playerLevel: 90, isInstanceContentCompleted: id => id == 1, isInstanceContentUnlocked: _ => true);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.Available, all[0].Status);
@@ -344,7 +344,7 @@ public class UnlockStatusTests
         u.RequiredGrandCompanyName = "Order of the Twin Adder";
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, playerGrandCompany: 1);
+        var ctx = Gates.Ctx(playerLevel: 90, playerGrandCompany: 1);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.GrandCompanyLocked, all[0].Status);
@@ -359,7 +359,7 @@ public class UnlockStatusTests
         u.RequiredGrandCompanyRank = 5;
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, playerGrandCompany: 1, playerGrandCompanyRank: 2);
+        var ctx = Gates.Ctx(playerLevel: 90, playerGrandCompany: 1, playerGrandCompanyRank: 2);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.GrandCompanyLocked, all[0].Status);
@@ -374,7 +374,7 @@ public class UnlockStatusTests
         u.RequiredGrandCompanyRank = 5;
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, playerGrandCompany: 1, playerGrandCompanyRank: 5);
+        var ctx = Gates.Ctx(playerLevel: 90, playerGrandCompany: 1, playerGrandCompanyRank: 5);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.Available, all[0].Status);
@@ -390,7 +390,7 @@ public class UnlockStatusTests
         u.RequiredBeastTribeRankName = "Trusted";
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, getBeastTribeRank: id => id == 5 ? (byte)1 : (byte)0);
+        var ctx = Gates.Ctx(playerLevel: 90, getBeastTribeRank: id => id == 5 ? (byte)1 : (byte)0);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.BeastTribeLocked, all[0].Status);
@@ -405,7 +405,7 @@ public class UnlockStatusTests
         u.RequiredBeastTribeRank = 3;
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, getBeastTribeRank: id => id == 5 ? (byte)3 : (byte)0);
+        var ctx = Gates.Ctx(playerLevel: 90, getBeastTribeRank: id => id == 5 ? (byte)3 : (byte)0);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.Available, all[0].Status);
@@ -419,7 +419,7 @@ public class UnlockStatusTests
         u.RequiredMountName = "Falcon";
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, isMountUnlocked: _ => false);
+        var ctx = Gates.Ctx(playerLevel: 90, isMountUnlocked: _ => false);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.MountLocked, all[0].Status);
@@ -433,7 +433,7 @@ public class UnlockStatusTests
         u.RequiredMountId = 42;
         var all = new List<ResolvedUnlock> { u };
 
-        var ctx = Ctx(playerLevel: 90, isMountUnlocked: id => id == 42);
+        var ctx = Gates.Ctx(playerLevel: 90, isMountUnlocked: id => id == 42);
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.Available, all[0].Status);
@@ -446,7 +446,7 @@ public class UnlockStatusTests
         u.HasUnmodeledGate = true;
         var all = new List<ResolvedUnlock> { u };
 
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 90));
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
 
         Assert.Equal(UnlockStatus.UnknownGate, all[0].Status);
         Assert.NotNull(all[0].LockReason);
@@ -536,28 +536,6 @@ public class UnlockStatusTests
         Assert.False(req.HasCheckableRequirement);
         Assert.Empty(req.Mounts);
     }
-
-    private static UnlockGateContext Ctx(
-        int playerLevel,
-        byte playerGrandCompany = 0,
-        int playerGrandCompanyRank = 0,
-        Func<uint, bool>? isQuestComplete = null,
-        Func<uint, bool>? isQuestAccepted = null,
-        Func<uint, int>? getClassJobLevel = null,
-        Func<uint, bool>? isInstanceContentCompleted = null,
-        Func<uint, bool>? isInstanceContentUnlocked = null,
-        Func<byte, byte>? getBeastTribeRank = null,
-        Func<uint, bool>? isMountUnlocked = null) => new(
-            playerLevel,
-            playerGrandCompany,
-            playerGrandCompanyRank,
-            isQuestComplete ?? (_ => false),
-            isQuestAccepted ?? (_ => false),
-            getClassJobLevel ?? (_ => 0),
-            isInstanceContentCompleted ?? (_ => false),
-            isInstanceContentUnlocked ?? (_ => true),
-            getBeastTribeRank ?? (_ => 0),
-            isMountUnlocked ?? (_ => false));
 
     private static ResolvedUnlock Make(string unlock, uint? rowId, int questLevel, params uint[] prereqs) => new()
     {

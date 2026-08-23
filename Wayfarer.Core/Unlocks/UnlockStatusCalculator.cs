@@ -6,10 +6,15 @@ public static class UnlockStatusCalculator
 {
     /// <summary>Sets Status/LockReason on every entry, in precedence order: Done, Accepted,
     /// LockedOut (QuestLock), job/level gate, prereq chain (PreviousQuest + Join), InstanceContent,
-    /// Grand Company, beast tribe, mount, unmodeled-gate, else Available. Gate checks after
-    /// LockedOut are only run for entries not already resolved by an earlier stage — later gates
-    /// are skipped once one blocks, matching the level-gate short-circuit the original
-    /// implementation relied on.</summary>
+    /// Grand Company, beast tribe, mount, hard job requirement, accept-condition quests, curated
+    /// requirements, unmodeled gate, ambiguous name, no discoverable gate, else Available. Gate
+    /// checks after LockedOut are only run for entries not already resolved by an earlier stage —
+    /// later gates are skipped once one blocks, matching the level-gate short-circuit the original
+    /// implementation relied on.
+    ///
+    /// <para>Available is a conclusion, not a default: it is reached only when every gate this
+    /// plugin knows how to read has been read and the entry is known to have no others. Anything
+    /// else is <see cref="UnlockStatus.RequirementsUnknown"/>.</para></summary>
     public static void Compute(List<ResolvedUnlock> all, UnlockGateContext ctx)
     {
         // Alternative quests share the same unlock name: any one complete → all Done.
@@ -46,7 +51,7 @@ public static class UnlockStatusCalculator
             return;
         }
 
-        if (ctx.IsQuestAccepted(rowId))
+        if (ctx.IsQuestAccepted(rowId) || AnyAlternativeAccepted(u, ctx))
         {
             u.Status = UnlockStatus.Accepted;
             return;
@@ -110,6 +115,35 @@ public static class UnlockStatusCalculator
             return;
         }
 
+        ComputeFinalGates(u, ctx);
+    }
+
+    /// <summary>The gates that live outside the Quest row's own columns — a hard job requirement,
+    /// the separate accept-condition sheet, the catalogue's curated requirements — and then the
+    /// two "we don't know" outcomes that stand between this and reporting Available.</summary>
+    private static void ComputeFinalGates(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        if (!HardRequiredJobMet(u, ctx, out var hardJobReason))
+        {
+            u.Status = UnlockStatus.LevelLocked;
+            u.LockReason = hardJobReason;
+            return;
+        }
+
+        if (AcceptConditionBlocking(u, ctx, out var acceptReason, out var acceptStatus))
+        {
+            u.Status = acceptStatus;
+            u.LockReason = acceptReason;
+            return;
+        }
+
+        if (CuratedRequirementBlocking(u, ctx, out var curatedReason, out var curatedStatus))
+        {
+            u.Status = curatedStatus;
+            u.LockReason = curatedReason;
+            return;
+        }
+
         if (u.HasUnmodeledGate)
         {
             u.Status = UnlockStatus.UnknownGate;
@@ -117,8 +151,160 @@ public static class UnlockStatusCalculator
             return;
         }
 
+        if (u.AlternativeQuestRowIds.Count > 1)
+        {
+            u.Status = UnlockStatus.RequirementsUnknown;
+            u.LockReason = $"the game ships {u.AlternativeQuestRowIds.Count} quests with this name and only your character knows which is yours — status unknown";
+            return;
+        }
+
+        // The change this whole audit exists for. "No gate found" and "no gate exists" look
+        // identical in the Quest sheet: row 67086 has every gate column empty and a recorded level
+        // of 1, and still wants seven Extreme-trial mounts, because its real condition lives in a
+        // server-side accept script that is not shipped in sqpack and has no client API. Falling
+        // through to Available here is what sent a player to a quest they could not accept.
+        if (u.HasNoDiscoverableGate && u.Def.Requires is null)
+        {
+            u.Status = UnlockStatus.RequirementsUnknown;
+            u.LockReason = "the game records no requirement for this at all, which usually means it has one this plugin can't see — status unknown";
+            return;
+        }
+
         u.Status = UnlockStatus.Available;
     }
+
+    /// <summary><c>ClassJobRequired</c>: a single job that must be at the quest's level, whatever
+    /// the category mask allows. Reuses <see cref="UnlockStatus.LevelLocked"/> and its phrasing,
+    /// so nothing downstream has to learn a new shape.</summary>
+    private static bool HardRequiredJobMet(ResolvedUnlock u, UnlockGateContext ctx, out string? reason)
+    {
+        reason = null;
+        if (u.HardRequiredJobRowId is not { } jobId || ctx.GetClassJobLevel(jobId) >= u.QuestLevel)
+        {
+            return true;
+        }
+
+        reason = $"needs {u.HardRequiredJobName ?? "a specific job"} {u.QuestLevel}";
+        return false;
+    }
+
+    /// <summary><c>QuestAcceptAdditionCondition</c>: prerequisite quests kept in their own sheet,
+    /// AND-ed. An id that doesn't resolve to a Quest row is an unknown requirement, not an absent
+    /// one, and blocks with <see cref="UnlockStatus.RequirementsUnknown"/>.</summary>
+    private static bool AcceptConditionBlocking(
+        ResolvedUnlock u, UnlockGateContext ctx, out string? reason, out UnlockStatus status)
+    {
+        reason = null;
+        status = UnlockStatus.QuestLocked;
+        for (var i = 0; i < u.AcceptConditionQuestRowIds.Count; i++)
+        {
+            if (ctx.IsQuestComplete(u.AcceptConditionQuestRowIds[i]))
+            {
+                continue;
+            }
+
+            var name = i < u.AcceptConditionQuestNames.Count
+                ? u.AcceptConditionQuestNames[i]
+                : u.AcceptConditionQuestRowIds[i].ToString(CultureInfo.InvariantCulture);
+            reason = $"needs quest '{name}'";
+            return true;
+        }
+
+        if (!u.HasUnresolvedAcceptCondition)
+        {
+            return false;
+        }
+
+        status = UnlockStatus.RequirementsUnknown;
+        reason = "has an extra requirement this plugin can't identify — status unknown";
+        return true;
+    }
+
+    /// <summary>The catalogue's curated <c>requires</c> block: level and job first (so the level
+    /// gate keeps winning over the collection gate, as it does everywhere else), then the
+    /// collectibles, then the honest fallback for a requirement that is known to exist but can't
+    /// be expressed. Fills <see cref="ResolvedUnlock.MissingRequirements"/> with the whole list —
+    /// telling the player only the first of seven missing mounts would be its own small lie.</summary>
+    private static bool CuratedRequirementBlocking(
+        ResolvedUnlock u, UnlockGateContext ctx, out string? reason, out UnlockStatus status)
+    {
+        reason = null;
+        status = UnlockStatus.CollectionLocked;
+        u.MissingRequirements = [];
+        if (u.Def.Requires is not { } req)
+        {
+            return false;
+        }
+
+        if (req.MinLevel is { } minLevel && ctx.PlayerLevel < minLevel)
+        {
+            status = UnlockStatus.LevelLocked;
+            reason = $"needs level {minLevel}";
+            return true;
+        }
+
+        foreach (var job in req.Jobs)
+        {
+            if (ctx.GetClassJobLevel(job.Id) < job.Level)
+            {
+                status = UnlockStatus.LevelLocked;
+                reason = $"needs {job.Name} {job.Level}";
+                return true;
+            }
+        }
+
+        CollectMissing(u, ctx, req);
+        if (u.MissingRequirements.Count > 0)
+        {
+            reason = u.MissingRequirements.Count == 1
+                ? $"requires {u.MissingRequirements[0]}"
+                : $"requires {u.MissingRequirements.Count} more of {req.Label ?? "a set of collectibles"}; next: {u.MissingRequirements[0]}";
+            return true;
+        }
+
+        if (!req.Unverifiable)
+        {
+            return false;
+        }
+
+        status = UnlockStatus.RequirementsUnknown;
+        reason = req.Label is { Length: > 0 } label
+            ? $"{label} — status unknown"
+            : "has a requirement this plugin can't check — status unknown";
+        return true;
+    }
+
+    private static void CollectMissing(ResolvedUnlock u, UnlockGateContext ctx, UnlockRequirement req)
+    {
+        foreach (var mount in req.Mounts)
+        {
+            if (!ctx.IsMountUnlocked(mount.Id))
+            {
+                u.MissingRequirements.Add(Describe(mount.Name, mount.From));
+            }
+        }
+
+        foreach (var minion in req.Minions)
+        {
+            if (!ctx.IsMinionUnlocked(minion.Id))
+            {
+                u.MissingRequirements.Add(Describe(minion.Name, minion.From));
+            }
+        }
+
+        foreach (var item in req.Items)
+        {
+            var owned = item.KeyItem ? ctx.GetKeyItemCount(item.Id) : ctx.GetOwnedItemCount(item.Id);
+            var needed = item.Count > 0 ? item.Count : 1;
+            if (owned < needed)
+            {
+                u.MissingRequirements.Add(needed > 1 ? $"{item.Name} x{needed}" : item.Name);
+            }
+        }
+    }
+
+    private static string Describe(string name, string? from) =>
+        from is { Length: > 0 } ? $"{name} — {from}" : name;
 
     /// <summary>Completing any one of the rows a duplicated quest name could mean counts as
     /// completing the unlock. A character gets exactly one of the three <c>Simply the Hest</c>
@@ -129,6 +315,21 @@ public static class UnlockStatusCalculator
         foreach (var id in u.AlternativeQuestRowIds)
         {
             if (ctx.IsQuestComplete(id))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Same reasoning as <see cref="AnyAlternativeComplete"/>: the character may have
+    /// picked up a sibling row rather than the one the matcher bound.</summary>
+    private static bool AnyAlternativeAccepted(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        foreach (var id in u.AlternativeQuestRowIds)
+        {
+            if (ctx.IsQuestAccepted(id))
             {
                 return true;
             }

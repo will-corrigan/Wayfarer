@@ -15,4 +15,7 @@ public sealed record UnlockGateContext(
     Func<uint, bool> IsInstanceContentCompleted,
     Func<uint, bool> IsInstanceContentUnlocked,
     Func<byte, byte> GetBeastTribeRank,
-    Func<uint, bool> IsMountUnlocked);
+    Func<uint, bool> IsMountUnlocked,
+    Func<uint, bool> IsMinionUnlocked,
+    Func<uint, int> GetOwnedItemCount,
+    Func<uint, int> GetKeyItemCount);
