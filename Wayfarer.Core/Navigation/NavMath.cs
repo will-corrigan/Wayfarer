@@ -37,6 +37,26 @@ public static class NavMath
     public static float Distance(float dx, float dy, float dz) =>
         MathF.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
 
+    /// <summary>The same direction the arrow points, in words. Used when the arrow image cannot be
+    /// drawn at all — a readout that says "behind you, to the left" is still guidance, whereas an
+    /// arrow that silently fails to render leaves the player with no direction at all. Eight
+    /// sectors, because that is as fine as a phrase can usefully be.</summary>
+    public static string DescribeDirection(float arrowRadians)
+    {
+        var sector = (int)MathF.Round(Normalize(arrowRadians) / (MathF.PI / 4f));
+        return (((sector % 8) + 8) % 8) switch
+        {
+            1 => "Ahead and to the right",
+            2 => "To your right",
+            3 => "Behind you, to the right",
+            4 => "Behind you",
+            5 => "Behind you, to the left",
+            6 => "To your left",
+            7 => "Ahead and to the left",
+            _ => "Straight ahead",
+        };
+    }
+
     public static string FormatDistance(float yalms) =>
         yalms >= 1000f ? $"{yalms / 1000f:0.0}k yalms" : $"{MathF.Round(yalms)} yalms";
 }

@@ -37,14 +37,12 @@ internal sealed class QuestNavigator(
     UnlockRouteSource unlockSource,
     HuntingSource huntingSource) : INavigationProvider
 {
-    public event Action? OnPickupAdvanced
-    {
-        add => unlockSource.OnAdvanced += value;
-        remove => unlockSource.OnAdvanced -= value;
-    }
-
     public NavigationState Current => guidance.Current;
 
+    /// <summary>Overrides the followed quest with a specific accepted quest id, or clears the
+    /// override — falling back to following the main scenario — when set to null. Written by the
+    /// window's Quests tab and by the context menu's "Follow MSQ"; read only by
+    /// <see cref="QuestObjectiveSource"/>.</summary>
     public ushort? FollowedOverride
     {
         get => questSource.FollowedQuest;

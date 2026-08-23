@@ -3,7 +3,6 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Modules;
@@ -16,13 +15,10 @@ namespace Wayfarer.Windows;
 /// Controller-mode counterpart (spec §5). Duty-gated (non-routable) Grand Company Elite targets
 /// render their duty name as a clickable "Open in Duty Finder" link instead of a Go button,
 /// mirroring <see cref="ArrowWindow"/>'s own duty-objective link.</summary>
-internal sealed unsafe class HuntingWindow(
+internal sealed class HuntingWindow(
     HuntingLogService hunting,
     ModuleRegistry modules,
-    IObjectTable objects,
-    InputModeService inputMode,
-    InputModeConfig inputModeCfg,
-    Action saveConfig) : Window("Hunting Log###WayfarerHunting")
+    IObjectTable objects) : Window("Hunting Log###WayfarerHunting")
 {
     private static readonly Vector4 LinkColor = new(0.4f, 0.7f, 1f, 1f);
 
@@ -37,14 +33,6 @@ internal sealed unsafe class HuntingWindow(
         {
             ImGui.TextWrapped("Hunting log data failed to load — see the Dalamud log.");
             return;
-        }
-
-        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
-
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            var glyphs = inputMode.Glyphs;
-            ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
         }
 
         if (hunting.ActiveLogLabel is not { } label)
@@ -102,11 +90,24 @@ internal sealed unsafe class HuntingWindow(
 
         if (ImGui.IsItemClicked())
         {
-            var agent = AgentContentsFinder.Instance();
-            if (agent != null)
-            {
-                agent->OpenRegularDuty(id, false);
-            }
+            DutyFinderAction.Execute(id);
+        }
+    }
+
+    // The universal exit, mirrored from the hub window's own Stop button — this window is only
+    // ever on screen when that one could not be created, and a hunt started from here (or a route
+    // or single pickup started elsewhere) still needs a way out of it right here.
+    private static void DrawStopButton(QuestNavigator navigator)
+    {
+        if (!navigator.Current.Engaged)
+        {
+            return;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Stop"))
+        {
+            navigator.ClearPickup();
         }
     }
 
@@ -120,13 +121,17 @@ internal sealed unsafe class HuntingWindow(
     {
         var navigator = ResolveNavigator();
         var count = hunting.HuntHereOrder.Count;
+
+        // "Hunt here" was the old label from when chaining stopped at the zone boundary, which is
+        // also why it appeared to do nothing in a zone with nothing left. A hunt now works through
+        // the whole rank, grouped by zone, so the label says what it does.
         if (navigator == null)
         {
-            ImGui.TextDisabled($"Hunt here ({count}) — enable Quest Helper to navigate");
+            ImGui.TextDisabled($"Start hunting ({count}) — enable Quest Helper to navigate");
             return;
         }
 
-        if (ImGui.Button($"Hunt here ({count})") && count > 0)
+        if (ImGui.Button($"Start hunting ({count})") && count > 0)
         {
             var targets = hunting.HuntHereOrder.Select(hunting.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
             if (targets.Count > 0)
@@ -135,8 +140,7 @@ internal sealed unsafe class HuntingWindow(
             }
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled("chains the arrow through every remaining target in this zone, nearest first");
+        DrawStopButton(navigator);
     }
 
     private void DrawRow(HuntingTargetView target)

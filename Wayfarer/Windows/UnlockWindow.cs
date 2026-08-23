@@ -14,9 +14,7 @@ internal sealed class UnlockWindow(
     ModuleRegistry modules,
     IObjectTable objects,
     IClientState clientState,
-    InputModeService inputMode,
-    InputModeConfig inputModeCfg,
-    Action saveConfig) : Window("Unlocks###WayfarerUnlocks")
+    InputModeService inputMode) : Window("Unlocks###WayfarerUnlocks")
 {
     // Lumina's Quest sheet offsets row ids by this amount; QuestNavigator.FollowedOverride
     // and GetAcceptedQuests() both work in the raw (unoffset) ushort id space — see
@@ -53,19 +51,13 @@ internal sealed class UnlockWindow(
     {
         if (!unlocks.Loaded)
         {
-            ImGui.TextWrapped("Unlock data failed to load — see the Dalamud log.");
+            ImGui.TextWrapped("Wayfarer could not read its unlock catalogue, so this checklist is empty for that reason and not because there is nothing left to do.");
+            if (unlocks.LoadError is { Length: > 0 } why)
+            {
+                ImGui.TextWrapped(why);
+            }
+
             return;
-        }
-
-        ControllerHint.Draw(inputModeCfg, inputMode, saveConfig);
-
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            // Rows below are still click-driven pending the native context-menu action surface
-            // (task A2) — reachable today only via Dalamud's stopgap gamepad-nav (see the hint
-            // above), hence this legend rather than removing the affordance outright.
-            var glyphs = inputMode.Glyphs;
-            ImGui.TextDisabled($"{glyphs.Confirm} select   {glyphs.Cancel} back");
         }
 
         navigator = modules.Get<QuestHelperModule>() is { Enabled: true } questHelper
@@ -157,9 +149,11 @@ internal sealed class UnlockWindow(
             UnlockStatus.GrandCompanyLocked => 5,
             UnlockStatus.BeastTribeLocked => 6,
             UnlockStatus.MountLocked => 7,
-            UnlockStatus.UnknownGate => 8,
-            UnlockStatus.LockedOut => 9,
-            _ => 10,
+            UnlockStatus.CollectionLocked => 8,
+            UnlockStatus.RequirementsUnknown => 9,
+            UnlockStatus.UnknownGate => 10,
+            UnlockStatus.LockedOut => 11,
+            _ => 12,
         }).ThenBy(u => u.QuestLevel);
 
     /// <summary>One-line explanation for each status tag icon ("[grab]"/"[accepted]"/"[locked]"/
@@ -171,7 +165,9 @@ internal sealed class UnlockWindow(
         UnlockStatus.Accepted => "Picked up but not finished — check your Journal for the next step.",
         UnlockStatus.Done => "Completed.",
         UnlockStatus.LockedOut => "No longer obtainable — a quest that locks it out was completed.",
-        UnlockStatus.UnknownGate => "Gated behind something this plugin can't check (e.g. a festival window or housing).",
+        UnlockStatus.CollectionLocked => "Needs a set of collectibles first — hover the row for the list.",
+        UnlockStatus.RequirementsUnknown => "This plugin can't work out what this takes, so it won't guess — treat it as not yet available.",
+        UnlockStatus.UnknownGate => "Gated behind something this plugin can't check — treat as not yet available.",
         _ => "Locked — requirements not yet met.",
     };
 
@@ -229,8 +225,27 @@ internal sealed class UnlockWindow(
             ImGui.SetTooltip("Guides you through picking up every quest shown above, nearest first. The arrow advances automatically as you accept each one.");
         }
 
+        DrawStopButton();
+
         ImGui.SameLine();
         ImGui.TextDisabled("chains the arrow through every available pickup shown");
+    }
+
+    // The universal exit, mirrored from the hub window's own Stop button — this window is only
+    // ever on screen when that one could not be created, and whatever engaged the arrow (a route
+    // started from here, a hunt, or a single pickup) still needs a way out of it right here.
+    private void DrawStopButton()
+    {
+        if (navigator?.Current.Engaged != true)
+        {
+            return;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Stop"))
+        {
+            navigator.ClearPickup();
+        }
     }
 
     private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupEntries(List<ResolvedUnlock> visible) =>
@@ -264,7 +279,11 @@ internal sealed class UnlockWindow(
             UnlockStatus.Accepted => ("[accepted]", new Vector4(0.6f, 0.8f, 1f, 1f)),
             UnlockStatus.Available => ("[grab]", new Vector4(1f, 0.82f, 0.25f, 1f)),
             UnlockStatus.LockedOut => ("[gone]", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
-            UnlockStatus.UnknownGate => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
+
+            // Both "we don't know" states share the existing unknown-gate amber; the tag text is
+            // what separates them, so no new colour has to be learned.
+            UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
+            UnlockStatus.CollectionLocked => ("[collect]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
             _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
         };
         var greyed = u.Status is not (UnlockStatus.Available or UnlockStatus.Accepted);
@@ -332,6 +351,16 @@ internal sealed class UnlockWindow(
             ImGui.TextDisabled(reason);
         }
 
+        // The whole missing list, not just the blocker the reason names: being told you need
+        // "Rose Lanner" when you need seven mounts is the same failure in miniature.
+        if (u.Status == UnlockStatus.CollectionLocked && u.MissingRequirements.Count > 1)
+        {
+            foreach (var missing in u.MissingRequirements)
+            {
+                ImGui.BulletText(missing);
+            }
+        }
+
         if (u.Def.Notes is { } notes)
         {
             ImGui.TextDisabled(notes);
@@ -378,11 +407,19 @@ internal sealed class UnlockWindow(
             return;
         }
 
-        ImGui.TextWrapped("These wiki entries have no quest name or one that doesn't match game data; statuses can't be checked.");
+        ImGui.TextWrapped("Nothing in the game's data backs these entries, so their status can't be checked. Each says what is known about it instead of being graded.");
         foreach (var u in unverified)
         {
             ImGui.BulletText($"{u.Def.Unlock} (lv{u.Def.Level})");
-            if (ImGui.IsItemHovered() && (u.Def.Description ?? u.Def.Notes) is { } tip)
+            if (!ImGui.IsItemHovered())
+            {
+                continue;
+            }
+
+            // The catalogue records why it can't verify this one — show that first; it is the
+            // difference between "we have no idea" and "you unlock it by talking to an NPC".
+            var tip = u.Def.Requires?.Label ?? u.Def.Description ?? u.Def.Notes;
+            if (tip is { Length: > 0 })
             {
                 ImGui.SetTooltip(tip);
             }

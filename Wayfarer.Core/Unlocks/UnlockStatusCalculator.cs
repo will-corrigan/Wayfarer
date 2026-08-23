@@ -5,64 +5,73 @@ namespace Wayfarer.Core.Unlocks;
 public static class UnlockStatusCalculator
 {
     /// <summary>Sets Status/LockReason on every entry, in precedence order: Done, Accepted,
-    /// LockedOut (QuestLock), job/level gate, prereq chain (PreviousQuest + Join), InstanceContent,
-    /// Grand Company, beast tribe, mount, unmodeled-gate, else Available. Gate checks after
-    /// LockedOut are only run for entries not already resolved by an earlier stage — later gates
-    /// are skipped once one blocks, matching the level-gate short-circuit the original
-    /// implementation relied on.</summary>
+    /// ambiguous name, LockedOut (QuestLock), job/level gate, prereq chain (PreviousQuest + Join),
+    /// InstanceContent, Grand Company, beast tribe, mount, hard job requirement, accept-condition
+    /// quests, curated requirements, unmodeled gate, no discoverable gate, else Available. Gate
+    /// checks after LockedOut are only run for entries not already resolved by an earlier stage —
+    /// later gates are skipped once one blocks, matching the level-gate short-circuit the original
+    /// implementation relied on.
+    ///
+    /// <para>Available is a conclusion, not a default: it is reached only when every gate this
+    /// plugin knows how to read has been read and the entry is known to have no others. Anything
+    /// else is <see cref="UnlockStatus.RequirementsUnknown"/>.</para></summary>
     public static void Compute(List<ResolvedUnlock> all, UnlockGateContext ctx)
     {
-        // Alternative quests share the same unlock name: any one complete → all Done.
-        var doneByName = new HashSet<string>(StringComparer.Ordinal);
+        // Alternative quests — one per starting city, the player gets exactly one — share both an
+        // unlock name and a level, so completing any one of them completes the unlock for all.
+        // See AlternativeGroup for why the level has to be part of that key.
+        var doneGroups = new HashSet<AlternativeGroup>();
         foreach (var u in all)
         {
-            if (u.QuestRowId is { } id && ctx.IsQuestComplete(id))
+            if (u.QuestRowId is { } id && (ctx.IsQuestComplete(id) || AnyAlternativeComplete(u, ctx)))
             {
-                doneByName.Add(u.Def.Unlock);
+                doneGroups.Add(AlternativeGroup.Of(u));
             }
         }
 
         foreach (var u in all)
         {
-            ComputeOne(u, ctx, doneByName);
+            ComputeOne(u, ctx, doneGroups);
         }
-    }
-
-    public static int CountAvailableIn(IEnumerable<ResolvedUnlock> all, uint territory)
-    {
-        var n = 0;
-        foreach (var u in all)
-        {
-            if (u.Status == UnlockStatus.Available && u.GiverTerritory == territory)
-            {
-                n++;
-            }
-        }
-
-        return n;
     }
 
     /// <summary>Resolves Status/LockReason for a single entry through the first four precedence
     /// stages (Done, Accepted, LockedOut, job/level, prereq chain), then hands off to
     /// <see cref="ComputeRemainingGates"/> for the rest.</summary>
-    private static void ComputeOne(ResolvedUnlock u, UnlockGateContext ctx, HashSet<string> doneByName)
+    private static void ComputeOne(ResolvedUnlock u, UnlockGateContext ctx, HashSet<AlternativeGroup> doneGroups)
     {
         u.LockReason = null;
+
+        // An entry with no quest bound to it has no completion evidence of its own, and cannot
+        // borrow another entry's: it is unverified, never Done.
         if (u.QuestRowId is not { } rowId)
         {
             u.Status = UnlockStatus.Unverified;
             return;
         }
 
-        if (doneByName.Contains(u.Def.Unlock))
+        if (doneGroups.Contains(AlternativeGroup.Of(u)))
         {
             u.Status = UnlockStatus.Done;
             return;
         }
 
-        if (ctx.IsQuestAccepted(rowId))
+        if (ctx.IsQuestAccepted(rowId) || AnyAlternativeAccepted(u, ctx))
         {
             u.Status = UnlockStatus.Accepted;
+            return;
+        }
+
+        // Every gate below this line is read off one Quest row, and when several rows share the
+        // catalogue's name the matcher picked one of them arbitrarily — the character's starting
+        // city decides which is really theirs and the plugin cannot see it. Done and Accepted are
+        // safe above, because they ask about all the siblings at once; nothing below can. Graded
+        // on the wrong sibling, a Gridanian was told a Limsa Lominsa quest was in their way, in
+        // the confident voice this plugin reserves for things it knows.
+        if (u.AlternativeQuestRowIds.Count > 1)
+        {
+            u.Status = UnlockStatus.RequirementsUnknown;
+            u.LockReason = $"the game ships {u.AlternativeQuestRowIds.Count} quests with this name and only your character knows which is yours — status unknown";
             return;
         }
 
@@ -124,6 +133,35 @@ public static class UnlockStatusCalculator
             return;
         }
 
+        ComputeFinalGates(u, ctx);
+    }
+
+    /// <summary>The gates that live outside the Quest row's own columns — a hard job requirement,
+    /// the separate accept-condition sheet, the catalogue's curated requirements — and then the
+    /// two "we don't know" outcomes that stand between this and reporting Available.</summary>
+    private static void ComputeFinalGates(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        if (!HardRequiredJobMet(u, ctx, out var hardJobReason))
+        {
+            u.Status = UnlockStatus.LevelLocked;
+            u.LockReason = hardJobReason;
+            return;
+        }
+
+        if (AcceptConditionBlocking(u, ctx, out var acceptReason, out var acceptStatus))
+        {
+            u.Status = acceptStatus;
+            u.LockReason = acceptReason;
+            return;
+        }
+
+        if (CuratedRequirementBlocking(u, ctx, out var curatedReason, out var curatedStatus))
+        {
+            u.Status = curatedStatus;
+            u.LockReason = curatedReason;
+            return;
+        }
+
         if (u.HasUnmodeledGate)
         {
             u.Status = UnlockStatus.UnknownGate;
@@ -131,7 +169,188 @@ public static class UnlockStatusCalculator
             return;
         }
 
+        // The change this whole audit exists for. "No gate found" and "no gate exists" look
+        // identical in the Quest sheet: row 67086 has every gate column empty and a recorded level
+        // of 1, and still wants seven Extreme-trial mounts, because its real condition lives in a
+        // server-side accept script that is not shipped in sqpack and has no client API. Falling
+        // through to Available here is what sent a player to a quest they could not accept.
+        //
+        // The curated block only lifts that verdict if it actually checks something. A `requires`
+        // carrying nothing but prose — or nothing at all — is a note, not a gate, and letting its
+        // mere presence disable the guard would reopen the hole it was written to close.
+        if (u.HasNoDiscoverableGate && u.Def.Requires?.HasCheckableRequirement != true)
+        {
+            u.Status = UnlockStatus.RequirementsUnknown;
+            u.LockReason = "the game records no requirement for this at all, which usually means it has one this plugin can't see — status unknown";
+            return;
+        }
+
         u.Status = UnlockStatus.Available;
+    }
+
+    /// <summary><c>ClassJobRequired</c>: a single job that must be at the quest's level, whatever
+    /// the category mask allows. Reuses <see cref="UnlockStatus.LevelLocked"/> and its phrasing,
+    /// so nothing downstream has to learn a new shape.</summary>
+    private static bool HardRequiredJobMet(ResolvedUnlock u, UnlockGateContext ctx, out string? reason)
+    {
+        reason = null;
+        if (u.HardRequiredJobRowId is not { } jobId || ctx.GetClassJobLevel(jobId) >= u.QuestLevel)
+        {
+            return true;
+        }
+
+        reason = $"needs {u.HardRequiredJobName ?? "a specific job"} {u.QuestLevel}";
+        return false;
+    }
+
+    /// <summary><c>QuestAcceptAdditionCondition</c>: prerequisite quests kept in their own sheet,
+    /// AND-ed. An id that doesn't resolve to a Quest row is an unknown requirement, not an absent
+    /// one, and blocks with <see cref="UnlockStatus.RequirementsUnknown"/>.</summary>
+    private static bool AcceptConditionBlocking(
+        ResolvedUnlock u, UnlockGateContext ctx, out string? reason, out UnlockStatus status)
+    {
+        reason = null;
+        status = UnlockStatus.QuestLocked;
+        for (var i = 0; i < u.AcceptConditionQuestRowIds.Count; i++)
+        {
+            if (ctx.IsQuestComplete(u.AcceptConditionQuestRowIds[i]))
+            {
+                continue;
+            }
+
+            var name = i < u.AcceptConditionQuestNames.Count
+                ? u.AcceptConditionQuestNames[i]
+                : u.AcceptConditionQuestRowIds[i].ToString(CultureInfo.InvariantCulture);
+            reason = $"needs quest '{name}'";
+            return true;
+        }
+
+        if (!u.HasUnresolvedAcceptCondition)
+        {
+            return false;
+        }
+
+        status = UnlockStatus.RequirementsUnknown;
+        reason = "has an extra requirement this plugin can't identify — status unknown";
+        return true;
+    }
+
+    /// <summary>The catalogue's curated <c>requires</c> block: level and job first (so the level
+    /// gate keeps winning over the collection gate, as it does everywhere else), then the
+    /// collectibles, then the honest fallback for a requirement that is known to exist but can't
+    /// be expressed. Fills <see cref="ResolvedUnlock.MissingRequirements"/> with the whole list —
+    /// telling the player only the first of seven missing mounts would be its own small lie.</summary>
+    private static bool CuratedRequirementBlocking(
+        ResolvedUnlock u, UnlockGateContext ctx, out string? reason, out UnlockStatus status)
+    {
+        reason = null;
+        status = UnlockStatus.CollectionLocked;
+        u.MissingRequirements = [];
+        if (u.Def.Requires is not { } req)
+        {
+            return false;
+        }
+
+        if (req.MinLevel is { } minLevel && ctx.PlayerLevel < minLevel)
+        {
+            status = UnlockStatus.LevelLocked;
+            reason = $"needs level {minLevel}";
+            return true;
+        }
+
+        foreach (var job in req.Jobs)
+        {
+            if (ctx.GetClassJobLevel(job.Id) < job.Level)
+            {
+                status = UnlockStatus.LevelLocked;
+                reason = $"needs {job.Name} {job.Level}";
+                return true;
+            }
+        }
+
+        CollectMissing(u, ctx, req);
+        if (u.MissingRequirements.Count > 0)
+        {
+            reason = u.MissingRequirements.Count == 1
+                ? $"requires {u.MissingRequirements[0]}"
+                : $"requires {u.MissingRequirements.Count} more of {req.Label ?? "a set of collectibles"}; next: {u.MissingRequirements[0]}";
+            return true;
+        }
+
+        if (!req.Unverifiable)
+        {
+            return false;
+        }
+
+        status = UnlockStatus.RequirementsUnknown;
+        reason = req.Label is { Length: > 0 } label
+            ? $"{label} — status unknown"
+            : "has a requirement this plugin can't check — status unknown";
+        return true;
+    }
+
+    private static void CollectMissing(ResolvedUnlock u, UnlockGateContext ctx, UnlockRequirement req)
+    {
+        foreach (var mount in req.Mounts)
+        {
+            if (!ctx.IsMountUnlocked(mount.Id))
+            {
+                u.MissingRequirements.Add(Describe(mount.Name, mount.From));
+            }
+        }
+
+        foreach (var minion in req.Minions)
+        {
+            if (!ctx.IsMinionUnlocked(minion.Id))
+            {
+                u.MissingRequirements.Add(Describe(minion.Name, minion.From));
+            }
+        }
+
+        foreach (var item in req.Items)
+        {
+            var owned = item.KeyItem ? ctx.GetKeyItemCount(item.Id) : ctx.GetOwnedItemCount(item.Id);
+            var needed = item.Count > 0 ? item.Count : 1;
+            if (owned < needed)
+            {
+                u.MissingRequirements.Add(needed > 1 ? $"{item.Name} x{needed}" : item.Name);
+            }
+        }
+    }
+
+    private static string Describe(string name, string? from) =>
+        from is { Length: > 0 } ? $"{name} — {from}" : name;
+
+    /// <summary>Completing any one of the rows a duplicated quest name could mean counts as
+    /// completing the unlock. A character gets exactly one of the three <c>Simply the Hest</c>
+    /// rows, decided by their starting city, so checking only the bound row reported "not done"
+    /// for two thirds of characters.</summary>
+    private static bool AnyAlternativeComplete(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        foreach (var id in u.AlternativeQuestRowIds)
+        {
+            if (ctx.IsQuestComplete(id))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Same reasoning as <see cref="AnyAlternativeComplete"/>: the character may have
+    /// picked up a sibling row rather than the one the matcher bound.</summary>
+    private static bool AnyAlternativeAccepted(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        foreach (var id in u.AlternativeQuestRowIds)
+        {
+            if (ctx.IsQuestAccepted(id))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary><c>QuestLock</c>: completing any (Join 2, the only value observed in game data)
@@ -361,5 +580,26 @@ public static class UnlockStatusCalculator
         var rankLabel = u.RequiredBeastTribeRankName ?? $"rank {rankId}";
         reason = $"needs {tribe} {rankLabel}";
         return false;
+    }
+
+    /// <summary>The identity of a set of interchangeable quests: entries the catalogue lists under
+    /// the same unlock name <b>at the same level</b>.
+    ///
+    /// <para>The name alone is not that identity, and treating it as one told the player something
+    /// false and then hid the evidence. Eight labels are duplicated in the shipped catalogue and
+    /// only two are genuine alternatives — <c>Levequests</c> (three city introductions, all level
+    /// 10) and <c>Glamours</c> (two, both level 15). The other six are <b>progression tiers</b>:
+    /// <c>Sightseeing Log Expansion</c> is five different quests at levels 52, 60, 70, 80 and 90,
+    /// and <c>Stone, Sky, Sea Access</c> another five from 60 to 100. Keyed on the name alone,
+    /// finishing the level-52 quest reported all five tiers Complete — and because <c>ShowDone</c>
+    /// defaults to false, the four that were not complete vanished from the checklist rather than
+    /// being visibly wrong.</para>
+    ///
+    /// <para>Membership is still established by quest identity: a group is marked done only when a
+    /// Quest row belonging to it is actually complete. The level is what stops that evidence
+    /// leaking sideways into a tier it says nothing about.</para></summary>
+    private readonly record struct AlternativeGroup(string Unlock, int Level)
+    {
+        public static AlternativeGroup Of(ResolvedUnlock u) => new(u.Def.Unlock, u.Def.Level);
     }
 }

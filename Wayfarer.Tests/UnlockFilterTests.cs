@@ -76,6 +76,24 @@ public class UnlockFilterTests
         Assert.Equal(expected, top.Select(r => r.Def.Unlock).ToArray());
     }
 
+    // The ambient loop is the promise that anything the plugin points at is actually grabbable.
+    // An entry whose requirements are unknown, or that is waiting on a set of collectibles, must
+    // not raise the info bar's marker, add to its count, or take a line on the readout.
+    [Theory]
+    [InlineData(UnlockStatus.RequirementsUnknown)]
+    [InlineData(UnlockStatus.CollectionLocked)]
+    [InlineData(UnlockStatus.UnknownGate)]
+    public void TopAvailableHere_ExcludesAnythingNotKnownToBeGrabbable(UnlockStatus status)
+    {
+        var grabbable = U("Grabbable", "system", territory: 132, x: 50, z: 0);
+        var notSure = U("Not sure", "system", territory: 132, x: 1, z: 0, status: status);
+
+        var top = RoutePlanner.TopAvailableHere([notSure, grabbable], 132, 0f, 0f, max: 3);
+
+        var expected = new[] { "Grabbable" };
+        Assert.Equal(expected, top.Select(r => r.Def.Unlock).ToArray());
+    }
+
     [Fact]
     public void TopAvailableHere_FewerThanMaxReturnsAll()
     {

@@ -28,8 +28,8 @@ public static class RoutePlanner
 
     /// <summary>Top <paramref name="max"/> Available unlocks in <paramref name="currentTerritory"/>,
     /// nearest-first from the player position — the pure selection behind the widget's glanceable
-    /// lines (spec §4, task A3). Same Available + GiverTerritory==territory criterion as
-    /// <see cref="UnlockStatusCalculator.CountAvailableIn"/>; reuses the same greedy-nearest chain
+    /// lines and the info bar's alert marker. Same Available + GiverTerritory==territory criterion as
+    /// <see cref="UnlockStatusCalculator.Compute"/>; reuses the same greedy-nearest chain
     /// as <see cref="Order"/> restricted to the current zone.</summary>
     public static List<ResolvedUnlock> TopAvailableHere(
         IEnumerable<ResolvedUnlock> all, uint currentTerritory, float px, float pz, int max)

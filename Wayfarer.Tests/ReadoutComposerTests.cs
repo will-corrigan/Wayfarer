@@ -1,0 +1,257 @@
+using Wayfarer.Core.Navigation;
+using Wayfarer.Core.Ui;
+
+namespace Wayfarer.Tests;
+
+public class ReadoutComposerTests
+{
+    [Fact]
+    public void A_hidden_snapshot_draws_nothing_at_all()
+    {
+        var content = ReadoutComposer.Compose(Inputs(new NavigationState { Mode = NavigationState.Modes.Hidden }));
+
+        Assert.True(content.IsEmpty);
+        Assert.False(content.ShowArrow);
+    }
+
+    [Fact]
+    public void The_heading_names_the_active_mode()
+    {
+        var content = ReadoutComposer.Compose(Inputs(Engaged("Hunting Log · Gladiator")));
+
+        var heading = Assert.Single(content.Lines, line => line.Emphasis == ReadoutEmphasis.Heading);
+        Assert.Equal("Hunting Log · Gladiator", heading.Text);
+    }
+
+    [Fact]
+    public void There_is_never_more_than_one_heading()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Unlock route"),
+            HuntingSummary = "Ornery Karakul 2/3",
+            NearbyUnlocks = ["Chocobo racing"],
+            DistanceYalms = 120f,
+        });
+
+        Assert.Single(content.Lines, line => line.Emphasis == ReadoutEmphasis.Heading);
+    }
+
+    [Fact]
+    public void Chain_progress_rides_on_the_mode_line_rather_than_the_objective()
+    {
+        var state = Engaged("Hunting Log · Gladiator") with { RouteStop = 3, RouteTotal = 11 };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Equal("Hunting Log · Gladiator — 3 of 11", content.Lines[0].Text);
+    }
+
+    [Fact]
+    public void The_quest_you_happen_to_be_on_is_not_shown_beside_an_engaged_mode()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(Engaged("Hunting Log · Gladiator") with { QuestName = "The Ul'dahn Envoy" }));
+
+        // The objective line belongs to the mode, so the quest name it carries is the mode's own.
+        // Nothing anywhere in the readout names a second thing that could be what the arrow follows.
+        Assert.DoesNotContain(
+            content.Lines,
+            line => line.Text.StartsWith("Main Scenario:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_hunt_that_is_already_the_primary_objective_is_not_repeated_further_down()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Hunting Log · Gladiator") with { QuestName = "Ornery Karakul" },
+            HuntingSummary = "Ornery Karakul 2/3",
+            HuntingIsPrimary = true,
+        });
+
+        Assert.Single(content.Lines, line => line.Text.Contains("Ornery Karakul", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_hunt_that_is_not_the_active_objective_still_gets_one_muted_line()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Unlock route") with { QuestName = "Unlocks: Chocobo racing" },
+            HuntingSummary = "Ornery Karakul 2/3",
+            HuntingIsPrimary = false,
+        });
+
+        var line = Assert.Single(content.Lines, l => l.Text.Contains("Karakul", StringComparison.Ordinal));
+        Assert.Equal(ReadoutEmphasis.Muted, line.Emphasis);
+    }
+
+    [Fact]
+    public void The_arrow_points_at_the_same_zone_target()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.SameZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "The Ul'dahn Envoy",
+            TargetX = 12f,
+            TargetY = 3f,
+            TargetZ = -40f,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 84f });
+
+        Assert.True(content.ShowArrow);
+        Assert.Equal(12f, content.TargetX);
+        Assert.Equal(-40f, content.TargetZ);
+        Assert.Contains(content.Lines, line => line.Emphasis == ReadoutEmphasis.Primary && line.Text.Contains("yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_arrow_points_at_the_entrance_when_the_objective_is_in_another_zone()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "The Ul'dahn Envoy",
+            EntranceName = "Gate of Nald",
+            EntranceX = 5f,
+            EntranceZ = 6f,
+            ZoneName = "Western Thanalan",
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 200f });
+
+        Assert.True(content.ShowArrow);
+        Assert.Equal(5f, content.TargetX);
+        Assert.Equal(6f, content.TargetZ);
+        Assert.Contains(content.Lines, line => line.Text.Contains("Through Gate of Nald", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void There_is_no_arrow_when_the_route_is_a_teleport()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "The Ul'dahn Envoy",
+            AetheryteName = "Horizon",
+            AetheryteId = 2,
+            AetheryteUnlocked = true,
+            ZoneName = "Western Thanalan",
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.False(content.ShowArrow);
+        Assert.Contains(content.Lines, line => line.Text.Contains("Teleport to Horizon", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_teleport_line_only_says_click_where_clicking_is_possible()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            AetheryteName = "Horizon",
+            AetheryteUnlocked = true,
+        };
+
+        var withMouse = ReadoutComposer.Compose(Inputs(state) with { TeleportOnClick = true });
+        var withPad = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(withMouse.Lines, line => line.Text.EndsWith("(click)", StringComparison.Ordinal));
+        Assert.DoesNotContain(withPad.Lines, line => line.Text.Contains("(click)", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Nearby_unlocks_collapse_to_a_count_while_a_mode_is_engaged()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Hunting Log · Gladiator"),
+            NearbyUnlocks = ["Chocobo racing", "Triple Triad", "The Gold Saucer"],
+        });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Unlocks nearby: 3", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("Triple Triad", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Nearby_unlocks_are_named_when_nothing_is_engaged()
+    {
+        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { NearbyUnlocks = ["Chocobo racing", "Triple Triad"] });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Triple Triad", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Nearby_unlocks_never_exceed_the_line_budget()
+    {
+        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
+        var many = Enumerable.Range(0, 12).Select(i => $"Unlock {i} (30 yalms)").ToList();
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { NearbyUnlocks = many });
+
+        var shown = content.Lines.Count(line => line.Text.StartsWith("Unlock ", StringComparison.Ordinal));
+        Assert.Equal(ReadoutComposer.MaxNearbyUnlockLines, shown);
+    }
+
+    [Fact]
+    public void Nearby_unlocks_are_display_only_and_never_take_the_arrow()
+    {
+        // They are context, not guidance: naming them must not make one of them the thing the
+        // arrow is pointing at, and must not add a second direction indicator.
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.SameZone,
+            SourceLabel = "Main Scenario",
+            TargetX = 10f,
+            TargetZ = 20f,
+        };
+
+        var content = ReadoutComposer.Compose(
+            Inputs(state) with { NearbyUnlocks = ["Chocobo racing (30 yalms)"], DistanceYalms = 80f });
+
+        Assert.True(content.ShowArrow);
+        Assert.Equal(10f, content.TargetX);
+        Assert.Equal(20f, content.TargetZ);
+        Assert.All(
+            content.Lines.Where(line => line.Text.Contains("Chocobo", StringComparison.Ordinal)),
+            line => Assert.Equal(ReadoutEmphasis.Muted, line.Emphasis));
+    }
+
+    [Fact]
+    public void An_arrival_reads_as_words_rather_than_a_meaningless_bearing()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.SameZone,
+            SourceLabel = "Main Scenario",
+            TargetX = 1f,
+            TargetZ = 1f,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 2f });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+    }
+
+    private static NavigationState Engaged(string sourceLabel) => new()
+    {
+        Mode = NavigationState.Modes.SameZone,
+        SourceLabel = sourceLabel,
+        Engaged = true,
+        QuestName = "Ornery Karakul",
+        TargetX = 0f,
+        TargetZ = 0f,
+    };
+
+    private static ReadoutInputs Inputs(NavigationState state) => new() { State = state };
+}

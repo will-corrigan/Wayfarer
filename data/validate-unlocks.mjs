@@ -1,15 +1,171 @@
 const d = (await import('./unlocks-by-level.json', { with: { type: 'json' } })).default;
 const prios = new Set(['essential', 'nice', 'optional']);
+const confidences = new Set(['verified', 'single-source', 'unverified']);
+const types = new Set(['alliance-raid', 'dungeon', 'emote', 'minion', 'mount', 'raid', 'system', 'trial', 'zone']);
+const questKinds = new Set(['classquest', 'msq', 'other', 'sidequest']);
+const MAX_LEVEL = 110;
+const EXPECTED = 588;
 let errors = 0;
 const err = (m) => { console.error(m); errors++; };
-if (!Array.isArray(d.unlocks) || d.unlocks.length !== 621) err(`unlocks length ${d.unlocks?.length} != 621`);
+if (!Array.isArray(d.unlocks) || d.unlocks.length !== EXPECTED) err(`unlocks length ${d.unlocks?.length} != ${EXPECTED}`);
+
+// Anything this file does not name is a field the plugin does not read. System.Text.Json drops an
+// unknown property without a word, so a misspelt 'requiers' or a requirement kind nobody
+// implemented (`requires.achievements`) would ship looking like a real constraint and be enforced
+// by nothing. A key that is not on a list here is a mistake, by definition.
+const checkKeys = (where, obj, allowed) => {
+  for (const k of Object.keys(obj)) if (!allowed.has(k)) err(`${where}: unknown field '${k}'`);
+};
+
+// The dataset is deserialised into fixed C# types, so a value of the wrong JSON kind is not a
+// lenient coercion — it throws inside JsonSerializer and takes the whole unlocks feature down with
+// it. Every scalar the plugin reads is type-checked here so that failure cannot leave the repo.
+const checkScalar = (where, obj, key, kind, optional = false) => {
+  if (!(key in obj) || obj[key] === null) {
+    if (!optional) err(`${where}: missing '${key}'`);
+    return false;
+  }
+  const v = obj[key];
+  const ok = kind === 'uint' ? Number.isInteger(v) && v >= 0
+    : kind === 'int' ? Number.isInteger(v)
+    : typeof v === kind;
+  if (!ok) err(`${where}: '${key}' must be ${kind}, got ${JSON.stringify(v)}`);
+  return ok;
+};
+
+const collectibleKeys = {
+  mounts: new Set(['id', 'name', 'from', 'level']),
+  minions: new Set(['id', 'name', 'from', 'level']),
+  items: new Set(['id', 'name', 'from', 'level', 'count', 'keyItem']),
+  jobs: new Set(['id', 'name', 'level']),
+};
+
+const checkCollectible = (where, kind, c) => {
+  if (typeof c !== 'object' || c === null || Array.isArray(c)) { err(`${where}: collectible must be an object`); return; }
+  checkKeys(where, c, collectibleKeys[kind]);
+  if (!Number.isInteger(c.id) || c.id <= 0) err(`${where}: collectible needs a positive id`);
+  if (typeof c.name !== 'string' || c.name.length === 0) err(`${where}: collectible needs a name`);
+  if ('from' in c && c.from !== null && typeof c.from !== 'string') err(`${where}: bad 'from'`);
+  if ('keyItem' in c) checkScalar(where, c, 'keyItem', 'boolean', true);
+  if ('level' in c && (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_LEVEL))
+    err(`${where}: collectible level out of range`);
+};
+
+// The failure this whole schema exists to stop: an entry whose requirements the plugin cannot
+// establish must say so, so the status calculator can refuse to call it available. "No gate
+// found" is not the same fact as "no gate exists" — quest row 67086 has every gate column empty
+// and still needs seven Extreme-trial mounts.
+const lists = ['mounts', 'minions', 'items', 'jobs'];
+const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel']);
+
+const checkRequires = (where, r) => {
+  if (typeof r !== 'object' || r === null || Array.isArray(r)) { err(`${where}: 'requires' must be an object`); return; }
+  checkKeys(`${where} requires`, r, requiresKeys);
+  for (const k of lists) {
+    if (!(k in r)) continue;
+    if (!Array.isArray(r[k])) { err(`${where}: requires.${k} must be an array`); continue; }
+    for (const c of r[k]) checkCollectible(`${where} requires.${k}`, k, c);
+  }
+  for (const it of r.items ?? []) {
+    if ('count' in it && (!Number.isInteger(it.count) || it.count < 1)) err(`${where}: requires.items count must be >= 1`);
+  }
+  for (const j of r.jobs ?? []) {
+    if (!Number.isInteger(j.level) || j.level < 1 || j.level > MAX_LEVEL) err(`${where}: requires.jobs level out of range`);
+  }
+  if ('minLevel' in r && (!Number.isInteger(r.minLevel) || r.minLevel < 1 || r.minLevel > MAX_LEVEL))
+    err(`${where}: requires.minLevel out of range`);
+  if ('unverifiable' in r && typeof r.unverifiable !== 'boolean') err(`${where}: requires.unverifiable must be a boolean`);
+  if ('label' in r && (typeof r.label !== 'string' || r.label.length < 4)) err(`${where}: requires.label too short`);
+
+  const hasConcrete = lists.some((k) => (r[k]?.length ?? 0) > 0) || 'minLevel' in r;
+  if (!hasConcrete && !r.unverifiable) err(`${where}: 'requires' has neither a concrete requirement nor unverifiable:true`);
+  if (!hasConcrete && !r.label) err(`${where}: an unverifiable 'requires' must say what is missing, in 'label'`);
+};
+
+const entryKeys = new Set([
+  'level', 'unlock', 'type', 'quest', 'questKind', 'notes',
+  'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+]);
+
+// An entry duplicated verbatim is two rows of the same thing in the checklist, and — since the two
+// share a name and a level — one group that can never disagree with itself, so nothing downstream
+// would ever notice.
+const seen = new Map();
+
 for (const [i, e] of d.unlocks.entries()) {
+  const where = `#${i} ${e.unlock}`;
+  if (typeof e !== 'object' || e === null || Array.isArray(e)) { err(`${where}: entry must be an object`); continue; }
+  checkKeys(where, e, entryKeys);
   if (typeof e.description !== 'string' || e.description.length < 20 || e.description.length > 400)
-    err(`#${i} ${e.unlock}: bad description`);
-  if (!prios.has(e.priority)) err(`#${i} ${e.unlock}: bad priority '${e.priority}'`);
-  if (typeof e.cosmetic !== 'boolean') err(`#${i} ${e.unlock}: bad cosmetic`);
+    err(`${where}: bad description`);
+  if (!prios.has(e.priority)) err(`${where}: bad priority '${e.priority}'`);
+  if (typeof e.cosmetic !== 'boolean') err(`${where}: bad cosmetic`);
   for (const k of ['level', 'unlock', 'type', 'quest', 'questKind', 'notes'])
-    if (!(k in e)) err(`#${i} ${e.unlock}: lost original field ${k}`);
+    if (!(k in e)) err(`${where}: lost original field ${k}`);
+
+  // The name and the level together identify an unlock, and the status calculator relies on that:
+  // entries sharing both are treated as interchangeable quests for one unlock, so completing any
+  // one marks them all done. Everything the pair is made of has to be sound.
+  checkScalar(where, e, 'unlock', 'string');
+  if (typeof e.unlock === 'string' && e.unlock.trim().length === 0) err(`${where}: 'unlock' is blank`);
+  if (checkScalar(where, e, 'level', 'int') && (e.level < 0 || e.level > MAX_LEVEL))
+    err(`${where}: level ${e.level} out of range 0..${MAX_LEVEL}`);
+  if (!types.has(e.type)) err(`${where}: unknown type '${e.type}'`);
+  if (e.questKind !== null && !questKinds.has(e.questKind)) err(`${where}: unknown questKind '${e.questKind}'`);
+  checkScalar(where, e, 'quest', 'string', true);
+  if (typeof e.quest === 'string' && e.quest.trim().length === 0)
+    err(`${where}: 'quest' is whitespace — use null for "no quest recorded"`);
+  checkScalar(where, e, 'notes', 'string', true);
+  if (e.unlock.includes('???')) err(`${where}: wiki placeholder rows are not shippable`);
+
+  const fingerprint = JSON.stringify(e, Object.keys(e).sort());
+  if (seen.has(fingerprint)) err(`${where}: duplicate of #${seen.get(fingerprint)}`);
+  else seen.set(fingerprint, i);
+
+  if (!confidences.has(e.confidence)) err(`${where}: bad confidence '${e.confidence}'`);
+  if (!Array.isArray(e.sources) || e.sources.length === 0 || e.sources.some((s) => typeof s !== 'string' || !s))
+    err(`${where}: 'sources' must be a non-empty list of strings`);
+  else if (e.confidence === 'verified' && e.sources.length < 2)
+    err(`${where}: 'verified' needs at least two independent sources`);
+
+  if ('requires' in e) checkRequires(where, e.requires);
+
+  // An entry with no quest, or one nothing in the game data backs, has no discoverable gate at
+  // all. Without an explicit unverifiable marker the calculator would fall through to Available
+  // and tell the player to go and get something they cannot get.
+  const unbacked = e.quest === null || e.confidence === 'unverified';
+  if (unbacked && e.requires?.unverifiable !== true)
+    err(`${where}: nothing backs this entry, so it needs requires.unverifiable:true`);
+  if (e.requires?.unverifiable === true && e.confidence !== 'unverified')
+    err(`${where}: an unverifiable requirement cannot be better than 'unverified' confidence`);
 }
-console.log(errors ? `FAILED: ${errors} errors` : 'OK: 621 entries valid');
+
+// 'verified' claims two independent sources agree on what unlocks this. When two entries cite the
+// same Quest row at levels well apart, they cannot both be right about what that quest unlocks —
+// so neither of them is corroborated, whatever each one says on its own. A gap of one level is the
+// wiki's own table rounding and is left alone; anything wider is a genuine conflict, and it has to
+// be recorded rather than asserted away.
+const LEVEL_AGREEMENT_SLACK = 1;
+const byQuestRow = new Map();
+for (const [i, e] of d.unlocks.entries()) {
+  const row = (e.sources ?? []).find((s) => typeof s === 'string' && s.startsWith('game-data:Quest#'));
+  if (row) byQuestRow.set(row, [...(byQuestRow.get(row) ?? []), i]);
+}
+for (const [row, idx] of byQuestRow) {
+  if (idx.length < 2) continue;
+  const levels = idx.map((i) => d.unlocks[i].level);
+  if (Math.max(...levels) - Math.min(...levels) <= LEVEL_AGREEMENT_SLACK) continue;
+  for (const i of idx) {
+    const e = d.unlocks[i];
+    if (e.confidence === 'verified')
+      err(`#${i} ${e.unlock}: cites ${row} at level ${e.level}, which other entries place at ${levels.filter((l) => l !== e.level).join('/')} — sources disagree, so this is not 'verified'`);
+    if (!/level disputed/i.test(e.notes ?? ''))
+      err(`#${i} ${e.unlock}: shares ${row} with an entry at a different level and must say so in 'notes'`);
+  }
+}
+
+const counts = d.unlocks.reduce((a, e) => ({ ...a, [e.confidence]: (a[e.confidence] ?? 0) + 1 }), {});
+console.log(errors
+  ? `FAILED: ${errors} errors`
+  : `OK: ${d.unlocks.length} entries valid (${JSON.stringify(counts)})`);
 process.exit(errors ? 1 : 0);

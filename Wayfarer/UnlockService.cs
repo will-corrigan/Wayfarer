@@ -17,7 +17,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 {
     private const uint QuestRowIdOffset = 65536;
 
-    /// <summary>How many entries <see cref="GlanceableHere"/> caps at — spec §4's "top 2-3".</summary>
+    /// <summary>How many entries <see cref="GlanceableHere"/> caps at. The readout enforces its own
+    /// line budget on top of this (<c>ReadoutComposer.MaxNearbyUnlockLines</c>).</summary>
     private const int GlanceableMax = 3;
 
     private readonly IPluginLog log;
@@ -51,23 +52,28 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         }
         catch (Exception ex)
         {
+            // Kept, not just logged. The checklist is the whole of this feature, and an empty
+            // checklist reads as "you have done everything" — the same lie in a different shape.
+            // Every surface that would have shown entries shows this instead.
+            LoadError = ex.Message;
             log.Error(ex, "UnlockService: dataset load failed — unlocks feature disabled");
         }
     }
 
     public bool Loaded { get; private set; }
 
+    /// <summary>Why the catalogue is not loaded, or null when it is. Shown to the player rather
+    /// than left in the log, because the alternative is a checklist that is silently empty.</summary>
+    public string? LoadError { get; private set; }
+
     public IReadOnlyList<ResolvedUnlock> Entries => entries;
 
-    public int AvailableHereCount { get; private set; }
-
     /// <summary>Top <see cref="GlanceableMax"/> Available unlocks in the current zone, nearest-
-    /// first from the player position as of the last recompute — read straight by
-    /// <see cref="Windows.ArrowWindow"/>'s glanceable lines (spec §4, task A3), never rescanned
-    /// per-frame. Recomputed at the same cadence as <see cref="AvailableHereCount"/> (zone/level
-    /// change or an advanced pickup) via <see cref="Recompute"/>; the widget refreshes only the
-    /// live distance to each already-selected entry every frame, which is cheap arithmetic, not a
-    /// new scan.</summary>
+    /// first from the player position as of the last recompute. This is what the readout's "there
+    /// is something here" lines and the info bar's alert marker are both built from, and it is
+    /// never rescanned per-frame: it is recomputed only on a zone or level change or an advanced
+    /// pickup, and the surfaces refresh only the live distance to each already-selected entry,
+    /// which is arithmetic rather than a new scan.</summary>
     public IReadOnlyList<ResolvedUnlock> GlanceableHere { get; private set; } = [];
 
     public PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
@@ -112,6 +118,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
         var qm = QuestManager.Instance();
         var ps = PlayerState.Instance();
+        var ui = UIState.Instance();
+        var inventory = InventoryManager.Instance();
         var ctx = new UnlockGateContext(
             PlayerLevel: level,
             PlayerGrandCompany: ps != null ? ps->GrandCompany : (byte)0,
@@ -122,16 +130,24 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             IsInstanceContentCompleted: UIState.IsInstanceContentCompleted,
             IsInstanceContentUnlocked: UIState.IsInstanceContentUnlocked,
             GetBeastTribeRank: tribeId => ps != null ? ps->GetBeastTribeRank(tribeId) : (byte)0,
-            IsMountUnlocked: mountId => ps != null && ps->IsMountUnlocked(mountId));
+            IsMountUnlocked: mountId => ps != null && ps->IsMountUnlocked(mountId),
+            IsMinionUnlocked: minionId => ui != null && ui->IsCompanionUnlocked(minionId),
+            GetOwnedItemCount: itemId => inventory != null ? inventory->GetInventoryItemCount(itemId) : 0,
+            GetKeyItemCount: itemId => inventory != null ? KeyItemCount(inventory, itemId) : 0);
 
         UnlockStatusCalculator.Compute(entries, ctx);
         var territory = clientState.TerritoryType;
-        AvailableHereCount = UnlockStatusCalculator.CountAvailableIn(entries, territory);
 
         var player = objects.LocalPlayer;
         GlanceableHere = RoutePlanner.TopAvailableHere(
             entries, territory, player?.Position.X ?? 0, player?.Position.Z ?? 0, GlanceableMax);
     }
+
+    /// <summary>Key items live in their own container and are always resident, unlike an ordinary
+    /// item that may be sitting in a retainer the game has not loaded — which is why a curated
+    /// requirement says which container to look in rather than guessing.</summary>
+    private static int KeyItemCount(InventoryManager* inventory, uint itemId) =>
+        inventory->GetItemCountInContainer(itemId, InventoryType.KeyItems);
 
     /// <summary>Which ClassJob abbreviations a <see cref="ClassJobCategory"/> row flags: Lumina
     /// generates one bool property per abbreviation on that struct, so there's no reflection-free
@@ -230,6 +246,46 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         return classJobs;
     }
 
+    /// <summary>Groups every named Quest row under its folded name key, carrying the two facts
+    /// that separate a live row from a retired one when a name is duplicated: whether the row is
+    /// in the journal, and how many other quests depend on it. Building the inbound-reference
+    /// count means one extra pass over the sheet's <c>PreviousQuest</c> columns, paid once at
+    /// load.</summary>
+    private static Dictionary<string, List<QuestNameCandidate>> BuildNameIndex(ExcelSheet<Quest> sheet)
+    {
+        var inboundRefs = new Dictionary<uint, int>();
+        foreach (var q in sheet)
+        {
+            foreach (var prev in q.PreviousQuest)
+            {
+                if (prev.RowId != 0)
+                {
+                    inboundRefs[prev.RowId] = inboundRefs.GetValueOrDefault(prev.RowId) + 1;
+                }
+            }
+        }
+
+        var byKey = new Dictionary<string, List<QuestNameCandidate>>(StringComparer.Ordinal);
+        foreach (var q in sheet)
+        {
+            var name = q.Name.ExtractText();
+            if (name.Length == 0)
+            {
+                continue;
+            }
+
+            var key = QuestNameKey.For(name);
+            if (!byKey.TryGetValue(key, out var candidates))
+            {
+                byKey[key] = candidates = [];
+            }
+
+            candidates.Add(new QuestNameCandidate(q.RowId, q.JournalGenre.RowId, inboundRefs.GetValueOrDefault(q.RowId)));
+        }
+
+        return byKey;
+    }
+
     private void RecomputeSafe()
     {
         try
@@ -254,32 +310,24 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
         var classJobs = LoadClassJobs(dataManager);
         var enpcSheet = dataManager.GetExcelSheet<ENpcResident>();
-        var byName = new Dictionary<string, QuestFacts>(StringComparer.Ordinal);
         var sheet = dataManager.GetExcelSheet<Quest>();
-        foreach (var q in sheet)
-        {
-            var name = q.Name.ExtractText();
-            if (name.Length == 0)
-            {
-                continue;
-            }
-
-            var key = name.ToLowerInvariant();
-            if (byName.ContainsKey(key))
-            {
-                continue; // first wins; duplicates are rare and equivalent for our purpose
-            }
-
-            byName[key] = QuestFacts.From(q, classJobs, enpcSheet);
-        }
+        var acceptConditions = dataManager.GetExcelSheet<QuestAcceptAdditionCondition>();
+        var byKey = BuildNameIndex(sheet);
 
         entries.Clear();
         foreach (var def in defs)
         {
             var r = new ResolvedUnlock { Def = def };
-            if (def.Quest is { } questName && byName.TryGetValue(questName.ToLowerInvariant(), out var facts))
+            if (def.Quest is { } questName
+                && byKey.TryGetValue(QuestNameKey.For(questName), out var candidates)
+                && QuestNameMatch.Resolve(candidates) is var match
+                && sheet.GetRowOrDefault(match.Best.RowId) is { } row)
             {
-                facts.ApplyTo(r, def.Level);
+                QuestFacts.From(row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level);
+                if (match.IsAmbiguous)
+                {
+                    r.AlternativeQuestRowIds = [.. match.Alternatives];
+                }
             }
 
             entries.Add(r);
@@ -315,6 +363,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         uint? RequiredMountId,
         string? RequiredMountName,
         bool HasUnmodeledGate,
+        uint? HardRequiredJobRowId,
+        string? HardRequiredJobName,
+        List<uint> AcceptConditionQuestRowIds,
+        List<string> AcceptConditionQuestNames,
+        bool HasUnresolvedAcceptCondition,
+        bool HasNoDiscoverableGate,
         uint? Territory,
         uint? Map,
         float X,
@@ -326,7 +380,9 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         public static QuestFacts From(
             Quest q,
             List<(uint RowId, string Abbr, string Name)> classJobs,
-            ExcelSheet<ENpcResident> enpcSheet)
+            ExcelSheet<ENpcResident> enpcSheet,
+            ExcelSheet<Quest> questSheet,
+            ExcelSheet<QuestAcceptAdditionCondition> acceptConditions)
         {
             var prereqs = new List<uint>();
             var prereqNames = new List<string>();
@@ -338,7 +394,9 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 }
 
                 prereqs.Add(prev.RowId);
-                prereqNames.Add(prev.ValueNullable?.Name.ExtractText() ?? $"Quest {prev.RowId}");
+                prereqNames.Add(QuestNameKey.Display(prev.ValueNullable?.Name.ExtractText()) is { Length: > 0 } prevName
+                    ? prevName
+                    : $"Quest {prev.RowId}");
             }
 
             var lockoutIds = new List<uint>();
@@ -351,7 +409,9 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 }
 
                 lockoutIds.Add(locked.RowId);
-                lockoutNames.Add(locked.ValueNullable?.Name.ExtractText() ?? $"Quest {locked.RowId}");
+                lockoutNames.Add(QuestNameKey.Display(locked.ValueNullable?.Name.ExtractText()) is { Length: > 0 } lockedName
+                    ? lockedName
+                    : $"Quest {locked.RowId}");
             }
 
             var icIds = new List<uint>();
@@ -424,9 +484,60 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 giverName = gn;
             }
 
+            // QuestAcceptAdditionCondition lives in its own sheet, keyed by quest row id, and
+            // holds prerequisite quests that never appear in PreviousQuest. Ten catalogue entries
+            // depend on one — the Hunt tiers, the Custom Delivery unlocks — and were shown as
+            // ready to pick up while their real prerequisite was still incomplete. Some of the
+            // sheet's requirement ids don't resolve to a Quest row at all; that is an unknown
+            // requirement, not an absent one, and is recorded as such.
+            var acceptIds = new List<uint>();
+            var acceptNames = new List<string>();
+            var unresolvedAccept = false;
+            if (acceptConditions.GetRowOrDefault(q.RowId) is { } condition)
+            {
+                foreach (var requirement in new[] { condition.Requirement0.RowId, condition.Requirement1.RowId, condition.Unknown0 })
+                {
+                    if (requirement == 0)
+                    {
+                        continue;
+                    }
+
+                    if (questSheet.GetRowOrDefault(requirement)?.Name.ExtractText() is { Length: > 0 } requirementName)
+                    {
+                        acceptIds.Add(requirement);
+                        acceptNames.Add(QuestNameKey.Display(requirementName));
+                    }
+                    else
+                    {
+                        unresolvedAccept = true;
+                    }
+                }
+            }
+
+            var hasUnmodeledGate = q.Festival.RowId != 0 || q.IsHouseRequired;
+
+            // ClassJobLevel[0] is only half the required level: QuestLevelOffset carries the rest.
+            // Eight catalogue entries were reported 1-9 levels too low, worst of all the two
+            // Bozjan-front entries, shown as level 71 when they are level 80.
+            var requiredLevel = lvl0 + q.QuestLevelOffset;
+
+            // Nothing in the sheet asks anything of the player. That is not the same fact as
+            // "there is nothing to ask": see ResolvedUnlock.HasNoDiscoverableGate.
+            var noDiscoverableGate = requiredLevel <= 1
+                && prereqs.Count == 0
+                && lockoutIds.Count == 0
+                && icIds.Count == 0
+                && acceptIds.Count == 0
+                && !unresolvedAccept
+                && !hasUnmodeledGate
+                && q.GrandCompany.RowId == 0
+                && q.BeastTribe.RowId == 0
+                && q.MountRequired.RowId == 0
+                && q.ClassJobRequired.RowId == 0;
+
             return new QuestFacts(
                 RowId: q.RowId,
-                Level: lvl0,
+                Level: requiredLevel,
                 Prereqs: prereqs,
                 PrereqNames: prereqNames,
                 PrereqJoin: q.PreviousQuestJoin,
@@ -450,7 +561,13 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 RequiredBeastTribeRankName: q.BeastReputationRank.RowId != 0 ? q.BeastReputationRank.ValueNullable?.Name.ExtractText() : null,
                 RequiredMountId: q.MountRequired.RowId != 0 ? q.MountRequired.RowId : null,
                 RequiredMountName: q.MountRequired.RowId != 0 ? q.MountRequired.ValueNullable?.Singular.ExtractText() : null,
-                HasUnmodeledGate: q.Festival.RowId != 0 || q.IsHouseRequired,
+                HasUnmodeledGate: hasUnmodeledGate,
+                HardRequiredJobRowId: q.ClassJobRequired.RowId != 0 ? q.ClassJobRequired.RowId : null,
+                HardRequiredJobName: q.ClassJobRequired.RowId != 0 ? q.ClassJobRequired.ValueNullable?.Name.ExtractText() : null,
+                AcceptConditionQuestRowIds: acceptIds,
+                AcceptConditionQuestNames: acceptNames,
+                HasUnresolvedAcceptCondition: unresolvedAccept,
+                HasNoDiscoverableGate: noDiscoverableGate,
                 Territory: territory,
                 Map: map,
                 X: x,
@@ -488,6 +605,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.RequiredMountId = RequiredMountId;
             r.RequiredMountName = RequiredMountName;
             r.HasUnmodeledGate = HasUnmodeledGate;
+            r.HardRequiredJobRowId = HardRequiredJobRowId;
+            r.HardRequiredJobName = HardRequiredJobName;
+            r.AcceptConditionQuestRowIds = AcceptConditionQuestRowIds;
+            r.AcceptConditionQuestNames = AcceptConditionQuestNames;
+            r.HasUnresolvedAcceptCondition = HasUnresolvedAcceptCondition;
+            r.HasNoDiscoverableGate = HasNoDiscoverableGate;
             r.GiverTerritory = Territory;
             r.GiverMap = Map;
             r.GiverX = X;

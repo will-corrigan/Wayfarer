@@ -1,8 +1,6 @@
-using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Input;
 using Wayfarer.Guidance.Sources;
 using Wayfarer.Windows;
 
@@ -17,9 +15,7 @@ internal sealed class UnlockChecklistModule(
     UnlockService unlocks,
     UnlockWindow unlockWindow,
     NativeHubWindow hub,
-    InputModeService inputMode,
     UnlockChecklistConfig cfg,
-    Action saveConfig,
     IPluginLog log,
     IGuidanceArbiter arbiter,
     UnlockRouteSource routeSource) : IModule
@@ -34,30 +30,26 @@ internal sealed class UnlockChecklistModule(
 
     internal UnlockWindow Window { get; } = unlockWindow;
 
-    /// <summary>Read by <see cref="Windows.ArrowWindow"/> for the glanceable-lines toggle
-    /// (spec §4, task A3) — the coherent home for it since the data comes from this module.</summary>
+    /// <summary>Read by <see cref="Windows.ReadoutFeed"/> for the "unlocks nearby" toggle — the
+    /// coherent home for it since the data comes from this module.</summary>
     internal UnlockChecklistConfig Config { get; } = cfg;
 
-    /// <summary>Opens whichever checklist presentation matches the player's current
-    /// <see cref="InputModeService.Mode"/> (spec §3): the shared native hub window (Checklist tab)
-    /// on Controller, the unchanged ImGui window on Mouse. A hub open failure falls back to the
-    /// ImGui window with a single log line rather than leaving the player with nothing.</summary>
+    /// <summary>Opens the checklist. There is one checklist and it is the native window, for mouse
+    /// and controller alike — the game's own windows are clickable and cursor-navigable at the same
+    /// time, so a second ImGui copy would only be a second thing to keep in step. That copy now
+    /// exists solely as an automatic fallback: if the native window cannot be created, this logs
+    /// once and opens the old one rather than leaving the player with nothing.</summary>
     public void OpenChecklist()
     {
-        if (inputMode.Mode == InputMode.Controller)
+        try
         {
-            try
-            {
-                // Close the other presentation first so an input-mode flip between opens can't
-                // leave both windows on screen at once.
-                Window.IsOpen = false;
-                hub.OpenTab(HubTab.Checklist);
-                return;
-            }
-            catch (Exception ex)
-            {
-                log.Error(ex, "UnlockChecklistModule: native hub failed to open — falling back to the ImGui checklist.");
-            }
+            Window.IsOpen = false;
+            hub.OpenTab(HubTab.Checklist);
+            return;
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "UnlockChecklistModule: the native window failed to open — falling back to the ImGui checklist.");
         }
 
         CloseNativeWindow();
@@ -88,21 +80,6 @@ internal sealed class UnlockChecklistModule(
         // arrow, so a disabled module can never keep guiding.
         arbiter.Unregister(routeSource);
         framework.Update -= Unlocks.OnFrameworkUpdate;
-    }
-
-    public void DrawConfig()
-    {
-        if (ImGui.Button("Open checklist"))
-        {
-            OpenChecklist();
-        }
-
-        var showOnWidget = Config.ShowOnWidget;
-        if (ImGui.Checkbox("Show top unlocks on the quest widget", ref showOnWidget))
-        {
-            Config.ShowOnWidget = showOnWidget;
-            saveConfig();
-        }
     }
 
     public void Dispose()
