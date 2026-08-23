@@ -158,7 +158,7 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "questHelper.logDiagnostics",
-            Label = "Write readout diagnostics to the log",
+            Label = "Write Readout Diagnostics to the Log",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.LogDiagnostics,
             WriteFlag = Write(value => config.QuestHelper.LogDiagnostics = value),
