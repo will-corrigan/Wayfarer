@@ -95,11 +95,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private readonly List<(HubListRow Row, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
 
-    /// <summary>Which "what does this need?" rows the player has opened, keyed by unlock and
-    /// level. A controller has no hover, so an entry that is waiting on a list of collectibles
-    /// has to be able to show that list on confirm instead.</summary>
-    private readonly HashSet<string> expandedRequirements = new(StringComparer.Ordinal);
-
     /// <summary>Tabs already reported as having more controls than their reserved index block
     /// holds. The list rebuilds whenever its data changes; whether a tab's controls fit is a
     /// property of that tab's layout, not of the rebuild, so it is worth saying once and no
@@ -107,6 +102,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly HashSet<HubTab> crowdedTabsLogged = [];
 
     private int groupMode;
+
+    /// <summary>Whether the unverified section is open. One flag replaces the per-entry expansion
+    /// set the requirement rows used: the pane says what an entry needs now, so the only thing left
+    /// that has to fold is the pile of entries the plugin cannot vouch for at all.</summary>
+    private bool unverifiedExpanded;
     private HubTab pendingTab = HubTab.Checklist;
     private HubTab currentTab = HubTab.Checklist;
     private Vector2 tabContentStart;
@@ -119,6 +119,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private TabBarNode? hubTabs;
     private ListNode<HubListRow, HubListRowNode>? list;
+    private HubDetailPaneNode? detailPane;
+
+    /// <summary>The row the pane is currently describing, by reference. A held d-pad fires the
+    /// hover callback once per step and every pane assignment builds SeStrings, so the guard is
+    /// what keeps walking a long list from being a per-step allocation storm — the same reasoning
+    /// as <see cref="lastTeleportLabel"/>.</summary>
+    private HubListRow? hoveredRow;
 
     private VerticalListNode? checklistControls;
     private TextButtonNode? groupButton;
@@ -261,6 +268,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         BuildButtonHint(contentStart, contentSize);
         BuildSharedList();
+        BuildDetailPane();
         BuildChecklistControls();
         BuildHuntingControls();
         BuildQuestControls();
@@ -318,6 +326,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         settingsNodes.Clear();
         hubTabs = null;
         list = null;
+        detailPane = null;
+        hoveredRow = null;
         checklistControls = null;
         groupButton = null;
         routeButton = null;
@@ -374,6 +384,20 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private static float ClampHeight(float screenPixels, Vector2 screen) =>
         Math.Clamp(screenPixels, MinWindowHeight, Math.Max(screen.Y * ViewportFraction, MinWindowHeight));
 
+    /// <summary>Caps the list's height at what <see cref="HubNavPlan.ListPoolLimit"/> allows.
+    ///
+    /// <para>KamiToolKit derives the recycled row pool straight from the list's height, and the pool
+    /// is what decides how many nav indices the list block consumes. Capping the height is therefore
+    /// the only way to pin the block's last index, which is what makes an index region <i>after</i>
+    /// the list — the detail pane's buttons — placeable at all. Thirty 44px rows is 1,320px, taller
+    /// than this window can ever be, so in practice this never bites; it exists so that the nav plan
+    /// is a guarantee rather than a hope.</para></summary>
+    private static float ClampListHeight(float wanted)
+    {
+        var perRow = HubListRowNode.ItemHeight + 1f;
+        return Math.Min(wanted, HubNavPlan.MaxListPoolSize * perRow);
+    }
+
     private static float ControlsHeight(HubTab tab) => tab switch
     {
         HubTab.Checklist => ChecklistControlsHeight,
@@ -424,13 +448,69 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         _ => GameColors.ListText,
     };
 
-    /// <summary>True when confirming the row has something to say rather than somewhere to go:
-    /// the entry is held up by requirements, and the player deserves to see which.</summary>
-    private static bool Explains(ResolvedUnlock u) =>
-        u.Status is UnlockStatus.CollectionLocked or UnlockStatus.RequirementsUnknown;
+    /// <summary>The catalogue's nine <c>type</c> values in the game's own words. A closed set — the
+    /// dataset validator enforces it — so there is no unknown branch to design for, only a default
+    /// that would mean the catalogue had grown a tenth.</summary>
+    private static string UnlockTypeWord(string type) => type switch
+    {
+        "dungeon" => "Dungeon",
+        "trial" => "Trial",
+        "raid" => "Raid",
+        "alliance-raid" => "Alliance raid",
+        "zone" => "Zone",
+        "mount" => "Mount",
+        "minion" => "Minion",
+        "emote" => "Emote",
+        "system" => "System",
+        _ => "Unlock",
+    };
 
-    private static string RequirementKey(ResolvedUnlock u) =>
-        $"{u.Def.Unlock}|{u.Def.Level?.ToString(CultureInfo.InvariantCulture) ?? u.Def.Category}";
+    /// <summary>Everything standing in this entry's way, for the pane's "Requirements not met"
+    /// block — the game's own label, over the game's own kind of content. Falls back through the
+    /// computed lock reason and then the curated requirement label, because an entry that is
+    /// plainly locked and lists nothing reads as a bug.</summary>
+    private static List<string> MissingFor(ResolvedUnlock u)
+    {
+        if (u.Status is UnlockStatus.Available or UnlockStatus.Accepted or UnlockStatus.Done)
+        {
+            return [];
+        }
+
+        if (u.MissingRequirements.Count > 0)
+        {
+            return [.. u.MissingRequirements];
+        }
+
+        if (u.LockReason is { Length: > 0 } reason)
+        {
+            return [reason];
+        }
+
+        return u.Def.Requires?.Label is { Length: > 0 } label ? [label] : [];
+    }
+
+    /// <summary>Where to go and who to talk to. The giver's name lives here rather than on the
+    /// row's title because it is <i>where you go</i>, not <i>what it is</i> — the game's own journal
+    /// puts it in the body for the same reason.</summary>
+    private static string FromLine(ResolvedUnlock u)
+    {
+        var giver = u.GiverName is { Length: > 0 } name ? name : null;
+        var zone = u.ZoneName is { Length: > 0 } z ? z : null;
+
+        if (giver is null && zone is null)
+        {
+            // The handful of system entries that simply happen to you. Saying nothing here would
+            // read as missing data rather than as "there is nowhere to go".
+            return u.Def.Requires?.Unverifiable == true ? "This unlocks on its own — there is nobody to visit." : string.Empty;
+        }
+
+        if (giver is null)
+        {
+            return $"In {zone}";
+        }
+
+        return zone is null ? $"From {giver}" : $"From {giver} · {zone}";
+    }
 
     private static IEnumerable<ResolvedUnlock> OrderInGroup(IEnumerable<ResolvedUnlock> group) =>
         group.OrderBy(u => u.Status switch
@@ -625,6 +705,60 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         AddOwnedNode(list);
     }
 
+    /// <summary>The pane across the bottom of the window that says what the cursor is on. Built
+    /// once and shared by every list tab — one component, three call sites, so the Unlocks, Hunting
+    /// Log and Following tabs cannot disagree about how a selected thing is described.</summary>
+    private void BuildDetailPane()
+    {
+        detailPane = new HubDetailPaneNode
+        {
+            Position = tabContentStart,
+            Size = new Vector2(tabContentSize.X, HubDetailPaneNode.PaneHeight),
+        };
+        AddOwnedNode(detailPane);
+        detailPane.Show(null);
+    }
+
+    /// <summary>Publishes a row to the pane. One shared delegate is handed to every row of a
+    /// rebuild rather than a closure each.</summary>
+    private void PublishDetail(HubListRow row)
+    {
+        if (ReferenceEquals(row, hoveredRow))
+        {
+            return;
+        }
+
+        hoveredRow = row;
+        detailPane?.Show(row.Pane);
+
+        // The set of buttons on the pane changes with the row, and the indices are absolute — a
+        // button that appeared without being numbered is a button a controller cannot reach.
+        RenumberDetailPane();
+    }
+
+    /// <summary>Renumbers the pane after its buttons change, and re-points the list's downward exit
+    /// at whatever the pane now offers.</summary>
+    private void RenumberDetailPane()
+    {
+        if (list is null || !config.InputMode.CursorNavigation)
+        {
+            return;
+        }
+
+        var firstRow = PopulatedRowCount() > 0 ? NavListBlock.RowIndex(HubNavPlan.List, 0) : HubNavPlan.TabBar;
+        list.NavDown = ApplyDetailPaneNavigation(firstRow);
+    }
+
+    /// <summary>Puts the pane back to its key. Called whenever the list is rebuilt, because the row
+    /// the pane was describing may no longer exist — a stale pane over a list that has moved on is
+    /// worse than no pane, since it looks current.</summary>
+    private void ResetDetail()
+    {
+        hoveredRow = null;
+        detailPane?.Show(null);
+        RenumberDetailPane();
+    }
+
     /// <summary>A disabled button with no explanation is the shape of the original "nothing in
     /// here works" report: the action buttons go inert when Quest Helper is off, and nothing said
     /// so. This says so, in the list, where the eye already is.</summary>
@@ -714,15 +848,40 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        list.IsVisible = currentTab != HubTab.Settings;
-        if (list.IsVisible)
+        PositionListAndPane(controlsHeight);
+    }
+
+    /// <summary>Puts the list and the pane below it. The pane is pinned to the bottom of the tab
+    /// body and the list gets what is left, so the pane never moves as rows come and go — a detail
+    /// view that slides up the window every time the list shortens is harder to use than no detail
+    /// view at all.</summary>
+    private void PositionListAndPane(float controlsHeight)
+    {
+        if (list is null)
         {
-            // The list keeps a fixed viewport and scrolls what does not fit — it is the one thing in
-            // here that must never grow the window, because "the window grew instead of scrolling"
-            // is precisely what put it off the edge of the screen.
-            list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
-            list.Size = new Vector2(tabContentSize.X, Math.Max(tabContentSize.Y - controlsHeight, RowHeight));
+            return;
         }
+
+        if (detailPane is not null)
+        {
+            detailPane.IsVisible = list.IsVisible;
+            detailPane.Position = new Vector2(
+                tabContentStart.X,
+                tabContentStart.Y + tabContentSize.Y - HubDetailPaneNode.PaneHeight);
+            detailPane.Size = new Vector2(tabContentSize.X, HubDetailPaneNode.PaneHeight);
+        }
+
+        if (!list.IsVisible)
+        {
+            return;
+        }
+
+        // The list keeps a fixed viewport and scrolls what does not fit — it is the one thing in
+        // here that must never grow the window, because "the window grew instead of scrolling"
+        // is precisely what put it off the edge of the screen.
+        var available = tabContentSize.Y - controlsHeight - HubDetailPaneNode.PaneHeight;
+        list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
+        list.Size = new Vector2(tabContentSize.X, ClampListHeight(Math.Max(available, RowHeight)));
     }
 
     /// <summary>Shrinks the window to what the open tab actually holds, up to the viewport cap —
@@ -762,7 +921,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private float TabBodyHeight() => currentTab switch
     {
         HubTab.Settings => settingsArea?.ContentNode.Height ?? tabContentSize.Y,
-        _ => ControlsHeight(currentTab) + ListHeightForRows(),
+        _ => ControlsHeight(currentTab) + ListHeightForRows() + HubDetailPaneNode.PaneHeight,
     };
 
     private float ListHeightForRows()
@@ -984,13 +1143,40 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var lastRegionIndex = regionEnd > HubNavPlan.Region ? regionEnd - 1 : HubNavPlan.TabBar;
+        var paneEntry = ApplyDetailPaneNavigation(firstRow);
         if (list.IsVisible)
         {
             list.NavUp = lastRegionIndex;
+
+            // Down out of the list lands on the pane's buttons when there are any, and on the tab
+            // bar when there are not. Left and right stay pinned to the tab bar whatever happens:
+            // that is the escape hatch no graph defect can take away, and the pane must not become
+            // a second way to get stuck.
+            list.NavDown = paneEntry;
             RepairLastPopulatedRow(populated, lastRegionIndex);
         }
 
         LogGraph(controls, regionEnd, populated);
+    }
+
+    /// <summary>Numbers the detail pane's action buttons into their own reserved block above the
+    /// list's, and reports where "down out of the list" should now land — the first button when
+    /// there is one, the tab bar when the pane has nothing to offer this row.</summary>
+    private int ApplyDetailPaneNavigation(int firstRow)
+    {
+        if (detailPane is not { IsVisible: true })
+        {
+            return HubNavPlan.TabBar;
+        }
+
+        var end = NavigationWalker.Apply(
+            detailPane.ActionRow,
+            HubNavPlan.DetailPane,
+            firstRow,
+            HubNavPlan.TabBar,
+            HubNavPlan.DetailPane + HubNavPlan.DetailPaneCapacity - 1);
+
+        return end > HubNavPlan.DetailPane ? HubNavPlan.DetailPane : HubNavPlan.TabBar;
     }
 
     /// <summary>Takes the window out of the cursor graph entirely when the player has turned
@@ -1100,6 +1286,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         var previous = lastPopulatedRows;
         list.OptionsList = [.. rows];
         lastPopulatedRows = PopulatedRowCount();
+
+        // The row the pane was describing belongs to the list that has just been replaced. Even
+        // when the same entry is still there it is a different object, so keeping the pane would be
+        // keeping something that only looks current — the key is the honest state until the cursor
+        // lands somewhere again.
+        ResetDetail();
 
         ApplyNavigation(controls);
 
@@ -1286,7 +1478,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             foreach (var u in OrderInGroup(group))
             {
                 rows.Add(BuildChecklistRow(u, navigator));
-                AddRequirementRows(u);
             }
         }
 
@@ -1348,45 +1539,64 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             IconId = statusIcons.For(u.Status),
             StatusWord = UnlockStatusDisplay.Word(u.Status),
             LabelColor = StatusColor(u.Status),
-
-            // An explainable row stays confirmable even with guidance off: there is nowhere to
-            // navigate to, but there is still something to read.
-            Activate = navigator is null && !Explains(u) ? null : () => OnChecklistRowActivated(u),
+            Pane = BuildUnlockDetail(u, navigator),
+            Hover = PublishDetail,
+            Activate = navigator is null ? null : () => OnChecklistRowActivated(u),
         };
     }
 
-    /// <summary>The opened-out requirement lines under an entry that is waiting on something.
-    /// Inert notes, indented, so they read as belonging to the row above.</summary>
-    private void AddRequirementRows(ResolvedUnlock u)
+    /// <summary>What the pane says about one unlock, assembled from data the plugin already had.
+    ///
+    /// <para>This is what retires the expand-in-place requirement rows. They existed because a
+    /// controller has no hover and an entry waiting on a list of collectibles had to be able to show
+    /// that list somehow — but expanding reflows the list under the cursor, which is the condition
+    /// that trips the vendored list's recycling defect, and it makes the list's length depend on
+    /// what you have opened. The pane shows the same lines without moving anything.</para></summary>
+    private HubRowDetail BuildUnlockDetail(ResolvedUnlock u, INavigationProvider? navigator)
     {
-        if (!Explains(u) || !expandedRequirements.Contains(RequirementKey(u)))
+        var level = UnlockRowText.LevelToken(u);
+        var kind = UnlockTypeWord(u.Def.Type);
+
+        return new HubRowDetail
         {
-            return;
+            Title = u.Def.Unlock,
+            Kind = level.Length > 0 ? $"{level} · {kind}" : kind,
+            StatusIconId = statusIcons.For(u.Status),
+            StatusSentence = UnlockStatusDisplay.Sentence(u),
+            Body = UnlockRowText.Description(u),
+            Requirements = MissingFor(u),
+            From = FromLine(u),
+            Provenance = string.Equals(u.Def.Confidence, "unverified", StringComparison.Ordinal)
+                ? "Wayfarer is not certain about this entry."
+                : string.Empty,
+            Actions = UnlockActions(u, navigator),
+        };
+    }
+
+    private List<HubDetailAction> UnlockActions(ResolvedUnlock u, INavigationProvider? navigator)
+    {
+        var actions = new List<HubDetailAction>();
+        if (navigator is null)
+        {
+            return actions;
         }
 
-        var lines = u.MissingRequirements.Count > 0
-            ? u.MissingRequirements
-            : [u.LockReason ?? u.Def.Requires?.Label ?? "this plugin can't tell what this needs"];
-        foreach (var line in lines)
+        switch (u.Status)
         {
-            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = $"    {line}" });
+            case UnlockStatus.Available when unlocks.ToPickupTarget(u) is not null:
+                actions.Add(new HubDetailAction("Guide me there", () => OnChecklistRowActivated(u)));
+                break;
+
+            case UnlockStatus.Accepted when u.QuestRowId is not null:
+                actions.Add(new HubDetailAction("Follow this quest", () => OnChecklistRowActivated(u)));
+                break;
         }
+
+        return actions;
     }
 
     private void OnChecklistRowActivated(ResolvedUnlock u)
     {
-        if (Explains(u))
-        {
-            var key = RequirementKey(u);
-            if (!expandedRequirements.Remove(key))
-            {
-                expandedRequirements.Add(key);
-            }
-
-            RebuildChecklist();
-            return;
-        }
-
         var navigator = ResolveNavigator();
         if (navigator is null)
         {
@@ -1412,7 +1622,25 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "Unverified", Detail = $"{unverified.Count}" });
+        // One row, closed by default, rather than fifty-odd inert lines of unexplained text at the
+        // bottom of every list. The pile was a meaningful part of "it's impossible to tell what any
+        // of that really is": nothing on screen said what "unverified" meant or why those entries
+        // were different, and there were more of them than most zones have real entries.
+        rows.Add(new HubListRow
+        {
+            Kind = HubRowKind.Heading,
+            Label = unverifiedExpanded ? "Unverified (showing)" : "Unverified",
+            Detail = $"{unverified.Count}",
+            Pane = UnverifiedSectionDetail(unverified.Count),
+            Hover = PublishDetail,
+            Activate = ToggleUnverified,
+        });
+
+        if (!unverifiedExpanded)
+        {
+            return;
+        }
+
         foreach (var u in unverified)
         {
             // Entry rather than Note, even though there is nothing to activate: an entry gets the
@@ -1427,9 +1655,29 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 IconId = statusIcons.For(UnlockStatus.Unverified),
                 StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Unverified),
                 LabelColor = GameColors.Dimmed,
+                Pane = BuildUnlockDetail(u, navigator: null),
+                Hover = PublishDetail,
             });
         }
     }
+
+    private void ToggleUnverified()
+    {
+        unverifiedExpanded = !unverifiedExpanded;
+        RebuildChecklist();
+    }
+
+    private HubRowDetail UnverifiedSectionDetail(int count) => new()
+    {
+        Title = "Unverified entries",
+        Kind = $"{count} entries",
+        StatusIconId = statusIcons.For(UnlockStatus.Unverified),
+        StatusSentence = unverifiedExpanded ? "Showing — select to hide again." : "Hidden — select to show them.",
+        Body =
+            "Nothing in the game's own data backs these entries up. Wayfarer found them in its catalogue "
+            + "but could not confirm the quest that grants them, so it cannot tell whether you have done "
+            + "them or what they need — and it will never claim one of them is available.",
+    };
 
     private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupUnlockEntries(List<ResolvedUnlock> visible) =>
         GroupModes[groupMode] switch
@@ -1610,6 +1858,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 // to be and where it was the first thing to be ellipsised away.
                 Description = HuntingRowWhere(target),
                 Detail = $"{target.Killed}/{target.Required}",
+                Pane = BuildHuntingDetail(target, navigator),
+                Hover = PublishDetail,
                 Activate = target.DutyContentFinderConditionId is null
                     ? null
                     : () => OpenDuty(target.DutyContentFinderConditionId),
@@ -1622,6 +1872,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Label = target.MonsterName,
             Description = HuntingRowWhere(target),
             Detail = $"{target.Killed}/{target.Required}",
+            Pane = BuildHuntingDetail(target, navigator),
+            Hover = PublishDetail,
             Activate = navigator is null ? null : () =>
             {
                 if (hunting.ToPickupTarget(target) is { } pickup)
@@ -1633,6 +1885,45 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         distanceRows.Add((row, target.Monster));
         return row;
+    }
+
+    /// <summary>What the pane says about one hunting target. The same component the Unlocks tab
+    /// uses, so "what is selected" is described the same way whichever list the player is in.</summary>
+    private HubRowDetail BuildHuntingDetail(HuntingTargetView target, QuestNavigator? navigator)
+    {
+        var done = target.Killed >= target.Required;
+        var actions = new List<HubDetailAction>();
+
+        if (!done && target.IsRoutable && navigator is not null)
+        {
+            actions.Add(new HubDetailAction("Guide me there", () =>
+            {
+                if (hunting.ToPickupTarget(target) is { } pickup)
+                {
+                    navigator.SetPickup(pickup);
+                }
+            }));
+        }
+        else if (!done && target.DutyContentFinderConditionId is { } cfcId)
+        {
+            actions.Add(new HubDetailAction("Open Duty Finder", () => OpenDuty(cfcId)));
+        }
+
+        return new HubRowDetail
+        {
+            Title = target.MonsterName,
+            Kind = $"{target.Killed} of {target.Required} killed",
+            StatusIconId = done
+                ? statusIcons.Resolve(UnlockStatusDisplay.CompleteIcon)
+                : statusIcons.For(UnlockStatus.Available),
+            StatusSentence = done
+                ? "Complete — this one is done."
+                : $"{target.Required - target.Killed} left to kill.",
+            Body = target.IsRoutable
+                ? "Wayfarer can point you at this one and chain it with the rest of the rank."
+                : "This one lives inside an instanced Grand Company duty, so it has to be queued for rather than walked to.",
+            From = HuntingRowWhere(target),
+        };
     }
 
     private void OnHuntClicked()
@@ -1886,10 +2177,44 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 IconId = statusIcons.For(UnlockStatus.Accepted),
                 StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Accepted),
                 LabelColor = isFollowed ? GameColors.Good : null,
+                Pane = BuildQuestDetail(name, navigator.GetAcceptedQuestObjective(questId), isFollowed, questId),
+                Hover = PublishDetail,
                 Activate = () => FollowQuest(questId),
             });
         }
     }
+
+    /// <summary>What the pane says about one accepted quest. The action is the whole point of this
+    /// tab, so it is a real button on the pane rather than only a confirm on the row — a mouse
+    /// player should not have to guess that a list row is clickable.</summary>
+    private HubRowDetail BuildQuestDetail(string name, string? objective, bool isFollowed, ushort questId)
+    {
+        var actions = new List<HubDetailAction>();
+        if (isFollowed)
+        {
+            actions.Add(new HubDetailAction("Stop following", OnStopFollowingClicked));
+        }
+        else
+        {
+            actions.Add(new HubDetailAction("Follow this quest", () => FollowQuest(questId)));
+        }
+
+        return new HubRowDetail
+        {
+            Title = name,
+            Kind = "Accepted quest",
+            StatusIconId = statusIcons.For(UnlockStatus.Accepted),
+            StatusSentence = isFollowed
+                ? "Following — the arrow is pointing at this."
+                : "In progress — you have accepted this.",
+            Body = objective is { Length: > 0 } text ? text : "The game records no objective text for this step.",
+            Actions = actions,
+        };
+    }
+
+    /// <summary>Back to the main scenario, which is what "not following anything in particular"
+    /// means for this plugin — there is no null state, only the default loop.</summary>
+    private void OnStopFollowingClicked() => OnFollowMsqClicked();
 
     private void FollowQuest(ushort questId)
     {

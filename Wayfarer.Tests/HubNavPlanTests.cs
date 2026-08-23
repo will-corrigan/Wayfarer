@@ -48,4 +48,42 @@ public class HubNavPlanTests
         Assert.True(
             NavListBlock.DownwardSentinelIndex(HubNavPlan.List, HubNavPlan.MaxListPoolSize) <= NavGraphPlanner.MaxIndex);
     }
+
+    /// <summary>The whole point of clamping the pool. A region after the list was impossible to
+    /// place while the pool was "as many rows as fit under 255", because the block's last index was
+    /// then a function of the player's window height. The clamp turns it into a constant, and this
+    /// is the assertion that the constant is actually below where the pane starts.</summary>
+    [Fact]
+    public void The_clamped_list_block_leaves_room_for_the_detail_pane_above_it()
+    {
+        Assert.Equal(HubNavPlan.ListPoolLimit, HubNavPlan.MaxListPoolSize);
+        Assert.True(
+            HubNavPlan.ListLast < HubNavPlan.DetailPane,
+            $"the list block ends at {HubNavPlan.ListLast}, which is not below the pane at {HubNavPlan.DetailPane}.");
+    }
+
+    [Fact]
+    public void The_detail_pane_fits_its_own_reservation_and_the_byte_ceiling()
+    {
+        // Three buttons is the most any status offers today; the reservation has to hold that with
+        // room to have been wrong, and still stop short of 255.
+        var buttons = Enumerable.Repeat(3, 1).ToList();
+        var ceiling = HubNavPlan.DetailPane + HubNavPlan.DetailPaneCapacity - 1;
+
+        Assert.True(NavGraphPlanner.Fits(buttons, HubNavPlan.DetailPane, ceiling));
+        Assert.True(ceiling <= NavGraphPlanner.MaxIndex);
+    }
+
+    /// <summary>A pooled row count large enough to be useful is still available after the clamp:
+    /// thirty 44px rows is more list than the window can ever show at once, so the clamp costs
+    /// nothing real. If the row height ever grows past this, the clamp starts truncating the list
+    /// instead of merely bounding it, and this is what says so.</summary>
+    [Fact]
+    public void The_clamp_is_larger_than_any_window_can_actually_show()
+    {
+        const float RowHeight = 44f + 1f;
+        const float TallestPlausibleWindow = 1440f * 0.9f;
+
+        Assert.True(HubNavPlan.ListPoolLimit * RowHeight > TallestPlausibleWindow);
+    }
 }

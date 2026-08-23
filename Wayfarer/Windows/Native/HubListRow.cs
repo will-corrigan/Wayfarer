@@ -38,4 +38,13 @@ internal sealed class HubListRow
     /// <summary>Invoked on mouse click and on controller confirm alike. Null on headings and
     /// notes, which are still focusable (the game's own lists behave the same way) but inert.</summary>
     public Action? Activate { get; init; }
+
+    /// <summary>What the detail pane should say about this row. Null on a row there is nothing to
+    /// say about, which clears the pane back to its key.</summary>
+    public HubRowDetail? Pane { get; init; }
+
+    /// <summary>Raised when the cursor arrives on this row — a d-pad step or the pointer moving
+    /// over it, one code path for both. Deliberately one shared delegate across every row of a
+    /// rebuild rather than a closure each: this is set on hundreds of rows.</summary>
+    public Action<HubListRow>? Hover { get; init; }
 }

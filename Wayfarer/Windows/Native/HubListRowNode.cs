@@ -87,6 +87,12 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
             TextColor = GameColors.Dimmed,
         };
         descriptionNode.AttachNode(this);
+
+        // The pointer's half of "cursor moves, detail updates". The controller's half is
+        // OnNavHoverStart below, and both call the same method — one behaviour, not two that can
+        // drift. SelectableNode has already registered MouseOver for its own highlight, and
+        // AddEvent appends to the existing handler rather than replacing it.
+        AddEvent(AtkEventType.MouseOver, PublishHover);
     }
 
     /// <summary>Row height, a per-type constant because the list virtualizes on it. Two lines of
@@ -162,6 +168,15 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         ItemData?.Activate?.Invoke();
     }
 
+    /// <summary>The controller's half of "cursor moves, detail updates" — fired by
+    /// <c>NavFocusNode</c> on every d-pad step onto this row, which is the callback pair the
+    /// vendored toolkit already exposes and this node previously ignored.</summary>
+    protected override void OnNavHoverStart()
+    {
+        base.OnNavHoverStart();
+        PublishHover();
+    }
+
     private static Vector4 DefaultColor(HubRowKind kind) => kind switch
     {
         HubRowKind.Heading => GameColors.Heading,
@@ -183,6 +198,14 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         >= 63000 and < 64000 => 48f,
         _ => 32f,
     };
+
+    private void PublishHover()
+    {
+        if (ItemData is { } data)
+        {
+            data.Hover?.Invoke(data);
+        }
+    }
 
     private void ApplyIcon(uint iconId)
     {
