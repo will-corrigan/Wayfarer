@@ -57,15 +57,11 @@ public static class ArrowBitmap
         new(-0.78f, 0.70f),
     ];
 
-    /// <summary>The near-black the outline is drawn in — the same "dark edge under a gold glyph"
-    /// the game's own HUD icons use.</summary>
-    private static readonly Vector3 OutlineColor = new(0.07f, 0.055f, 0.03f);
-
     /// <summary>Renders the arrow for one colour variant as straight-alpha RGBA bytes, row-major
     /// from the top-left, ready for <c>ITextureProvider.CreateFromRaw</c>.</summary>
     public static byte[] Render(ArrowIconVariant variant)
     {
-        var (tip, tail) = Palette(variant);
+        var (tip, tail) = ArrowPalette.For(variant);
         var pixels = new byte[ByteCount];
         const float Half = Size / 2f;
 
@@ -87,7 +83,7 @@ public static class ArrowBitmap
                 // 1 inside the arrow proper, 0 out in the outline ring, soft across the boundary.
                 var fill = Coverage(distance);
                 var gradient = Math.Clamp((point.Y + 0.88f) / 1.58f, 0f, 1f);
-                var color = Vector3.Lerp(OutlineColor, Vector3.Lerp(tip, tail, gradient), fill);
+                var color = Vector3.Lerp(ArrowPalette.OutlineColor, Vector3.Lerp(tip, tail, gradient), fill);
 
                 pixels[offset] = Channel(color.X);
                 pixels[offset + 1] = Channel(color.Y);
@@ -98,19 +94,6 @@ public static class ArrowBitmap
 
         return pixels;
     }
-
-    /// <summary>The two ends of each variant's vertical gradient: bright at the tip, saturated at
-    /// the tail. Amber is the game's own warm HUD gold and is the default.</summary>
-    private static (Vector3 Tip, Vector3 Tail) Palette(ArrowIconVariant variant) => variant switch
-    {
-        ArrowIconVariant.Green => (Rgb(214, 255, 210), Rgb(46, 168, 68)),
-        ArrowIconVariant.Blue => (Rgb(208, 238, 255), Rgb(40, 134, 208)),
-        ArrowIconVariant.Red => (Rgb(255, 214, 206), Rgb(198, 54, 44)),
-        ArrowIconVariant.White => (Rgb(255, 255, 255), Rgb(196, 196, 196)),
-        _ => (Rgb(255, 242, 194), Rgb(214, 148, 40)),
-    };
-
-    private static Vector3 Rgb(byte r, byte g, byte b) => new(r / 255f, g / 255f, b / 255f);
 
     private static byte Channel(float value) => (byte)Math.Clamp(value * 255f, 0f, 255f);
 

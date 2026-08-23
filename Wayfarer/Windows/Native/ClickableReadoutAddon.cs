@@ -44,6 +44,7 @@ internal sealed unsafe class ClickableReadoutAddon(
     ReadoutPlacement placement,
     Action onTeleportClicked,
     Action onSettingsClicked,
+    Action onFollowClicked,
     ITextureProvider textures,
     IFramework framework,
     IPluginLog log,
@@ -115,7 +116,8 @@ internal sealed unsafe class ClickableReadoutAddon(
             diagnosticsEnabled,
             onTeleportClicked,
             onMoved: delta => placement.MoveTo(lastPosition + delta),
-            onSettingsClicked: onSettingsClicked)
+            onSettingsClicked: onSettingsClicked,
+            onFollowClicked: onFollowClicked)
         {
             Position = Vector2.Zero,
         };

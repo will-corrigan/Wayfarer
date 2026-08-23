@@ -252,6 +252,12 @@ public sealed class Plugin : IDalamudPlugin
     /// ImGui config window remains only as the fallback when the native one cannot be opened.</summary>
     private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
 
+    /// <summary>What the readout's follow caret opens: the one list of everything that can be
+    /// followed. Deliberately the same tab the window's own leftmost tab is, and the same list the
+    /// game's right-click Wayfarer menu drives — there is one source of truth for what is
+    /// followable and this is a door onto it, not a second copy of it.</summary>
+    private void OpenFollowing() => OpenHub(HubTab.Quests, () => configWindow.IsOpen = true);
+
     /// <summary>The plugin list's main button opens what the plugin is FOR — the unlocks list —
     /// rather than its settings, which have their own button right beside it.</summary>
     private void OpenMain() => modules.Get<UnlockChecklistModule>()?.OpenChecklist();
@@ -377,6 +383,7 @@ public sealed class Plugin : IDalamudPlugin
             services.Framework,
             services.Textures,
             OpenConfig,
+            OpenFollowing,
             log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,

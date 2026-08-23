@@ -44,13 +44,26 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private const float BaseSecondarySize = 13f;
     private const float BaseMutedSize = 12f;
 
-    /// <summary>The arrow's side, before scale. Sized against the primary line rather than against
-    /// the readout: it sits <b>in line</b> with the text now, as a left gutter, and an arrow that
-    /// towers over the words it belongs to reads as a separate object rather than as part of
-    /// one.</summary>
-    private const float BaseArrow = 22f;
+    /// <summary>The arrow's side, before scale.
+    ///
+    /// <para>Sized against the primary line rather than against the readout: it sits <b>in line</b>
+    /// with the text, as a left gutter, and an arrow that towers over the words it belongs to reads
+    /// as a separate object rather than as part of one. 17 is <see cref="BasePrimarySize"/> plus
+    /// two — one line's worth — so the arrow occupies exactly the height of the line it is aligned
+    /// to. It was 22, which overhung that line top and bottom and is what "the arrow position and
+    /// sizing is a bit awkward" was about.</para></summary>
+    private const float BaseArrow = 17f;
 
     private const float BaseGap = 3f;
+
+    /// <summary>Where the arrow's centre sits on its line, as a fraction of that line's font size
+    /// measured down from the text's top edge.
+    ///
+    /// <para>Not half the line box. Axis draws with its cap height in the upper part of the em, so
+    /// the <i>optical</i> centre of a line of text is above its geometric centre; aligning to the
+    /// box put the arrow a couple of pixels low against every line it sat beside. 0.58 of the font
+    /// size is the cap-height centre, which is what the eye actually aligns to.</para></summary>
+    private const float ArrowOpticalCentre = 0.58f;
 
     /// <summary>The settings cog's side, before scale. Sized against the heading it sits beside
     /// rather than against the readout: it is a mark on that line, not a button on a panel.</summary>
@@ -74,6 +87,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int CogTarget = 2;
 
+    /// <inheritdoc cref="TeleportTarget"/>
+    private const int FollowTarget = 4;
+
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
     /// line would otherwise be dragged by a box that no longer fits it.</summary>
@@ -94,14 +110,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// the texture wrap it is given.</summary>
     private readonly ImGuiImageNode arrowNode;
 
-    /// <summary>The up/down chevron that hangs off the arrow when the target is on a different level
-    /// of the world. The game's own minimap does exactly this to a marker on another floor, and
-    /// copying the convention is the point — a player already reads it without being told.
+    /// <summary>The up/down mark that hangs off the arrow when the target is on a different level of
+    /// the world. The game's own minimap does exactly this to a marker on another floor, and copying
+    /// the placement convention is the point — a player already reads a badge on a marker without
+    /// being told.
     ///
-    /// <para>It is the same generated arrow art, small and unrotated (or turned through half a
-    /// turn), rather than a second icon: it is then automatically the colour the player chose for
-    /// their arrow, and it reads as part of the same mark instead of as a badge stuck on
-    /// it.</para></summary>
+    /// <para><b>It is deliberately not the arrow's art.</b> It used to be: the same generated
+    /// arrowhead, half size, turned through half a turn for "below". Direction and elevation are two
+    /// different meanings and they were being drawn as the same shape, which the player read as a
+    /// second heading to travel in. It is a stacked double chevron now
+    /// (<see cref="ChevronBitmap"/>) — line-work where the arrow is a solid mass, so the two
+    /// silhouettes have nothing in common at any size or in any colour variant.</para></summary>
     private readonly ImGuiImageNode elevationNode;
 
     private readonly TextNode arrowWordsNode;
@@ -122,12 +141,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// affordance that does nothing is worse than none.</summary>
     private readonly ImGuiImageNode? cogNode;
 
+    /// <summary>The "choose what to follow" caret, sitting beside the cog rather than on it, or null
+    /// in a host that cannot be clicked.
+    ///
+    /// <para>Two things it is not. It is not a menu hanging off the cog — the cog opens settings and
+    /// this opens a list, and hiding a second meaning behind one mark is how the info bar's
+    /// right-click ended up being described as unintuitive. And it is not the list itself: the
+    /// readout owns exactly one objective and never carries choices, which is the rule that keeps it
+    /// glanceable and click-through-able. It is the door to the list, which lives in the
+    /// window.</para>
+    ///
+    /// <para>Mouse only, for the same reason as the cog. A controller reaches the same list through
+    /// the window's Following tab and through the Wayfarer entry in the game's own right-click
+    /// menu, both of which take no cursor.</para></summary>
+    private readonly ImGuiImageNode? followNode;
+
     private ArrowIconVariant? loadedVariant;
     private ArrowIconVariant? loadedElevationVariant;
     private bool arrowFailed;
     private bool elevationFailed;
     private bool cogLoaded;
     private bool cogFailed;
+    private bool followLoaded;
+    private bool followFailed;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
@@ -141,7 +177,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Func<bool>? diagnosticsEnabled = null,
         Action? onTeleportClicked = null,
         Action<Vector2>? onMoved = null,
-        Action? onSettingsClicked = null)
+        Action? onSettingsClicked = null,
+        Action? onFollowClicked = null)
     {
         this.log = log;
         this.textures = textures;
@@ -176,6 +213,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
+        followNode = onFollowClicked is null ? null : BuildFollowCaret(onFollowClicked);
     }
 
     /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
@@ -192,11 +230,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// host's own units. The host positions and sizes itself from that; nothing else about the
     /// readout is the host's business.
     ///
-    /// <para><b>The shape.</b> A heading on its own line, then a single unit: the arrow in a left
-    /// gutter, vertically centred against the first line of the block, and every other line hard
-    /// against one left edge just to its right.
+    /// <para><b>The shape.</b> One left edge for everything, with the arrow in a gutter to the left
+    /// of it, vertically centred on the first line of the block.
     /// <code>
-    /// Hunting Log - Warrior
+    ///      Hunting Log - Warrior
     ///  &gt;   Highland Goobbue
     ///      1/3 killed
     ///      56 yalms
@@ -204,10 +241,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// No panel and no border: what the player likes about this readout is that it looks like the
     /// game's own quest tracker, and a frame around it would undo exactly that.</para>
     ///
-    /// <para><b>The gutter is always reserved</b>, whether or not there is an arrow to put in it. It
-    /// costs a couple of dozen pixels of empty space when there is nothing to point at, and it buys
-    /// a left edge that never moves — which is worth more, because the alternative is a readout that
-    /// shuffles sideways every time an objective gains or loses coordinates.</para></summary>
+    /// <para><b>The gutter is reserved, permanently, and the heading now shares the indent.</b>
+    /// The gutter was already a fixed width — it never depended on whether an arrow was in it — but
+    /// the heading sat flush left while everything under it was indented past the arrow. With an
+    /// arrow present that reads as the block hanging off the arrow; with no arrow it reads as the
+    /// body having slid sideways for no reason, which is what "especially when it's not present
+    /// everything looks shifted" describes. Indenting the heading too gives the whole readout one
+    /// left edge that cannot move, in either state. The gutter is derived from the arrow size, which
+    /// is derived from the type size, so it scales with the text at every interface and text
+    /// scale.</para></summary>
     public Vector2 Layout(ReadoutFrame frame)
     {
         var factor = AtkUnitBase.GetGlobalUIScale() * Math.Clamp(frame.Scale, 0.5f, 3f);
@@ -220,13 +262,18 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var (bottom, firstLineCentre) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
         LayoutElevation(frame, arrowSize);
-        LayoutCog(frame, factor, width);
+        LayoutHeadingControls(frame, factor, width, gutter);
 
-        // The cog is a live collision node whenever it is drawn, and the clickable host watches
-        // this to know when the addon's collision list has to be rebuilt.
+        // The cog and the follow caret are live collision nodes whenever they are drawn, and the
+        // clickable host watches this to know when the addon's collision list has to be rebuilt.
         if (cogNode is { IsVisible: true })
         {
             ClickTargets |= CogTarget;
+        }
+
+        if (followNode is { IsVisible: true })
+        {
+            ClickTargets |= FollowTarget;
         }
 
         var size = new Vector2(width, bottom);
@@ -271,6 +318,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             cogNode.IsVisible = false;
         }
 
+        if (followNode is not null)
+        {
+            followNode.IsVisible = false;
+        }
+
         ClickTargets = 0;
 
         for (var i = 0; i < MaxLines; i++)
@@ -298,6 +350,35 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private static Vector4 OutlineFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? GameColors.HeadingEdge : GameColors.BodyEdge;
+
+    /// <summary>Puts one heading-line control at <paramref name="x"/> and reports where the next one
+    /// starts. A control whose art could not be generated is hidden and consumes no space, so the
+    /// row closes up rather than leaving a gap where it would have been.</summary>
+    private static float PlaceHeadingControl(
+        ImGuiImageNode? node, Func<bool> ensureTexture, float size, float gap, float x, float top, float width)
+    {
+        if (node is null)
+        {
+            return x;
+        }
+
+        if (!ensureTexture())
+        {
+            node.IsVisible = false;
+            return x;
+        }
+
+        node.Size = new Vector2(size, size);
+
+        // Origin follows the size for every control here, not only the rotated one: a node whose
+        // origin is stale pivots around a point that is no longer its centre, and the caret is
+        // drawn at half a turn.
+        node.OriginX = size / 2f;
+        node.OriginY = size / 2f;
+        node.Position = new Vector2(Math.Clamp(x, 0f, width - size), top);
+        node.IsVisible = true;
+        return x + size + gap;
+    }
 
     private static FontType FontFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? FontType.TrumpGothic : FontType.Axis;
@@ -357,6 +438,39 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         cog.ShowClickableCursor = true;
         cog.AttachNode(this);
         return cog;
+    }
+
+    /// <summary>The "choose what to follow" caret, beside the cog, wired to open the window on its
+    /// Following tab — where every followable thing is one list of rows: the main scenario, each
+    /// accepted quest, an unlock route, a hunt. The list is not duplicated here. The readout owns
+    /// exactly one objective and never carries choices; that rule is what keeps it glanceable and
+    /// is why the click-through host can exist at all.
+    ///
+    /// <para>Same collision treatment as the cog, and for the same reason: <c>MouseClick</c> is the
+    /// only one of these events that adds <c>HasCollision</c>, so the rectangle that swallows a
+    /// world click is exactly the caret and nothing more.</para></summary>
+    private ImGuiImageNode BuildFollowCaret(Action onFollowClicked)
+    {
+        var caret = new ImGuiImageNode
+        {
+            TextureSize = new Vector2(ChevronBitmap.Size, ChevronBitmap.Size),
+            Size = new Vector2(BaseCog, BaseCog),
+            FitTexture = true,
+            IsVisible = false,
+            Alpha = CogIdleAlpha,
+
+            // The art points up; a "there is a list behind this" caret points down.
+            Rotation = MathF.PI,
+            OriginX = BaseCog / 2f,
+            OriginY = BaseCog / 2f,
+        };
+
+        caret.AddEvent(AtkEventType.MouseClick, onFollowClicked);
+        caret.AddEvent(AtkEventType.MouseOver, () => caret.Alpha = 1f);
+        caret.AddEvent(AtkEventType.MouseOut, () => caret.Alpha = CogIdleAlpha);
+        caret.ShowClickableCursor = true;
+        caret.AttachNode(this);
+        return caret;
     }
 
     private void BuildLinePool()
@@ -488,9 +602,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <summary>Lays out every line and reports how tall the readout ended up, plus the vertical
     /// centre of the first line of the block — which is what the arrow is aligned against.
     ///
-    /// <para>Headings run the full width from the left edge; everything else is indented past the
-    /// arrow gutter, so the block has one left edge and reads as a single object hanging off the
-    /// arrow.</para></summary>
+    /// <para>Every line, heading included, starts at the same left edge past the arrow gutter, so
+    /// the readout is one block with one edge and the arrow is a mark beside it rather than
+    /// something the body hangs off.</para></summary>
     private (float Bottom, float? FirstLineCentre) LayoutLines(
         ReadoutFrame frame, float factor, float width, float gutter, float top)
     {
@@ -498,26 +612,28 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var count = Math.Min(frame.Content.Lines.Count, MaxLines);
         var hitBoxPlaced = false;
         float? firstLineCentre = null;
+        var lineWidth = width - gutter;
 
         for (var i = 0; i < count; i++)
         {
             var line = frame.Content.Lines[i];
             var heading = line.Emphasis == ReadoutEmphasis.Heading;
-            var left = heading ? 0f : gutter;
-            var lineWidth = width - left;
             var fontSize = FontSizeFor(line.Emphasis) * factor;
-            y = LayoutRule(i, line, factor, left, lineWidth, y);
+            y = LayoutRule(i, line, factor, gutter, lineWidth, y);
 
             // Two lines' worth of height so a wrapped line has somewhere to go. WordWrap needs a
             // fixed width and grows downward into whatever height the node has; the advance below is
             // the single-line height, so an unwrapped line does not leave a blank one under it.
             var height = (fontSize + 2f) * 2f;
-            LayoutLine(i, line, fontSize, left, lineWidth, height, y);
+            LayoutLine(i, line, fontSize, gutter, lineWidth, height, y);
 
             var advance = height * 0.6f;
-            firstLineCentre ??= heading ? null : y + (advance / 2f);
 
-            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, left, lineWidth, height, y);
+            // The arrow aligns to the first line that is not the heading — the objective, which is
+            // what it is pointing at — and to that line's optical centre rather than its box.
+            firstLineCentre ??= heading ? null : y + (fontSize * ArrowOpticalCentre);
+
+            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, gutter, lineWidth, height, y);
             y += advance;
         }
 
@@ -544,9 +660,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// — and by the time it arrives here it is a fact about the frame. The distance line says it in
     /// words as well, because a chevron is a convention the player has to already know.</para>
     ///
-    /// <para>The offset parks it on the arrow's lower-right corner, overlapping it slightly, which
-    /// is how the minimap attaches its own: near enough to read as one mark, far enough out that it
-    /// does not hide the arrow's tip.</para></summary>
+    /// <para>The offset parks it clear of the arrow's lower-right corner rather than overlapping it.
+    /// The old art overlapped deliberately, to read as one compound mark — which was the mistake:
+    /// two meanings fused into one glyph. A small gap is what says "this is a second, separate
+    /// thing about the same target".</para></summary>
     private void LayoutElevation(ReadoutFrame frame, float arrowSize)
     {
         if (!arrowNode.IsVisible
@@ -557,7 +674,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return;
         }
 
-        var size = Math.Max(arrowSize * 0.55f, 7f);
+        var size = Math.Max(arrowSize * 0.6f, 8f);
         elevationNode.Size = new Vector2(size, size);
         elevationNode.OriginX = size / 2f;
         elevationNode.OriginY = size / 2f;
@@ -565,7 +682,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // The art points straight up unrotated, so "above" needs no rotation at all and "below" is
         // half a turn. Same guarantee ArrowBitmap gives the bearing arrow.
         elevationNode.Rotation = frame.Content.Elevation == ElevationHint.Above ? 0f : MathF.PI;
-        elevationNode.Position = arrowNode.Position + new Vector2(arrowSize * 0.58f, arrowSize * 0.5f);
+        elevationNode.Position = arrowNode.Position + new Vector2(arrowSize * 0.74f, arrowSize * 0.52f);
         elevationNode.IsVisible = true;
     }
 
@@ -577,16 +694,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// in empty space with nothing to belong to. The box is invisible; the words are the object.
     /// A measurement that comes back as nothing — the node has not been drawn yet — falls back to
     /// the right edge rather than stacking the cog on top of the first letter.</para></summary>
-    private void LayoutCog(ReadoutFrame frame, float factor, float width)
+    private void LayoutHeadingControls(ReadoutFrame frame, float factor, float width, float gutter)
     {
-        if (cogNode is null)
+        if (cogNode is null && followNode is null)
         {
-            return;
-        }
-
-        if (!EnsureCogTexture())
-        {
-            cogNode.IsVisible = false;
             return;
         }
 
@@ -598,16 +709,22 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
                 ? lineNodes[0]
                 : null;
 
+        // Measured from the end of the heading's words, not pinned to the right-hand edge: the
+        // readout's box is a fixed 320 units wide while its heading is usually a third of that, so
+        // a control in the corner would float in empty space with nothing to belong to. A
+        // measurement that comes back as nothing — the node has not been drawn yet — falls back to
+        // the right edge rather than stacking a control on top of the first letter.
         var headingWidth = heading is null ? 0f : heading.GetTextDrawSize().X;
-        var position = headingWidth > 1f
-            ? new Vector2(
-                Math.Clamp(headingWidth + gap, 0f, width - size),
-                heading!.Position.Y + Math.Max(((BaseHeadingSize * factor) - size) / 2f, 0f))
-            : new Vector2(width - size, 0f);
+        var top = heading is null
+            ? 0f
+            : heading.Position.Y + Math.Max(((BaseHeadingSize * factor) - size) / 2f, 0f);
+        var x = headingWidth > 1f ? gutter + headingWidth + gap : width - size;
 
-        cogNode.Size = new Vector2(size, size);
-        cogNode.Position = position;
-        cogNode.IsVisible = true;
+        // The caret comes first, closest to the words: it is about what the readout is saying,
+        // while the cog is about the plugin. Both are siblings on the heading line — the caret is
+        // not a menu hanging off the cog.
+        x = PlaceHeadingControl(followNode, EnsureFollowTexture, size, gap, x, top, width);
+        PlaceHeadingControl(cogNode, EnsureCogTexture, size, gap, x, top, width);
     }
 
     /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are
@@ -647,12 +764,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
     }
 
-    /// <summary>Generates the elevation chevron in the current arrow colour, if it is not already
-    /// loaded. Its own copy of the arrow's pixels rather than a shared wrap: KamiToolKit's image
-    /// node takes ownership of the texture it is handed and disposes it with itself, so two nodes
-    /// sharing one wrap is a double free waiting for a colour change.
+    /// <summary>Generates the elevation mark in the current arrow colour, if it is not already
+    /// loaded. Its own copy of the pixels rather than a shared wrap: KamiToolKit's image node takes
+    /// ownership of the texture it is handed and disposes it with itself, so two nodes sharing one
+    /// wrap is a double free waiting for a colour change.
     ///
-    /// <para>Failing here costs the chevron and nothing else — the distance line still says "above
+    /// <para>Failing here costs the mark and nothing else — the distance line still says "above
     /// you" in words, which is the half of this feature that does not need a convention to
     /// read.</para></summary>
     private bool EnsureElevationTexture(ArrowIconVariant variant)
@@ -670,19 +787,54 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         try
         {
             var wrap = textures.CreateFromRaw(
-                RawImageSpecification.Rgba32(ArrowBitmap.Size, ArrowBitmap.Size),
-                ArrowBitmap.Render(variant),
-                $"Wayfarer elevation chevron ({variant})");
+                RawImageSpecification.Rgba32(ChevronBitmap.Size, ChevronBitmap.Size),
+                ChevronBitmap.Render(variant),
+                $"Wayfarer elevation mark ({variant})");
 
             elevationNode.LoadTexture(wrap);
-            elevationNode.TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size);
+            elevationNode.TextureSize = new Vector2(ChevronBitmap.Size, ChevronBitmap.Size);
             loadedElevationVariant = variant;
             return true;
         }
         catch (Exception ex)
         {
             elevationFailed = true;
-            log.Error(ex, "Wayfarer readout: the above/below chevron could not be generated. The distance line still says which it is in words.");
+            log.Error(ex, "Wayfarer readout: the above/below mark could not be generated. The distance line still says which it is in words.");
+            return false;
+        }
+    }
+
+    /// <summary>Generates the follow caret once. A single downward chevron in plain white — the
+    /// game's own shape for "there is a list behind this" — rather than the player's arrow colour,
+    /// because it is a control and not a piece of guidance.</summary>
+    private bool EnsureFollowTexture()
+    {
+        if (followFailed)
+        {
+            return false;
+        }
+
+        if (followLoaded)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(ChevronBitmap.Size, ChevronBitmap.Size),
+                ChevronBitmap.Render(ArrowIconVariant.White, strokes: 1),
+                "Wayfarer follow caret");
+
+            followNode!.LoadTexture(wrap);
+            followNode.TextureSize = new Vector2(ChevronBitmap.Size, ChevronBitmap.Size);
+            followLoaded = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            followFailed = true;
+            log.Error(ex, "Wayfarer readout: the follow caret could not be generated, so the readout has none. What is being followed is still chosen from the window's Following tab and the game's own right-click menu.");
             return false;
         }
     }

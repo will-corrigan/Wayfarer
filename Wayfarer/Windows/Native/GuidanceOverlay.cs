@@ -44,6 +44,7 @@ internal sealed class GuidanceOverlay(
     IFramework framework,
     ITextureProvider textures,
     Action onSettingsClicked,
+    Action onFollowClicked,
     IPluginLog log) : IDisposable
 {
     private OverlayController? controller;
@@ -199,6 +200,7 @@ internal sealed class GuidanceOverlay(
                 placement,
                 Teleport,
                 onSettingsClicked,
+                onFollowClicked,
                 textures,
                 framework,
                 log,
