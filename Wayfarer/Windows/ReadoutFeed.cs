@@ -85,11 +85,56 @@ internal sealed class ReadoutFeed(
             Engaged = state.Engaged,
             RouteStop = state.RouteStop,
             RouteTotal = state.RouteTotal,
+            Step = NextStep(state),
+            StepTarget = StepTarget(state),
+            DistanceYalms = Distance(state),
             HuntingIsPrimary = huntingIsPrimary,
             HuntingLabel = huntingIsPrimary ? DtrHuntingLabel() : null,
+
+            // The same call the readout's own content is built from, deliberately: the info bar
+            // must not be able to alert about a pickup the readout has been told not to mention.
             NearbyUnlockCount = NearbyUnlocks().Count,
         });
     }
+
+    /// <summary>What the player actually has to do next, read off the same snapshot
+    /// <see cref="ReadoutComposer"/> builds its lines from, and in the same order of precedence:
+    /// a teleport is advised "first", so it beats everything; an aethernet hop is next; otherwise
+    /// there is a coordinate to walk to, or there is nothing.
+    ///
+    /// <para>An unattuned aetheryte is deliberately not a teleport step. The readout says "you are
+    /// not attuned there" in that case and the player's next move is to walk, so the bar must not
+    /// put a crystal on it.</para></summary>
+    private static DtrNextStep NextStep(NavigationState state)
+    {
+        if (!state.Engaged)
+        {
+            return DtrNextStep.None;
+        }
+
+        if (state.AetheryteName is { Length: > 0 } && state.AetheryteUnlocked)
+        {
+            return DtrNextStep.Teleport;
+        }
+
+        if (state.AethernetExitName is { Length: > 0 })
+        {
+            return DtrNextStep.Aethernet;
+        }
+
+        var walkable = string.Equals(state.Mode, NavigationState.Modes.SameZone, StringComparison.Ordinal)
+            ? state.TargetX is not null && state.TargetZ is not null
+            : state.EntranceX is not null && state.EntranceZ is not null;
+
+        return walkable ? DtrNextStep.Walk : DtrNextStep.None;
+    }
+
+    private static string? StepTarget(NavigationState state) => NextStep(state) switch
+    {
+        DtrNextStep.Teleport => state.AetheryteName,
+        DtrNextStep.Aethernet => state.AethernetExitName,
+        _ => null,
+    };
 
     // "Rank 2 4/5" — the hunting rank the game itself reports (see HuntingWindow's identical
     // "rank {N}" wording) alongside the current target's kill count, already short enough for the

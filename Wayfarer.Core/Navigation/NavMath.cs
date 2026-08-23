@@ -59,4 +59,10 @@ public static class NavMath
 
     public static string FormatDistance(float yalms) =>
         yalms >= 1000f ? $"{yalms / 1000f:0.0}k yalms" : $"{MathF.Round(yalms)} yalms";
+
+    /// <summary>The same distance for the server info bar, which has room for about five words in
+    /// total: "56y", "1.2ky". The unit is kept rather than dropped because a bare number beside a
+    /// route's "3/11" would read as another count.</summary>
+    public static string FormatDistanceShort(float yalms) =>
+        yalms >= 1000f ? $"{yalms / 1000f:0.0}ky" : $"{MathF.Round(yalms)}y";
 }
