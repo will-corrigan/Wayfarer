@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
+using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
 
 namespace Wayfarer.Windows.Native;
@@ -21,12 +22,13 @@ namespace Wayfarer.Windows.Native;
 /// allocated and none of them are drawn. The readout therefore renders pixel-for-pixel as it does
 /// on the overlay — that appearance is a fixed point, and hosting is not allowed to change it.
 ///
-/// <b>What it must never do.</b> Steal focus: <c>DisableFocusOnShow</c> and
-/// <c>DisableFocusability</c> are both set, which is precisely the pair KamiToolKit sets for its own
-/// overlays — the third flag it sets for those, click-through, is the one deliberately left off
-/// here. Be dragged: dragging is the window node's header collision, and that node is invisible.
-/// Be closed by Esc: <c>RespectCloseAll</c> is off. Make a sound, or offer a title-bar menu: both
-/// off.
+/// <b>What it must never do.</b> Steal focus, or be reachable by a controller:
+/// <c>DisableFocusOnShow</c>, <c>DisableFocusability</c> and the "disable controller nav" bit of
+/// <c>Flags1A2</c> are all set — three of the four flags KamiToolKit sets for its own overlays.
+/// Only the fourth, click-through, is deliberately left off, because being clickable is the entire
+/// point of this host. Be dragged: dragging is the window node's header collision, and that node is
+/// invisible. Be closed by Esc: <c>RespectCloseAll</c> is off. Make a sound, or offer a title-bar
+/// menu: both off.
 ///
 /// <b>Scale.</b> The game renders a normal addon at the player's interface scale, while the body
 /// multiplies that scale in by hand (it was written for an overlay, which is de-scaled to raw
@@ -68,12 +70,28 @@ internal sealed unsafe class ClickableReadoutAddon(
 
     protected override unsafe void OnSetup(AtkUnitBase* addon, Span<AtkValue> values)
     {
-        // Neither of these can be set through the toolkit's own surface, and both are what keep a
-        // clickable addon from behaving like a window: never take focus when shown, and never be
-        // focusable at all. Click dispatch runs through the collision node list, not the focus
-        // stack, so events still arrive.
+        // None of these can be set through the toolkit's own surface, and together they are what
+        // keep a clickable addon from behaving like a window: never take focus when shown, never be
+        // focusable at all, and never appear in the controller's navigation graph. Click dispatch
+        // runs through the collision node list, not the focus stack, so mouse events still arrive.
+        //
+        // The third is the one this surface would otherwise be missing. KamiToolKit sets all three
+        // together for its own non-interactive addons (NativeAddon.Flags.cs, SetOverlayFlags), but
+        // only reaches that path for overlays, and this is a normal addon. Nothing here is ever
+        // meant to be reached by a d-pad — the same teleport is on the game's context menu and on
+        // the window's Quests tab — so being outside the graph costs nothing and closes the one
+        // question this addon's focus posture could not otherwise answer: a player who pins the
+        // input mode to Mouse while holding a pad would otherwise have a focusable surface parked
+        // over the world with a cursor able to land on it.
         addon->DisableFocusOnShow = true;
         addon->DisableFocusability = true;
+        FlagHelper.UpdateFlag(ref addon->Flags1A2, 0x2, true);
+
+        // The show sound is already silenced by OpenWindowSoundEffectId = 0; this is its hide
+        // counterpart. The host is opened and closed automatically as the player changes device,
+        // which with a two-second hysteresis can happen many times an hour, and a window chime
+        // every time would be the loudest thing about a readout that is meant to be furniture.
+        addon->DisableShowHideSoundEffects = true;
 
         body = new ReadoutBodyNode(log, onTeleportClicked)
         {

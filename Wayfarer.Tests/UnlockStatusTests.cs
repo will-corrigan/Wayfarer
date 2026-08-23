@@ -12,6 +12,19 @@ public class UnlockStatusTests
     private const uint DungeonInstanceContentId = 3000;
     private static readonly uint[] DisciplesOfTheHandJobRowIds = [50, 51, 52, 53, 54, 55, 56, 57];
 
+    /// <summary>The six duplicated labels in the shipped catalogue that are progression tiers
+    /// rather than alternative quests, with their real levels. Each tier is a different quest;
+    /// completing one says nothing about the others.</summary>
+    public static TheoryData<string, int[]> RealTierGroups() => new()
+    {
+        { "Sightseeing Log Expansion", [52, 60, 70, 80, 90] },
+        { "Stone, Sky, Sea Access", [60, 70, 80, 90, 100] },
+        { "Main Scenario Quest Continuation", [60, 70, 80, 90] },
+        { "Role Quests Access", [70, 85, 92, 105] },
+        { "Levequest Expansion", [70, 80, 90] },
+        { "Relic Gear Access", [89, 99] },
+    };
+
     [Fact]
     public void UnmatchedIsUnverified()
     {
@@ -37,6 +50,66 @@ public class UnlockStatusTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20, isQuestComplete: id => id == 200));
         Assert.Equal(UnlockStatus.Done, a.Status);
         Assert.Equal(UnlockStatus.Done, b.Status);
+    }
+
+    [Theory]
+    [MemberData(nameof(RealTierGroups))]
+    public void CompletingTheLowestTier_LeavesEveryHigherTierNotDone(string label, int[] levels)
+    {
+        var tiers = levels.Select((lv, i) => Tier(label, lv, (uint)(9000 + i))).ToList();
+        UnlockStatusCalculator.Compute(
+            tiers, Gates.Ctx(playerLevel: 110, isQuestComplete: id => id == 9000));
+
+        Assert.Equal(UnlockStatus.Done, tiers[0].Status);
+        for (var i = 1; i < tiers.Count; i++)
+        {
+            Assert.NotEqual(UnlockStatus.Done, tiers[i].Status);
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(RealTierGroups))]
+    public void CompletingTheHighestTier_LeavesEveryLowerTierNotDone(string label, int[] levels)
+    {
+        var top = (uint)(9000 + levels.Length - 1);
+        var tiers = levels.Select((lv, i) => Tier(label, lv, (uint)(9000 + i))).ToList();
+        UnlockStatusCalculator.Compute(
+            tiers, Gates.Ctx(playerLevel: 110, isQuestComplete: id => id == top));
+
+        Assert.Equal(UnlockStatus.Done, tiers[^1].Status);
+        for (var i = 0; i < tiers.Count - 1; i++)
+        {
+            Assert.NotEqual(UnlockStatus.Done, tiers[i].Status);
+        }
+    }
+
+    /// <summary>The other half of the same rule: entries sharing a label <i>and</i> a level really
+    /// are one unlock reached by different quests, and completing any one of them completes it.
+    /// These are the shipped catalogue's own two genuine cases.</summary>
+    [Theory]
+    [InlineData("Levequests", 10, 3)]
+    [InlineData("Glamours", 15, 2)]
+    public void AlternativeQuestsAtTheSameLevel_AllReportDone(string label, int level, int count)
+    {
+        var group = Enumerable.Range(0, count).Select(i => Tier(label, level, (uint)(9100 + i))).ToList();
+        UnlockStatusCalculator.Compute(
+            group, Gates.Ctx(playerLevel: 30, isQuestComplete: id => id == 9101));
+
+        Assert.All(group, u => Assert.Equal(UnlockStatus.Done, u.Status));
+    }
+
+    /// <summary>Completion evidence belongs to a quest. An entry the matcher could not bind to any
+    /// quest row has none of its own and may not borrow a sibling's.</summary>
+    [Fact]
+    public void EntryWithNoQuest_IsNeverDone_EvenWhenASiblingIs()
+    {
+        var bound = Tier("Sightseeing Log Expansion", 52, 9000);
+        var unbound = Tier("Sightseeing Log Expansion", 52, null);
+        var all = new List<ResolvedUnlock> { bound, unbound };
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 110, isQuestComplete: id => id == 9000));
+
+        Assert.Equal(UnlockStatus.Done, bound.Status);
+        Assert.Equal(UnlockStatus.Unverified, unbound.Status);
     }
 
     [Fact]
@@ -536,6 +609,21 @@ public class UnlockStatusTests
         Assert.False(req.HasCheckableRequirement);
         Assert.Empty(req.Mounts);
     }
+
+    /// <summary>An entry as the catalogue ships it: an unlock name paired with the level the
+    /// catalogue records, which together identify one tier of a progression.</summary>
+    private static ResolvedUnlock Tier(string unlock, int level, uint? rowId) => new()
+    {
+        Def = new UnlockDefinition
+        {
+            Unlock = unlock,
+            Level = level,
+            Type = "system",
+            Quest = rowId is null ? null : "q",
+        },
+        QuestRowId = rowId,
+        QuestLevel = level,
+    };
 
     private static ResolvedUnlock Make(string unlock, uint? rowId, int questLevel, params uint[] prereqs) => new()
     {

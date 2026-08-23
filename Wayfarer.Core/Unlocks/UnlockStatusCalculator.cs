@@ -17,35 +17,40 @@ public static class UnlockStatusCalculator
     /// else is <see cref="UnlockStatus.RequirementsUnknown"/>.</para></summary>
     public static void Compute(List<ResolvedUnlock> all, UnlockGateContext ctx)
     {
-        // Alternative quests share the same unlock name: any one complete → all Done.
-        var doneByName = new HashSet<string>(StringComparer.Ordinal);
+        // Alternative quests — one per starting city, the player gets exactly one — share both an
+        // unlock name and a level, so completing any one of them completes the unlock for all.
+        // See AlternativeGroup for why the level has to be part of that key.
+        var doneGroups = new HashSet<AlternativeGroup>();
         foreach (var u in all)
         {
             if (u.QuestRowId is { } id && (ctx.IsQuestComplete(id) || AnyAlternativeComplete(u, ctx)))
             {
-                doneByName.Add(u.Def.Unlock);
+                doneGroups.Add(AlternativeGroup.Of(u));
             }
         }
 
         foreach (var u in all)
         {
-            ComputeOne(u, ctx, doneByName);
+            ComputeOne(u, ctx, doneGroups);
         }
     }
 
     /// <summary>Resolves Status/LockReason for a single entry through the first four precedence
     /// stages (Done, Accepted, LockedOut, job/level, prereq chain), then hands off to
     /// <see cref="ComputeRemainingGates"/> for the rest.</summary>
-    private static void ComputeOne(ResolvedUnlock u, UnlockGateContext ctx, HashSet<string> doneByName)
+    private static void ComputeOne(ResolvedUnlock u, UnlockGateContext ctx, HashSet<AlternativeGroup> doneGroups)
     {
         u.LockReason = null;
+
+        // An entry with no quest bound to it has no completion evidence of its own, and cannot
+        // borrow another entry's: it is unverified, never Done.
         if (u.QuestRowId is not { } rowId)
         {
             u.Status = UnlockStatus.Unverified;
             return;
         }
 
-        if (doneByName.Contains(u.Def.Unlock))
+        if (doneGroups.Contains(AlternativeGroup.Of(u)))
         {
             u.Status = UnlockStatus.Done;
             return;
@@ -565,5 +570,26 @@ public static class UnlockStatusCalculator
         var rankLabel = u.RequiredBeastTribeRankName ?? $"rank {rankId}";
         reason = $"needs {tribe} {rankLabel}";
         return false;
+    }
+
+    /// <summary>The identity of a set of interchangeable quests: entries the catalogue lists under
+    /// the same unlock name <b>at the same level</b>.
+    ///
+    /// <para>The name alone is not that identity, and treating it as one told the player something
+    /// false and then hid the evidence. Eight labels are duplicated in the shipped catalogue and
+    /// only two are genuine alternatives — <c>Levequests</c> (three city introductions, all level
+    /// 10) and <c>Glamours</c> (two, both level 15). The other six are <b>progression tiers</b>:
+    /// <c>Sightseeing Log Expansion</c> is five different quests at levels 52, 60, 70, 80 and 90,
+    /// and <c>Stone, Sky, Sea Access</c> another five from 60 to 100. Keyed on the name alone,
+    /// finishing the level-52 quest reported all five tiers Complete — and because <c>ShowDone</c>
+    /// defaults to false, the four that were not complete vanished from the checklist rather than
+    /// being visibly wrong.</para>
+    ///
+    /// <para>Membership is still established by quest identity: a group is marked done only when a
+    /// Quest row belonging to it is actually complete. The level is what stops that evidence
+    /// leaking sideways into a tier it says nothing about.</para></summary>
+    private readonly record struct AlternativeGroup(string Unlock, int Level)
+    {
+        public static AlternativeGroup Of(ResolvedUnlock u) => new(u.Def.Unlock, u.Def.Level);
     }
 }
