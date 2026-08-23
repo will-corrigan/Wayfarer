@@ -31,6 +31,10 @@ public sealed class Plugin : IDalamudPlugin
     private readonly NamePlateMarkers namePlateMarkers;
     private readonly SettingsCatalog settings;
 
+    /// <summary>The single owner of where the readout sits: read by both native hosts every frame,
+    /// written by the Settings tab's position sliders and by a mouse drag.</summary>
+    private readonly ReadoutPlacement readoutPlacement;
+
     /// <summary>The plugin's one entry in Dalamud's server info bar — see its own doc comment for
     /// why it exists. Built from the same <see cref="ReadoutFeed"/> the readout and its ImGui
     /// fallback already share, so all three surfaces read from one place.</summary>
@@ -80,8 +84,12 @@ public sealed class Plugin : IDalamudPlugin
         // Required before any KamiToolKit type (native windows, nodes) is touched.
         KamiToolKitLibrary.Initialize(pluginInterface, "Wayfarer");
 
-        var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        var config = LoadConfig(pluginInterface, log);
         void SaveConfig() => pluginInterface.SavePluginConfig(config);
+
+        // Where the readout sits — one owner shared by both of its hosts and by the settings, so a
+        // nudge from the Settings tab and a drag with the mouse write to the same place.
+        readoutPlacement = new ReadoutPlacement(config.QuestHelper, SaveConfig);
 
         modules = new(log, config);
 
@@ -91,7 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         var hunting = new HuntingLogService(log, objects, clientState, pluginInterface, dataManager);
 
         // Declared once, rendered by the native window and by the ImGui fallback alike.
-        settings = new SettingsCatalog(config, modules, SaveConfig);
+        settings = new SettingsCatalog(config, modules, readoutPlacement, SaveConfig);
 
         var guidance = BuildGuidance(log, config, clientState, condition, objects, dataManager, hunting);
         mapFlag = guidance.MapFlag;
@@ -101,9 +109,8 @@ public sealed class Plugin : IDalamudPlugin
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, inputMode, log);
 
-        modules.Register(
-            BuildQuestHelperModule(framework, clientState, objects, inputMode, config, SaveConfig, log, guidance),
-            enabledByDefault: true);
+        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
+        modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
 
         modules.Register(
             BuildUnlockChecklistModule(framework, objects, clientState, unlocks, inputMode, config, SaveConfig, log, guidance),
@@ -159,6 +166,21 @@ public sealed class Plugin : IDalamudPlugin
         {
             KamiToolKitLibrary.Cleanup();
         }
+    }
+
+    /// <summary>Reads the player's config and brings it up to date. The migration is written back
+    /// immediately rather than left to ride along with the next setting change: one that only lands
+    /// when the player happens to touch something else is one that runs again every session.</summary>
+    private static Configuration LoadConfig(IDalamudPluginInterface pluginInterface, IPluginLog log)
+    {
+        var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        if (config.Migrate())
+        {
+            pluginInterface.SavePluginConfig(config);
+            log.Information($"Wayfarer: configuration migrated to version {Configuration.CurrentVersion}.");
+        }
+
+        return config;
     }
 
     /// <summary>The guidance object graph, built once: one arbiter (the single writer for what the
@@ -310,27 +332,33 @@ public sealed class Plugin : IDalamudPlugin
     /// builds the widget (with its Controller-mode "Open Wayfarer ▸" entry point wired straight to
     /// <see cref="hub"/>) and its owning module.</summary>
     private QuestHelperModule BuildQuestHelperModule(
-        IFramework framework,
-        IClientState clientState,
-        IObjectTable objects,
-        InputModeService inputMode,
+        ReadoutHosts services,
         Configuration config,
         Action saveConfig,
         IPluginLog log,
         GuidanceGraph guidance)
     {
-        overlay = new GuidanceOverlay(feed, config.QuestHelper, inputMode, objects, clientState, framework, log);
+        overlay = new GuidanceOverlay(
+            feed,
+            config.QuestHelper,
+            readoutPlacement,
+            services.InputMode,
+            services.Objects,
+            services.ClientState,
+            services.Framework,
+            services.Textures,
+            log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,
             feed,
             overlay,
             modules,
             config.QuestHelper,
-            objects,
-            clientState,
+            services.Objects,
+            services.ClientState,
             log);
         return new QuestHelperModule(
-            framework,
+            services.Framework,
             windows,
             commands,
             config.QuestHelper,
@@ -393,6 +421,15 @@ public sealed class Plugin : IDalamudPlugin
             guidance.Arbiter,
             guidance.HuntingSource);
     }
+
+    /// <summary>The Dalamud services the readout's two native hosts need, bundled so the builder
+    /// below stays inside the parameter-count analyzer rather than growing a ninth argument.</summary>
+    private sealed record ReadoutHosts(
+        IFramework Framework,
+        IClientState ClientState,
+        IObjectTable Objects,
+        InputModeService InputMode,
+        ITextureProvider Textures);
 
     /// <summary>What <see cref="BuildGuidance"/> hands back, so the module builders can take one
     /// parameter instead of five.</summary>

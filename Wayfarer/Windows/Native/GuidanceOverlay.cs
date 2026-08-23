@@ -32,10 +32,12 @@ namespace Wayfarer.Windows.Native;
 internal sealed class GuidanceOverlay(
     ReadoutFeed feed,
     QuestHelperConfig cfg,
+    ReadoutPlacement placement,
     InputModeService inputMode,
     IObjectTable objects,
     IClientState clientState,
     IFramework framework,
+    ITextureProvider textures,
     IPluginLog log) : IDisposable
 {
     private OverlayController? controller;
@@ -96,18 +98,27 @@ internal sealed class GuidanceOverlay(
         // on a thread-pool thread while the controller's Dispose asserts the framework thread.
         // Disposing a node off-thread is worse than throwing — it logs nothing and leaks the node.
         var owned = controller;
+        var ownedNode = node;
         controller = null;
         node = null;
 
+        // The drag handle's viewport listener has to come down before the node does — NodeBase's
+        // own Dispose does not do it. See ReadoutBodyNode.StopMoving.
+        void Teardown()
+        {
+            ownedNode?.StopMoving();
+            owned.Dispose();
+        }
+
         if (framework.IsInFrameworkUpdateThread)
         {
-            owned.Dispose();
+            Teardown();
             return;
         }
 
         try
         {
-            framework.RunOnFrameworkThread(owned.Dispose).Wait(TimeSpan.FromSeconds(2));
+            framework.RunOnFrameworkThread(Teardown).Wait(TimeSpan.FromSeconds(2));
         }
         catch (Exception ex)
         {
@@ -138,7 +149,7 @@ internal sealed class GuidanceOverlay(
             // Exactly one controller for the plugin's lifetime — a second would duplicate the
             // addon-creation state machine and its per-frame handler.
             controller = new OverlayController();
-            node = new GuidanceOverlayNode(() => BuildFrame(forClickableHost: false), log);
+            node = new GuidanceOverlayNode(() => BuildFrame(forClickableHost: false), placement, textures, log);
             controller.AddNode(node);
         }
         catch (Exception ex)
@@ -151,7 +162,7 @@ internal sealed class GuidanceOverlay(
         try
         {
             clickable = new ClickableReadoutAddon(
-                () => BuildFrame(forClickableHost: true), Teleport, framework, log)
+                () => BuildFrame(forClickableHost: true), placement, Teleport, textures, framework, log)
             {
                 InternalName = "WayfarerReadout",
                 Title = "Wayfarer",
@@ -249,7 +260,7 @@ internal sealed class GuidanceOverlay(
             cfg.ArrowIcon,
             cfg.ArrowScale,
             cfg.TextScale,
-            cfg.ReadoutPosition,
+            cfg.ReadoutMoveMode,
             clickableTeleport);
     }
 

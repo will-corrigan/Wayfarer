@@ -1,5 +1,6 @@
 using Dalamud.Configuration;
 using Wayfarer.Core.Input;
+using Wayfarer.Core.Ui;
 
 namespace Wayfarer;
 
@@ -12,44 +13,6 @@ public enum ContextMenuMode
     Never,
     ControllerOnly,
     Always,
-}
-
-/// <summary>Where the guidance readout sits. A plugin cannot register with the game's HUD Layout
-/// editor — <c>AddonHudLayoutScreen</c>'s tables are fixed-size with no registration API, and
-/// KamiToolKit explicitly opts its own addons out — so presets are the substitute for "drag it
-/// where you want in HUD Layout".</summary>
-public enum ReadoutPosition
-{
-    /// <summary>Follows the game's own quest tracker, mirroring the way it flips sides when the
-    /// player moves it across the screen. The default, because it needs no configuration and puts
-    /// Wayfarer's guidance exactly where the player already looks for objectives.</summary>
-    FollowQuestTracker,
-
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
-}
-
-/// <summary>Which of the minimap's own direction chevrons the readout's arrow is cut from.
-///
-/// The game keeps five of them side by side on <c>ui/uld/NaviMap.tex</c> — the same sheet, the same
-/// 24x24 part size, the same shape, differing only in colour — and <c>ui/uld/NaviMap.uld</c> declares
-/// all five as real parts. They are offered as a setting because which one reads as "go this way"
-/// against a particular player's terrain, HUD theme and screen is the sort of question only an eye
-/// can settle, and changing it must not need a new build.</summary>
-public enum ArrowIconVariant
-{
-    /// <summary>The game's own quest-direction chevron. The default.</summary>
-    Amber,
-
-    Green,
-
-    Blue,
-
-    Red,
-
-    White,
 }
 
 /// <summary>Corner presets for the Wayfarer window. The game's own title-bar right-click menu
@@ -66,7 +29,11 @@ public enum HubPositionPreset
 
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 1;
+    /// <summary>The version this build writes. Bumped to 2 for the readout-position rework — see
+    /// <see cref="Migrate"/>.</summary>
+    public const int CurrentVersion = 2;
+
+    public int Version { get; set; } = CurrentVersion;
 
     /// <summary>Per-module enabled flag, keyed by <see cref="Modules.IModule.Name"/>. A missing key
     /// means "use the module's own default" — see <see cref="Modules.ModuleRegistry.Register"/>.
@@ -84,6 +51,31 @@ public sealed class Configuration : IPluginConfiguration
     public GuidanceConfig Guidance { get; set; } = new();
 
     public HubConfig Hub { get; set; } = new();
+
+    /// <summary>Brings a config written by an older build up to date, and reports whether anything
+    /// changed so the caller can save it.
+    ///
+    /// <para>Version 2 moves the readout off "follow the quest tracker". That was the shipped
+    /// default and it was wrong on a television: on a 16:9 layout it put the readout underneath the
+    /// minimap, and the second line — the one with the objective on it — was drawn behind the map
+    /// and could not be read. Anyone still on the old default is moved to top centre; anyone who
+    /// went into the settings and chose the tracker deliberately keeps it, because a migration that
+    /// overrides a deliberate choice is a bug of its own.</para></summary>
+    public bool Migrate()
+    {
+        if (Version >= CurrentVersion)
+        {
+            return false;
+        }
+
+        if (Version < 2 && QuestHelper.ReadoutPosition == ReadoutPosition.FollowQuestTracker)
+        {
+            QuestHelper.ReadoutPosition = ReadoutPosition.TopCentre;
+        }
+
+        Version = CurrentVersion;
+        return true;
+    }
 }
 
 /// <summary>Settings for the one Wayfarer window.</summary>
@@ -165,11 +157,42 @@ public sealed class QuestHelperConfig
     /// does, as <c>GetGlobalUIScale() * TextScale</c>. 0.8–2.0.</summary>
     public float TextScale { get; set; } = 1.0f;
 
-    /// <summary>Where the readout sits on screen.</summary>
-    public ReadoutPosition ReadoutPosition { get; set; } = ReadoutPosition.FollowQuestTracker;
+    /// <summary>Where the readout sits on screen. Top centre by default: it is what the player
+    /// asked for, and it is the one part of a default 16:9 HUD that is clear of both the minimap and
+    /// the quest tracker. See <see cref="Configuration.Migrate"/> for why the old
+    /// tracker-following default was retired.</summary>
+    public ReadoutPosition ReadoutPosition { get; set; } = ReadoutPosition.TopCentre;
 
-    /// <summary>Which of the minimap's direction chevrons the readout's arrow uses. Applied on the
-    /// next frame, with no reload — see <see cref="ArrowIconVariant"/>.</summary>
+    /// <summary>The readout's own position, as a fraction (0..1) of the usable screen — 0 hard
+    /// against the left safe margin, 1 hard against the right one. Live in every mode: while a
+    /// preset is selected these mirror wherever the preset put the readout, so nudging one of them
+    /// (or dragging the readout) continues from where it already is rather than jumping. Persisted
+    /// only when the player actually moves it, at which point <see cref="ReadoutPosition"/> becomes
+    /// <see cref="Core.Ui.ReadoutPosition.Custom"/>.
+    ///
+    /// <para>A fraction rather than a pixel count so that changing resolution — windowed to
+    /// full-screen, a different monitor, a television — moves the readout to the same <i>place</i>
+    /// instead of stranding it off the edge.</para></summary>
+    public float ReadoutFractionX { get; set; } = 0.5f;
+
+    /// <inheritdoc cref="ReadoutFractionX"/>
+    public float ReadoutFractionY { get; set; }
+
+    /// <summary>Puts the readout into the game's own HUD-Layout-style move mode: a translucent
+    /// handle appears over it and it can be dragged with the mouse, exactly as the game's HUD Layout
+    /// editor moves its own elements.
+    ///
+    /// <b>A mode rather than always-on, deliberately.</b> Dragging is implemented by a viewport-level
+    /// mouse listener that marks a click inside the readout's box as handled, so leaving it on
+    /// permanently would swallow world clicks and camera drags under the readout — which is exactly
+    /// the click-through guarantee that makes the readout safe to park over the world in the first
+    /// place. It would also mean permanently painting the HUD-Layout handle over the readout and
+    /// putting the hand cursor on it. Off by default; a controller never needs it, because the two
+    /// position sliders in Settings move the readout with no cursor at all.</summary>
+    public bool ReadoutMoveMode { get; set; }
+
+    /// <summary>Which colour the readout's arrow is drawn in. Applied on the next frame, with no
+    /// reload — see <see cref="ArrowIconVariant"/>.</summary>
     public ArrowIconVariant ArrowIcon { get; set; } = ArrowIconVariant.Amber;
 
     /// <summary>Draws the readout with the game's own text nodes, fonts and colours instead of the
