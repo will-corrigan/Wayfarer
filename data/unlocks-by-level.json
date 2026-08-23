@@ -1925,11 +1925,11 @@
       "type": "dungeon",
       "quest": "King of the Hull",
       "questKind": "sidequest",
-      "notes": null,
+      "notes": "Level disputed: Quest#67062 is also cited by Hullbreaker Isle (Hard) Dungeon Access at level 60, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A 4-player instanced dungeon (level 50). Run it once for the story; later it joins your daily roulette pool.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#67062"
@@ -2544,11 +2544,11 @@
       "type": "minion",
       "quest": "Do It for Gilly",
       "questKind": "sidequest",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level disputed: Quest#67649 is also cited by The Fractal Continuum Dungeon Access at level 60, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A collectible minion: Accompaniment Node. Once obtained, summon it from your minion list (Character menu) as a small non-combat companion that follows you around.",
       "priority": "optional",
       "cosmetic": true,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#67649"
@@ -3078,11 +3078,11 @@
       "type": "dungeon",
       "quest": "Do It for Gilly",
       "questKind": "sidequest",
-      "notes": null,
+      "notes": "Level disputed: Quest#67649 is also cited by Accompaniment Node (Minion) at level 50, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A 4-player instanced dungeon (level 60). Run it once for the story; later it joins your daily roulette pool.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#67649"
@@ -3436,11 +3436,11 @@
       "type": "dungeon",
       "quest": "King of the Hull",
       "questKind": "sidequest",
-      "notes": "Requires completing all of: Storming the Hull, Heavensward, King of the Hull (sequential; last main-chain quest used as completion marker).",
+      "notes": "Requires completing all of: Storming the Hull, Heavensward, King of the Hull (sequential; last main-chain quest used as completion marker). Level disputed: Quest#67062 is also cited by Hullbreaker Isle Dungeon Access at level 50, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A 4-player instanced dungeon (level 60). This is a harder remix of an earlier dungeon, unlocked later in the story.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#67062"
@@ -3708,11 +3708,11 @@
       "type": "trial",
       "quest": "A Demonic Duplicate",
       "questKind": "other",
-      "notes": "Prerequisite: The Last Pillar to Fall.",
+      "notes": "Prerequisite: The Last Pillar to Fall. Level disputed: Quest#67931 is also cited by Void Quests Access at level 80, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A single-boss fight for 8 players (level 60). This is the Extreme difficulty — a much harder remix of an earlier trial, fought for top-tier accessories and a mount.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#67931"
@@ -5118,11 +5118,11 @@
       "type": "raid",
       "quest": "To Kweh Under Distant Skies",
       "questKind": "sidequest",
-      "notes": null,
+      "notes": "Level disputed: Quest#68693 is also cited by Omega: Beyond the Rift Access at level 90, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A multi-boss raid for 8 players (level 70). This is the Savage difficulty — a much harder, min-max-focused version meant for a coordinated static group.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#68693"
@@ -5913,11 +5913,11 @@
       "type": "system",
       "quest": "A Demonic Duplicate",
       "questKind": "sidequest",
-      "notes": "Requires completing all of: Safekeeping, Thok Around the Clock, The Diabolical Bismarck, A Fiendish Likeness, A Deific Simulacrum, A Demonic Duplicate (sequential; last main-chain quest used as completion marker).",
+      "notes": "Requires completing all of: Safekeeping, Thok Around the Clock, The Diabolical Bismarck, A Fiendish Likeness, A Deific Simulacrum, A Demonic Duplicate (sequential; last main-chain quest used as completion marker). Level disputed: Quest#67931 is also cited by Containment Bay Z1T9 (Extreme) Access at level 60, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A Heavensward side questline about voidsent creatures that gates access to certain Extreme \"Containment Bay\" trials — optional lore content for players chasing those fights.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#67931"
@@ -7106,11 +7106,11 @@
       "type": "mount",
       "quest": "Gentlemen at Heart",
       "questKind": "other",
-      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Level disputed: Quest#70336 is also cited by The Gilded Araya Trial Access at level 90, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A collectible mount: UFO. Once obtained, summon it from your mount list (Character menu) to travel faster around zones.",
       "priority": "optional",
       "cosmetic": true,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#70336"
@@ -7640,11 +7640,11 @@
       "type": "system",
       "quest": "To Kweh under Distant Skies",
       "questKind": "msq",
-      "notes": "Requires completing all of: A Heartless Hypothesis, Endwalker, To Kweh under Distant Skies (sequential; last main-chain quest used as completion marker).",
+      "notes": "Requires completing all of: A Heartless Hypothesis, Endwalker, To Kweh under Distant Skies (sequential; last main-chain quest used as completion marker). Level disputed: Quest#68693 is also cited by Alphascape (Savage) Access at level 70, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A post-Endwalker side questline in Ultima Thule tied to the Omega storyline, rewarding unique items for players who follow it through.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#68693"
@@ -8462,11 +8462,11 @@
       "type": "trial",
       "quest": "Gentlemen at Heart",
       "questKind": "other",
-      "notes": null,
+      "notes": "Level disputed: Quest#70336 is also cited by UFO Mount at level 80, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "A single-boss fight for 8 players (level 90).",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#70336"
@@ -8880,11 +8880,11 @@
       "type": "system",
       "quest": "Uncouth Customers",
       "questKind": "sidequest",
-      "notes": null,
+      "notes": "Level disputed: Quest#70353 is also cited by Role Quests Access at level 105, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "Story quests written for your character's role (Tank, Healer, Melee/Ranged/Magic DPS) rather than a specific job — they deepen the expansion's narrative and can grant useful role actions.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#70353"
@@ -9920,11 +9920,11 @@
       "type": "system",
       "quest": "Uncouth Customers",
       "questKind": "sidequest",
-      "notes": null,
+      "notes": "Level disputed: Quest#70353 is also cited by Role Quests Access at level 92, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
       "description": "Story quests written for your character's role (Tank, Healer, Melee/Ranged/Magic DPS) rather than a specific job — they deepen the expansion's narrative and can grant useful role actions.",
       "priority": "nice",
       "cosmetic": false,
-      "confidence": "verified",
+      "confidence": "single-source",
       "sources": [
         "gamerescape:progression-guide",
         "game-data:Quest#70353"

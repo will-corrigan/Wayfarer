@@ -1105,6 +1105,26 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         rows.Clear();
         distanceRows.Clear();
+
+        // Before anything else, because an empty checklist reads as "you have done everything" and
+        // a catalogue that would not parse must not be allowed to look like that.
+        if (!unlocks.Loaded)
+        {
+            rows.Add(new HubListRow
+            {
+                Kind = HubRowKind.Note,
+                Label = "Wayfarer could not read its unlock catalogue — this list is empty for that reason, not because there is nothing left to do.",
+            });
+            if (unlocks.LoadError is { Length: > 0 } why)
+            {
+                rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = why });
+            }
+
+            PublishRows(checklistControls);
+            lastChecklistSignature = ComputeChecklistSignature();
+            return;
+        }
+
         AddGuidanceUnavailableNote(navigator);
         foreach (var group in GroupUnlockEntries(visible))
         {

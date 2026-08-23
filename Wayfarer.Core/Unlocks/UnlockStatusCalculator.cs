@@ -5,9 +5,9 @@ namespace Wayfarer.Core.Unlocks;
 public static class UnlockStatusCalculator
 {
     /// <summary>Sets Status/LockReason on every entry, in precedence order: Done, Accepted,
-    /// LockedOut (QuestLock), job/level gate, prereq chain (PreviousQuest + Join), InstanceContent,
-    /// Grand Company, beast tribe, mount, hard job requirement, accept-condition quests, curated
-    /// requirements, unmodeled gate, ambiguous name, no discoverable gate, else Available. Gate
+    /// ambiguous name, LockedOut (QuestLock), job/level gate, prereq chain (PreviousQuest + Join),
+    /// InstanceContent, Grand Company, beast tribe, mount, hard job requirement, accept-condition
+    /// quests, curated requirements, unmodeled gate, no discoverable gate, else Available. Gate
     /// checks after LockedOut are only run for entries not already resolved by an earlier stage —
     /// later gates are skipped once one blocks, matching the level-gate short-circuit the original
     /// implementation relied on.
@@ -59,6 +59,19 @@ public static class UnlockStatusCalculator
         if (ctx.IsQuestAccepted(rowId) || AnyAlternativeAccepted(u, ctx))
         {
             u.Status = UnlockStatus.Accepted;
+            return;
+        }
+
+        // Every gate below this line is read off one Quest row, and when several rows share the
+        // catalogue's name the matcher picked one of them arbitrarily — the character's starting
+        // city decides which is really theirs and the plugin cannot see it. Done and Accepted are
+        // safe above, because they ask about all the siblings at once; nothing below can. Graded
+        // on the wrong sibling, a Gridanian was told a Limsa Lominsa quest was in their way, in
+        // the confident voice this plugin reserves for things it knows.
+        if (u.AlternativeQuestRowIds.Count > 1)
+        {
+            u.Status = UnlockStatus.RequirementsUnknown;
+            u.LockReason = $"the game ships {u.AlternativeQuestRowIds.Count} quests with this name and only your character knows which is yours — status unknown";
             return;
         }
 
@@ -156,19 +169,16 @@ public static class UnlockStatusCalculator
             return;
         }
 
-        if (u.AlternativeQuestRowIds.Count > 1)
-        {
-            u.Status = UnlockStatus.RequirementsUnknown;
-            u.LockReason = $"the game ships {u.AlternativeQuestRowIds.Count} quests with this name and only your character knows which is yours — status unknown";
-            return;
-        }
-
         // The change this whole audit exists for. "No gate found" and "no gate exists" look
         // identical in the Quest sheet: row 67086 has every gate column empty and a recorded level
         // of 1, and still wants seven Extreme-trial mounts, because its real condition lives in a
         // server-side accept script that is not shipped in sqpack and has no client API. Falling
         // through to Available here is what sent a player to a quest they could not accept.
-        if (u.HasNoDiscoverableGate && u.Def.Requires is null)
+        //
+        // The curated block only lifts that verdict if it actually checks something. A `requires`
+        // carrying nothing but prose — or nothing at all — is a note, not a gate, and letting its
+        // mere presence disable the guard would reopen the hole it was written to close.
+        if (u.HasNoDiscoverableGate && u.Def.Requires?.HasCheckableRequirement != true)
         {
             u.Status = UnlockStatus.RequirementsUnknown;
             u.LockReason = "the game records no requirement for this at all, which usually means it has one this plugin can't see — status unknown";

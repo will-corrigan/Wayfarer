@@ -114,6 +114,42 @@ public class QuestNameMatchingTests
         Assert.Equal(65781u, match.Best.RowId);
     }
 
+    /// <summary>Journal presence deciding on its own, with the inbound-reference count held equal
+    /// so it cannot be what decides. Every other retired-row fixture has a lopsided reference count
+    /// as well, which left the journal tier — the evidence the matcher was built around — free to
+    /// be deleted with the suite still green.</summary>
+    [Fact]
+    public void JournalGenre_DecidesAlone_WhenNothingDependsOnEitherRow()
+    {
+        var match = QuestNameMatch.Resolve(
+        [
+            new QuestNameCandidate(66672, 0, 0),
+            new QuestNameCandidate(69409, 3859, 0),
+        ]);
+
+        Assert.Equal(69409u, match.Best.RowId);
+
+        // And it separates them: a row in the journal and a row that is not are not "equally
+        // plausible", so this must not be reported as an ambiguous group.
+        Assert.False(match.IsAmbiguous);
+        Assert.Empty(match.Alternatives);
+    }
+
+    /// <summary>Journal presence outranks the dependency count, not the other way round. A retired
+    /// row can still be named by quests that were never re-pointed, so the tier order is load
+    /// bearing: swap it and the dead row wins again.</summary>
+    [Fact]
+    public void JournalGenre_OutranksInboundReferences()
+    {
+        var match = QuestNameMatch.Resolve(
+        [
+            new QuestNameCandidate(66060, 0, 9),
+            new QuestNameCandidate(70058, 3859, 1),
+        ]);
+
+        Assert.Equal(70058u, match.Best.RowId);
+    }
+
     [Fact]
     public void StartingCityVariants_AreReportedAsAlternatives_NotPicked()
     {

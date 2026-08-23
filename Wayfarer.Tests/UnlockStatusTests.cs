@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
@@ -558,6 +559,23 @@ public class UnlockStatusTests
         Assert.Null(defs[0].Requires);
         Assert.Equal("unverified", defs[1].Confidence);   // never assume a claim is backed
         Assert.Empty(defs[1].Sources);
+    }
+
+    /// <summary>One value of the wrong JSON kind takes the whole unlocks feature down, so the
+    /// exception has to name the value that did it rather than leaving a maintainer to bisect a
+    /// 588-entry catalogue against "the JSON value could not be converted".</summary>
+    [Fact]
+    public void Parse_WrongScalarType_ThrowsNamingTheOffendingPath()
+    {
+        const string json = """
+        {"unlocks":[
+          {"level":50,"unlock":"Firebird (Mount)","type":"mount","quest":"Fiery Wings, Fiery Hearts",
+           "requires":{"items":[{"id":2002052,"name":"Firebird Whistle","keyItem":"yes"}]}}
+        ]}
+        """;
+        var ex = Assert.Throws<JsonException>(() => UnlockDataset.Parse(json));
+        Assert.Contains("unlocks dataset", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("keyItem", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

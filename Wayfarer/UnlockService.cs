@@ -52,11 +52,19 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         }
         catch (Exception ex)
         {
+            // Kept, not just logged. The checklist is the whole of this feature, and an empty
+            // checklist reads as "you have done everything" — the same lie in a different shape.
+            // Every surface that would have shown entries shows this instead.
+            LoadError = ex.Message;
             log.Error(ex, "UnlockService: dataset load failed — unlocks feature disabled");
         }
     }
 
     public bool Loaded { get; private set; }
+
+    /// <summary>Why the catalogue is not loaded, or null when it is. Shown to the player rather
+    /// than left in the log, because the alternative is a checklist that is silently empty.</summary>
+    public string? LoadError { get; private set; }
 
     public IReadOnlyList<ResolvedUnlock> Entries => entries;
 

@@ -23,6 +23,16 @@ public class UnlockGateTests
         new(104, "Demonic Lanner", "Containment Bay Z1T9 (Extreme)"),
     ];
 
+    /// <summary>Curated blocks that carry no checkable requirement: an empty object, prose only,
+    /// prose with an explicit unverifiable flag, and lists that exist but are empty.</summary>
+    public static TheoryData<UnlockRequirement> RequirementsThatCheckNothing() =>
+    [
+        new UnlockRequirement(),
+        new UnlockRequirement { Label = "something the wiki mentions but nobody wrote down" },
+        new UnlockRequirement { Label = "a requirement nobody can check", Unverifiable = true },
+        new UnlockRequirement { Mounts = [], Minions = [], Items = [], Jobs = [] },
+    ];
+
     [Fact]
     public void FieryWingsFieryHearts_WithoutTheLanners_IsNotAvailable()
     {
@@ -104,6 +114,26 @@ public class UnlockGateTests
         // until someone curates it, and it must not be advertised as ready to pick up.
         var u = Make("Some Future Trophy (Mount)", 71000, 1);
         u.HasNoDiscoverableGate = true;
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 100));
+
+        Assert.NotEqual(UnlockStatus.Available, u.Status);
+        Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
+    }
+
+    /// <summary>The guard is disabled by a curated block that <i>checks</i> something, not by one
+    /// that merely exists. A `requires` carrying only prose, or one whose collectible lists are all
+    /// empty, is a note; treating its presence as evidence would reopen the exact hole the guard
+    /// above closes, with no validator error to warn anyone.</summary>
+    [Theory]
+    [MemberData(nameof(RequirementsThatCheckNothing))]
+    public void NoDiscoverableGate_WithACuratedBlockThatChecksNothing_IsStillRequirementsUnknown(
+        UnlockRequirement requires)
+    {
+        var u = Make("Some Future Trophy (Mount)", 71000, 1);
+        u.HasNoDiscoverableGate = true;
+        u.Def.Requires = requires;
         var all = new List<ResolvedUnlock> { u };
 
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 100));
@@ -241,6 +271,39 @@ public class UnlockGateTests
 
         Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
         Assert.Contains("3 quests with this name", u.LockReason, StringComparison.Ordinal);
+    }
+
+    /// <summary>The ordering, not just the outcome. Every gate below Accepted reads one Quest row,
+    /// and when the matcher had to pick that row arbitrarily its prerequisites belong to a quest
+    /// this character may never have been offered. Reporting one by name is a confident, specific,
+    /// wrong statement — worse than admitting the ambiguity.</summary>
+    [Fact]
+    public void AmbiguousQuestName_WithAPrereqOnTheBoundRow_ReportsTheAmbiguity_NotThePrereq()
+    {
+        var u = Make("Guildhests", 65594, 10);
+        u.AlternativeQuestRowIds = [65594, 65595, 65596];
+        u.PrereqRowIds = [66000];
+        u.PrereqNames = ["Coming to Limsa Lominsa"];
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
+        Assert.DoesNotContain("Coming to Limsa Lominsa", u.LockReason, StringComparison.Ordinal);
+    }
+
+    /// <summary>Same, for the level gate — the other row-specific verdict an arbitrary binding can
+    /// get wrong.</summary>
+    [Fact]
+    public void AmbiguousQuestName_BelowTheBoundRowsLevel_ReportsTheAmbiguity_NotTheLevel()
+    {
+        var u = Make("Guildhests", 65594, 60);
+        u.AlternativeQuestRowIds = [65594, 65595, 65596];
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 20));
+
+        Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
     }
 
     [Fact]
