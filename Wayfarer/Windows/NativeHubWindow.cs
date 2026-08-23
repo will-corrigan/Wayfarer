@@ -450,6 +450,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             _ => 12,
         }).ThenBy(u => u.QuestLevel);
 
+    /// <summary>Line two of a hunting row: where the thing is. The zone alone for an overworld
+    /// target, the zone and the duty for the Grand Company elites that live inside instanced
+    /// content — the row previously said neither, so two targets on the same rank read as the same
+    /// row with different numbers.</summary>
+    private static string HuntingRowWhere(HuntingTargetView target)
+    {
+        var zone = target.ZoneName is { Length: > 0 } name ? name : string.Empty;
+        if (target.DutyName is not { Length: > 0 } duty)
+        {
+            return zone;
+        }
+
+        return zone.Length == 0 ? duty : $"{zone} · {duty}";
+    }
+
     private static void OpenDuty(uint? cfcId)
     {
         if (cfcId is { } id)
@@ -757,7 +772,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // Capped rather than unbounded: a checklist can hold hundreds of rows and the window is not
         // allowed to ask for a screen it does not have. Past the cap the list scrolls, which is the
         // behaviour that was missing.
-        var count = Math.Clamp(rows.Count, 1, 24);
+        //
+        // 14 rather than the previous 24 because the rows are now 44px instead of 26px: 14 × 45 is
+        // the same 630px of list the old cap asked for, so the window this produces is the same
+        // height it already was. Changing the row height without changing this would have grown the
+        // default window by 40%, which is one of the sizing fixes already on main being undone.
+        var count = Math.Clamp(rows.Count, 1, 14);
         return (count * (HubListRowNode.ItemHeight + spacing)) + spacing;
     }
 
@@ -1319,15 +1339,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private HubListRow BuildChecklistRow(ResolvedUnlock u, INavigationProvider? navigator)
     {
-        var (label, color) = StatusPresentation(u.Status);
-        var where = u.ZoneName is { Length: > 0 } zone ? $"{zone} · " : string.Empty;
-        var giver = u.GiverName is { Length: > 0 } name ? $" — {name}" : string.Empty;
+        var (_, color) = StatusPresentation(u.Status);
 
         return new HubListRow
         {
             Kind = HubRowKind.Entry,
-            Label = $"{u.Def.Unlock}{giver}",
-            Detail = $"{where}Lv{u.QuestLevel} · {label}",
+            Label = UnlockRowText.Name(u),
+            Description = UnlockRowText.Description(u),
+            Detail = UnlockRowText.Trailing(u),
             LabelColor = color,
 
             // An explainable row stays confirmable even with guidance off: there is nowhere to
@@ -1396,11 +1415,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "Unverified", Detail = $"{unverified.Count}" });
         foreach (var u in unverified)
         {
+            // Entry rather than Note, even though there is nothing to activate: an entry gets the
+            // two-line treatment and a note does not, and these are exactly the rows the player
+            // could make least sense of. Dimmed, so they still read as "not like the others".
             rows.Add(new HubListRow
             {
-                Kind = HubRowKind.Note,
-                Label = u.Def.Requires?.Label is { Length: > 0 } why ? $"{u.Def.Unlock} — {why}" : u.Def.Unlock,
-                Detail = u.Def.Level is { } lv ? $"Lv{lv}" : u.Def.Category ?? string.Empty,
+                Kind = HubRowKind.Entry,
+                Label = UnlockRowText.Name(u),
+                Description = UnlockRowText.Description(u),
+                Detail = UnlockRowText.Trailing(u),
+                LabelColor = GameColors.Dimmed,
             });
         }
     }
@@ -1578,7 +1602,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             {
                 Kind = HubRowKind.Entry,
                 Label = target.MonsterName,
-                Detail = $"{target.Killed}/{target.Required} · {target.DutyName}",
+
+                // The duty's name is where you go, so it belongs on the "where" line with the zone
+                // rather than crammed into the gutter beside the kill count, which is where it used
+                // to be and where it was the first thing to be ellipsised away.
+                Description = HuntingRowWhere(target),
+                Detail = $"{target.Killed}/{target.Required}",
                 Activate = target.DutyContentFinderConditionId is null
                     ? null
                     : () => OpenDuty(target.DutyContentFinderConditionId),
@@ -1589,6 +1618,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             Kind = HubRowKind.Entry,
             Label = target.MonsterName,
+            Description = HuntingRowWhere(target),
             Detail = $"{target.Killed}/{target.Required}",
             Activate = navigator is null ? null : () =>
             {
@@ -1845,8 +1875,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             rows.Add(new HubListRow
             {
                 Kind = HubRowKind.Entry,
-                Label = isFollowed ? $"{name}  (following)" : name,
-                Detail = navigator.GetAcceptedQuestObjective(questId) ?? string.Empty,
+                Label = name,
+
+                // The objective moves to line two, where a whole sentence fits. In the gutter it
+                // was the longest string on the row competing for the narrowest space on it.
+                Description = navigator.GetAcceptedQuestObjective(questId) ?? string.Empty,
+                Detail = isFollowed ? "Following" : string.Empty,
                 LabelColor = isFollowed ? GameColors.Good : null,
                 Activate = () => FollowQuest(questId),
             });

@@ -497,7 +497,8 @@ internal sealed unsafe class HuntingLogService
             WorldZ: loc.Z,
             IsLivePosition: false,
             DutyName: null,
-            DutyContentFinderConditionId: null);
+            DutyContentFinderConditionId: null,
+            ZoneName: ZoneName(loc.TerritoryTypeId));
     }
 
     private HuntingTargetView BuildDutyView(HuntingMonster monster, Func<int, int, int> killedCount, HuntingRank pageRank)
@@ -518,7 +519,8 @@ internal sealed unsafe class HuntingLogService
             WorldZ: 0,
             IsLivePosition: false,
             DutyName: duty?.Name ?? "an instanced Grand Company duty",
-            DutyContentFinderConditionId: duty?.ContentFinderConditionId);
+            DutyContentFinderConditionId: duty?.ContentFinderConditionId,
+            ZoneName: loc?.DutyTerritoryTypeId is { } dutyTerritory ? ZoneName(dutyTerritory) : null);
     }
 
     /// <summary>Refreshes <see cref="CurrentTarget"/>'s position from a live <c>IObjectTable</c>
@@ -581,6 +583,19 @@ internal sealed unsafe class HuntingLogService
     // enters the plugin: the hub rows, the readout's hunting line, the nameplate marker match and
     // the info-bar entry all read the name this method resolved. The sheet stores "dragonfly"; the
     // game's own Hunting Log shows "Dragonfly" — see DisplayNames.
+
+    /// <summary>The target's territory as the game names it. Null rather than a placeholder when
+    /// the row does not resolve: the row's second line simply carries less, which is better than
+    /// carrying "Territory 148".</summary>
+    private string? ZoneName(uint territoryTypeId) =>
+        territoryTypeId == 0
+            ? null
+            : dataManager.GetExcelSheet<TerritoryType>()
+                         .GetRowOrDefault(territoryTypeId)?.PlaceName.ValueNullable?.Name.ExtractText()
+              is { Length: > 0 } name
+                ? name
+                : null;
+
     private string MonsterName(uint bNpcNameId) =>
         dataManager.GetExcelSheet<BNpcName>().GetRowOrDefault(bNpcNameId)?.Singular.ExtractText() is { Length: > 0 } n
             ? DisplayNames.TitleCase(n)

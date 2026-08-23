@@ -11,9 +11,16 @@ internal sealed class HubListRow
 
     public required string Label { get; init; }
 
-    /// <summary>Right-aligned trailing text: a distance, a kill count, a state word. Kept on the
-    /// same line rather than wrapped underneath so every row is the same height, which is what
-    /// lets the list virtualize (and therefore what lets it carry controller navigation).</summary>
+    /// <summary>Line two: what this entry actually is, in the player's own register. Every unlock
+    /// in the catalogue carries one of these and the window drew none of them — which is the whole
+    /// of "I don't know what half of the things are or do". Empty on headings, and on notes, whose
+    /// own text wraps into this line's space instead.</summary>
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>Right-aligned trailing text on line one: a level and a zone, a kill count, a
+    /// distance. Two short tokens at most — three facts in this space is what made it unreadable.
+    /// Kept on the row rather than wrapped underneath so every row is the same height, which is
+    /// what lets the list virtualize (and therefore what lets it carry controller navigation).</summary>
     public string Detail { get; set; } = string.Empty;
 
     /// <summary>Overrides the kind's default colour — used for per-status unlock colouring.</summary>
