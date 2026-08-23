@@ -104,6 +104,8 @@ public sealed record NavigationState
     /// Duty Finder directly instead of leaving the player to find it themselves.</summary>
     public uint? DutyContentFinderConditionId { get; init; }
 
+    /// <summary>The mode strings, as constants rather than an enum: they cross the IPC boundary
+    /// verbatim, so an external consumer reads the same values this file names.</summary>
     public static class Modes
     {
         public const string Hidden = "hidden";

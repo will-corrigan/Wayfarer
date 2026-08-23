@@ -26,6 +26,11 @@ internal sealed unsafe class GameMapFlag(IClientState clientState, IPluginLog lo
 {
     private const uint DefaultFlagIcon = 60561;
 
+    // The flag is set and restored on every objective change, so a repeatable fault here would
+    // write a line per objective. Once each is enough to diagnose it.
+    private bool loggedSetFailure;
+    private bool loggedRestoreFailure;
+
     /// <summary>Snapshots the player's current flag, or null when it cannot be read safely: no map
     /// agent, mid-zone-transition (a flag planted then would land on the wrong map), or PvP. A null
     /// here means the coordinator declines to take ownership at all, which is the conservative
@@ -66,7 +71,15 @@ internal sealed unsafe class GameMapFlag(IClientState clientState, IPluginLog lo
         }
         catch (Exception ex)
         {
-            log.Error(ex, "GameMapFlag: could not set the flag marker");
+            if (!loggedSetFailure)
+            {
+                loggedSetFailure = true;
+                const string message =
+                    "Wayfarer guidance: the objective could not be flagged on the map, so there will be no map "
+                    + "pin, minimap pin or compass marker for it. The readout and its arrow are unaffected. "
+                    + "Reported once.";
+                log.Warning(ex, message);
+            }
         }
     }
 
@@ -91,7 +104,15 @@ internal sealed unsafe class GameMapFlag(IClientState clientState, IPluginLog lo
         }
         catch (Exception ex)
         {
-            log.Error(ex, "GameMapFlag: could not restore the player's flag marker");
+            if (!loggedRestoreFailure)
+            {
+                loggedRestoreFailure = true;
+                const string message =
+                    "Wayfarer guidance: your own map flag could not be put back after a route ended, so "
+                    + "Wayfarer's flag may be left where yours was. Set it again by clicking the map. "
+                    + "Reported once.";
+                log.Warning(ex, message);
+            }
         }
     }
 }

@@ -449,9 +449,126 @@ function questRowsFromRequirement(row, resolved, infoboxes) {
     // maintained by hand and an id that resolves to nothing is a typo, not a fact.
     if (stated != null && resolved.quests[stated]) {
       targets.push({ target: link.target, rows: [stated], via: 'linked-page-infobox' });
+      continue;
+    }
+    // Third route, and the narrowest. No row carries this name, several carry it with a
+    // parenthetical, and the guide's own sentence says a choice is being described — "one of the
+    // Squadron and Commander Grand Company quests", "the applicable Let the Hunt Begin
+    // sidequest", "one of the A Relic Reborn Sidequests". The whole set goes forward as
+    // alternatives. Without the sentence saying so this is not taken: the set would be a guess.
+    if ((r?.questVariants?.length ?? 0) > 1 && CHOICE_CLAUSE.test(row.requirement || row.text)) {
+      targets.push({ target: link.target, rows: [...r.questVariants], via: 'quest-name-variants' });
     }
   }
   return targets;
+}
+
+/** Links on the LABEL side — the thing being unlocked. These never establish a gate, but when the
+ * thing being unlocked is a duty the label link names it, and that row id is the entry's identity:
+ * "[[The Aquapolis]] Access" is ContentFinderCondition 179 whatever opens it. */
+function labelLinks(row) {
+  return row.links.filter((l) => !l.isCategory && l.side === 'label');
+}
+
+/** The duty rows a set of links names, in link order. A ContentFinderCondition row carries the
+ * name the wiki and the guide use; the InstanceContent row it points at is what
+ * `UIState.IsInstanceContentCompleted` takes, and the resolver returns both. */
+function dutyRows(links, resolved) {
+  const out = [];
+  for (const link of links) {
+    for (const hit of resolved.names[link.target]?.sheets?.duty ?? []) {
+      if (!out.some((d) => d.cfcId === hit.rowId)) {
+        out.push({ cfcId: hit.rowId, contentId: hit.contentId ?? null, name: hit.name, target: link.target });
+      }
+    }
+  }
+  return out;
+}
+
+// A treasure-map page states the item you actually carry in its own {{ARR Infobox Map Chest}}
+// "Type" field. The guide links the map by its DISPLAY name ("Dragonskin Treasure Map"), which is
+// the key item you receive after deciphering — it is not an Item row, so the link resolves to
+// nothing and the six treasure-map dungeons were left with no identity at all. The Type field is
+// the linked page's own statement of the row that exists, in the same shape as the quest-page
+// infobox route, and it is read the same way.
+const MAP_CHEST_TYPE = /\{\{\s*ARR Infobox Map Chest[\s\S]*?\|\s*Type\s*=\s*([^\n|}]+)/i;
+
+function infoboxMapChestType(record) {
+  if (!record || record.missing) return null;
+  const m = MAP_CHEST_TYPE.exec(record.wikitext);
+  const name = m?.[1]?.trim();
+  return name || null;
+}
+
+/** The item rows a row's requirement clause points at: directly, when the link target is an Item
+ * name, or through the linked page's own map-chest "Type". */
+function itemRowsFromRequirement(row, resolved, mapChestTypes) {
+  const out = [];
+  const take = (rowId, name, target, via) => {
+    if (!out.some((i) => i.id === rowId)) out.push({ id: rowId, name, target, via });
+  };
+  for (const link of requirementLinks(row)) {
+    const direct = resolved.names[link.target]?.sheets?.item ?? [];
+    if (direct.length === 1) {
+      take(direct[0].rowId, direct[0].name, link.target, 'link-target-name');
+      continue;
+    }
+    const stated = mapChestTypes.get(link.target);
+    const viaPage = stated ? resolved.names[stated]?.sheets?.item ?? [] : [];
+    if (viaPage.length === 1) take(viaPage[0].rowId, viaPage[0].name, link.target, 'linked-page-map-chest');
+  }
+  return out;
+}
+
+// A requirement clause that offers a choice rather than a sequence. Both halves matter: "or"
+// alone would take "Complete X after Y or Z", where the "after" is a chain the schema cannot
+// express and picking from it would be a guess.
+const ALTERNATIVE_CLAUSE = /\bor\b/i;
+const CHAIN_CLAUSE = /\b(and|after|then|followed by)\b/i;
+
+// The guide saying, in its own words, that the row describes a choice between quests rather than
+// a list of them: "one of the Squadron and Commander Grand Company quests", "the applicable Let
+// the Hunt Begin sidequest".
+const CHOICE_CLAUSE = /\b(one of|any of|the applicable|whichever)\b/i;
+
+/** A quest name with one trailing parenthetical removed: the base name the game's own sheet
+ * disambiguates with "(Maelstrom)", "(Gridania)", "(Bravura)".
+ *
+ * This is NOT a matching rule and must never become one — folding the parenthetical away to bind
+ * a name to a row is what the name-reconciliation audit rejected, because it makes ten different
+ * relic quests indistinguishable. It is only ever asked of rows that are ALREADY identified, to
+ * decide whether they are variants of one quest. */
+const baseQuestName = (name) => (name ?? '').replace(/\s*\([^()]*\)$/, '').trim();
+
+/** Whether a row's several quest rows are ALTERNATIVES — any one of which counts — rather than a
+ * chain of quests all of which must be done.
+ *
+ * Two ways to know, and both are statements by a source rather than inferences about one. The
+ * game's own sheet is the stronger: rows whose names differ only by the parenthetical the sheet
+ * disambiguates them with, all at the same level, are one quest that ships once per starting city
+ * or Grand Company, and a character holds exactly one — that is what the three "The Company You
+ * Keep" rows are. Failing that, the guide's own sentence offers a choice and does not describe a
+ * sequence. */
+function statesAlternatives(row, union, resolved) {
+  if (union.length < 2) return false;
+
+  const facts = union.map((id) => resolved.quests[id]).filter(Boolean);
+  if (facts.length === union.length) {
+    const bases = new Set(facts.map((f) => joinKey(baseQuestName(f.name))));
+    const levels = new Set(facts.map((f) => f.level));
+    if (bases.size === 1 && levels.size === 1) return true;
+  }
+
+  const clause = row?.requirement || row?.text || '';
+  if (CHOICE_CLAUSE.test(clause)) return true;
+  return ALTERNATIVE_CLAUSE.test(clause) && !CHAIN_CLAUSE.test(clause);
+}
+
+/** The requirement link whose target is the entry's own name. Only meaningful where the colon
+ * split failed and every link came back 'unknown': in a statement with no colon, the link that
+ * names the unlock itself is naming the quest that IS the unlock. */
+function namesItself(entry, fromGuide) {
+  return fromGuide.find((t) => joinKey(t.target) === joinKey(entry.unlock)) ?? null;
 }
 
 // --------------------------------------------------------------------------- assignment
@@ -567,15 +684,35 @@ function infoboxQuestNumber(record) {
 // --------------------------------------------------------------------------- emit
 
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questKind', 'notes',
-  'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
+  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ];
+
+// The guide types each row with an icon, and that icon is a statement by the source about what
+// the row IS. The original scrape had no access to it — it read rendered text — and typed entries
+// by string-matching their own names, which filed every duty whose name begins with the word
+// "Mount" as a mount. Only the icons that map onto a catalogue type are listed; a row whose icon
+// is not here keeps the curated type.
+const TYPE_FROM_ICON = new Map([
+  ['Trialicon.png', 'trial'],
+  ['Raidicon.png', 'raid'],
+  ['Allianceraidicon.png', 'alliance-raid'],
+  ['Dungeonicon.png', 'dungeon'],
+  ['Variant_Dungeonicon.png', 'dungeon'],
+]);
 
 // How an entry's level was grounded. The catalogue may not invent one: the original scrape used
 // the previous expansion's level cap for five guide sections that state no level at all, which
 // put 13 entries at a number no source had ever said — Golden Dhyata at 80 for a level-90 quest,
 // Haurchefant (Emote) at 50 for a level-60 one.
 const LEVEL_FROM_GUIDE = 'gamerescape:progression-guide-section';
+
+// The sentence the level-disputes pass appends to `notes`. It is generated, so it is stripped
+// before that pass and rewritten from the current set — otherwise a dispute that has been
+// resolved leaves behind a note nothing supports and a confidence nothing justifies.
+const LEVEL_DISPUTE_SENTENCE = /\s*Level disputed: [^]*?is resolved\./g;
+const withoutLevelDispute = (notes) =>
+  (typeof notes === 'string' ? notes.replace(LEVEL_DISPUTE_SENTENCE, '').trim() || null : notes ?? null);
 
 /** The level, and the record of where it came from — or neither.
  *
@@ -626,20 +763,51 @@ export function canonicalise(dataset) {
   return `${JSON.stringify(out, null, 2)}\n`;
 }
 
+/** The type the sources state, or null to keep the curated one.
+ *
+ * Deliberately narrow. `type` is an editorial field and the generator does not own it; this
+ * corrects exactly one defect, and only where two sources agree the curated value is impossible.
+ * The catalogue types an entry `mount` by matching the word at the start of its own name, so the
+ * five duties called "Mount Ordeals", "Mount Rokkon" and friends were filed as mounts. The guide
+ * row's icon says trial or dungeon, and the label resolves to a ContentFinderCondition row and to
+ * no Mount row at all — you cannot add "Another Mount Rokkon (Savage)" to your mount list. */
+function typeFromSources(entry, row, resolved) {
+  if (entry.type !== 'mount' || !row) return null;
+  const stated = TYPE_FROM_ICON.get(row.icon ?? '');
+  if (!stated) return null;
+
+  const labelled = labelLinks(row).map((l) => resolved.names[l.target]).filter(Boolean);
+  const isDuty = labelled.some((r) => (r.sheets?.duty?.length ?? 0) > 0);
+  const isMount = labelled.some((r) => (r.sheets?.mount?.length ?? 0) > 0);
+  return isDuty && !isMount ? stated : null;
+}
+
 const GUIDE_SOURCE = 'gamerescape:progression-guide';
 
 /** Provenance, in a fixed order so two runs produce the same list: the guide row that names the
- * unlock, any curated duty identity, every game row the identity rests on, then curated extras
- * (a Mount row, a script-gated marker) that no source states mechanically. */
-function buildSources(guideAssigned, questRows, curatedExtras) {
-  const before = curatedExtras.filter((s) => s.startsWith('game-data:ContentFinderCondition#'));
-  const after = curatedExtras.filter((s) => !s.startsWith('game-data:ContentFinderCondition#'));
-  return [
+ * unlock, the duty rows the entry's identity and gate rest on, every quest row it rests on, the
+ * items it is entered with, then curated extras (a Mount row, a script-gated marker) that no
+ * source states mechanically.
+ *
+ * Deduplicated, first occurrence winning, because the committed file is also the input: a source
+ * this function derives is carried forward in `curatedExtras` on the next run and would otherwise
+ * be emitted twice. */
+function buildSources(guideAssigned, questRows, curatedExtras, derived = {}) {
+  const cfc = (id) => `game-data:ContentFinderCondition#${id}`;
+  const before = [
+    ...(derived.dutyRows ?? []).map((d) => cfc(d.cfcId)),
+    ...curatedExtras.filter((s) => s.startsWith('game-data:ContentFinderCondition#')),
+  ];
+  const after = [
+    ...(derived.itemRows ?? []).map((i) => `game-data:Item#${i.id}`),
+    ...curatedExtras.filter((s) => !s.startsWith('game-data:ContentFinderCondition#')),
+  ];
+  return [...new Set([
     ...(guideAssigned ? [GUIDE_SOURCE] : []),
     ...before,
     ...questRows.map((id) => `game-data:Quest#${id}`),
     ...after,
-  ];
+  ])];
 }
 
 // --------------------------------------------------------------------------- main
@@ -660,6 +828,22 @@ async function main() {
   const rows = pages.flatMap(parseGuidePage);
   console.log(`guide content rows parsed: ${rows.length} (${rows.filter((r) => r.placeholder).length} "???" placeholders)`);
 
+  // A guide page for an expansion that has not shipped is the previous expansion's page with the
+  // quest names blanked to "???". Thirty-three of the Evercold page's thirty-four rows are
+  // blanked; the one that is not is an editing oversight, and the scrape imported it as a real
+  // level-105 entry duplicating a level-92 one and bound to the same quest. Rather than name the
+  // page — next year there will be another — the rule is the measurement: a page that is mostly
+  // placeholders is describing content that does not exist yet, and nothing on it is shippable.
+  const UNRELEASED_PLACEHOLDER_SHARE = 0.5;
+  const unreleasedPages = new Set(
+    pages
+      .map((p) => rows.filter((r) => r.page === p.title))
+      .filter((rs) => rs.length > 0 && rs.filter((r) => r.placeholder).length / rs.length > UNRELEASED_PLACEHOLDER_SHARE)
+      .map((rs) => rs[0].page),
+  );
+  for (const row of rows) row.unreleased = unreleasedPages.has(row.page);
+  if (unreleasedPages.size) console.log(`unreleased-expansion guide pages (mostly "???"): ${[...unreleasedPages].join(', ')}`);
+
   const targets = new Set();
   for (const row of rows) for (const l of row.links) if (!l.isCategory) targets.add(l.target);
   console.log(`distinct link targets to resolve: ${targets.size}`);
@@ -672,15 +856,25 @@ async function main() {
   // whose name did not resolve the page's infobox is the resolver, and for one that did it is
   // the independent second source the project's multi-source rule requires.
   const infoboxes = new Map();
+  const mapChestTypes = new Map();
   if (!args.noCrossCheck) {
     const linked = new Set();
     for (const ri of entriesForRow.keys()) for (const l of requirementLinks(rows[ri])) linked.add(l.target);
     console.log(`reading ${linked.size} linked pages for their own {{ARR Infobox Quest}}...`);
-    for (const [t, record] of fetchTitles([...linked].sort())) infoboxes.set(t, infoboxQuestNumber(record));
+    for (const [t, record] of fetchTitles([...linked].sort())) {
+      infoboxes.set(t, infoboxQuestNumber(record));
+      const chest = infoboxMapChestType(record);
+      if (chest) mapChestTypes.set(t, chest);
+    }
 
-    // Row ids that came from an infobox rather than from a name still need their facts.
+    // Row ids and item names that came from a linked page rather than from a link target still
+    // need their facts, so the resolver is asked a second time with both added.
     const stated = [...new Set([...infoboxes.values()].filter((v) => v != null && !resolved.quests[v]))];
-    if (stated.length) resolved = resolveNames(targets, sqpack, stated);
+    const extraNames = [...new Set(mapChestTypes.values())].filter((n) => !(n in resolved.names));
+    if (stated.length || extraNames.length) {
+      for (const n of extraNames) targets.add(n);
+      resolved = resolveNames(targets, sqpack, stated);
+    }
   }
 
   // ------------------------------------------------------------------ per-entry identity
@@ -692,6 +886,10 @@ async function main() {
     disagreements: [],
     unassignedGuideRows: [],
     entriesWithoutAGuideRow: [],
+    droppedEntries: [],
+    retypedEntries: [],
+    alternativeSets: [],
+    gates: [],
     levelless: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
   };
@@ -714,13 +912,27 @@ async function main() {
       basis = 'guide-link';
     } else if (fromGuide.length > 1) {
       // Several requirement links each naming a quest: the row states alternatives ("or") or a
-      // chain ("and"), and this schema can express neither. If the curated binding is one of the
-      // rows the guide itself links, the guide still corroborates it and it stands; if it is
-      // not, the guide contradicts it and only the game data is left backing it.
-      const union = new Set(fromGuide.flatMap((t) => t.rows));
-      if (committedRows.length && committedRows.every((r) => union.has(r))) {
+      // chain ("and"). If the curated binding is one of the rows the guide itself links, the
+      // guide still corroborates it and it stands; if it is not, the guide contradicts it and
+      // only the game data is left backing it.
+      const union = [...new Set(fromGuide.flatMap((t) => t.rows))].sort((a, b) => a - b);
+      const self = namesItself(entry, fromGuide);
+      if (committedRows.length && committedRows.every((r) => union.includes(r))) {
         questRows = committedRows;
         basis = 'guide-link-subset';
+      } else if (statesAlternatives(row, union, resolved)) {
+        // The row names a SET any one of which counts, and the catalogue can now say so. Picking
+        // one of them is what bound the Grand Company entries to a single company's quest and
+        // told two thirds of characters they had not done something they had.
+        questRows = union;
+        basis = 'guide-link-any-of';
+      } else if (self) {
+        // The row's own subject is a quest and it links to it: "A Gentleman Falls, Rather than
+        // Flies unlocked after completing the Heavensward Main Storyline Quest" links both the
+        // quest being unlocked and its prerequisite, and the statement has no colon for the
+        // split to work from. The link that IS the unlock is the identity; the other is context.
+        questRows = self.rows;
+        basis = 'guide-link-self';
       } else if (committedRows.length) {
         questRows = committedRows;
         basis = 'curated (the guide row names several quests, none of them this one)';
@@ -766,9 +978,45 @@ async function main() {
     return { entry, index: i, row, questRows, basis, fromGuide };
   });
 
+  // ------------------------------------------------------------------ drop unreleased content
+  //
+  // The one edit the generator makes that is a DELETION, and the only one it is allowed: an entry
+  // whose sole source is a guide page describing an expansion that has not shipped. Everything
+  // else it can do is rewrite an identity; this removes a row from the checklist, so it is
+  // reported by name and not merely counted.
+  const dropped = proposals.filter((p) => p.row?.unreleased);
+  for (const p of dropped) {
+    report.droppedEntries.push({
+      unlock: p.entry.unlock, level: p.entry.level,
+      page: p.row.page, section: p.row.section, text: p.row.text,
+      why: 'the only guide row for this entry is on a page that is mostly "???" placeholders — an expansion that has not shipped',
+    });
+  }
+  const shipping = proposals.filter((p) => !p.row?.unreleased);
+
   // ------------------------------------------------------------------ build the entries
-  const unlocks = proposals.map(({ entry, row, questRows, basis, fromGuide }) => {
+  const unlocks = shipping.map(({ entry, row, questRows, basis, fromGuide }) => {
     const curatedExtras = entry.sources.filter((s) => s !== GUIDE_SOURCE && !s.startsWith('game-data:Quest#'));
+
+    // Gates that are not quests. Only reached when nothing bound a Quest row: a quest completion
+    // is the strongest gate the client records, and where one exists it is the answer. Where none
+    // does, the guide still often says something checkable — clear this duty, carry this map —
+    // and the difference between "status unknown" and "requires clearing Sigmascape V4.0
+    // (Savage)" is the whole value of reading it.
+    const labelDuties = row && !questRows.length ? dutyRows(labelLinks(row), resolved) : [];
+    const gateDuties = row && !questRows.length ? dutyRows(requirementLinks(row), resolved) : [];
+    const gateItems = row && !questRows.length ? itemRowsFromRequirement(row, resolved, mapChestTypes) : [];
+    // A duty the entry is ABOUT is its identity, not its gate: "[[The Aquapolis]] Access" names
+    // the Aquapolis on the label side, and clearing the Aquapolis is obviously not how you unlock
+    // it. Only requirement-side duties become a requirement, and only those with an
+    // InstanceContent row, which is the id the client can actually be asked about.
+    const checkableDuties = gateDuties
+      .filter((d) => !labelDuties.some((l) => l.cfcId === d.cfcId))
+      .filter((d) => d.contentId != null);
+    const derived = {
+      dutyRows: [...labelDuties, ...gateDuties.filter((d) => !labelDuties.some((l) => l.cfcId === d.cfcId))],
+      itemRows: gateItems,
+    };
 
     // The infobox is only a SECOND source for a row the link target's own name already produced.
     // Where the infobox was itself the resolver there is nothing independent to compare against,
@@ -804,13 +1052,12 @@ async function main() {
     // 'confidence' is a statement about evidence. 'verified' means two independent sources agree
     // on the identity — the guide's own link target and the game's Quest sheet — and nothing
     // contradicts them. Everything weaker is named as such rather than rounded up.
-    const corroboratedByGuide = basis === 'guide-link' || basis === 'guide-link-subset';
+    const corroboratedByGuide = basis.startsWith('guide-link');
     let confidence;
     if (!questRows.length) confidence = 'unverified';
     else if (questRows.length > 1) confidence = 'single-source';
     else if (curatedExtras.includes('script-gated:curated')) confidence = 'single-source';
     else if (agreed === false) confidence = 'single-source';
-    else if (/level disputed/i.test(entry.notes ?? '')) confidence = 'single-source';
     else if (!corroboratedByGuide) confidence = 'single-source';
     else confidence = 'verified';
 
@@ -832,27 +1079,90 @@ async function main() {
       });
     }
 
-    const out = { ...entry, ...grounded, quest, confidence, sources: buildSources(!!row, questRows, curatedExtras) };
+    // A curated `quest` on an entry the guide gates on a duty or an item is a string that has now
+    // been shown NOT to be a quest: the link the catalogue took it from resolves to a
+    // ContentFinderCondition or an Item row. Keeping it would leave the plugin matching a name
+    // against the Quest sheet forever, which is the defect this pipeline exists to end.
+    const out = {
+      ...entry, ...grounded, confidence,
+      quest: !questRows.length && (checkableDuties.length || gateItems.length) ? null : quest,
+      // The level-dispute sentence is written BY the level-disputes pass below, so it is
+      // generated content living in a curated field and has to be cleared before that pass runs.
+      // Carrying it forward makes it permanent: the entry that shared Quest#70353 with a
+      // level-105 duplicate kept the note, and the note kept the entry at 'single-source', long
+      // after the duplicate had gone.
+      notes: withoutLevelDispute(entry.notes),
+      sources: buildSources(!!row, questRows, curatedExtras, derived),
+    };
     if (out.level === null) delete out.level;
     if (!out.levelSource) delete out.levelSource;
     if (!out.category) delete out.category;
+
+    // Several rows for one unlock is a fact about the game, not an ambiguity to be picked from,
+    // and the file has to say so or the plugin will match on the name again.
+    if (questRows.length > 1) {
+      out.questAnyOf = [...questRows].sort((a, b) => a - b);
+      report.alternativeSets.push({
+        unlock: entry.unlock, level: entry.level, basis,
+        rows: out.questAnyOf.map((id) => ({ id, name: resolved.quests[id]?.name ?? null, level: resolved.quests[id]?.level ?? null })),
+        guideText: row?.text ?? null,
+      });
+    } else {
+      delete out.questAnyOf;
+    }
+
+    const stated = typeFromSources(entry, row, resolved);
+    if (stated && stated !== entry.type) {
+      report.retypedEntries.push({
+        unlock: entry.unlock, level: entry.level, from: entry.type, to: stated,
+        icon: row.icon,
+        why: 'the catalogue typed this from the first word of its own name; the guide row\'s icon and the game data both say it is a duty',
+      });
+      out.type = stated;
+    }
 
     // `requires.unverifiable` is the marker that stops the status calculator grading an entry.
     // It has to track the identity both ways: set when nothing backs the entry, and CLEARED the
     // moment something does. Leaving it set on an entry that now resolves to a live quest row
     // would keep 40 recovered entries in the "can't be checked" bucket they just left.
+    //
+    // A duty or item gate does NOT clear it. Clearing Sigmascape opens the Ultimate; whether the
+    // player then spoke to the minstrel is written nowhere a plugin can read. The gate is real
+    // and worth showing — it just cannot promise the unlock was taken.
     if (questRows.length) {
       if (out.requires) {
         const { unverifiable, label, ...concrete } = out.requires;
         out.requires = Object.keys(concrete).length ? { label, ...concrete } : undefined;
         if (!out.requires) delete out.requires;
       }
-    } else if (out.requires?.unverifiable !== true) {
+    } else {
+      // The derived gate lists are rewritten from source every run, so the committed ones are
+      // dropped rather than merged — otherwise a duty the guide stopped naming would live on
+      // forever. Everything else in `requires` is curated and is kept.
+      const { label: curatedLabel, duties: _duties, items: _items, ...keep } = entry.requires ?? {};
+      const gated = checkableDuties.length || gateItems.length;
+      // A gate the generator derived also replaces whatever prose the catalogue had, because that
+      // prose was written about the absence this gate has just filled.
+      const label = checkableDuties.length
+        ? `unlocked by clearing ${checkableDuties.map((d) => d.name).join(', ')}; whether you have taken the unlock itself is not something the game lets a plugin read`
+        : gateItems.length
+          ? `entered with ${gateItems.map((i) => i.name).join(', ')}, never from a quest`
+          : curatedLabel ?? 'no unlocking quest is recorded for this entry';
       out.requires = {
-        label: entry.requires?.label ?? 'no unlocking quest is recorded for this entry',
-        ...entry.requires,
+        label,
+        ...keep,
+        ...(checkableDuties.length ? { duties: checkableDuties.map((d) => ({ id: d.contentId, name: d.name })) } : {}),
+        ...(gateItems.length ? { items: gateItems.map((i) => ({ id: i.id, name: i.name })) } : {}),
         unverifiable: true,
       };
+      if (gated) {
+        report.gates.push({
+          unlock: entry.unlock, level: entry.level,
+          duties: checkableDuties.map((d) => ({ contentId: d.contentId, contentFinderCondition: d.cfcId, name: d.name, from: d.target })),
+          items: gateItems.map((i) => ({ id: i.id, name: i.name, from: i.target, via: i.via })),
+          identityDuties: labelDuties.map((d) => ({ contentFinderCondition: d.cfcId, name: d.name })),
+        });
+      }
     }
     return out;
   });
@@ -934,7 +1244,12 @@ async function main() {
     linkTargetsResolved: targets.size,
     catalogueEntries: unlocks.length,
     entriesTiedToAGuideRow: rowForEntry.size,
-    entriesWhoseIdentityCameFromAGuideLink: proposals.filter((p) => p.basis === 'guide-link').length,
+    entriesWhoseIdentityCameFromAGuideLink: proposals.filter((p) => p.basis.startsWith('guide-link')).length,
+    entriesWithAQuestAnyOfSet: unlocks.filter((e) => (e.questAnyOf?.length ?? 0) > 0).length,
+    entriesGatedOnADutyClear: unlocks.filter((e) => (e.requires?.duties?.length ?? 0) > 0).length,
+    entriesGatedOnAnItem: unlocks.filter((e) => (e.requires?.items?.length ?? 0) > 0).length,
+    entriesDroppedAsUnreleased: report.droppedEntries.length,
+    entriesRetypedByTheGuideIcon: report.retypedEntries.length,
     confidence: unlocks.reduce((a, e) => ({ ...a, [e.confidence]: (a[e.confidence] ?? 0) + 1 }), {}),
     disagreementsRecorded: report.disagreements.length,
     entriesWithoutALevel: report.levelless.length,
@@ -958,6 +1273,8 @@ async function main() {
   console.log(`disagreements recorded: ${report.disagreements.length}`);
   console.log(`unassigned guide rows: ${report.unassignedGuideRows.length} (${report.unassignedGuideRows.filter((r) => r.placeholder).length} placeholders)`);
   console.log(`catalogue entries with no guide row: ${report.entriesWithoutAGuideRow.length}`);
+  for (const d of report.droppedEntries) console.log(`dropped as unreleased: ${d.unlock} (${d.page})`);
+  for (const t of report.retypedEntries) console.log(`retyped by the guide's row icon: ${t.unlock} ${t.from} -> ${t.to} (${t.icon})`);
   console.log(`entries with no grounded level, categorised instead: ${report.levelless.length} ${JSON.stringify(report.counts.levellessCategories)}`);
   console.log('');
   console.log(identical

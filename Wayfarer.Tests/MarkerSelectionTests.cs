@@ -3,7 +3,7 @@ using Wayfarer.Core.Navigation;
 namespace Wayfarer.Tests;
 
 /// <summary>Pure marker-precedence decision extracted from QuestNavigator's live
-/// quest-marker scan (task-fix-interior-report.md, fix round 2). Territory 419 / map
+/// quest-marker scan. Territory 419 / map
 /// 100 mirrors the live Pillars scenario used elsewhere in the test suite.</summary>
 public class MarkerSelectionTests
 {

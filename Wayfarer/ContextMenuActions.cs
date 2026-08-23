@@ -45,6 +45,8 @@ internal sealed class ContextMenuActions : IDisposable
     private readonly InputModeService inputMode;
     private readonly IPluginLog log;
 
+    private bool loggedMenuFailure;
+
     public ContextMenuActions(
         IContextMenu contextMenu,
         IObjectTable objects,
@@ -90,7 +92,16 @@ internal sealed class ContextMenuActions : IDisposable
         }
         catch (Exception ex)
         {
-            log.Error(ex, "Wayfarer: adding the context-menu entry failed — the game's own menu is unaffected.");
+            // Once: this runs on every right-click, so a repeatable fault here is a line per menu.
+            if (!loggedMenuFailure)
+            {
+                loggedMenuFailure = true;
+                const string message =
+                    "Wayfarer: the Wayfarer entry could not be added to the game's right-click menu, so it "
+                    + "will be missing there. The game's own menu is unaffected and every other way into "
+                    + "Wayfarer keeps working. Reported once.";
+                log.Warning(ex, message);
+            }
         }
     }
 

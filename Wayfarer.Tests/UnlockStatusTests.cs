@@ -21,7 +21,7 @@ public class UnlockStatusTests
         { "Sightseeing Log Expansion", [52, 60, 70, 80, 90] },
         { "Stone, Sky, Sea Access", [60, 70, 80, 90, 100] },
         { "Main Scenario Quest Continuation", [60, 70, 80, 90] },
-        { "Role Quests Access", [70, 85, 92, 105] },
+        { "Role Quests Access", [70, 85, 92] },
         { "Levequest Expansion", [70, 80, 90] },
         { "Relic Gear Access", [89, 99] },
     };
@@ -563,7 +563,7 @@ public class UnlockStatusTests
 
     /// <summary>One value of the wrong JSON kind takes the whole unlocks feature down, so the
     /// exception has to name the value that did it rather than leaving a maintainer to bisect a
-    /// 588-entry catalogue against "the JSON value could not be converted".</summary>
+    /// 586-entry catalogue against "the JSON value could not be converted".</summary>
     [Fact]
     public void Parse_WrongScalarType_ThrowsNamingTheOffendingPath()
     {

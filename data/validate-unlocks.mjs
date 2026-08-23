@@ -4,7 +4,10 @@ const confidences = new Set(['verified', 'single-source', 'unverified']);
 const types = new Set(['alliance-raid', 'dungeon', 'emote', 'minion', 'mount', 'raid', 'system', 'trial', 'zone']);
 const questKinds = new Set(['classquest', 'msq', 'other', 'sidequest']);
 const MAX_LEVEL = 110;
-const EXPECTED = 588;
+// Two fewer than the 588 the first regeneration produced: both belonged to the unreleased-
+// expansion guide page, which is the previous expansion's page with the quest names blanked, and
+// neither described content that exists. See data/README.md.
+const EXPECTED = 586;
 let errors = 0;
 const err = (m) => { console.error(m); errors++; };
 if (!Array.isArray(d.unlocks) || d.unlocks.length !== EXPECTED) err(`unlocks length ${d.unlocks?.length} != ${EXPECTED}`);
@@ -38,6 +41,9 @@ const collectibleKeys = {
   minions: new Set(['id', 'name', 'from', 'level']),
   items: new Set(['id', 'name', 'from', 'level', 'count', 'keyItem']),
   jobs: new Set(['id', 'name', 'level']),
+  // 'id' here is an InstanceContent row id, which is what UIState.IsInstanceContentCompleted
+  // takes — NOT the ContentFinderCondition row id the sources list cites for the same duty.
+  duties: new Set(['id', 'name', 'from', 'level']),
 };
 
 const checkCollectible = (where, kind, c) => {
@@ -55,7 +61,7 @@ const checkCollectible = (where, kind, c) => {
 // establish must say so, so the status calculator can refuse to call it available. "No gate
 // found" is not the same fact as "no gate exists" — quest row 67086 has every gate column empty
 // and still needs seven Extreme-trial mounts.
-const lists = ['mounts', 'minions', 'items', 'jobs'];
+const lists = ['mounts', 'minions', 'items', 'jobs', 'duties'];
 const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel']);
 
 const checkRequires = (where, r) => {
@@ -83,9 +89,31 @@ const checkRequires = (where, r) => {
 };
 
 const entryKeys = new Set([
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questKind', 'notes',
-  'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
+  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ]);
+
+// A set of quest rows any ONE of which completes this unlock — the Grand Company, starting-city
+// and relic-weapon variants. Written as row ids rather than a name because that is the whole
+// point: the name is what was ambiguous. Each id has to be backed by its own source line, so an
+// id can never appear here without the evidence that put it there.
+const checkQuestAnyOf = (where, e) => {
+  if (!('questAnyOf' in e)) return;
+  if (!Array.isArray(e.questAnyOf) || e.questAnyOf.length < 2) {
+    err(`${where}: 'questAnyOf' must be a list of at least two quest row ids`);
+    return;
+  }
+  const seenIds = new Set();
+  for (const id of e.questAnyOf) {
+    if (!Number.isInteger(id) || id <= 0) err(`${where}: questAnyOf id ${JSON.stringify(id)} must be a positive integer`);
+    else if (seenIds.has(id)) err(`${where}: questAnyOf lists ${id} twice`);
+    else seenIds.add(id);
+    if (!(e.sources ?? []).includes(`game-data:Quest#${id}`))
+      err(`${where}: questAnyOf cites ${id} with no matching 'game-data:Quest#${id}' source`);
+  }
+  if (e.requires?.unverifiable === true)
+    err(`${where}: an entry with questAnyOf has a checkable gate and must not also be unverifiable`);
+};
 
 // An entry duplicated verbatim is two rows of the same thing in the checklist, and — since the two
 // share a name and a level — one group that can never disagree with itself, so nothing downstream
@@ -146,11 +174,21 @@ for (const [i, e] of d.unlocks.entries()) {
     err(`${where}: 'verified' needs at least two independent sources`);
 
   if ('requires' in e) checkRequires(where, e.requires);
+  checkQuestAnyOf(where, e);
+
+  // No entry may be silently identity-less. Every one has to say what it is gated on — a quest, a
+  // set of quests, a curated requirement — or say out loud that it cannot be checked.
+  const identified = e.quest !== null
+    || (e.questAnyOf?.length ?? 0) > 0
+    || e.requires?.unverifiable === true
+    || lists.some((k) => (e.requires?.[k]?.length ?? 0) > 0)
+    || 'minLevel' in (e.requires ?? {});
+  if (!identified) err(`${where}: has no identity at all — no quest, no questAnyOf, no requires`);
 
   // An entry with no quest, or one nothing in the game data backs, has no discoverable gate at
   // all. Without an explicit unverifiable marker the calculator would fall through to Available
   // and tell the player to go and get something they cannot get.
-  const unbacked = e.quest === null || e.confidence === 'unverified';
+  const unbacked = (e.quest === null && (e.questAnyOf?.length ?? 0) === 0) || e.confidence === 'unverified';
   if (unbacked && e.requires?.unverifiable !== true)
     err(`${where}: nothing backs this entry, so it needs requires.unverifiable:true`);
   if (e.requires?.unverifiable === true && e.confidence !== 'unverified')

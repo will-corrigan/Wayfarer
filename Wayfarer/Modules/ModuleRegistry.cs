@@ -54,7 +54,10 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
         }
         catch (Exception ex)
         {
-            log.Error(ex, $"Module '{module.Name}' threw while {(enabled ? "enabling" : "disabling")}; disabling it.");
+            var message =
+                $"Wayfarer: the {module.Name} feature threw while {(enabled ? "starting" : "stopping")}, so it "
+                + "has been switched off. Everything else keeps running; turn it back on in Settings to retry.";
+            log.Error(ex, message);
             if (enabled)
             {
                 try
@@ -78,7 +81,7 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
         modules.OfType<T>().FirstOrDefault();
 
     /// <summary>Disposes every module in reverse registration order, guarding each one with its own
-    /// try/catch (spec: controller wave task 2b) so a single module throwing during teardown — e.g.
+    /// try/catch so a single module throwing during teardown — e.g.
     /// a native window's <see cref="IDisposable.Dispose"/> asserting the main thread when Dalamud
     /// unloads plugins from a thread-pool thread — can't abort the rest of the chain and strand
     /// <see cref="Plugin"/> before it reaches <c>KamiToolKitLibrary.Cleanup()</c>.</summary>
@@ -92,7 +95,10 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
             }
             catch (Exception ex)
             {
-                log.Error(ex, $"Module '{modules[i].Name}' threw while disposing; continuing with the remaining modules.");
+                var message =
+                    $"Wayfarer: the {modules[i].Name} feature threw while shutting down, so whatever it owns may "
+                    + "be leaked until the game is restarted. The remaining features are still being shut down.";
+                log.Error(ex, message);
             }
         }
     }

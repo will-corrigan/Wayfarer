@@ -3,7 +3,7 @@ namespace Wayfarer.Core.Hunting;
 /// <summary>Hardcoded ClassJob → <c>MonsterNoteManager</c> slot table (0-11). NOT derivable from
 /// Lumina — mirrors Hunty's <c>JobInMemory</c> table. Base-class slots verified against live
 /// <c>MonsterNote</c> sheet data 2026-08-22 (RowId = ClassJob.RowId*10000 + overall task number
-/// resolves correctly for all 9 for these ids; see task-C1-report.md). Evolved-job pairings
+/// resolves correctly for all 9 for these ids). Evolved-job pairings
 /// verified the same day via <c>ClassJob.MonsterNote</c> (a reward-catalog FK): every evolved
 /// job below shares its base class's <c>MonsterNote</c> row (MNK/PGL, WAR/MRD, DRG/LNC, BRD/ARC,
 /// WHM/CNJ, BLM/THM, SMN+SCH/ACN, NIN/ROG) except GLA/PLD, which both read the FK as unset

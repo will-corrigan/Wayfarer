@@ -39,7 +39,10 @@ internal sealed class GuidanceService(
         {
             if (!errorLogged)
             {
-                log.Error(ex, "GuidanceService: compute failed");
+                const string message =
+                    "Wayfarer guidance: working out where to go failed, so the readout will say it has no "
+                    + "location data until it recovers. Reported once per run of failures, not once per tick.";
+                log.Error(ex, message);
                 errorLogged = true;
             }
 

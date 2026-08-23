@@ -36,10 +36,18 @@ public sealed class UnlockRequirement
 
     public List<UnlockRequirement.RequiredJob> Jobs { get; set; } = [];
 
+    /// <summary>Duties that must have been CLEARED, not merely unlocked. These come from entries
+    /// the guide gates on a duty rather than on a quest — the Unreal and Criterion families, whose
+    /// catalogue "quest" was a Wandering Minstrel dialogue label that is not a quest at all. The
+    /// clear is checkable; whether the player has since taken the unlock itself is not, so these
+    /// entries keep <see cref="Unverifiable"/> and gain a real reason instead of a shrug.</summary>
+    public List<UnlockRequirement.Collectible> Duties { get; set; } = [];
+
     /// <summary>True when there is something concrete to check, as opposed to a block that only
     /// carries prose.</summary>
     public bool HasCheckableRequirement =>
-        Mounts.Count > 0 || Minions.Count > 0 || Items.Count > 0 || Jobs.Count > 0 || MinLevel is > 0;
+        Mounts.Count > 0 || Minions.Count > 0 || Items.Count > 0 || Jobs.Count > 0
+        || Duties.Count > 0 || MinLevel is > 0;
 
     /// <summary>A mount or minion the player must already own.</summary>
     /// <param name="Id">Mount/Companion sheet row id, checked with <c>IsMountUnlocked</c> /

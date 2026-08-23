@@ -1,5 +1,11 @@
 namespace Wayfarer.Core.Navigation;
 
+/// <summary>The angle arithmetic behind the readout's direction chevron and its words: bearings
+/// from world coordinates, the camera-frame conversion, and the compass-point naming.
+///
+/// <para>Pure and dependency-free on purpose. The one thing here that cannot be settled by reading
+/// the code is which way the game's camera yaw runs, and that is settled by the evidence recorded
+/// against <see cref="CameraYawSign"/> rather than by argument.</para></summary>
 public static class NavMath
 {
     // Camera->DirH is counter-clockwise-positive from north (0 = north, +pi/2 = west).

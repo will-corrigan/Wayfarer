@@ -20,6 +20,8 @@ internal sealed class UnlockChecklistModule(
     IGuidanceArbiter arbiter,
     UnlockRouteSource routeSource) : IModule
 {
+    private bool loggedNativeFallback;
+
     public string Name => "Unlock Checklist";
 
     public string Description => "Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.";
@@ -49,7 +51,17 @@ internal sealed class UnlockChecklistModule(
         }
         catch (Exception ex)
         {
-            log.Error(ex, "UnlockChecklistModule: the native window failed to open — falling back to the ImGui checklist.");
+            // Once: the player can open the checklist as often as they like, and the reason it
+            // would not open the first time is the reason it will not open the tenth.
+            if (!loggedNativeFallback)
+            {
+                loggedNativeFallback = true;
+                const string message =
+                    "Wayfarer: the game-styled checklist window would not open, so the plugin-drawn checklist "
+                    + "is being used instead. Everything is still reachable; it will not look like the game's "
+                    + "own windows and is best driven with a mouse. Reported once.";
+                log.Warning(ex, message);
+            }
         }
 
         CloseNativeWindow();

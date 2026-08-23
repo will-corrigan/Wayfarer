@@ -2,6 +2,8 @@ using System.Text.Json;
 
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>Reads <c>data/unlocks-by-level.json</c> into <see cref="UnlockDefinition"/>s. Exists
+/// as its own type mainly for what <see cref="Parse"/> does with a malformed file — see there.</summary>
 public static class UnlockDataset
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };

@@ -68,6 +68,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     ];
 
     private readonly IPluginLog log;
+
+    /// <summary>Whether the per-change readout diagnostics should be written. Off by default —
+    /// see <see cref="QuestHelperConfig.LogDiagnostics"/> for why.</summary>
+    private readonly Func<bool> diagnosticsEnabled;
     private readonly TextNode[] lineNodes = new TextNode[MaxLines];
     private readonly HorizontalLineNode[] ruleNodes = new HorizontalLineNode[MaxLines];
     private readonly SimpleImageNode arrowNode;
@@ -84,11 +88,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private int textureAttempts;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
+    private bool warnedTextureOnce;
     private string? lastBearingWords;
 
-    public ReadoutBodyNode(IPluginLog log, Action? onTeleportClicked = null)
+    public ReadoutBodyNode(IPluginLog log, Func<bool>? diagnosticsEnabled = null, Action? onTeleportClicked = null)
     {
         this.log = log;
+        this.diagnosticsEnabled = diagnosticsEnabled ?? (static () => false);
 
         // The game's own direction indicator is a plain image node whose rotation is written every
         // frame (AtkImageNode PlayerCone / PlayerConeRotation on the minimap), so this copies the
@@ -418,6 +424,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         lastReported = reason;
         reportedOnce = true;
 
+        if (reason != ArrowHiddenReason.TextureUnavailable && !diagnosticsEnabled())
+        {
+            return;
+        }
+
         var message = reason switch
         {
             ArrowHiddenReason.None => "Wayfarer readout: the direction arrow is being drawn.",
@@ -430,7 +441,14 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         if (reason == ArrowHiddenReason.TextureUnavailable)
         {
-            log.Warning(message);
+            // Once for the whole session, not once per change of reason: guidance stopping and
+            // starting again re-enters this reason every time, and the answer never changes.
+            if (!warnedTextureOnce)
+            {
+                warnedTextureOnce = true;
+                log.Warning(message);
+            }
+
             return;
         }
 
@@ -453,6 +471,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rest orientation is a quarter turn out.</para></summary>
     private void ReportBearing(float radians)
     {
+        if (!diagnosticsEnabled())
+        {
+            return;
+        }
+
         var words = NavMath.DescribeDirection(radians);
         if (string.Equals(words, lastBearingWords, StringComparison.Ordinal))
         {

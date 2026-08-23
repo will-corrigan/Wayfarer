@@ -27,8 +27,8 @@ const err = (m) => { console.error(m); errors++; };
 // canonical form, not decoration: without it a regeneration diff can show every entry as changed
 // because a serialiser emitted the same facts in a different order.
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questKind', 'notes',
-  'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
+  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ];
 
 // ---------------------------------------------------------------- 1. canonical form
@@ -79,6 +79,14 @@ for (const [i, e] of d.unlocks.entries()) {
 // The failure this whole exercise came from: an entry whose identity is a STRING. A name that
 // matches nothing is not an identity, and 180 entries shipped that way. Every entry must record
 // either the game rows it rests on, or an explicit admission that it rests on nothing.
+//
+// Identity and gradeability are two different things, and the file distinguishes them. A Quest
+// row is a GATE: the client records whether the player completed it, so an entry citing one can
+// be graded and must not also claim to be unverifiable. A ContentFinderCondition or Item row is
+// an IDENTITY without being a gate: the guide says the Ultimate opens after clearing Sigmascape
+// and that the Aquapolis is entered with a treasure map, and both facts are checkable — but
+// whether the player then took the unlock itself is written nowhere a plugin can read. Those
+// entries carry real rows AND requires.unverifiable, and that combination is correct.
 const questRows = (e) => (e.sources ?? [])
   .filter((s) => typeof s === 'string' && s.startsWith('game-data:Quest#'))
   .map((s) => Number(s.slice('game-data:Quest#'.length)));
@@ -88,20 +96,34 @@ for (const [i, e] of d.unlocks.entries()) {
   const rows = questRows(e);
   const ids = (e.sources ?? []).filter((s) => typeof s === 'string' && /^game-data:[A-Za-z]+#\d+$/.test(s));
 
-  if (rows.length === 0 && ids.length === 0) {
+  if (ids.length === 0) {
     // No game row at all. That is allowed, and honest — but only when the entry says so, so the
     // status calculator can refuse to grade it instead of falling through to Available.
     if (e.requires?.unverifiable !== true)
       err(`${where}: records no game row, so it must carry requires.unverifiable:true — an entry may not be silently identity-less`);
     if (e.confidence !== 'unverified')
       err(`${where}: records no game row, so its confidence cannot be '${e.confidence}'`);
-  } else if (e.requires?.unverifiable === true) {
-    err(`${where}: is marked unverifiable but cites ${ids.join(', ')} — one of the two is wrong`);
+  } else if (rows.length > 0 && e.requires?.unverifiable === true) {
+    err(`${where}: is marked unverifiable but cites ${rows.map((n) => `Quest#${n}`).join(', ')}, whose completion the client records — one of the two is wrong`);
+  } else if (rows.length === 0 && e.requires?.unverifiable !== true) {
+    err(`${where}: cites ${ids.join(', ')} but no Quest row, so nothing says whether the unlock was taken — it must carry requires.unverifiable:true`);
   }
+
+  // A duty gate names an InstanceContent row, and the entry has to cite the
+  // ContentFinderCondition row it came from, so the two ids can be traced back to one duty.
+  if ((e.requires?.duties?.length ?? 0) > 0
+    && !ids.some((s) => s.startsWith('game-data:ContentFinderCondition#')))
+    err(`${where}: gates on a duty but cites no 'game-data:ContentFinderCondition#' source for it`);
 
   for (const s of ids) {
     const n = Number(s.split('#')[1]);
     if (!Number.isInteger(n) || n <= 0) err(`${where}: '${s}' is not a usable row id`);
+  }
+
+  // questAnyOf is a claim about which rows are interchangeable. Every id in it has to be one the
+  // entry itself cites, or the set says something the sources do not.
+  for (const n of e.questAnyOf ?? []) {
+    if (!rows.includes(n)) err(`${where}: questAnyOf cites Quest#${n}, which this entry does not otherwise cite`);
   }
 
   // A level has to point at something in the same file's vocabulary: the guide section it came
@@ -138,10 +160,14 @@ for (const [i, e] of d.unlocks.entries()) {
 
 // ---------------------------------------------------------------- 5. summary
 const withRows = d.unlocks.filter((e) => questRows(e).length > 0).length;
+const anyOf = d.unlocks.filter((e) => (e.questAnyOf?.length ?? 0) > 0).length;
+const dutyGated = d.unlocks.filter((e) => (e.requires?.duties?.length ?? 0) > 0).length;
+const itemGated = d.unlocks.filter((e) => (e.requires?.items?.length ?? 0) > 0).length;
 const levelless = d.unlocks.filter((e) => typeof e.level !== 'number');
 console.log(errors
   ? `FAILED: ${errors} errors`
-  : `OK: ${d.unlocks.length} entries, ${withRows} bound to a game row, `
-    + `${d.unlocks.length - withRows} explicitly unverifiable, ${levelless.length} with no level `
+  : `OK: ${d.unlocks.length} entries, ${withRows} bound to a quest row (${anyOf} to a set of them), `
+    + `${dutyGated} gated on a duty clear, ${itemGated} on an item, `
+    + `${d.unlocks.length - withRows} not gradeable, ${levelless.length} with no level `
     + `(${[...new Set(levelless.map((e) => e.category))].join('; ') || 'none'}), canonical form verified`);
 process.exit(errors ? 1 : 0);

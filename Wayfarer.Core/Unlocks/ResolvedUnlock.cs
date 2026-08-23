@@ -1,5 +1,9 @@
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>What the checklist says about one entry. Everything except <see cref="Available"/>
+/// and <see cref="Done"/> is a specific reason the player is not going anywhere yet, and the
+/// several flavours of "unknown" are deliberately distinct: they are the difference between a gate
+/// this plugin can see and one it merely suspects.</summary>
 public enum UnlockStatus
 {
     Unverified,

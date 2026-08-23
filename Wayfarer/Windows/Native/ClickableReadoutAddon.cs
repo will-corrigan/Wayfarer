@@ -38,7 +38,8 @@ internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
     Action onTeleportClicked,
     IFramework framework,
-    IPluginLog log) : NativeAddon
+    IPluginLog log,
+    Func<bool> diagnosticsEnabled) : NativeAddon
 {
     private ReadoutBodyNode? body;
     private Vector2 lastSize;
@@ -64,7 +65,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "Wayfarer readout: disposing the clickable readout on the framework thread failed or timed out.");
+            const string message =
+                "Wayfarer readout: disposing the clickable readout on the framework thread failed or timed out, "
+                + "so a stray readout may remain on screen until the game is restarted.";
+            log.Warning(ex, message);
         }
     }
 
@@ -93,7 +97,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         // every time would be the loudest thing about a readout that is meant to be furniture.
         addon->DisableShowHideSoundEffects = true;
 
-        body = new ReadoutBodyNode(log, onTeleportClicked)
+        body = new ReadoutBodyNode(log, diagnosticsEnabled, onTeleportClicked)
         {
             Position = Vector2.Zero,
         };
@@ -120,7 +124,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "Wayfarer readout: disposing the readout body while closing failed.");
+            const string message =
+                "Wayfarer readout: disposing the readout body while closing failed, so its text nodes are leaked "
+                + "until the plugin is reloaded. The readout itself keeps working.";
+            log.Warning(ex, message);
         }
 
         body = null;

@@ -14,7 +14,7 @@ namespace Wayfarer;
 
 /// <summary>Loads the curated hunting-log dataset, reads live progress from
 /// <c>MonsterNoteManager</c> per <c>HuntingSlotTable</c>'s job→slot mapping and
-/// <c>HuntingProgress</c>'s page semantics (task C1, consumed here — not rebuilt), and resolves the
+/// <c>HuntingProgress</c>'s page semantics — both consumed here, neither rebuilt — and resolves the
 /// current page's remaining targets to world positions/live mob tracking for
 /// <see cref="Modules.HuntingLogModule"/>. Framework thread only except where noted. Owned by
 /// <see cref="Modules.HuntingLogModule"/>, which subscribes <see cref="OnFrameworkUpdate"/> in
@@ -33,6 +33,10 @@ internal sealed unsafe class HuntingLogService
     /// folds in. Null means "never triggered", forcing a recompute on the first tick a player
     /// exists.</summary>
     private (uint ClassJobId, uint Territory, int Signature)? lastChecked;
+
+    // A recompute runs on every kill, job swap and zone change, so a repeatable fault here would
+    // write a line for each. The first one carries the whole story; the rest are noise.
+    private bool recomputeFailureLogged;
 
     private Dictionary<uint, (string Name, uint ContentFinderConditionId)>? dutyByTerritory;
 
@@ -62,10 +66,17 @@ internal sealed unsafe class HuntingLogService
         {
             Load();
             Loaded = true;
+
+            // Same reasoning as the unlock catalogue: one count, once, so a "my hunting log is
+            // empty" report arrives with the answer already in it.
+            log.Information($"Wayfarer hunting: dataset loaded, {dataset?.Logs.Count ?? 0} logs.");
         }
         catch (Exception ex)
         {
-            log.Error(ex, "HuntingLogService: dataset load failed — hunting log module disabled");
+            const string message =
+                "Wayfarer hunting: the hunting dataset could not be read, so hunting mode is off for this "
+                + "session — the readout and the window's Hunting tab will show nothing.";
+            log.Error(ex, message);
         }
     }
 
@@ -97,7 +108,7 @@ internal sealed unsafe class HuntingLogService
     public HuntingTargetView? CurrentTarget { get; private set; }
 
     /// <summary>Every remaining, routable target in the player's current zone, nearest-first —
-    /// the "hunt here" route-chaining analog (spec §5). Empty whenever <see cref="CurrentTarget"/>
+    /// the "hunt here" route-chaining order. Empty whenever <see cref="CurrentTarget"/>
     /// is null, is a duty affordance, or is in a different zone.</summary>
     public IReadOnlyList<HuntingTargetView> HuntHereOrder { get; private set; } = [];
 
@@ -138,7 +149,7 @@ internal sealed unsafe class HuntingLogService
     /// <summary>Lightweight per-tick change detector (mirrors <see cref="UnlockService.OnFrameworkUpdate"/>):
     /// cheap current-job/territory/live-signature reads, only running the full <see cref="Recompute"/>
     /// pass when one of them actually changed. Also refreshes the live in-zone tracking position
-    /// every tick regardless (spec §5's live proximity tracking — cheap, a single-NameId
+    /// every tick regardless (cheap: a single-NameId
     /// <c>IObjectTable</c> filter, not gated the way the heavier recompute is).</summary>
     public void OnFrameworkUpdate(IFramework framework)
     {
@@ -257,7 +268,14 @@ internal sealed unsafe class HuntingLogService
         }
         catch (Exception ex)
         {
-            log.Error(ex, "HuntingLogService: recompute failed");
+            if (!recomputeFailureLogged)
+            {
+                recomputeFailureLogged = true;
+                const string message =
+                    "Wayfarer hunting: refreshing hunting progress failed, so the remaining-target list and "
+                    + "any running hunt will be stale until it recomputes successfully. Reported once.";
+                log.Error(ex, message);
+            }
         }
     }
 
@@ -323,7 +341,7 @@ internal sealed unsafe class HuntingLogService
 
     /// <summary>Resolves which log is active for <paramref name="classJobId"/>: the job's own
     /// class log, or — for a post-Stormblood job with none — one of the shared Grand Company Elite
-    /// logs, gated on Grand Company membership (spec §5, "reuse the gating brain"). Membership is
+    /// logs, gated on Grand Company membership. Membership is
     /// the complete unlock signal for the Elite logs: enlisting grants the log's first page with
     /// no separate unlock quest, and later pages gate on GC-rank promotions the game reflects in
     /// the memory Rank itself. Calls <see cref="SetNoLog"/> and returns null on any failure.</summary>
@@ -504,7 +522,7 @@ internal sealed unsafe class HuntingLogService
     }
 
     /// <summary>Refreshes <see cref="CurrentTarget"/>'s position from a live <c>IObjectTable</c>
-    /// scan when the player stands in its territory (spec §5's in-zone live tracking): nearest
+    /// scan when the player stands in its territory: nearest
     /// alive, targetable <c>IBattleNpc</c> whose <c>NameId</c> (the BNpcName row id, on
     /// <c>ICharacter</c>) matches the target's <c>BNpcNameId</c> replaces the curated coordinate;
     /// falls back to the curated coordinate (clearing
@@ -578,9 +596,13 @@ internal sealed unsafe class HuntingLogService
             ? n
             : $"Grand Company {grandCompanyId}";
 
-    /// <summary>Territory → duty name/CFC id, built once from the <c>InstanceContent</c> sheet —
-    /// identical lookup to <see cref="QuestNavigator"/>'s private <c>DutyForTerritory</c> (spec §5:
-    /// "InstanceContent→CFC lookup pattern exists in QuestNavigator" — reused, not reinvented).</summary>
+    /// <summary>Territory → duty name/CFC id, built once from the <c>InstanceContent</c> sheet
+    /// (not <c>ContentFinderCondition</c>, which has no typed route back to the territory).
+    ///
+    /// <para>This is a second copy of <see cref="Guidance.GuidanceRouter"/>'s own
+    /// <c>DutyForTerritory</c>, differing only in that this one drops the InstanceContent row id
+    /// the router needs. The two have no owner in common, which is the only reason they are not
+    /// one method — worth folding together the next time either is touched.</para></summary>
     private (string Name, uint ContentFinderConditionId)? DutyForTerritory(uint territoryId)
     {
         if (dutyByTerritory == null)

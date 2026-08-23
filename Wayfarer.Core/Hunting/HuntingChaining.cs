@@ -1,6 +1,6 @@
 namespace Wayfarer.Core.Hunting;
 
-/// <summary>Route-chaining analog for hunting-log targets (spec §5, "route-me analog") — a "hunt
+/// <summary>Route-chaining for hunting-log targets, the counterpart of the checklist's "Route me" — a "hunt
 /// here" nearest-first ordering among the current page's remaining targets, reusing
 /// <c>Unlocks.RoutePlanner</c>'s exact greedy-nearest-neighbor algorithm. Restricted to the
 /// player's current zone: unlike unlock pickups (which have a natural next-lowest-level zone to
