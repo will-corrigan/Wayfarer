@@ -235,6 +235,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// as wide as the words drew.</para></summary>
     private readonly ResNode? subjectHitBox;
 
+    /// <summary>Whether this host was given somewhere to send a click on the quest name. False on
+    /// the overlay, where nothing is clickable at all.</summary>
+    private readonly bool journalClickable;
+
     private ArrowIconVariant? loadedVariant;
     private ArrowIconVariant? loadedElevationVariant;
     private bool arrowFailed;
@@ -267,7 +271,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Action? onTeleportClicked = null,
         Action<Vector2>? onMoved = null,
         Action? onSettingsClicked = null,
-        Action? onFollowClicked = null)
+        Action? onFollowClicked = null,
+        Action? onQuestNameClicked = null)
     {
         this.log = log;
         this.textures = textures;
@@ -310,8 +315,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         {
             switcherNode = BuildSwitcher(onFollowClicked);
             subjectHitBox = new ResNode { IsVisible = false };
+
+            // Registered once, offered per frame. The cursor is what says whether the click is on
+            // offer this frame — see LayoutSubjectHitBox — because the same box is also what a
+            // truncated name is hovered over, and a hunt has a name to reveal but no journal entry.
+            if (onQuestNameClicked is not null)
+            {
+                subjectHitBox.AddEvent(AtkEventType.MouseClick, onQuestNameClicked);
+            }
+
             subjectHitBox.AttachNode(this);
         }
+
+        journalClickable = onQuestNameClicked is not null;
     }
 
     /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
@@ -357,12 +373,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         var drawable = frame.ArrowRadians is not null && EnsureArrowTexture(frame.ArrowIcon);
         var y = LayoutWords(frame, drawable, factor, width);
-        var (bottom, firstLineCentre, subject, subjectText) = LayoutLines(frame, factor, width, gutter, y);
+        var (bottom, firstLineCentre, subject, subjectContent) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
         LayoutElevation(frame, arrowSize);
         LayoutHeadingControls(frame, factor, width, gutter);
         LayoutSwitcher(factor, gutter, width - gutter, subject);
-        LayoutSubjectHitBox(subject, subjectText, gutter);
+        LayoutSubjectHitBox(
+            subject,
+            subjectContent?.Text,
+            gutter,
+            journalClickable && subjectContent?.Action == ReadoutLineAction.OpenJournal);
 
         // The cog and the switcher are live collision nodes whenever they are drawn, and the
         // clickable host watches this to know when the addon's collision list has to be rebuilt.
@@ -782,7 +802,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <para>Every line, heading included, starts at the same left edge past the arrow gutter, so
     /// the readout is one block with one edge and the arrow is a mark beside it rather than
     /// something the body hangs off.</para></summary>
-    private (float Bottom, float? FirstLineCentre, SubjectLine? Subject, string? SubjectText) LayoutLines(
+    private (float Bottom, float? FirstLineCentre, SubjectLine? Subject, ReadoutLine? SubjectContent) LayoutLines(
         ReadoutFrame frame, float factor, float width, float gutter, float top)
     {
         var y = top;
@@ -790,7 +810,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var hitBoxPlaced = false;
         float? firstLineCentre = null;
         SubjectLine? subject = null;
-        string? subjectText = null;
+        ReadoutLine? subjectContent = null;
         var lineWidth = width - gutter;
 
         var reserved = SwitcherSlot(factor);
@@ -818,7 +838,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             // second control claiming to change the same one thing.
             if (line.Subject && subject is null)
             {
-                subjectText = line.Text;
+                subjectContent = line;
                 subject = MeasureSubject(i, line.Text, y, height, fontSize, available);
             }
 
@@ -838,7 +858,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         ClickTargets = hitBoxPlaced ? TeleportTarget : 0;
-        return (y + (BaseGap * factor), firstLineCentre, subject, subjectText);
+        return (y + (BaseGap * factor), firstLineCentre, subject, subjectContent);
     }
 
     /// <summary>Hangs the up/down chevron off the arrow when the target is on a different level of
@@ -1132,40 +1152,53 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         lineNodes[index].String = text;
     }
 
-    /// <summary>Parks the hover region over the words of the subject line and gives it the full name
-    /// as a tooltip, or takes it away when the name is drawn in full.
+    /// <summary>Parks the box over the words of the subject line — the one region that is both the
+    /// hover that reveals a cut-short name and the click that opens the game's Journal at it.
     ///
-    /// <para>Only when the name was actually cut short. A tooltip repeating words the player can
-    /// already read is noise, and it would also mean a collision rectangle sitting over the quest
-    /// name on every readout rather than only on the ones that need one.</para></summary>
-    private void LayoutSubjectHitBox(SubjectLine? subject, string? fullText, float left)
+    /// <para><b>One box for both, and exactly as wide as the words.</b> They are the same gesture
+    /// aimed at the same thing, and two overlapping rectangles over one line would be two answers to
+    /// the question of what the pointer is on. It stops where the text stops, so it reaches neither
+    /// the switcher to its right nor the cog on the line above, and it is one row tall, so it never
+    /// touches the teleport advice below.</para>
+    ///
+    /// <para><b>It is only there when it does something.</b> A name that fits and has no journal
+    /// entry gets no box at all rather than an invisible rectangle sitting over the quest name of
+    /// every readout, swallowing the world clicks underneath it. The hand cursor is separate again:
+    /// hovering to read a hunt's full name is not an offer to open anything.</para></summary>
+    private void LayoutSubjectHitBox(SubjectLine? subject, string? fullText, float left, bool journalOffered)
     {
         if (subjectHitBox is null)
         {
             return;
         }
 
-        if (subject is not { Truncated: true } line || fullText is not { Length: > 0 } full)
+        var truncated = subject is { Truncated: true } && fullText is { Length: > 0 };
+        if (subject is not { } line || (!truncated && !journalOffered))
         {
             subjectHitBox.IsVisible = false;
-            if (lastSubjectTooltip.Length > 0)
-            {
-                lastSubjectTooltip = string.Empty;
-                subjectHitBox.TextTooltip = default;
-            }
-
+            SetSubjectTooltip(string.Empty);
             return;
         }
 
-        if (!string.Equals(lastSubjectTooltip, full, StringComparison.Ordinal))
-        {
-            lastSubjectTooltip = full;
-            subjectHitBox.TextTooltip = full;
-        }
-
+        SetSubjectTooltip(truncated ? fullText! : string.Empty);
+        subjectHitBox.ShowClickableCursor = journalOffered;
         subjectHitBox.Size = new Vector2(Math.Max(line.TextWidth, 1f), line.Height);
         subjectHitBox.Position = new Vector2(left, line.Top);
         subjectHitBox.IsVisible = true;
+    }
+
+    /// <summary>Gives the hover box the whole name to show, or takes the tooltip away again. Written
+    /// only on a change: handing a node a tooltip rebuilds the addon's entire collision list, and
+    /// this runs sixty times a second.</summary>
+    private void SetSubjectTooltip(string text)
+    {
+        if (subjectHitBox is null || string.Equals(lastSubjectTooltip, text, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastSubjectTooltip = text;
+        subjectHitBox.TextTooltip = text.Length == 0 ? default : text;
     }
 
     /// <summary>Parks the invisible click target over the teleport line, if this host has one and

@@ -12,4 +12,11 @@ public enum ReadoutLineAction
 
     /// <summary>Teleport to the aetheryte the line names. The default loop's one click.</summary>
     Teleport,
+
+    /// <summary>Open the game's own Quest Journal at the quest the line names.
+    ///
+    /// <para>Only ever on the subject line, and only when the thing being followed is a quest with a
+    /// row in the Quest sheet — a hunt and a bare objective have no journal entry to open, and a
+    /// line that offered one would be a hand cursor over words that then did nothing.</para></summary>
+    OpenJournal,
 }

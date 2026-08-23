@@ -332,6 +332,40 @@ public class ReadoutComposerTests
     }
 
     [Fact]
+    public void The_quest_name_is_marked_as_the_door_to_the_journal()
+    {
+        var state = SameZone() with { QuestId = 65_600 };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 80f });
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal(ReadoutLineAction.OpenJournal, subject.Action);
+    }
+
+    [Fact]
+    public void A_name_with_no_quest_behind_it_offers_no_journal()
+    {
+        // A hunt has a name worth reading and no journal entry to open. Marking it would put a hand
+        // cursor over words that then politely did nothing.
+        var content = ReadoutComposer.Compose(Inputs(Engaged("Hunting Log · Gladiator")));
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal(ReadoutLineAction.None, subject.Action);
+    }
+
+    [Fact]
+    public void The_journal_is_never_offered_on_a_line_that_is_not_the_name()
+    {
+        var state = SameZone() with { QuestId = 65_600 };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 80f });
+
+        Assert.All(
+            content.Lines.Where(line => line.Action == ReadoutLineAction.OpenJournal),
+            line => Assert.True(line.Subject));
+    }
+
+    [Fact]
     public void There_is_never_more_than_one_subject()
     {
         var content = ReadoutComposer.Compose(new ReadoutInputs

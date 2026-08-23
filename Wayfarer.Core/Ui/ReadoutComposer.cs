@@ -88,8 +88,11 @@ public static class ReadoutComposer
             headline = $"{headline}  {progress}";
         }
 
-        lines.Add(new ReadoutLine(
-            headline, ReadoutEmphasis.Primary, Separated: false, ReadoutLineAction.None, Subject: true));
+        // Marked as the door to the journal only when there is a quest row behind the name. A hunt
+        // and a bare "Current objective" have no journal entry, and marking them would put a hand
+        // cursor over words that then did nothing.
+        var action = state.QuestId is > 0 ? ReadoutLineAction.OpenJournal : ReadoutLineAction.None;
+        lines.Add(new ReadoutLine(headline, ReadoutEmphasis.Primary, Separated: false, action, Subject: true));
 
         if (state.StepLabel is { Length: > 0 } step
             && !string.Equals(step, state.QuestName, StringComparison.OrdinalIgnoreCase))
