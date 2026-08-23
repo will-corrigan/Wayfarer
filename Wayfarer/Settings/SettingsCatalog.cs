@@ -191,7 +191,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.dtr",
             Label = "Show the Wayfarer Entry in the Server Info Bar",
-            Description = "Left-click opens the checklist, right-click opens settings. The one entry point that's always on screen no matter how the readout above is set.",
+            Description = "Left-click opens your unlocks, right-click opens settings. The one entry point that's always on screen no matter how the readout above is set.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => !config.QuestHelper.DtrHidden,
             WriteFlag = Write(value => config.QuestHelper.DtrHidden = !value),

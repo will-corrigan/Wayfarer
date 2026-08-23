@@ -87,6 +87,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly List<NodeBase> questNodes = [];
     private readonly List<NodeBase> settingsNodes = [];
     private readonly List<HubListRow> rows = [];
+
+    /// <summary>Every slider currently on the Settings tab, so they can be re-read from their
+    /// settings each tick — see <see cref="RefreshSettings"/>.</summary>
+    private readonly List<SettingSliderNode> settingSliders = [];
+
     private readonly List<(HubListRow Row, Core.Hunting.HuntingMonster Monster)> distanceRows = [];
 
     /// <summary>Which "what does this need?" rows the player has opened, keyed by unlock and
@@ -243,7 +248,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Position = contentStart,
             Size = new Vector2(contentSize.X, TabBarHeight),
         };
-        hubTabs.AddTab("Checklist", () => SelectTab(HubTab.Checklist));
+        hubTabs.AddTab("Unlocks", () => SelectTab(HubTab.Checklist));
         hubTabs.AddTab("Hunting Log", () => SelectTab(HubTab.Hunting));
         hubTabs.AddTab("Quests", () => SelectTab(HubTab.Quests));
         hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
@@ -303,6 +308,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ownedNodes.Clear();
         distanceRows.Clear();
         rows.Clear();
+        settingSliders.Clear();
         checklistNodes.Clear();
         huntingNodes.Clear();
         questNodes.Clear();
@@ -383,7 +389,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private static string TabLabel(HubTab tab) => tab switch
     {
-        HubTab.Checklist => "Checklist",
+        // "Unlocks", not "Checklist": the player could not tell what a Checklist tab held —
+        // "Is checklist the unlocks section?" — and the word for what is in it is unlocks. The
+        // enum member keeps its name; this is what is on screen.
+        HubTab.Checklist => "Unlocks",
         HubTab.Hunting => "Hunting Log",
         HubTab.Quests => "Quests",
         _ => "Settings",
@@ -448,16 +457,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             DutyFinderAction.Execute(id);
         }
     }
-
-    private static FloatSliderNode BuildScale(SettingDefinition setting) => new()
-    {
-        Height = 24f,
-        Min = setting.Minimum,
-        Max = setting.Maximum,
-        Step = setting.Step,
-        Value = setting.ReadValue?.Invoke() ?? setting.Minimum,
-        OnValueChanged = value => setting.WriteValue?.Invoke(value),
-    };
 
     // A cycling button rather than a drop-down: a DropDownNode's popup has to be registered into
     // the host addon's AdditionalFocusableNodes before a cursor can reach it, and a popup the
@@ -689,6 +688,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             settingsArea.Position = tabContentStart;
             settingsArea.Size = tabContentSize;
+
+            // Assigning Size forces the content node back to the container's full width, taking
+            // every control with it, so the scroll-bar reservation has to be re-applied here.
+            ApplySettingWidths();
         }
 
         if (list is null)
@@ -884,6 +887,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                     RefreshQuestActions();
                 }
 
+                break;
+            case HubTab.Settings:
+                // Not a rebuild: only the values are re-read. The readout's position can change
+                // while this tab is open — a mouse drag, a preset, a resolution change — and the
+                // sliders have to say where it actually is, not where they last left it.
+                RefreshSettings();
                 break;
         }
 
@@ -1933,7 +1942,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         settingsArea = new ScrollingNode<VerticalListNode>
         {
-            ContentNode = { FitWidth = true, FitContents = true, ItemSpacing = 4f },
+            // FitWidth is deliberately OFF. It stretches every control to the container's own
+            // width, and the container draws its scroll bar inside that width and clips at its own
+            // edge — which is the reported "the sliders clip outside the border". The widths are set
+            // explicitly instead, by ApplySettingWidths, which reserves the bar's gutter. Leaving
+            // FitWidth on would simply undo that on the next layout pass.
+            ContentNode = { FitWidth = false, FitContents = true, ItemSpacing = 4f },
             AutoHideScrollBar = true,
             Position = tabContentStart,
             Size = tabContentSize,
@@ -1949,6 +1963,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         settingsArea.ContentNode.Clear();
+        settingSliders.Clear();
         firstSettingControl = null;
 
         foreach (var section in settings.Build())
@@ -1962,10 +1977,52 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             }
         }
 
+        ApplySettingWidths();
         settingsArea.RecalculateSizes();
         ResizeToContent();
+        ApplySettingWidths();
         settingsArea.RecalculateSizes();
         ApplyNavigation(settingsArea.ContentNode);
+        RefreshSettings();
+    }
+
+    /// <summary>Keeps every control on the Settings tab inside the area the tab actually clips at.
+    ///
+    /// <para>The container's scroll bar is drawn against its own right edge, inside its width, so a
+    /// control stretched to the full container width runs under the bar and off the edge — the
+    /// reported "the sliders clip outside the border". <c>ScrollingNode</c> forces its content node
+    /// back to its own width on every size change, so the reservation cannot live there; it is
+    /// applied to the controls themselves, and re-applied after anything that could have resized the
+    /// tab. This is also why the list's own <c>FitWidth</c> is off — see
+    /// <see cref="BuildSettingsTab"/>.</para></summary>
+    private void ApplySettingWidths()
+    {
+        if (settingsArea is null)
+        {
+            return;
+        }
+
+        var width = SettingsLayout.ControlWidth(tabContentSize.X);
+        foreach (var node in settingsArea.ContentNode.Nodes)
+        {
+            node.Width = width;
+        }
+
+        settingsArea.ContentNode.RecalculateLayout();
+    }
+
+    /// <summary>Re-reads every value-bearing control on the Settings tab from the setting behind it.
+    ///
+    /// <para>This is what makes the readout-position sliders honest. They are one of two ways to
+    /// move the readout — the other is dragging it with the mouse — and a preset or a resolution
+    /// change moves it as well. All of those write the same stored fraction, and this reads it back,
+    /// so the sliders say where the readout is rather than where they last left it.</para></summary>
+    private void RefreshSettings()
+    {
+        foreach (var slider in settingSliders)
+        {
+            slider.Refresh();
+        }
     }
 
     /// <summary>Gives the Settings tab the one thing its container does not have: scroll-follows-focus.
@@ -1984,7 +2041,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// as its focus target.</para></summary>
     private void WireScrollFollowsFocus(NodeBase control)
     {
-        if (control is not KamiToolKit.BaseTypes.ComponentNode.ComponentNode component)
+        // A scale setting is a caption plus a slider, and only the slider can be focused — so the
+        // event goes on the slider while the scroll target stays the whole row, or the caption
+        // scrolls off the top of the tab the moment the cursor arrives on its slider.
+        var focusable = control is SettingSliderNode row ? row.Slider : control;
+        if (focusable is not KamiToolKit.BaseTypes.ComponentNode.ComponentNode component)
         {
             return;
         }
@@ -2029,6 +2090,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         SettingKind.Scale => BuildScale(setting),
         _ => BuildChoice(setting),
     };
+
+    private SettingSliderNode BuildScale(SettingDefinition setting)
+    {
+        var node = new SettingSliderNode(setting);
+        settingSliders.Add(node);
+        return node;
+    }
 
     private CheckboxNode BuildToggle(SettingDefinition setting)
     {

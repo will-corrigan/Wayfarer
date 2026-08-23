@@ -30,6 +30,11 @@ namespace Wayfarer.Windows.Native;
 /// invisible. Be closed by Esc: <c>RespectCloseAll</c> is off. Make a sound, or offer a title-bar
 /// menu: both off.
 ///
+/// <b>The settings cog.</b> The readout carries one, and only here. The player asked to be able to
+/// reach Settings from the readout instead of going through the plugin list, and this host is the one
+/// that can receive the click. The overlay deliberately does not draw one — see
+/// <see cref="ReadoutBodyNode"/>.
+///
 /// <b>Scale.</b> The game renders a normal addon at the player's interface scale, while the body
 /// multiplies that scale in by hand (it was written for an overlay, which is de-scaled to raw
 /// pixels). Applying the same de-scaling here is what keeps the two hosts identical instead of
@@ -38,6 +43,7 @@ internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
     ReadoutPlacement placement,
     Action onTeleportClicked,
+    Action onSettingsClicked,
     ITextureProvider textures,
     IFramework framework,
     IPluginLog log,
@@ -46,7 +52,10 @@ internal sealed unsafe class ClickableReadoutAddon(
     private ReadoutBodyNode? body;
     private Vector2 lastSize;
     private Vector2 lastPosition;
-    private bool lastHadClickTarget;
+
+    /// <summary>The set of clickable nodes the collision list was last built for. Starts at -1,
+    /// which no real set can equal, so the first frame always builds one.</summary>
+    private int lastClickTargets = -1;
     private bool broken;
 
     /// <inheritdoc/>
@@ -105,7 +114,8 @@ internal sealed unsafe class ClickableReadoutAddon(
             textures,
             diagnosticsEnabled,
             onTeleportClicked,
-            onMoved: delta => placement.MoveTo(lastPosition + delta))
+            onMoved: delta => placement.MoveTo(lastPosition + delta),
+            onSettingsClicked: onSettingsClicked)
         {
             Position = Vector2.Zero,
         };
@@ -144,7 +154,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         body = null;
         lastSize = Vector2.Zero;
         lastPosition = Vector2.Zero;
-        lastHadClickTarget = false;
+        lastClickTargets = -1;
         broken = false;
     }
 
@@ -187,7 +197,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         {
             lastSize = size;
             SetWindowSize(size);
-            lastHadClickTarget = !body.HasLiveClickTarget;
+
+            // Force the collision list to be rebuilt below: resizing the host moves every hit box
+            // inside it, whether or not the set of them changed.
+            lastClickTargets = -1;
         }
 
         RefreshCollision();
@@ -203,13 +216,13 @@ internal sealed unsafe class ClickableReadoutAddon(
     /// hit box that is never hit.</summary>
     private void RefreshCollision()
     {
-        var live = body is { HasLiveClickTarget: true };
-        if (live == lastHadClickTarget)
+        var live = body?.ClickTargets ?? 0;
+        if (live == lastClickTargets)
         {
             return;
         }
 
-        lastHadClickTarget = live;
+        lastClickTargets = live;
         InternalAddon->UpdateCollisionNodeList(false);
     }
 

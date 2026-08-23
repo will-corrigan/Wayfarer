@@ -52,6 +52,28 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private const float BaseGap = 3f;
 
+    /// <summary>The settings cog's side, before scale. Sized against the heading it sits beside
+    /// rather than against the readout: it is a mark on that line, not a button on a panel.</summary>
+    private const float BaseCog = 13f;
+
+    /// <summary>How visible the cog is when the pointer is not on it.
+    ///
+    /// <para><b>Why it is not simply hidden.</b> Revealing it on hover would be better — the player
+    /// asked for exactly that — but the only thing that can tell this readout the pointer is over it
+    /// is a collision rectangle, and a collision rectangle over the whole readout would swallow the
+    /// world clicks and camera drags underneath it. That is the same trap the drag handle is a
+    /// deliberate mode for. So the cog carries its own small collision and nothing else does: it is
+    /// barely there until the pointer finds it, and it eats nothing but its own thirteen
+    /// pixels.</para></summary>
+    private const float CogIdleAlpha = 0.4f;
+
+    /// <summary>Bits of <see cref="ClickTargets"/> — one per clickable node the readout can put on
+    /// screen.</summary>
+    private const int TeleportTarget = 1;
+
+    /// <inheritdoc cref="TeleportTarget"/>
+    private const int CogTarget = 2;
+
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
     /// line would otherwise be dragged by a box that no longer fits it.</summary>
@@ -72,6 +94,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// the texture wrap it is given.</summary>
     private readonly ImGuiImageNode arrowNode;
 
+    /// <summary>The up/down chevron that hangs off the arrow when the target is on a different level
+    /// of the world. The game's own minimap does exactly this to a marker on another floor, and
+    /// copying the convention is the point — a player already reads it without being told.
+    ///
+    /// <para>It is the same generated arrow art, small and unrotated (or turned through half a
+    /// turn), rather than a second icon: it is then automatically the colour the player chose for
+    /// their arrow, and it reads as part of the same mark instead of as a badge stuck on
+    /// it.</para></summary>
+    private readonly ImGuiImageNode elevationNode;
+
     private readonly TextNode arrowWordsNode;
     private readonly string[] lastText = new string[MaxLines];
 
@@ -85,8 +117,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rectangle and the hand cursor over that one line.</summary>
     private readonly ResNode? teleportHitBox;
 
+    /// <summary>The settings cog, or null in a host that cannot be clicked. Drawing one on the
+    /// click-through overlay would be a lie: the controller's readout takes no input at all, and an
+    /// affordance that does nothing is worse than none.</summary>
+    private readonly ImGuiImageNode? cogNode;
+
     private ArrowIconVariant? loadedVariant;
+    private ArrowIconVariant? loadedElevationVariant;
     private bool arrowFailed;
+    private bool elevationFailed;
+    private bool cogLoaded;
+    private bool cogFailed;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
@@ -99,33 +140,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         ITextureProvider textures,
         Func<bool>? diagnosticsEnabled = null,
         Action? onTeleportClicked = null,
-        Action<Vector2>? onMoved = null)
+        Action<Vector2>? onMoved = null,
+        Action? onSettingsClicked = null)
     {
         this.log = log;
         this.textures = textures;
         this.diagnosticsEnabled = diagnosticsEnabled ?? (static () => false);
         this.onMoved = onMoved;
 
-        // The game's own direction indicator is a plain image node whose rotation is written every
-        // frame (AtkImageNode PlayerCone / PlayerConeRotation on the minimap), so this copies the
-        // mechanism rather than inventing one. The origin has to be the arrow's centre or it pivots
-        // around its corner.
-        //
-        // FitTexture — AutoFit plus Stretch — means "fit the whole loaded TEXTURE into this node".
-        // That is now exactly right, and it is worth saying why it was catastrophic before: with a
-        // 448x212 texture sheet loaded and a 24x24 part selected, the part was ignored and the whole
-        // sheet was drawn squashed into 34 pixels. The arrow's texture is generated and contains
-        // nothing but the arrow, so there is no part to ignore.
-        arrowNode = new ImGuiImageNode
-        {
-            TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size),
-            Size = new Vector2(BaseArrow, BaseArrow),
-            OriginX = BaseArrow / 2f,
-            OriginY = BaseArrow / 2f,
-            FitTexture = true,
-            IsVisible = false,
-        };
-        arrowNode.AttachNode(this);
+        arrowNode = BuildArrow(BaseArrow);
+        elevationNode = BuildArrow(BaseArrow / 2f);
 
         // The direction in words, for when the arrow cannot be drawn at all. A readout that says
         // "behind you, to the left" is still guidance; an arrow that silently fails is not.
@@ -150,13 +174,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             teleportHitBox.ShowClickableCursor = true;
             teleportHitBox.AttachNode(this);
         }
+
+        cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
     }
 
-    /// <summary>Whether a clickable target is on screen right now. The host watches this: the
-    /// game only dispatches mouse events to nodes in its addon's collision list, and that list has
-    /// to be rebuilt when the set of live collision nodes changes — which here means when the
-    /// teleport advice appears or goes away, not only when the readout resizes.</summary>
-    public bool HasLiveClickTarget { get; private set; }
+    /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
+    /// advice and the settings cog.
+    ///
+    /// <para>The host watches this: the game only dispatches mouse events to nodes in its addon's
+    /// collision list, and that list has to be rebuilt when the <b>set</b> of live collision nodes
+    /// changes. A bool was enough while there was one of them; with two, "something is clickable"
+    /// stays true across the teleport line appearing under a cog that was already there, and the
+    /// list would never be rebuilt for it — a hit box that is never hit.</para></summary>
+    public int ClickTargets { get; private set; }
 
     /// <summary>Lays the whole readout out for this frame and returns the size it needs, in the
     /// host's own units. The host positions and sizes itself from that; nothing else about the
@@ -189,6 +219,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var y = LayoutWords(frame, drawable, factor, width);
         var (bottom, firstLineCentre) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
+        LayoutElevation(frame, arrowSize);
+        LayoutCog(frame, factor, width);
+
+        // The cog is a live collision node whenever it is drawn, and the clickable host watches
+        // this to know when the addon's collision list has to be rebuilt.
+        if (cogNode is { IsVisible: true })
+        {
+            ClickTargets |= CogTarget;
+        }
 
         var size = new Vector2(width, bottom);
         Size = size;
@@ -220,13 +259,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     public void HideAll()
     {
         arrowNode.IsVisible = false;
+        elevationNode.IsVisible = false;
         arrowWordsNode.IsVisible = false;
         if (teleportHitBox is not null)
         {
             teleportHitBox.IsVisible = false;
         }
 
-        HasLiveClickTarget = false;
+        if (cogNode is not null)
+        {
+            cogNode.IsVisible = false;
+        }
+
+        ClickTargets = 0;
 
         for (var i = 0; i < MaxLines; i++)
         {
@@ -256,6 +301,63 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private static FontType FontFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? FontType.TrumpGothic : FontType.Axis;
+
+    /// <summary>An image node that holds one of the generated arrow textures — the bearing arrow, or
+    /// the smaller up/down chevron beside it.
+    ///
+    /// <para>The game's own direction indicator is a plain image node whose rotation is written every
+    /// frame (<c>AtkImageNode PlayerCone / PlayerConeRotation</c> on the minimap), so this copies the
+    /// mechanism rather than inventing one. The origin has to be the arrow's centre or it pivots
+    /// around its corner.</para>
+    ///
+    /// <para><c>FitTexture</c> — AutoFit plus Stretch — means "fit the whole loaded TEXTURE into this
+    /// node". That is now exactly right, and it is worth saying why it was catastrophic before: with
+    /// a 448x212 texture sheet loaded and a 24x24 part selected, the part was ignored and the whole
+    /// sheet was drawn squashed into 34 pixels. The arrow's texture is generated and contains nothing
+    /// but the arrow, so there is no part to ignore.</para></summary>
+    private ImGuiImageNode BuildArrow(float side)
+    {
+        var node = new ImGuiImageNode
+        {
+            TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size),
+            Size = new Vector2(side, side),
+            OriginX = side / 2f,
+            OriginY = side / 2f,
+            FitTexture = true,
+            IsVisible = false,
+        };
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>The settings cog, wired to open the window on its Settings tab.
+    ///
+    /// <para><c>MouseClick</c> is the only one of these events that blocks: <c>MouseOver</c> and
+    /// <c>MouseOut</c> ask the toolkit for <c>EmitsEvents</c> and <c>RespondToMouse</c> alone, while
+    /// <c>MouseClick</c> adds <c>HasCollision</c>. The rectangle that swallows a world click is
+    /// therefore exactly the cog and nothing more — which is the whole reason the readout can carry
+    /// one at all.</para></summary>
+    private ImGuiImageNode BuildCog(Action onSettingsClicked)
+    {
+        // Same generated-texture treatment as the arrow — see CogBitmap. FitTexture is correct here
+        // for the same reason it is correct there: the whole texture IS the icon, so there is no
+        // part for AutoFit to ignore.
+        var cog = new ImGuiImageNode
+        {
+            TextureSize = new Vector2(CogBitmap.Size, CogBitmap.Size),
+            Size = new Vector2(BaseCog, BaseCog),
+            FitTexture = true,
+            IsVisible = false,
+            Alpha = CogIdleAlpha,
+        };
+
+        cog.AddEvent(AtkEventType.MouseClick, onSettingsClicked);
+        cog.AddEvent(AtkEventType.MouseOver, () => cog.Alpha = 1f);
+        cog.AddEvent(AtkEventType.MouseOut, () => cog.Alpha = CogIdleAlpha);
+        cog.ShowClickableCursor = true;
+        cog.AttachNode(this);
+        return cog;
+    }
 
     private void BuildLinePool()
     {
@@ -430,8 +532,159 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             teleportHitBox.IsVisible = false;
         }
 
-        HasLiveClickTarget = hitBoxPlaced;
+        ClickTargets = hitBoxPlaced ? TeleportTarget : 0;
         return (y + (BaseGap * factor), firstLineCentre);
+    }
+
+    /// <summary>Hangs the up/down chevron off the arrow when the target is on a different level of
+    /// the world, which is what the game's own minimap does to a marker on another floor.
+    ///
+    /// <para>Only ever when there is an arrow to hang it on. Whether to claim anything about
+    /// elevation at all was decided long before this — see <c>Elevation</c> and <c>GroundHeight</c>
+    /// — and by the time it arrives here it is a fact about the frame. The distance line says it in
+    /// words as well, because a chevron is a convention the player has to already know.</para>
+    ///
+    /// <para>The offset parks it on the arrow's lower-right corner, overlapping it slightly, which
+    /// is how the minimap attaches its own: near enough to read as one mark, far enough out that it
+    /// does not hide the arrow's tip.</para></summary>
+    private void LayoutElevation(ReadoutFrame frame, float arrowSize)
+    {
+        if (!arrowNode.IsVisible
+            || frame.Content.Elevation == ElevationHint.Level
+            || !EnsureElevationTexture(frame.ArrowIcon))
+        {
+            elevationNode.IsVisible = false;
+            return;
+        }
+
+        var size = Math.Max(arrowSize * 0.55f, 7f);
+        elevationNode.Size = new Vector2(size, size);
+        elevationNode.OriginX = size / 2f;
+        elevationNode.OriginY = size / 2f;
+
+        // The art points straight up unrotated, so "above" needs no rotation at all and "below" is
+        // half a turn. Same guarantee ArrowBitmap gives the bearing arrow.
+        elevationNode.Rotation = frame.Content.Elevation == ElevationHint.Above ? 0f : MathF.PI;
+        elevationNode.Position = arrowNode.Position + new Vector2(arrowSize * 0.58f, arrowSize * 0.5f);
+        elevationNode.IsVisible = true;
+    }
+
+    /// <summary>Parks the settings cog at the end of the heading, which is where the game puts a
+    /// panel's own controls and the one place on this readout that is never text.
+    ///
+    /// <para>Measured rather than pinned to the right-hand edge: the readout's box is a fixed 320
+    /// units wide while its heading is usually a third of that, so a cog in the corner would float
+    /// in empty space with nothing to belong to. The box is invisible; the words are the object.
+    /// A measurement that comes back as nothing — the node has not been drawn yet — falls back to
+    /// the right edge rather than stacking the cog on top of the first letter.</para></summary>
+    private void LayoutCog(ReadoutFrame frame, float factor, float width)
+    {
+        if (cogNode is null)
+        {
+            return;
+        }
+
+        if (!EnsureCogTexture())
+        {
+            cogNode.IsVisible = false;
+            return;
+        }
+
+        var size = Math.Max(BaseCog * factor, 9f);
+        var gap = BaseGap * factor * 2f;
+        var heading = frame.Content.Lines.Count > 0
+            && frame.Content.Lines[0].Emphasis == ReadoutEmphasis.Heading
+            && lineNodes[0].IsVisible
+                ? lineNodes[0]
+                : null;
+
+        var headingWidth = heading is null ? 0f : heading.GetTextDrawSize().X;
+        var position = headingWidth > 1f
+            ? new Vector2(
+                Math.Clamp(headingWidth + gap, 0f, width - size),
+                heading!.Position.Y + Math.Max(((BaseHeadingSize * factor) - size) / 2f, 0f))
+            : new Vector2(width - size, 0f);
+
+        cogNode.Size = new Vector2(size, size);
+        cogNode.Position = position;
+        cogNode.IsVisible = true;
+    }
+
+    /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are
+    /// computed here and uploaded synchronously, so it either works or it throws, and if it throws
+    /// there is simply no cog — the window is still on the info bar entry, the plugin list, the
+    /// game's own context menu and <c>/wayfarer settings</c>.</summary>
+    private bool EnsureCogTexture()
+    {
+        if (cogFailed)
+        {
+            return false;
+        }
+
+        if (cogLoaded)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(CogBitmap.Size, CogBitmap.Size),
+                CogBitmap.Render(),
+                "Wayfarer settings cog");
+
+            // Takes ownership: the node disposes the wrap with itself.
+            cogNode!.LoadTexture(wrap);
+            cogNode.TextureSize = new Vector2(CogBitmap.Size, CogBitmap.Size);
+            cogLoaded = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            cogFailed = true;
+            log.Error(ex, "Wayfarer readout: the settings cog could not be generated, so the readout has none. Settings are still on the info bar entry, the plugin list and /wayfarer settings.");
+            return false;
+        }
+    }
+
+    /// <summary>Generates the elevation chevron in the current arrow colour, if it is not already
+    /// loaded. Its own copy of the arrow's pixels rather than a shared wrap: KamiToolKit's image
+    /// node takes ownership of the texture it is handed and disposes it with itself, so two nodes
+    /// sharing one wrap is a double free waiting for a colour change.
+    ///
+    /// <para>Failing here costs the chevron and nothing else — the distance line still says "above
+    /// you" in words, which is the half of this feature that does not need a convention to
+    /// read.</para></summary>
+    private bool EnsureElevationTexture(ArrowIconVariant variant)
+    {
+        if (elevationFailed)
+        {
+            return false;
+        }
+
+        if (loadedElevationVariant == variant)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(ArrowBitmap.Size, ArrowBitmap.Size),
+                ArrowBitmap.Render(variant),
+                $"Wayfarer elevation chevron ({variant})");
+
+            elevationNode.LoadTexture(wrap);
+            elevationNode.TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size);
+            loadedElevationVariant = variant;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            elevationFailed = true;
+            log.Error(ex, "Wayfarer readout: the above/below chevron could not be generated. The distance line still says which it is in words.");
+            return false;
+        }
     }
 
     private float LayoutRule(int index, ReadoutLine line, float factor, float left, float width, float y)

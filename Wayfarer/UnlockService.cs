@@ -66,7 +66,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             // Every surface that would have shown entries shows this instead.
             LoadError = ex.Message;
             const string message =
-                "Wayfarer unlocks: the unlock catalogue could not be read, so the checklist is empty and "
+                "Wayfarer unlocks: the unlock catalogue could not be read, so the unlocks list is empty and "
                 + "says so rather than pretending there is nothing left to do.";
             log.Error(ex, message);
         }
@@ -354,7 +354,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             {
                 recomputeFailureLogged = true;
                 const string message =
-                    "Wayfarer unlocks: refreshing the checklist failed, so it will keep showing whatever it "
+                    "Wayfarer unlocks: refreshing the unlocks list failed, so it will keep showing whatever it "
                     + "last worked out until something makes it recompute successfully. Reported once.";
                 log.Error(ex, message);
             }

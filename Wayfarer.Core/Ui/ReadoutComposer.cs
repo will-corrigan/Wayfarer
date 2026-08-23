@@ -47,7 +47,7 @@ public static class ReadoutComposer
 
         return lines.Count == 0
             ? ReadoutContent.Empty
-            : new ReadoutContent(lines, showArrow, x, y, z);
+            : new ReadoutContent(lines, showArrow, x, y, z, inputs.Elevation);
     }
 
     private static void AddHeading(List<ReadoutLine> lines, NavigationState state)
@@ -113,7 +113,7 @@ public static class ReadoutComposer
             return AddReasonOnly(lines, state);
         }
 
-        AddDistance(lines, inputs.DistanceYalms);
+        AddDistance(lines, inputs);
 
         if (state.AethernetExitName is { Length: > 0 } exit)
         {
@@ -133,7 +133,7 @@ public static class ReadoutComposer
 
         if (hasEntrance)
         {
-            AddDistance(lines, inputs.DistanceYalms);
+            AddDistance(lines, inputs);
             if (state.AethernetExitName is { Length: > 0 } exit)
             {
                 lines.Add(new ReadoutLine($"To the {state.AethernetEntryName} aetheryte", ReadoutEmphasis.Secondary));
@@ -193,16 +193,38 @@ public static class ReadoutComposer
         return (false, null, null, null);
     }
 
-    private static void AddDistance(List<ReadoutLine> lines, float? yalms)
+    /// <summary>The distance line, and — when the target is on a different level of the world — the
+    /// fact that it is, in words.
+    ///
+    /// <para>"56 yalms · above you". The drawn readout also hangs the game's own up/down chevron off
+    /// the arrow, mirroring what the minimap does for a marker on another floor, but the words are
+    /// what make it work: a chevron is a convention the player has to already know, and the flat
+    /// distance is what made "the arrow points straight at a wall" confusing in the first
+    /// place.</para>
+    ///
+    /// <para>Deliberately not said on "You have arrived": within five yalms horizontally, being six
+    /// yalms up is the top of the stairs you are standing at the bottom of, and the readout has
+    /// already told the player they are there. Saying both at once contradicts itself.</para></summary>
+    private static void AddDistance(List<ReadoutLine> lines, ReadoutInputs inputs)
     {
-        if (yalms is not { } distance)
+        if (inputs.DistanceYalms is not { } distance)
         {
             return;
         }
 
-        lines.Add(distance < 5f
-            ? new ReadoutLine("You have arrived", ReadoutEmphasis.Primary)
-            : new ReadoutLine(NavMath.FormatDistance(distance), ReadoutEmphasis.Primary));
+        if (distance < 5f)
+        {
+            lines.Add(new ReadoutLine("You have arrived", ReadoutEmphasis.Primary));
+            return;
+        }
+
+        var text = NavMath.FormatDistance(distance);
+        if (Elevation.Words(inputs.Elevation) is { Length: > 0 } elevation)
+        {
+            text = $"{text} · {elevation}";
+        }
+
+        lines.Add(new ReadoutLine(text, ReadoutEmphasis.Primary));
     }
 
     private static void AddContext(List<ReadoutLine> lines, ReadoutInputs inputs)

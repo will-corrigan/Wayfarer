@@ -57,7 +57,7 @@ internal sealed class UnlockWindow(
     {
         if (!unlocks.Loaded)
         {
-            ImGui.TextWrapped("Wayfarer could not read its unlock catalogue, so this checklist is empty for that reason and not because there is nothing left to do.");
+            ImGui.TextWrapped("Wayfarer could not read its unlock catalogue, so this list is empty for that reason and not because there is nothing left to do.");
             if (unlocks.LoadError is { Length: > 0 } why)
             {
                 ImGui.TextWrapped(why);

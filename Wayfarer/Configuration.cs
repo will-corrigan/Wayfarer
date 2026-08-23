@@ -33,9 +33,13 @@ public enum HubPositionPreset
 /// they change it.</summary>
 public sealed class Configuration : IPluginConfiguration
 {
-    /// <summary>The version this build writes. Bumped to 2 for the readout-position rework — see
-    /// <see cref="Migrate"/>.</summary>
-    public const int CurrentVersion = 2;
+    /// <summary>The version this build writes. Bumped to 3 for the "Checklist" → "Unlocks"
+    /// rename — see <see cref="Migrate"/>.</summary>
+    public const int CurrentVersion = 3;
+
+    /// <summary>What <see cref="Modules.UnlockChecklistModule"/> was called before the rename, and
+    /// therefore the key its saved enabled flag is under in an existing config.</summary>
+    private const string OldUnlocksModuleName = "Unlock Checklist";
 
     public int Version { get; set; } = CurrentVersion;
 
@@ -64,7 +68,12 @@ public sealed class Configuration : IPluginConfiguration
     /// minimap, and the second line — the one with the objective on it — was drawn behind the map
     /// and could not be read. Anyone still on the old default is moved to top centre; anyone who
     /// went into the settings and chose the tracker deliberately keeps it, because a migration that
-    /// overrides a deliberate choice is a bug of its own.</para></summary>
+    /// overrides a deliberate choice is a bug of its own.</para>
+    ///
+    /// <para>Version 3 renames the unlocks feature from "Unlock Checklist" to "Unlocks", because
+    /// the player could not tell what a checklist was. <see cref="ModuleEnabled"/> is keyed by that
+    /// name, so a player who had deliberately switched the feature off would silently have had it
+    /// switched back on. The flag moves with the name.</para></summary>
     public bool Migrate()
     {
         if (Version >= CurrentVersion)
@@ -75,6 +84,11 @@ public sealed class Configuration : IPluginConfiguration
         if (Version < 2 && QuestHelper.ReadoutPosition == ReadoutPosition.FollowQuestTracker)
         {
             QuestHelper.ReadoutPosition = ReadoutPosition.TopCentre;
+        }
+
+        if (Version < 3 && ModuleEnabled.Remove(OldUnlocksModuleName, out var unlocksEnabled))
+        {
+            ModuleEnabled[Modules.UnlockChecklistModule.FeatureName] = unlocksEnabled;
         }
 
         Version = CurrentVersion;

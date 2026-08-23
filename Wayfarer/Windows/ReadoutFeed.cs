@@ -1,6 +1,8 @@
+using System.Numerics;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
+using Wayfarer.Guidance;
 using Wayfarer.Modules;
 
 namespace Wayfarer.Windows;
@@ -16,6 +18,17 @@ internal sealed class ReadoutFeed(
     IObjectTable objects)
 {
     private const string HuntingSourceId = "hunting";
+
+    /// <summary>What the readout said about elevation last frame, which is what supplies the
+    /// hysteresis in <see cref="Core.Ui.Elevation.Classify"/> — see there for why a single
+    /// threshold is not enough.</summary>
+    private ElevationHint lastElevation;
+
+    /// <summary>The last target position a ground height was resolved for, and the answer. One
+    /// collision raycast per changed target rather than one per frame: the target only moves when
+    /// the objective changes or a live-tracked mob walks.</summary>
+    private Vector3? groundedFor;
+    private float? groundedHeight;
 
     /// <summary>The guidance snapshot's source, for the surfaces that need to act on it rather than
     /// only read it — the clickable readout's teleport, for one. Read-only by construction: this is
@@ -36,7 +49,43 @@ internal sealed class ReadoutFeed(
             HuntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal),
             NearbyUnlocks = NearbyUnlocks(),
             TeleportOnClick = teleportOnClick,
+            Elevation = TargetElevation(state),
         });
+    }
+
+    /// <summary>Whether the arrow's target is meaningfully above or below the player right now.
+    ///
+    /// <para><b>The honest part.</b> The only height available for a target is the coordinate the
+    /// objective came with, and for a curated hunting or unlock coordinate that height may never
+    /// have been checked against the terrain. So it is checked here, against the game's own
+    /// collision (<see cref="GroundHeight"/>), and when the check finds nothing the readout says
+    /// nothing — no chevron, no words. A live-tracked target is exempt because its height is not a
+    /// stored coordinate at all: it is where the object actually is, read from the object table this
+    /// tick.</para>
+    ///
+    /// <para>Only same-zone targets are considered. In the cross-zone case the arrow points at an
+    /// entrance or a shard whose height the router does not carry, and "above you" about a door in
+    /// another territory would be meaningless even if it were true.</para></summary>
+    public ElevationHint TargetElevation(NavigationState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (objects.LocalPlayer is not { } player
+            || !string.Equals(state.Mode, NavigationState.Modes.SameZone, StringComparison.Ordinal)
+            || state.TargetX is not { } tx
+            || state.TargetY is not { } ty
+            || state.TargetZ is not { } tz)
+        {
+            lastElevation = ElevationHint.Level;
+            return lastElevation;
+        }
+
+        var target = new Vector3(tx, ty, tz);
+        var height = state.IsLiveTarget ? ty : Grounded(target);
+        var delta = height is { } y ? y - player.Position.Y : (float?)null;
+
+        lastElevation = Core.Ui.Elevation.Classify(delta, lastElevation);
+        return lastElevation;
     }
 
     /// <summary>Distance to whatever the arrow is pointing at, against the player's live position.</summary>
@@ -135,6 +184,17 @@ internal sealed class ReadoutFeed(
         DtrNextStep.Aethernet => state.AethernetExitName,
         _ => null,
     };
+
+    private float? Grounded(Vector3 target)
+    {
+        if (groundedFor != target)
+        {
+            groundedFor = target;
+            groundedHeight = GroundHeight.Resolve(target);
+        }
+
+        return groundedHeight;
+    }
 
     // "Rank 2 4/5" — the hunting rank the game itself reports (see HuntingWindow's identical
     // "rank {N}" wording) alongside the current target's kill count, already short enough for the

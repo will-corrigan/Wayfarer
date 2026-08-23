@@ -20,9 +20,16 @@ internal sealed class UnlockChecklistModule(
     IGuidanceArbiter arbiter,
     UnlockRouteSource routeSource) : IModule
 {
+    /// <summary>What the feature is called on screen — the label of its switch in Settings, and the
+    /// name of its tab. "Unlocks" rather than the old "Unlock Checklist": the player could not tell
+    /// what a checklist was ("Is checklist the unlocks section?"). Public because
+    /// <see cref="Configuration"/> has to migrate the saved enabled flag off the old key, and that
+    /// key was this string.</summary>
+    public const string FeatureName = "Unlocks";
+
     private bool loggedNativeFallback;
 
-    public string Name => "Unlock Checklist";
+    public string Name => FeatureName;
 
     public string Description => "Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.";
 
@@ -36,7 +43,7 @@ internal sealed class UnlockChecklistModule(
     /// coherent home for it since the data comes from this module.</summary>
     internal UnlockChecklistConfig Config { get; } = cfg;
 
-    /// <summary>Opens the checklist. There is one checklist and it is the native window, for mouse
+    /// <summary>Opens the unlocks list. There is one and it is the native window, for mouse
     /// and controller alike — the game's own windows are clickable and cursor-navigable at the same
     /// time, so a second ImGui copy would only be a second thing to keep in step. That copy now
     /// exists solely as an automatic fallback: if the native window cannot be created, this logs
@@ -51,13 +58,13 @@ internal sealed class UnlockChecklistModule(
         }
         catch (Exception ex)
         {
-            // Once: the player can open the checklist as often as they like, and the reason it
+            // Once: the player can open the unlocks list as often as they like, and the reason it
             // would not open the first time is the reason it will not open the tenth.
             if (!loggedNativeFallback)
             {
                 loggedNativeFallback = true;
                 const string message =
-                    "Wayfarer: the game-styled checklist window would not open, so the plugin-drawn checklist "
+                    "Wayfarer: the game-styled unlocks window would not open, so the plugin-drawn one "
                     + "is being used instead. Everything is still reachable; it will not look like the game's "
                     + "own windows and is best driven with a mouse. Reported once.";
                 log.Warning(ex, message);
