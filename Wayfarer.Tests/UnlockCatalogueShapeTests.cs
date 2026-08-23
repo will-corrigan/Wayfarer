@@ -17,7 +17,11 @@ public class UnlockCatalogueShapeTests
     {
         // Matches EXPECTED in data/validate-unlocks.mjs. Two entries were removed by the recovery:
         // both belonged to the unreleased-expansion guide page and neither described real content.
-        Assert.Equal(586, Load().Count);
+        // +1 for "Wings of Legacy (Mount)" (Quest#71005, "The Wing Spirit Cometh") — a real, live
+        // Dawntrail trophy-mount quest the wiki guide doesn't list, added via the generator's
+        // committed-overrides mechanism. See data/README.md and
+        // scripts/build-unlock-catalogue.mjs's NEW_TROPHY_MOUNT_ENTRIES.
+        Assert.Equal(587, Load().Count);
     }
 
     [Fact]

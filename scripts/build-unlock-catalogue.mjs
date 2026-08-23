@@ -742,7 +742,13 @@ function groundLevel(entry, row, questRows, quests) {
     return { level: levels[0], levelSource: `game-data:Quest#${questRows[0]}` };
   }
 
-  return { level: null, levelSource: null, category: row?.section ?? null };
+  // A guide row's own section names the category every one of the five original trophy mounts
+  // gets this way. NEW_TROPHY_MOUNT_ENTRIES has no guide row at all — that is the whole reason it
+  // needs a seed — so `row` is null here and there is no section to read. Falling back to the
+  // curated category (rather than null) is what stops that seed's category from being silently
+  // dropped on every regeneration; it is exactly the same "keep what nothing regenerates" rule
+  // every other pure-curated field already follows.
+  return { level: null, levelSource: null, category: row?.section ?? entry.category ?? null };
 }
 
 /** The canonical serialisation. Fixed key order, 2-space indent, trailing newline — so the file
@@ -810,12 +816,193 @@ function buildSources(guideAssigned, questRows, curatedExtras, derived = {}) {
   ])];
 }
 
+// --------------------------------------------------------------------------- committed overrides
+//
+// `requires.mounts` is a fully curated field (see the "Generated fields vs curated fields" table
+// in data/README.md): neither the wiki guide nor the Quest sheet states the mount-OWNERSHIP gate
+// itself, only that the reward mount and the quest row exist, so nothing above this line ever
+// computes it. These two tables are how a human/external judgement about that gate gets into the
+// generator's output without ever hand-editing data/unlocks-by-level.json directly: each entry
+// carries its own stated reason, is applied every run, and survives a regeneration the same way
+// any other generated fact does.
+//
+// Every id and "from" attribution below was reconciled against three independent sources, all
+// required to agree before an id was accepted: live game data (Lumina over sqpack — Mount sheet
+// for id -> name, Item.ItemAction for item -> mount resolution, Quest sheet for the reward chain),
+// PunishXIV/Questionable's hardcoded AllMountsUnlocked lists (Questionable/Functions/
+// QuestFunctions.cs, IsQuestLocked), and ffxiv.consolegameswiki.com's per-quest pages. Triggered by
+// a friend following this exact checklist to a mount quest he could not actually take: the shipped
+// set understated what the quest required.
+
+/** Corrections to `requires` on trophy-mount entries that already exist in the catalogue, keyed
+ * by the Quest row id the entry is bound to. Applied in place before the entry goes through the
+ * normal pipeline, so everything downstream (confidence, sources, level grounding) behaves
+ * exactly as if this had always been the curated value. */
+const MOUNT_REQUIREMENT_OVERRIDES = new Map([
+  [68736, { // A Lone Wolf No More -> Kamuy of the Nine Tails
+    reason: "Stormblood shipped seven Extreme trials, not six; the catalogue's curated set omitted "
+      + 'the seventh (Hallowed Kamuy / The Wreath of Snakes EX, patch 4.5, StB\'s last Extreme). '
+      + "Questionable's AllMountsUnlocked list and consolegameswiki both independently name Hallowed "
+      + 'Kamuy as the seventh required mount; game data confirms the id resolves to a real mount with '
+      + "a real learn-item. The requirement fact itself rests on Questionable + wiki agreement, since "
+      + 'no Excel sheet carries the accept-gate for this quest.',
+    label: 'all seven Stormblood Extreme-trial kamuy mounts',
+    mounts: [
+      { id: 115, name: 'Blissful Kamuy', from: 'The Pool of Tribute (Extreme)' },
+      { id: 116, name: 'Reveling Kamuy', from: 'Emanation (Extreme)' },
+      { id: 133, name: 'Legendary Kamuy', from: "The Minstrel's Ballad: Shinryu's Domain" },
+      { id: 144, name: 'Auspicious Kamuy', from: 'The Jade Stoa (Extreme)' },
+      { id: 158, name: 'Lunar Kamuy', from: "The Minstrel's Ballad: Tsukuyomi's Pain" },
+      { id: 172, name: 'Euphonious Kamuy', from: "Hells' Kier (Extreme)" },
+      { id: 182, name: 'Hallowed Kamuy', from: 'The Wreath of Snakes (Extreme)' },
+    ],
+  }],
+  [69593, { // The Dragon Made -> Landerwaffe
+    reason: "Shadowbringers shipped seven Extreme trials; the catalogue's curated set omitted the "
+      + 'seventh (Diamond Gwiber / The Cloud Deck EX, patch 5.5, ShB\'s last Extreme). Corroborated '
+      + 'the same way as Kamuy: Questionable and consolegameswiki agree; game data confirms the id.',
+    label: 'all seven Shadowbringers Extreme-trial gwiber mounts',
+    mounts: [
+      { id: 189, name: 'Fae Gwiber', from: 'The Dancing Plague (Extreme)' },
+      { id: 192, name: 'Innocent Gwiber', from: 'The Crown of the Immaculate (Extreme)' },
+      { id: 205, name: 'Shadow Gwiber', from: "The Minstrel's Ballad: Hades's Elegy" },
+      { id: 217, name: 'Ruby Gwiber', from: 'Cinder Drift (Extreme)' },
+      { id: 226, name: 'Gwiber of Light', from: 'The Seat of Sacrifice (Extreme)' },
+      { id: 238, name: 'Emerald Gwiber', from: 'Castrum Marinum (Extreme)' },
+      { id: 249, name: 'Diamond Gwiber', from: 'The Cloud Deck (Extreme)' },
+    ],
+  }],
+  [70331, { // Wings of Hope -> Apocryphal Bahamut
+    reason: 'The worst-omitted of the four: the catalogue had only 5 of 7 required mounts, missing '
+      + "both Bluefeather Lynx (The Minstrel's Ballad: Endsinger's Aria, patch 6.4) and Lynx of "
+      + 'Abyssal Grief (The Abyssal Fracture EX, patch 6.5x, EW\'s last Extreme). Questionable and '
+      + 'consolegameswiki agree on all seven by name; game data confirms both new ids.',
+    label: 'all seven Endwalker Extreme-trial lynx mounts',
+    mounts: [
+      { id: 261, name: 'Lynx of Eternal Darkness', from: "The Minstrel's Ballad: Zodiark's Fall" },
+      { id: 262, name: 'Lynx of Divine Light', from: "The Minstrel's Ballad: Hydaelyn's Call" },
+      { id: 293, name: 'Bluefeather Lynx', from: "The Minstrel's Ballad: Endsinger's Aria" },
+      { id: 306, name: 'Lynx of Imperious Wind', from: "Storm's Crown (Extreme)" },
+      { id: 315, name: 'Lynx of Righteous Fire', from: 'Mount Ordeals (Extreme)' },
+      { id: 325, name: 'Lynx of Fallen Shadow', from: 'The Voidcast Dais (Extreme)' },
+      { id: 332, name: 'Lynx of Abyssal Grief', from: 'The Abyssal Fracture (Extreme)' },
+    ],
+  }],
+  [67086, { // Fiery Wings, Fiery Hearts -> Firebird
+    reason: 'Mount id list is unchanged — Questionable already agreed with the shipped seven, the '
+      + "only one of the five original entries where it did. Found in passing while re-deriving "
+      + "'from' fields: the shipped 'from' for Round Lanner (id 77) said 'The Singularity Reactor "
+      + "(Extreme)', an Alexander: Midas normal raid with no Lanner drop. consolegameswiki's "
+      + 'Round_Lanner page says it is a rare drop from King Thordan in "The Minstrel\'s Ballad: '
+      + "Thordan's Reign\". Single wiki source for this attribution only, not cross-checked a second "
+      + 'way the way the id itself was — lower confidence than the three additions above, but "The '
+      + "Singularity Reactor\" is definitively wrong (it has no Lanner drop at all), so leaving it "
+      + 'stand was strictly worse than this correction.',
+    label: 'all seven Heavensward Extreme-trial Lanner mounts',
+    mounts: [
+      { id: 76, name: 'Rose Lanner', from: 'Thok ast Thok (Extreme)' },
+      { id: 75, name: 'White Lanner', from: 'The Limitless Blue (Extreme)' },
+      { id: 77, name: 'Round Lanner', from: "The Minstrel's Ballad: Thordan's Reign" },
+      { id: 78, name: 'Warring Lanner', from: 'Containment Bay S1T7 (Extreme)' },
+      { id: 90, name: 'Dark Lanner', from: "The Minstrel's Ballad: Nidhogg's Rage" },
+      { id: 98, name: 'Sophic Lanner', from: 'Containment Bay P1T6 (Extreme)' },
+      { id: 104, name: 'Demonic Lanner', from: 'Containment Bay Z1T9 (Extreme)' },
+    ],
+  }],
+]);
+
+/** Applies {@link MOUNT_REQUIREMENT_OVERRIDES} to whichever curated entry cites the matching Quest
+ * row, and returns a log of what was changed and why — for the generation report, not just the
+ * console, so a reviewer sees the reason without reading this file. */
+function applyMountRequirementOverrides(curated) {
+  const applied = [];
+  for (const entry of curated) {
+    const source = (entry.sources ?? []).find((s) => s.startsWith('game-data:Quest#'));
+    if (!source) continue;
+    const questRowId = Number(source.slice('game-data:Quest#'.length));
+    const override = MOUNT_REQUIREMENT_OVERRIDES.get(questRowId);
+    if (!override) continue;
+
+    const before = JSON.stringify(entry.requires?.mounts ?? null);
+    entry.requires = { ...entry.requires, label: override.label, mounts: override.mounts };
+    applied.push({
+      unlock: entry.unlock, questRowId, reason: override.reason,
+      changed: before !== JSON.stringify(override.mounts),
+    });
+  }
+  return applied;
+}
+
+/** A trophy-mount quest the catalogue does not contain an entry for at all. Unlike
+ * {@link MOUNT_REQUIREMENT_OVERRIDES}, which corrects an existing curated entry, this seeds one —
+ * so it needs everything a curated entry normally carries, plus the Quest row id up front so the
+ * generator can ask tools/Wayfarer.CatalogueGen for that row's facts even though no wiki guide row
+ * names it (see the `alsoWanted` plumbing in `main`). Idempotent: `main` only pushes a seed onto
+ * `curated` when no existing entry already cites its Quest row, so a regeneration that reads back
+ * its own output does not duplicate it. */
+const NEW_TROPHY_MOUNT_ENTRIES = [
+  {
+    questRowId: 71005, // The Wing Spirit Cometh -> Wings of Legacy
+    reason: 'Real, live Dawntrail quest confirmed three ways (game data: Quest#71005 exists, '
+      + "Expansion=5, ClassJobLevel[0]=1, PreviousQuest=71008 'A Grave Presentiment'; Questionable: "
+      + 'questId.Value==5469 maps to AllMountsUnlocked with these exact seven ids; consolegameswiki: '
+      + "full walkthrough naming the same seven mounts and the same reward) but entirely absent from "
+      + "the wiki guide page this generator otherwise reads — the guide has not been updated for it. "
+      + "Per the standing 'no invented levels' ruling it gets no level: ClassJobLevel[0]=1 is the "
+      + 'same hidden-capstone shape as its five siblings, a grounded absence rather than a value to '
+      + 'invent, so it is categorised instead — see the entry.category fallback in groundLevel.',
+    seed: {
+      category: 'Dawntrail Unique Quest Rewards',
+      unlock: 'Wings of Legacy (Mount)',
+      type: 'mount',
+      quest: 'The Wing Spirit Cometh',
+      questKind: 'sidequest',
+      notes: "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
+      description: 'A collectible mount: Wings of Legacy. Once obtained, summon it from your mount '
+        + 'list (Character menu) to travel faster around zones.',
+      priority: 'optional',
+      cosmetic: true,
+      requires: {
+        label: 'all seven Dawntrail Extreme-trial Wings mounts',
+        mounts: [
+          { id: 345, name: 'Wings of Ruin', from: 'Worqor Lar Dor (Extreme)' },
+          { id: 346, name: 'Wings of Resolve', from: 'Everkeep (Extreme)' },
+          { id: 363, name: 'Wings of Eternity', from: "The Minstrel's Ballad: Sphene's Burden" },
+          { id: 389, name: 'Wings of the Knighthood', from: 'Recollection (Extreme)' },
+          { id: 407, name: 'Wings of Death', from: "The Minstrel's Ballad: Necron's Embrace" },
+          { id: 422, name: 'Wings of Mist', from: 'Hell on Rails (Extreme)' },
+          { id: 444, name: 'Wings of Nihility', from: 'The Unmaking (Extreme)' },
+        ],
+      },
+      sources: ['game-data:Quest#71005', 'game-data:Mount', 'script-gated:curated'],
+    },
+  },
+];
+
+/** Pushes each {@link NEW_TROPHY_MOUNT_ENTRIES} seed onto `curated` when no existing entry already
+ * cites its Quest row. Returns a log for the generation report, same shape as
+ * {@link applyMountRequirementOverrides}'s. */
+function applyNewTrophyMountEntries(curated) {
+  const applied = [];
+  for (const { questRowId, reason, seed } of NEW_TROPHY_MOUNT_ENTRIES) {
+    const source = `game-data:Quest#${questRowId}`;
+    if (curated.some((e) => (e.sources ?? []).includes(source))) continue;
+    curated.push({ ...seed });
+    applied.push({ unlock: seed.unlock, questRowId, reason });
+  }
+  return applied;
+}
+
 // --------------------------------------------------------------------------- main
 
 async function main() {
   const sqpack = args.sqpack ?? process.env.WAYFARER_SQPACK ?? DEFAULT_SQPACK;
   const committed = JSON.parse(fs.readFileSync(DATASET, 'utf8'));
   const curated = committed.unlocks;
+  const mountRequirementOverrides = applyMountRequirementOverrides(curated);
+  const newTrophyMountEntries = applyNewTrophyMountEntries(curated);
+  for (const o of mountRequirementOverrides) console.log(`mount requirement override: ${o.unlock} (Quest#${o.questRowId})`);
+  for (const n of newTrophyMountEntries) console.log(`new trophy-mount entry: ${n.unlock} (Quest#${n.questRowId})`);
 
   const titles = discoverGuidePages();
   console.log(`guide pages discovered in namespace ${GUIDE_NAMESPACE}: ${titles.length}`);
@@ -847,7 +1034,12 @@ async function main() {
   const targets = new Set();
   for (const row of rows) for (const l of row.links) if (!l.isCategory) targets.add(l.target);
   console.log(`distinct link targets to resolve: ${targets.size}`);
-  let resolved = resolveNames(targets, sqpack);
+
+  // NEW_TROPHY_MOUNT_ENTRIES names no wiki link at all — that is the whole reason it needs a
+  // seed — so its Quest row id has to be requested explicitly or the resolver would never be
+  // asked about it and the entry would end up with no `quest` display name.
+  const extraQuestRowIds = NEW_TROPHY_MOUNT_ENTRIES.map((e) => e.questRowId);
+  let resolved = resolveNames(targets, sqpack, extraQuestRowIds);
 
   const { rowForEntry, entriesForRow } = assign(rows, curated);
   console.log(`catalogue entries tied to a guide row: ${rowForEntry.size} of ${curated.length}`);
@@ -873,7 +1065,7 @@ async function main() {
     const extraNames = [...new Set(mapChestTypes.values())].filter((n) => !(n in resolved.names));
     if (stated.length || extraNames.length) {
       for (const n of extraNames) targets.add(n);
-      resolved = resolveNames(targets, sqpack, stated);
+      resolved = resolveNames(targets, sqpack, [...new Set([...stated, ...extraQuestRowIds])]);
     }
   }
 
@@ -892,6 +1084,8 @@ async function main() {
     gates: [],
     levelless: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
+    mountRequirementOverrides,
+    newTrophyMountEntries,
   };
 
   const assignments = [];
