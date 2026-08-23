@@ -8,11 +8,17 @@ namespace Wayfarer.Windows.Native;
 /// <param name="Content">The lines to draw, already ordered and weighted.</param>
 /// <param name="ArrowRadians">Screen-space rotation for the direction chevron, or null when there
 /// is nothing to point at. Exactly one direction indicator ever exists.</param>
+/// <param name="ArrowHidden">Why <paramref name="ArrowRadians"/> is null, for the log. See
+/// <see cref="ArrowHiddenReason"/>.</param>
+/// <param name="ArrowIcon">Which of the minimap's chevrons to cut the arrow from. Read every frame
+/// so the setting applies without a reload.</param>
 /// <param name="Scale">The player's own text-size setting. Multiplied by the game's interface
 /// scale inside the node — see <see cref="GuidanceOverlayNode"/> for why that is not automatic.</param>
 /// <param name="Position">Which anchor the readout uses.</param>
 internal readonly record struct ReadoutFrame(
     ReadoutContent Content,
     float? ArrowRadians,
+    ArrowHiddenReason ArrowHidden,
+    ArrowIconVariant ArrowIcon,
     float Scale,
     ReadoutPosition Position);

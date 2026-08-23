@@ -32,6 +32,10 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         ReadoutPosition.BottomRight,
     ];
 
+    // Plain colour names, in ArrowIconVariant's declaration order — the five are the same chevron in
+    // five colours, so the colour is the only thing there is to say about them.
+    private static readonly string[] ArrowIconLabels = ["Amber", "Green", "Blue", "Red", "White"];
+
     private static readonly string[] WindowPositionLabels =
         ["Center", "Upper left", "Upper right", "Lower left", "Lower right"];
 
@@ -185,6 +189,16 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
             Step = 0.1f,
             ReadValue = () => config.QuestHelper.TextScale,
             WriteValue = WriteNumber(value => config.QuestHelper.TextScale = value),
+        },
+        new SettingDefinition
+        {
+            Id = "readout.arrowIcon",
+            Label = "Direction arrow style",
+            Description = "Which of the minimap's own direction chevrons the arrow is cut from. Takes effect at once.",
+            Kind = SettingKind.Choice,
+            Options = ArrowIconLabels,
+            ReadOption = () => (int)config.QuestHelper.ArrowIcon,
+            WriteOption = Write(index => config.QuestHelper.ArrowIcon = (ArrowIconVariant)index),
         },
         new SettingDefinition
         {

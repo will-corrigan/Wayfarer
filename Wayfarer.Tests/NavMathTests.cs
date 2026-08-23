@@ -92,6 +92,28 @@ public class NavMathTests
         Assert.Equal(expected, NavMath.FormatDistance(yalms));
     }
 
+    [Theory]
+    [InlineData(0f, "Straight ahead")]
+    [InlineData(MathF.PI / 2f, "To your right")]
+    [InlineData(-MathF.PI / 2f, "To your left")]
+    [InlineData(MathF.PI, "Behind you")]
+    [InlineData(-MathF.PI, "Behind you")]
+    [InlineData(MathF.PI / 4f, "Ahead and to the right")]
+    [InlineData(-MathF.PI / 4f, "Ahead and to the left")]
+    [InlineData(3f * MathF.PI / 4f, "Behind you, to the right")]
+    [InlineData(-3f * MathF.PI / 4f, "Behind you, to the left")]
+    public void DescribeDirection_names_the_sector_the_arrow_points_at(float radians, string expected) =>
+        Assert.Equal(expected, NavMath.DescribeDirection(radians));
+
+    [Fact]
+    public void DescribeDirection_wraps_rather_than_running_off_the_end()
+    {
+        // Three full turns past straight ahead is still straight ahead — the fallback must never
+        // throw or fall through, because it is what shows when the arrow image cannot.
+        Assert.Equal("Straight ahead", NavMath.DescribeDirection(6f * MathF.PI));
+        Assert.Equal("To your right", NavMath.DescribeDirection((6f * MathF.PI) + (MathF.PI / 2f)));
+    }
+
     [Fact]
     public void NavigationState_DefaultsToHidden()
     {

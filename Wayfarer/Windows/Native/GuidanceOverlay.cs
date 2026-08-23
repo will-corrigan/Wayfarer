@@ -107,22 +107,38 @@ internal sealed class GuidanceOverlay(
         }
 
         var content = feed.Compose(teleportOnClick: false);
-        return new ReadoutFrame(content, Bearing(content), cfg.TextScale, cfg.ReadoutPosition);
+        var (radians, hidden) = Bearing(content);
+        return new ReadoutFrame(content, radians, hidden, cfg.ArrowIcon, cfg.TextScale, cfg.ReadoutPosition);
     }
 
-    private float? Bearing(ReadoutContent content)
+    /// <summary>The arrow's rotation, or the reason there isn't one. The reason is carried rather
+    /// than discarded because "the arrow is missing" is otherwise indistinguishable from "the arrow
+    /// is pointing at nothing" from outside the game — see <see cref="ArrowHiddenReason"/>.
+    ///
+    /// Note what is deliberately <b>not</b> special-cased here: an objective in another zone still
+    /// gets an arrow, because the composer hands back the entrance or aetheryte leg as the target
+    /// (<c>ReadoutComposer.AddOtherZone</c>). That was the pre-rewrite widget's behaviour and it is
+    /// preserved — the arrow points at the leg you can actually walk.</summary>
+    private (float? Radians, ArrowHiddenReason Hidden) Bearing(ReadoutContent content)
     {
-        if (!content.ShowArrow || content.TargetX is not { } tx || content.TargetZ is not { } tz)
+        if (!content.ShowArrow)
         {
-            return null;
+            return (null, ArrowHiddenReason.NotRequested);
+        }
+
+        if (content.TargetX is not { } tx || content.TargetZ is not { } tz)
+        {
+            return (null, ArrowHiddenReason.NoTargetCoordinates);
         }
 
         var player = objects.LocalPlayer;
         if (player is null)
         {
-            return null;
+            return (null, ArrowHiddenReason.NoPlayer);
         }
 
-        return NavMath.ArrowAngle(NavMath.Bearing(tx - player.Position.X, tz - player.Position.Z), CameraYaw());
+        var radians = NavMath.ArrowAngle(
+            NavMath.Bearing(tx - player.Position.X, tz - player.Position.Z), CameraYaw());
+        return (radians, ArrowHiddenReason.None);
     }
 }

@@ -31,6 +31,27 @@ public enum ReadoutPosition
     BottomRight,
 }
 
+/// <summary>Which of the minimap's own direction chevrons the readout's arrow is cut from.
+///
+/// The game keeps five of them side by side on <c>ui/uld/NaviMap.tex</c> — the same sheet, the same
+/// 24x24 part size, the same shape, differing only in colour — and <c>ui/uld/NaviMap.uld</c> declares
+/// all five as real parts. They are offered as a setting because which one reads as "go this way"
+/// against a particular player's terrain, HUD theme and screen is the sort of question only an eye
+/// can settle, and changing it must not need a new build.</summary>
+public enum ArrowIconVariant
+{
+    /// <summary>The game's own quest-direction chevron. The default.</summary>
+    Amber,
+
+    Green,
+
+    Blue,
+
+    Red,
+
+    White,
+}
+
 /// <summary>Corner presets for the Wayfarer window. The game's own title-bar right-click menu
 /// already offers Move/Scale/Reset for mouse users; this exists so a controller player, who cannot
 /// reach that menu, can still put the window somewhere it does not cover the action.</summary>
@@ -142,6 +163,10 @@ public sealed class QuestHelperConfig
 
     /// <summary>Where the readout sits on screen.</summary>
     public ReadoutPosition ReadoutPosition { get; set; } = ReadoutPosition.FollowQuestTracker;
+
+    /// <summary>Which of the minimap's direction chevrons the readout's arrow uses. Applied on the
+    /// next frame, with no reload — see <see cref="ArrowIconVariant"/>.</summary>
+    public ArrowIconVariant ArrowIcon { get; set; } = ArrowIconVariant.Amber;
 
     /// <summary>Draws the readout with the game's own text nodes, fonts and colours instead of the
     /// old ImGui widget. On by default; the ImGui widget remains only as the automatic fallback
