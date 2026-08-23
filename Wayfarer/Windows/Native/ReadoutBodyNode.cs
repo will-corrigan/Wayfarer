@@ -87,6 +87,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// the texture wrap it is given.</summary>
     private readonly ImGuiImageNode arrowNode;
 
+    /// <summary>The up/down chevron that hangs off the arrow when the target is on a different level
+    /// of the world. The game's own minimap does exactly this to a marker on another floor, and
+    /// copying the convention is the point — a player already reads it without being told.
+    ///
+    /// <para>It is the same generated arrow art, small and unrotated (or turned through half a
+    /// turn), rather than a second icon: it is then automatically the colour the player chose for
+    /// their arrow, and it reads as part of the same mark instead of as a badge stuck on
+    /// it.</para></summary>
+    private readonly ImGuiImageNode elevationNode;
+
     private readonly TextNode arrowWordsNode;
     private readonly string[] lastText = new string[MaxLines];
 
@@ -106,7 +116,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private readonly ImGuiImageNode? cogNode;
 
     private ArrowIconVariant? loadedVariant;
+    private ArrowIconVariant? loadedElevationVariant;
     private bool arrowFailed;
+    private bool elevationFailed;
     private bool cogLoaded;
     private bool cogFailed;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
@@ -129,26 +141,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         this.diagnosticsEnabled = diagnosticsEnabled ?? (static () => false);
         this.onMoved = onMoved;
 
-        // The game's own direction indicator is a plain image node whose rotation is written every
-        // frame (AtkImageNode PlayerCone / PlayerConeRotation on the minimap), so this copies the
-        // mechanism rather than inventing one. The origin has to be the arrow's centre or it pivots
-        // around its corner.
-        //
-        // FitTexture — AutoFit plus Stretch — means "fit the whole loaded TEXTURE into this node".
-        // That is now exactly right, and it is worth saying why it was catastrophic before: with a
-        // 448x212 texture sheet loaded and a 24x24 part selected, the part was ignored and the whole
-        // sheet was drawn squashed into 34 pixels. The arrow's texture is generated and contains
-        // nothing but the arrow, so there is no part to ignore.
-        arrowNode = new ImGuiImageNode
-        {
-            TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size),
-            Size = new Vector2(BaseArrow, BaseArrow),
-            OriginX = BaseArrow / 2f,
-            OriginY = BaseArrow / 2f,
-            FitTexture = true,
-            IsVisible = false,
-        };
-        arrowNode.AttachNode(this);
+        arrowNode = BuildArrow(BaseArrow);
+        elevationNode = BuildArrow(BaseArrow / 2f);
 
         // The direction in words, for when the arrow cannot be drawn at all. A readout that says
         // "behind you, to the left" is still guidance; an arrow that silently fails is not.
@@ -214,6 +208,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var y = LayoutWords(frame, drawable, factor, width);
         var (bottom, firstLineCentre) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
+        LayoutElevation(frame, arrowSize);
         LayoutCog(frame, factor, width);
 
         // The cog is a live collision node whenever it is drawn, and the clickable host watches
@@ -250,6 +245,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     public void HideAll()
     {
         arrowNode.IsVisible = false;
+        elevationNode.IsVisible = false;
         arrowWordsNode.IsVisible = false;
         if (teleportHitBox is not null)
         {
@@ -291,6 +287,34 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private static FontType FontFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? FontType.TrumpGothic : FontType.Axis;
+
+    /// <summary>An image node that holds one of the generated arrow textures — the bearing arrow, or
+    /// the smaller up/down chevron beside it.
+    ///
+    /// <para>The game's own direction indicator is a plain image node whose rotation is written every
+    /// frame (<c>AtkImageNode PlayerCone / PlayerConeRotation</c> on the minimap), so this copies the
+    /// mechanism rather than inventing one. The origin has to be the arrow's centre or it pivots
+    /// around its corner.</para>
+    ///
+    /// <para><c>FitTexture</c> — AutoFit plus Stretch — means "fit the whole loaded TEXTURE into this
+    /// node". That is now exactly right, and it is worth saying why it was catastrophic before: with
+    /// a 448x212 texture sheet loaded and a 24x24 part selected, the part was ignored and the whole
+    /// sheet was drawn squashed into 34 pixels. The arrow's texture is generated and contains nothing
+    /// but the arrow, so there is no part to ignore.</para></summary>
+    private ImGuiImageNode BuildArrow(float side)
+    {
+        var node = new ImGuiImageNode
+        {
+            TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size),
+            Size = new Vector2(side, side),
+            OriginX = side / 2f,
+            OriginY = side / 2f,
+            FitTexture = true,
+            IsVisible = false,
+        };
+        node.AttachNode(this);
+        return node;
+    }
 
     /// <summary>The settings cog, wired to open the window on its Settings tab.
     ///
@@ -498,6 +522,39 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return (y + (BaseGap * factor), firstLineCentre);
     }
 
+    /// <summary>Hangs the up/down chevron off the arrow when the target is on a different level of
+    /// the world, which is what the game's own minimap does to a marker on another floor.
+    ///
+    /// <para>Only ever when there is an arrow to hang it on. Whether to claim anything about
+    /// elevation at all was decided long before this — see <c>Elevation</c> and <c>GroundHeight</c>
+    /// — and by the time it arrives here it is a fact about the frame. The distance line says it in
+    /// words as well, because a chevron is a convention the player has to already know.</para>
+    ///
+    /// <para>The offset parks it on the arrow's lower-right corner, overlapping it slightly, which
+    /// is how the minimap attaches its own: near enough to read as one mark, far enough out that it
+    /// does not hide the arrow's tip.</para></summary>
+    private void LayoutElevation(ReadoutFrame frame, float arrowSize)
+    {
+        if (!arrowNode.IsVisible
+            || frame.Content.Elevation == ElevationHint.Level
+            || !EnsureElevationTexture(frame.ArrowIcon))
+        {
+            elevationNode.IsVisible = false;
+            return;
+        }
+
+        var size = Math.Max(arrowSize * 0.55f, 7f);
+        elevationNode.Size = new Vector2(size, size);
+        elevationNode.OriginX = size / 2f;
+        elevationNode.OriginY = size / 2f;
+
+        // The art points straight up unrotated, so "above" needs no rotation at all and "below" is
+        // half a turn. Same guarantee ArrowBitmap gives the bearing arrow.
+        elevationNode.Rotation = frame.Content.Elevation == ElevationHint.Above ? 0f : MathF.PI;
+        elevationNode.Position = arrowNode.Position + new Vector2(arrowSize * 0.58f, arrowSize * 0.5f);
+        elevationNode.IsVisible = true;
+    }
+
     /// <summary>Parks the settings cog at the end of the heading, which is where the game puts a
     /// panel's own controls and the one place on this readout that is never text.
     ///
@@ -572,6 +629,46 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         {
             cogFailed = true;
             log.Error(ex, "Wayfarer readout: the settings cog could not be generated, so the readout has none. Settings are still on the info bar entry, the plugin list and /wayfarer settings.");
+            return false;
+        }
+    }
+
+    /// <summary>Generates the elevation chevron in the current arrow colour, if it is not already
+    /// loaded. Its own copy of the arrow's pixels rather than a shared wrap: KamiToolKit's image
+    /// node takes ownership of the texture it is handed and disposes it with itself, so two nodes
+    /// sharing one wrap is a double free waiting for a colour change.
+    ///
+    /// <para>Failing here costs the chevron and nothing else — the distance line still says "above
+    /// you" in words, which is the half of this feature that does not need a convention to
+    /// read.</para></summary>
+    private bool EnsureElevationTexture(ArrowIconVariant variant)
+    {
+        if (elevationFailed)
+        {
+            return false;
+        }
+
+        if (loadedElevationVariant == variant)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(ArrowBitmap.Size, ArrowBitmap.Size),
+                ArrowBitmap.Render(variant),
+                $"Wayfarer elevation chevron ({variant})");
+
+            elevationNode.LoadTexture(wrap);
+            elevationNode.TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size);
+            loadedElevationVariant = variant;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            elevationFailed = true;
+            log.Error(ex, "Wayfarer readout: the above/below chevron could not be generated. The distance line still says which it is in words.");
             return false;
         }
     }

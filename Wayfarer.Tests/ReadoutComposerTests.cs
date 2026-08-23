@@ -109,6 +109,58 @@ public class ReadoutComposerTests
     }
 
     [Fact]
+    public void The_distance_line_says_when_the_target_is_on_another_level()
+    {
+        // The player asked for this in these words: "56 yalms · above you". The drawn readout also
+        // hangs the game's own chevron off the arrow, but the words are what carry it.
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.SameZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "The Ul'dahn Envoy",
+            TargetX = 12f,
+            TargetY = 30f,
+            TargetZ = -40f,
+        };
+
+        var content = ReadoutComposer.Compose(
+            Inputs(state) with { DistanceYalms = 56f, Elevation = ElevationHint.Above });
+
+        Assert.Equal(ElevationHint.Above, content.Elevation);
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "56 yalms · above you", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_distance_line_says_below_the_same_way()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SameZone()) with { DistanceYalms = 120f, Elevation = ElevationHint.Below });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "120 yalms · below you", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_distance_line_is_left_alone_when_there_is_nothing_to_say_about_height()
+    {
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 56f });
+
+        Assert.Equal(ElevationHint.Level, content.Elevation);
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "56 yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Arriving_beats_saying_the_target_is_above_you()
+    {
+        // Within five yalms horizontally, "above you" is the top of the stairs the player is
+        // standing at the foot of. Saying both at once contradicts itself.
+        var content = ReadoutComposer.Compose(
+            Inputs(SameZone()) with { DistanceYalms = 2f, Elevation = ElevationHint.Above });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("above you", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void The_arrow_points_at_the_entrance_when_the_objective_is_in_another_zone()
     {
         var state = new NavigationState
@@ -254,4 +306,14 @@ public class ReadoutComposerTests
     };
 
     private static ReadoutInputs Inputs(NavigationState state) => new() { State = state };
+
+    private static NavigationState SameZone() => new()
+    {
+        Mode = NavigationState.Modes.SameZone,
+        SourceLabel = "Main Scenario",
+        QuestName = "The Ul'dahn Envoy",
+        TargetX = 12f,
+        TargetY = 30f,
+        TargetZ = -40f,
+    };
 }

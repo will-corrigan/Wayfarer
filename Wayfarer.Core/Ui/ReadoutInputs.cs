@@ -30,4 +30,9 @@ public sealed record ReadoutInputs
     /// <summary>Appended to the teleport advice so the player knows the line is clickable. False on
     /// a controller, where nothing on the readout can be clicked at all.</summary>
     public bool TeleportOnClick { get; init; }
+
+    /// <summary>Whether the target is meaningfully above or below the player, already decided by
+    /// <see cref="Ui.Elevation.Classify"/> — including the judgement about whether the target's
+    /// height is trustworthy enough to say anything at all. The composer only writes it down.</summary>
+    public ElevationHint Elevation { get; init; }
 }
