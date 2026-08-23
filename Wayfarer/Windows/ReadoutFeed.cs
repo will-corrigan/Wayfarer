@@ -17,6 +17,11 @@ internal sealed class ReadoutFeed(
 {
     private const string HuntingSourceId = "hunting";
 
+    /// <summary>The guidance snapshot's source, for the surfaces that need to act on it rather than
+    /// only read it — the clickable readout's teleport, for one. Read-only by construction: this is
+    /// the same <see cref="INavigationProvider"/> every other consumer already has.</summary>
+    public INavigationProvider Navigator => navigator;
+
     /// <summary>Builds this frame's content. <paramref name="teleportOnClick"/> is true only where
     /// the surface can actually be clicked — the overlay is click-through by construction, so it
     /// never promises otherwise.</summary>

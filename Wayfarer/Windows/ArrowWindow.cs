@@ -263,7 +263,7 @@ internal sealed unsafe class ArrowWindow : Window
         if (cfg.ClickTeleportEnabled
             && state.AetheryteId is { } id
             && state.AetheryteUnlocked
-            && line.Text.EndsWith("(click)", StringComparison.Ordinal))
+            && line.Action == ReadoutLineAction.Teleport)
         {
             if (ImGui.Selectable(line.Text))
             {

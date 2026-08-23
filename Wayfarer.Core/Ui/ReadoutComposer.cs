@@ -166,10 +166,14 @@ public static class ReadoutComposer
             return;
         }
 
+        // The line is marked as a teleport whether or not this surface can be clicked: the mark says
+        // what the line means, and each surface decides for itself whether it can offer the action.
         lines.Add(state.AetheryteUnlocked
             ? new ReadoutLine(
                 inputs.TeleportOnClick ? $"Teleport to {aetheryte} first (click)" : $"Teleport to {aetheryte} first",
-                ReadoutEmphasis.Secondary)
+                ReadoutEmphasis.Secondary,
+                Separated: false,
+                ReadoutLineAction.Teleport)
             : new ReadoutLine(
                 $"Nearest aetheryte is {aetheryte}, and you are not attuned there.",
                 ReadoutEmphasis.Secondary));

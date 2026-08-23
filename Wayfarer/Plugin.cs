@@ -319,7 +319,7 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
-        overlay = new GuidanceOverlay(feed, config.QuestHelper, objects, framework, log);
+        overlay = new GuidanceOverlay(feed, config.QuestHelper, inputMode, objects, clientState, framework, log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,
             feed,
