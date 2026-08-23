@@ -3,6 +3,7 @@ using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Enums;
+using KamiToolKit.Extensions;
 using KamiToolKit.Nodes;
 using KamiToolKit.Nodes.Simplified;
 using Wayfarer.Core.Navigation;
@@ -64,23 +65,28 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private const TextFlags SubjectFlags = TextFlags.Edge | TextFlags.Ellipsis;
 
     /// <summary>The readout box, at the width the game gives its own always-on overlay — the quest
-    /// tracker is 400 wide (ToDoList root <c>#1</c>) and every line in it 372.</summary>
+    /// tracker is 400 wide (ToDoList root <c>#1</c>) and every line in it 372. It is also the width
+    /// the banner plate is nine-sliced to; see <see cref="GameMetrics.Banner"/>.</summary>
     private const float BaseWidth = GameMetrics.Hud.Width;
 
-    /// <summary>The heading. The tracker's own emphasis size is Axis 18 (ToDoList <c>1005 #5</c>,
-    /// <c>1012 #3</c>); 20 was a window-title size on a heads-up element.</summary>
-    private const float BaseHeadingSize = GameMetrics.Type.DetailTitleSize;
+    /// <summary>The game's own art sheet for the Main Scenario Guide's banner. Every rectangle taken
+    /// out of it is in <see cref="GameMetrics.Banner"/>, which also says which parts are deliberately
+    /// NOT used: the crimson meteor crest and the chapter ring are the main scenario's own marks and
+    /// would be a claim the readout cannot keep.</summary>
+    private const string BannerTexture = "ui/uld/ScenarioTree.tex";
 
-    /// <summary>The tracker sets its quest titles and its objective lines in the same Axis 14 and
-    /// separates them by colour, not by size (ToDoList <c>1004</c>, <c>1005</c>, <c>1007</c>). So do
-    /// these two.</summary>
-    private const float BasePrimarySize = GameMetrics.Hud.LineSize;
+    /// <summary>The name the readout gives whatever is being tracked, on the plate. Axis 14, the
+    /// game's own headline size for this element.</summary>
+    private const float BaseHeadlineSize = GameMetrics.Banner.HeadlineSize;
 
-    /// <inheritdoc cref="BasePrimarySize"/>
-    private const float BaseSecondarySize = GameMetrics.Hud.LineSize;
-
-    /// <summary>Counts and qualifiers. ToDoList <c>1008 #7</c> is Axis 12.</summary>
-    private const float BaseMutedSize = GameMetrics.Hud.MetaSize;
+    /// <summary>The header pill's own words, and every subordinate line beneath the plate. Axis 12.
+    ///
+    /// <para><b>The banner has exactly two type levels and this is the lower one.</b> Axis 14 in the
+    /// bar, Axis 12 under it — that is what <c>ScenarioTree.uld</c> does and there is no third size
+    /// anywhere in it. The readout used to set its objective and its advice in Axis 14 and separate
+    /// them by colour; under the banner they are subordinate lines, and subordinate lines are
+    /// twelve.</para></summary>
+    private const float BaseSubLineSize = GameMetrics.Banner.SubLineSize;
 
     /// <summary>The arrow's side, before scale.
     ///
@@ -159,12 +165,23 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int SubjectTarget = 8;
 
+    /// <inheritdoc cref="TeleportTarget"/>
+    private const int BannerTarget = 16;
+
     /// <summary>What is said when the switcher has no art. Losing it costs the shortcut and nothing
     /// else, which is what this says rather than making it sound fatal.</summary>
     private const string SwitcherUnavailable =
         "Wayfarer readout: the game's drop-down arrow could not be read, so the readout has no switcher beside "
         + "the quest name. What is being followed is still chosen from the window's Following tab and from the "
         + "game's own right-click menu.";
+
+    /// <summary>What is said when the banner's art cannot be read. Losing it costs the frame and
+    /// nothing else — every word the readout was going to say is still said, in the colours it used
+    /// before it wore a plate.</summary>
+    private const string BannerUnavailable =
+        "Wayfarer readout: the game's Main Scenario Guide art (ui/uld/ScenarioTree.tex) could not be read, so the "
+        + "readout is drawn without its banner. Everything it says is still on screen, in the plain heads-up "
+        + "colours.";
 
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
@@ -179,6 +196,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private readonly Func<bool> diagnosticsEnabled;
     private readonly TextNode[] lineNodes = new TextNode[MaxLines];
     private readonly HorizontalLineNode[] ruleNodes = new HorizontalLineNode[MaxLines];
+
+    /// <summary>The game's "!" quest medallion, one per line slot — the mark the banner hangs to the
+    /// left of a subordinate line that names somewhere the player can go. Pooled alongside the line
+    /// nodes and indexed with them, so a line and its own marker cannot get out of step; see
+    /// <see cref="ReadoutLine.Marked"/> for which lines get one and why the rest do not.</summary>
+    private readonly SimpleImageNode[] markerNodes = new SimpleImageNode[MaxLines];
+
+    /// <summary>The parchment plate — the banner itself, nine-sliced from the game's own 300-wide
+    /// part out to the readout's 400. See <see cref="GameMetrics.Banner"/> for the insets and for the
+    /// evidence that the art takes them.</summary>
+    private readonly SimpleNineGridNode plateNode;
+
+    /// <summary>The dark pill above the plate, where the game prints "Current Main Scenario Quest"
+    /// and we print what we are actually tracking.</summary>
+    private readonly SimpleNineGridNode stripNode;
+
+    /// <inheritdoc cref="stripNode"/>
+    private readonly TextNode stripTextNode;
+
+    /// <summary>Wayfarer's own emblem, in the slot the game hangs the Scions' meteor off. Generated
+    /// rather than cropped — see <see cref="WayfarerBitmap"/>, which also says why it is the
+    /// installer's mark and not a new one.</summary>
+    private readonly ImGuiImageNode crestNode;
 
     /// <summary>The direction arrow. An <c>ImGuiImageNode</c> rather than a texture-sheet crop
     /// because the arrow is <b>generated</b> — see <see cref="ArrowBitmap"/> for what was wrong with
@@ -253,6 +293,24 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// as wide as the words drew.</para></summary>
     private readonly ResNode? subjectHitBox;
 
+    /// <summary>The whole plate as a click target for the plugin's settings, or null in a host that
+    /// takes no mouse.
+    ///
+    /// <para><b>Why the plate and not only the cog.</b> The player asked for it in as many words:
+    /// the banner is the plugin's face, and a face is a thing you click. It is also the largest,
+    /// easiest target on the readout, which matters at a television's distance far more than a
+    /// thirteen-pixel cog does.</para>
+    ///
+    /// <para><b>What it deliberately does not swallow.</b> It is attached before the switcher and
+    /// before the words of the name, so both of those sit above it in hit-test order and keep their
+    /// own meanings: the caret still drops the follow list and the name still opens the Journal. Only
+    /// the parchment either side of them opens settings.</para>
+    ///
+    /// <para>Mouse only, like the cog and the switcher, and for the same reason — the controller's
+    /// host is click-through by construction. A pad reaches settings from the window, the info-bar
+    /// entry, the plugin list and <c>/wayfarer settings</c>.</para></summary>
+    private readonly ResNode? bannerHitBox;
+
     /// <summary>Whether this host was given somewhere to send a click on the quest name. False on
     /// the overlay, where nothing is clickable at all.</summary>
     private readonly bool journalClickable;
@@ -263,8 +321,18 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private bool elevationFailed;
     private bool cogLoaded;
     private bool cogFailed;
+    private bool crestLoaded;
+    private bool crestFailed;
     private bool switcherFailed;
     private bool warnedSwitcherOnce;
+    private bool bannerFailed;
+    private bool warnedBannerOnce;
+
+    /// <summary>The pill's words, as last handed over. Same reasoning as
+    /// <see cref="lastSubjectTooltip"/>: assigning <c>String</c> re-runs the engine's text flow and
+    /// this is a per-frame path, while the pill's text changes only when the player changes what
+    /// they are following.</summary>
+    private string lastStripLabel = string.Empty;
 
     /// <summary>The room the subject line had last frame, and the tooltip it was last given. Both
     /// exist so the per-frame path writes nothing that has not changed: re-handing the engine a
@@ -297,33 +365,31 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         this.diagnosticsEnabled = diagnosticsEnabled ?? (static () => false);
         this.onMoved = onMoved;
 
+        // FIRST, and the order matters: a node attached later is drawn over the ones before it, so
+        // the banner's own chrome has to be laid down before anything that sits on it.
+        plateNode = BuildBannerPart(
+            GameMetrics.Banner.PlateU,
+            GameMetrics.Banner.PlateV,
+            GameMetrics.Banner.PlateWidth,
+            GameMetrics.Banner.PlateHeight,
+            GameMetrics.Banner.PlateInsetX);
+        stripNode = BuildBannerPart(
+            GameMetrics.Banner.StripU,
+            GameMetrics.Banner.StripV,
+            GameMetrics.Banner.StripPartWidth,
+            GameMetrics.Banner.StripHeight,
+            GameMetrics.Banner.StripInsetX);
+        stripTextNode = BuildStripText();
+        crestNode = BuildCrest();
+        bannerHitBox = onSettingsClicked is null ? null : BuildHitBox(onSettingsClicked);
+
         arrowNode = BuildArrow(BaseArrow);
         elevationNode = BuildArrow(BaseArrow / 2f);
-
-        // The direction in words, for when the arrow cannot be drawn at all. A readout that says
-        // "behind you, to the left" is still guidance; an arrow that silently fails is not.
-        arrowWordsNode = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = (uint)BasePrimarySize,
-            AlignmentType = AlignmentType.Center,
-            TextFlags = TextFlags.Edge,
-            TextColor = GameColors.Heading,
-            TextOutlineColor = GameColors.HeadingEdge,
-            IsVisible = false,
-        };
-        arrowWordsNode.AttachNode(this);
+        arrowWordsNode = BuildArrowWords();
 
         BuildLinePool();
 
-        if (onTeleportClicked is not null)
-        {
-            teleportHitBox = new ResNode { IsVisible = false };
-            teleportHitBox.AddEvent(AtkEventType.MouseClick, onTeleportClicked);
-            teleportHitBox.ShowClickableCursor = true;
-            teleportHitBox.AttachNode(this);
-        }
-
+        teleportHitBox = onTeleportClicked is null ? null : BuildHitBox(onTeleportClicked);
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
 
         // Both hang off the subject line and both need a pointer, so they live and die together:
@@ -373,48 +439,54 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// host's own units. The host positions and sizes itself from that; nothing else about the
     /// readout is the host's business.
     ///
-    /// <para><b>The shape.</b> One left edge for everything, with the arrow in a gutter to the left
-    /// of it, vertically centred on the first line of the block.
+    /// <para><b>The shape: the game's own Main Scenario Guide, wearing our content.</b> A dark pill
+    /// saying what KIND of thing is being tracked, a parchment plate carrying that thing's real game
+    /// name with our emblem pinned to its left end, and subordinate lines beneath it in the exact
+    /// arrangement the game hangs job quests in — markers hanging into the gutter, text near-flush
+    /// with the name above.
     /// <code>
-    ///      Hunting Log - Warrior
-    ///  &gt;   Highland Goobbue
-    ///      1/3 killed
-    ///      56 yalms
+    ///          +---- CURRENT HUNTING LOG ----+
+    ///  +===============================================================+
+    ///  | (@)  Highland Goobbue                                    [v]  |
+    ///  +===============================================================+
+    ///      &gt;  1/3 killed
+    ///         56 yalms - above you
+    ///    (!)  Unlocks Chocobo Companion (240 yalms)
     /// </code>
-    /// No panel and no border: what the player likes about this readout is that it looks like the
-    /// game's own quest tracker, and a frame around it would undo exactly that.</para>
+    /// Every number in that picture is <see cref="GameMetrics.Banner"/>, read out of
+    /// <c>ScenarioTree.uld</c> and off the art itself, and none of it is chosen.</para>
     ///
-    /// <para><b>The gutter is reserved, permanently, and the heading now shares the indent.</b>
-    /// The gutter was already a fixed width — it never depended on whether an arrow was in it — but
-    /// the heading sat flush left while everything under it was indented past the arrow. With an
-    /// arrow present that reads as the block hanging off the arrow; with no arrow it reads as the
-    /// body having slid sideways for no reason, which is what "especially when it's not present
-    /// everything looks shifted" describes. Indenting the heading too gives the whole readout one
-    /// left edge that cannot move, in either state. The gutter is derived from the arrow size, which
-    /// is derived from the type size, so it scales with the text at every interface and text
-    /// scale.</para></summary>
+    /// <para><b>Where the arrow went.</b> Into the marker column — the gutter the banner already
+    /// reserves for the medallions that hang left of a subordinate line. That is the same idea the
+    /// old free-standing gutter expressed (a mark beside the block, not something the block hangs
+    /// off), in the column the game itself puts marks in, and it means the readout has ONE left
+    /// gutter rather than one for the arrow and another for the markers. The arrow takes the first
+    /// subordinate line, which is the objective — the thing it is pointing at — and that line draws
+    /// no medallion of its own while it has the arrow: one mark per line, and the arrow is the
+    /// stronger statement.</para></summary>
     public Vector2 Layout(ReadoutFrame frame)
     {
         var factor = AtkUnitBase.GetGlobalUIScale() * Math.Clamp(frame.Scale, 0.5f, 3f);
         var width = BaseWidth * factor;
         var arrowSize = BaseArrow * factor * Math.Clamp(frame.ArrowScale, 0.5f, 2f);
-        var gutter = arrowSize + (BaseGap * factor * 2f);
 
         var drawable = frame.ArrowRadians is not null && EnsureArrowTexture(frame.ArrowIcon);
-        var y = LayoutWords(frame, drawable, factor, width);
-        var (bottom, firstLineCentre, subject, subjectContent) = LayoutLines(frame, factor, width, gutter, y);
-        LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
+        var top = LayoutWords(frame, drawable, factor, width);
+        LayoutBanner(frame, factor, width, top);
+
+        var (bottom, arrowCentre, subject, subjectContent) = LayoutLines(frame, factor, width, top, drawable);
+        LayoutArrow(frame, drawable, arrowSize, factor, arrowCentre);
         LayoutElevation(frame, arrowSize);
-        LayoutHeadingControls(frame, factor, width, gutter);
-        LayoutSwitcher(factor, gutter, width - gutter, subject);
+        LayoutCog(factor, width, top);
+        LayoutSwitcher(factor, width, subject);
         LayoutSubjectHitBox(
             subject,
             subjectContent?.Text,
-            gutter,
+            GameMetrics.Banner.HeadlineLeft * factor,
             journalClickable && subjectContent?.Action == ReadoutLineAction.OpenJournal);
 
-        // The cog and the switcher are live collision nodes whenever they are drawn, and the
-        // clickable host watches this to know when the addon's collision list has to be rebuilt.
+        // The cog, the switcher and the plate are live collision nodes whenever they are drawn, and
+        // the clickable host watches this to know when the addon's collision list has to be rebuilt.
         if (cogNode is { IsVisible: true })
         {
             ClickTargets |= CogTarget;
@@ -428,6 +500,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         if (subjectHitBox is { IsVisible: true })
         {
             ClickTargets |= SubjectTarget;
+        }
+
+        if (bannerHitBox is { IsVisible: true })
+        {
+            ClickTargets |= BannerTarget;
         }
 
         var size = new Vector2(width, bottom);
@@ -462,6 +539,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         arrowNode.IsVisible = false;
         elevationNode.IsVisible = false;
         arrowWordsNode.IsVisible = false;
+        plateNode.IsVisible = false;
+        stripNode.IsVisible = false;
+        stripTextNode.IsVisible = false;
+        crestNode.IsVisible = false;
+
+        if (bannerHitBox is not null)
+        {
+            bannerHitBox.IsVisible = false;
+        }
+
         if (teleportHitBox is not null)
         {
             teleportHitBox.IsVisible = false;
@@ -488,17 +575,14 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         {
             lineNodes[i].IsVisible = false;
             ruleNodes[i].IsVisible = false;
+            markerNodes[i].IsVisible = false;
         }
     }
 
-    private static float FontSizeFor(ReadoutEmphasis emphasis) => emphasis switch
-    {
-        ReadoutEmphasis.Heading => BaseHeadingSize,
-        ReadoutEmphasis.Primary => BasePrimarySize,
-        ReadoutEmphasis.Secondary => BaseSecondarySize,
-        _ => BaseMutedSize,
-    };
-
+    /// <summary>What a subordinate line is drawn in. One answer, because the banner has one
+    /// subordinate type level — see <see cref="BaseSubLineSize"/>. Emphasis still decides the
+    /// COLOUR, which is how a distance and a piece of muted context stay distinguishable without a
+    /// third size.</summary>
     private static Vector4 ColorFor(ReadoutEmphasis emphasis) => emphasis switch
     {
         ReadoutEmphasis.Heading => GameColors.Heading,
@@ -510,9 +594,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private static Vector4 OutlineFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? GameColors.HeadingEdge : GameColors.BodyEdge;
 
-    /// <summary>Puts one heading-line control at <paramref name="x"/> and reports where the next one
-    /// starts. A control whose art could not be generated is hidden and consumes no space, so the
-    /// row closes up rather than leaving a gap where it would have been.</summary>
     /// <summary>How many rows this line's text will occupy at the width it has been given.
     ///
     /// <para><c>GetTextDrawSize</c> is the engine's own measurement and answers immediately — it is
@@ -541,35 +622,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // the readout off the bottom of its slot would be trading a clipped line for a lost one.
         return Math.Clamp(Math.Max(byWidth, byHeight), 1f, MaxWrappedLines);
     }
-
-    private static float PlaceHeadingControl(
-        ImGuiImageNode? node, Func<bool> ensureTexture, float size, float gap, float x, float top, float width)
-    {
-        if (node is null)
-        {
-            return x;
-        }
-
-        if (!ensureTexture())
-        {
-            node.IsVisible = false;
-            return x;
-        }
-
-        node.Size = new Vector2(size, size);
-
-        // Origin follows the size for every control here, not only the rotated one: a node whose
-        // origin is stale pivots around a point that is no longer its centre, and the caret is
-        // drawn at half a turn.
-        node.OriginX = size / 2f;
-        node.OriginY = size / 2f;
-        node.Position = new Vector2(Math.Clamp(x, 0f, width - size), top);
-        node.IsVisible = true;
-        return x + size + gap;
-    }
-
-    private static FontType FontFor(ReadoutEmphasis emphasis) =>
-        emphasis == ReadoutEmphasis.Heading ? FontType.TrumpGothic : FontType.Axis;
 
     /// <summary>How far below a line's own top edge a <paramref name="size"/>-square control has to
     /// sit to have its centre land on that line's optical centre —
@@ -610,6 +662,113 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         };
         node.AttachNode(this);
         return node;
+    }
+
+    /// <summary>One piece of the banner's chrome: a nine-grid over a rectangle of the game's own
+    /// <c>ScenarioTree</c> sheet, cut so the middle band stretches and the caps do not.
+    ///
+    /// <para><b>Nine-grid where the game uses a plain image.</b> The game draws the plate at exactly
+    /// the part's 300 and ships no wider variant, because its own banner is 340 wide. Ours is 400.
+    /// The art takes the slice — that is not an assumption, it was rendered at 400, 420 and 600 and
+    /// looked at — and the insets in <see cref="GameMetrics.Banner"/> say why they are 24 rather than
+    /// something smaller.</para>
+    ///
+    /// <para>The texture is read out of the game's resource system rather than generated, so like the
+    /// switcher's it can be merely <i>late</i> as well as missing. Loading throws only for a genuinely
+    /// bad path; a sheet that is not resident yet simply reports no size for a frame or two, which
+    /// <see cref="BannerDrawable"/> is what asks about.</para></summary>
+    private SimpleNineGridNode BuildBannerPart(float u, float v, float partWidth, float partHeight, float insetX)
+    {
+        var node = new SimpleNineGridNode { IsVisible = false };
+
+        try
+        {
+            node.TexturePath = BannerTexture;
+            node.TextureCoordinates = new Vector2(u, v);
+            node.TextureSize = new Vector2(partWidth, partHeight);
+
+            // Vector4 order is (Top, Bottom, Left, Right). Top and bottom are zero on purpose: the
+            // plate has no stretchable band vertically — the longest run of identical rows in the art
+            // is two pixels — so it is drawn at its native height and only ever widened.
+            node.Offsets = new Vector4(0f, 0f, insetX, insetX);
+        }
+        catch (Exception ex)
+        {
+            bannerFailed = true;
+            log.Error(ex, BannerUnavailable);
+        }
+
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>An invisible rectangle that turns a region of the readout into a click.
+    ///
+    /// <para>A <c>ResNode</c> draws nothing of its own, so the readout looks byte-for-byte the same
+    /// with or without one — the only difference is a collision rectangle and the hand cursor over
+    /// it. <c>MouseClick</c> is also the only event that adds <c>HasCollision</c>, so what swallows a
+    /// world click is exactly this rectangle and nothing more.</para></summary>
+    private ResNode BuildHitBox(Action onClicked)
+    {
+        var box = new ResNode { IsVisible = false };
+        box.AddEvent(AtkEventType.MouseClick, onClicked);
+        box.ShowClickableCursor = true;
+        box.AttachNode(this);
+        return box;
+    }
+
+    /// <summary>The direction in words, for when the arrow cannot be drawn at all. A readout that
+    /// says "behind you, to the left" is still guidance; an arrow that silently fails is not.
+    /// </summary>
+    private TextNode BuildArrowWords()
+    {
+        var words = new TextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = (uint)BaseSubLineSize,
+            AlignmentType = AlignmentType.Center,
+            TextFlags = TextFlags.Edge,
+            TextColor = GameColors.Heading,
+            TextOutlineColor = GameColors.HeadingEdge,
+            IsVisible = false,
+        };
+        words.AttachNode(this);
+        return words;
+    }
+
+    /// <summary>The header pill's words. Embossed and nothing else — no edge, because it sits on a
+    /// dark pill rather than over the world, which is exactly what <c>ScenarioTree.uld</c> node
+    /// <c>#11</c> does.</summary>
+    private TextNode BuildStripText()
+    {
+        var text = new TextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = (uint)BaseSubLineSize,
+            AlignmentType = AlignmentType.Center,
+            TextFlags = TextFlags.Emboss,
+            TextColor = GameColors.Heading,
+            TextOutlineColor = GameColors.HeadingEdge,
+            IsVisible = false,
+        };
+        text.AttachNode(this);
+        return text;
+    }
+
+    /// <summary>The emblem in the crest slot. Same generated-texture treatment as the arrow and the
+    /// cog, and <c>FitTexture</c> is correct here for the same reason: the whole texture IS the mark,
+    /// so there is no part for AutoFit to ignore.</summary>
+    private ImGuiImageNode BuildCrest()
+    {
+        var crest = new ImGuiImageNode
+        {
+            TextureSize = new Vector2(WayfarerBitmap.Size, WayfarerBitmap.Size),
+            Size = new Vector2(GameMetrics.Banner.CrestSize, GameMetrics.Banner.CrestSize),
+            FitTexture = true,
+            IsVisible = false,
+        };
+        crest.AttachNode(this);
+        return crest;
     }
 
     /// <summary>The settings cog, wired to open the window on its Settings tab.
@@ -668,6 +827,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             Rotation = DropDownOpenRotation,
             OriginX = BaseSwitcher / 2f,
             OriginY = BaseSwitcher / 2f,
+
+            // The one thing that had to change when the name moved onto parchment: the game's arrow
+            // is near-white, which is right on the grey field the game draws it over and invisible on
+            // cream. See GameColors.BannerControlTint.
+            MultiplyColor = GameColors.BannerControlTint,
         };
 
         try
@@ -699,10 +863,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             ruleNodes[i] = new HorizontalLineNode { IsVisible = false };
             ruleNodes[i].AttachNode(this);
 
+            markerNodes[i] = BuildMarker();
+
             lineNodes[i] = new TextNode
             {
                 FontType = FontType.Axis,
-                FontSize = (uint)BaseSecondarySize,
+                FontSize = (uint)BaseSubLineSize,
                 AlignmentType = AlignmentType.TopLeft,
 
                 // A starting point only — every line is given its own flags each frame, because the
@@ -714,6 +880,34 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             };
             lineNodes[i].AttachNode(this);
         }
+    }
+
+    /// <summary>One "!" quest medallion — the game's own part, drawn 1:1 at its native 32, which is
+    /// what <c>ScenarioTree.uld</c> does with it. No nine-grid and no stretch: it is a glyph, not a
+    /// frame.</summary>
+    private SimpleImageNode BuildMarker()
+    {
+        var marker = new SimpleImageNode
+        {
+            Size = new Vector2(GameMetrics.Banner.MarkerSize, GameMetrics.Banner.MarkerSize),
+            WrapMode = WrapMode.Stretch,
+            IsVisible = false,
+        };
+
+        try
+        {
+            marker.LoadTexture(BannerTexture);
+            marker.TextureCoordinates = new Vector2(GameMetrics.Banner.MarkerU, GameMetrics.Banner.MarkerV);
+            marker.TextureSize = new Vector2(GameMetrics.Banner.MarkerSize, GameMetrics.Banner.MarkerSize);
+        }
+        catch (Exception ex)
+        {
+            bannerFailed = true;
+            log.Error(ex, BannerUnavailable);
+        }
+
+        marker.AttachNode(this);
+        return marker;
     }
 
     /// <summary>Turns the game's own HUD-Layout move handle on and off around the readout.
@@ -757,10 +951,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         EnableMoving = true;
     }
 
-    /// <summary>Puts the arrow in the gutter, level with the middle of the first line of the block.
-    /// It takes no vertical space of its own — that is the whole point of the inline layout — so
-    /// this runs after the lines have been placed and simply parks it beside them.</summary>
-    private void LayoutArrow(ReadoutFrame frame, bool drawable, float size, float gutter, float? lineCentre)
+    /// <summary>Puts the arrow in the marker column — the gutter the banner reserves for the
+    /// medallions that hang to the left of a subordinate line — level with the middle of the first
+    /// subordinate line, which is the objective it is pointing at. It takes no vertical space of its
+    /// own, so this runs after the lines have been placed and simply parks it beside them.
+    ///
+    /// <para>Centred in the medallion's own 32-wide column rather than given a column of its own, so
+    /// the arrow and the markers below it share one left edge whatever the player's arrow-size
+    /// setting is.</para></summary>
+    private void LayoutArrow(ReadoutFrame frame, bool drawable, float size, float factor, float? lineCentre)
     {
         if (frame.ArrowRadians is not { } radians)
         {
@@ -779,16 +978,113 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // The arrow-size setting has to be applied here as well as the text-size one: before this
         // it moved nothing at all on the readout that is actually on screen, because only the ImGui
         // fallback ever read it.
+        var column = GameMetrics.Banner.MarkerLeft * factor;
         arrowNode.Size = new Vector2(size, size);
         arrowNode.OriginX = size / 2f;
         arrowNode.OriginY = size / 2f;
         arrowNode.Position = new Vector2(
-            (gutter - size) / 2f,
+            column + (((GameMetrics.Banner.MarkerSize * factor) - size) / 2f),
             (lineCentre ?? (size / 2f)) - (size / 2f));
         arrowNode.Rotation = radians;
         arrowNode.IsVisible = true;
         ReportArrow(ArrowHiddenReason.None);
         ReportBearing(radians);
+    }
+
+    /// <summary>Draws the banner: the plate at the readout's full width, the header pill over its top
+    /// edge, the pill's words, the emblem pinned to the plate's left end, and the whole plate as a
+    /// click target for settings.
+    ///
+    /// <para>Every position here is <see cref="GameMetrics.Banner"/> multiplied by the frame's scale
+    /// factor and nothing else — the banner's arrangement does not depend on its content, which is
+    /// what makes the name and the lines beneath it the only things on the readout that move.</para>
+    ///
+    /// <para>When the art cannot be read the chrome is simply not drawn and the layout is untouched:
+    /// the words all land exactly where they would have, and <see cref="HeadlineColor"/> switches
+    /// them back to the plain heads-up colours so a dark name is never left on nothing.</para></summary>
+    private void LayoutBanner(ReadoutFrame frame, float factor, float width, float top)
+    {
+        var drawable = BannerDrawable();
+
+        plateNode.Size = new Vector2(width, GameMetrics.Banner.PlateHeight * factor);
+        plateNode.Position = new Vector2(0f, top + (GameMetrics.Banner.PlateTop * factor));
+        plateNode.IsVisible = drawable;
+
+        var stripWidth = Math.Min(GameMetrics.Banner.StripWidth * factor, width);
+        var stripLeft = (width - stripWidth) / 2f;
+        var stripBox = new Vector2(stripWidth, GameMetrics.Banner.StripHeight * factor);
+        stripNode.Size = stripBox;
+        stripNode.Position = new Vector2(stripLeft, top + (GameMetrics.Banner.StripTop * factor));
+        stripNode.IsVisible = drawable;
+
+        // The pill's words sit on the pill whether or not the pill's art turned up — losing the
+        // backing is not a reason to stop saying what is being tracked.
+        var stripSize = Math.Max(BaseSubLineSize * factor, 8f);
+        stripTextNode.FontSize = (uint)stripSize;
+        stripTextNode.LineSpacing =
+            (uint)Math.Max(stripSize + (GameMetrics.Banner.SubLineLeading - GameMetrics.Banner.SubLineSize), 10f);
+        stripTextNode.Size = stripBox;
+        stripTextNode.Position = stripNode.Position;
+        SetStripLabel(frame.Content.StripLabel);
+        stripTextNode.IsVisible = true;
+
+        var crest = GameMetrics.Banner.CrestSize * factor;
+        if (EnsureCrestTexture())
+        {
+            crestNode.Size = new Vector2(crest, crest);
+            crestNode.Position = new Vector2(
+                GameMetrics.Banner.CrestLeft * factor,
+                top + ((GameMetrics.Banner.PlateTop - GameMetrics.Banner.CrestRise) * factor));
+            crestNode.IsVisible = true;
+        }
+        else
+        {
+            crestNode.IsVisible = false;
+        }
+
+        if (bannerHitBox is not null)
+        {
+            bannerHitBox.Size = plateNode.Size;
+            bannerHitBox.Position = plateNode.Position;
+            bannerHitBox.IsVisible = true;
+        }
+    }
+
+    /// <summary>Parks the settings cog at the right-hand end of the header pill — the same
+    /// relationship it had to the heading the pill replaced, and the one place on the banner that is
+    /// never text.
+    ///
+    /// <para>Pinned to the pill rather than measured off its words, because the pill is a fixed 230
+    /// wide whatever it says: there is no "end of the heading" left to measure to.</para></summary>
+    private void LayoutCog(float factor, float width, float top)
+    {
+        if (cogNode is null)
+        {
+            return;
+        }
+
+        if (!EnsureCogTexture())
+        {
+            cogNode.IsVisible = false;
+            return;
+        }
+
+        var size = Math.Max(BaseCog * factor, 9f);
+        var gap = BaseGap * factor * 2f;
+        var stripWidth = Math.Min(GameMetrics.Banner.StripWidth * factor, width);
+        var stripHeight = GameMetrics.Banner.StripHeight * factor;
+        var x = ((width + stripWidth) / 2f) + gap;
+
+        cogNode.Size = new Vector2(size, size);
+
+        // Origin follows the size, not only for the rotated controls: a node whose origin is stale
+        // pivots around a point that is no longer its centre.
+        cogNode.OriginX = size / 2f;
+        cogNode.OriginY = size / 2f;
+        cogNode.Position = new Vector2(
+            Math.Clamp(x, 0f, Math.Max(width - size, 0f)),
+            top + (GameMetrics.Banner.StripTop * factor) + ((stripHeight - size) / 2f));
+        cogNode.IsVisible = true;
     }
 
     /// <summary>The words fallback, on its own full-width line above the block. Only ever on screen
@@ -806,9 +1102,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         // The tracker's own leading, two over the font size.
         const float Leading = GameMetrics.Hud.LineLeading - GameMetrics.Hud.LineSize;
-        var height = (BasePrimarySize + Leading) * factor;
-        arrowWordsNode.FontSize = (uint)Math.Max(BasePrimarySize * factor, 8f);
-        arrowWordsNode.LineSpacing = (uint)Math.Max((BasePrimarySize * factor) + Leading, 10f);
+        var height = (BaseHeadlineSize + Leading) * factor;
+        arrowWordsNode.FontSize = (uint)Math.Max(BaseHeadlineSize * factor, 8f);
+        arrowWordsNode.LineSpacing = (uint)Math.Max((BaseHeadlineSize * factor) + Leading, 10f);
         arrowWordsNode.String = NavMath.DescribeDirection(radians);
         arrowWordsNode.Size = new Vector2(width, height);
         arrowWordsNode.Position = new Vector2(0f, 0f);
@@ -828,82 +1124,227 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             ? Math.Max(BaseSwitcher * factor, 9f) + (BaseGap * factor * 2f)
             : 0f;
 
-    /// <summary>Writes down where the subject line ended up and whether its name fitted.
-    ///
-    /// <para>The width asked for is the UNTRUNCATED one, measured with the font the node has just
-    /// been given. That overload measures arbitrary text rather than whatever the node last drew, so
-    /// it answers on the frame the name changes and it answers about the whole name — which is what
-    /// makes "did it fit?" a decision rather than a guess.</para></summary>
-    private SubjectLine MeasureSubject(
-        int index, string text, float top, float height, float fontSize, float available)
+    /// <summary>Hands the header pill its words, but only when they have actually changed. Assigning
+    /// <c>String</c> builds a SeString and re-runs the engine's text flow, and this is a per-frame
+    /// path; what is being tracked changes when the player changes it and not otherwise.</summary>
+    private void SetStripLabel(string label)
     {
-        var full = lineNodes[index].GetTextDrawSize(text).X;
-        return new SubjectLine(top, height, fontSize, Math.Min(full, available), full > available);
+        if (string.Equals(lastStripLabel, label, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastStripLabel = label;
+        stripTextNode.String = label;
     }
 
-    /// <summary>Lays out every line and reports how tall the readout ended up, plus the vertical
-    /// centre of the first line of the block — which is what the arrow is aligned against.
-    ///
-    /// <para>Every line, heading included, starts at the same left edge past the arrow gutter, so
-    /// the readout is one block with one edge and the arrow is a mark beside it rather than
-    /// something the body hangs off.</para></summary>
-    private (float Bottom, float? FirstLineCentre, SubjectLine? Subject, ReadoutLine? SubjectContent) LayoutLines(
-        ReadoutFrame frame, float factor, float width, float gutter, float top)
+    /// <summary>What the name on the plate is written in. Dark on the parchment when the plate is
+    /// actually there, and the readout's ordinary heads-up white when it is not — a dark name on
+    /// nothing would be a readout that had silently gone blank rather than one that had lost its
+    /// frame.</summary>
+    private Vector4 HeadlineColor() => BannerDrawable() ? GameColors.BannerHeadline : GameColors.Body;
+
+    /// <inheritdoc cref="HeadlineColor"/>
+    private Vector4 HeadlineEdgeColor() =>
+        BannerDrawable() ? GameColors.BannerHeadlineEdge : GameColors.BodyEdge;
+
+    /// <summary>Whether the banner's art is on hand to draw. Like the switcher's and unlike the
+    /// generated glyphs, this sheet is read out of the game's own resource system, so it can be
+    /// merely <i>late</i> rather than broken — the resource system answers with nothing until the
+    /// sheet is resident. Asking every frame is therefore right, and costs a pointer read.</summary>
+    private bool BannerDrawable()
     {
-        var y = top;
+        if (bannerFailed)
+        {
+            return false;
+        }
+
+        if (plateNode.PartsList[0]->LoadedTextureSize != Vector2.Zero)
+        {
+            return true;
+        }
+
+        // Said once, and only to somebody who asked for diagnostics — the same policy this file
+        // already applies to the arrow and the switcher. A sheet that is merely not resident yet
+        // becomes resident a frame or two later, and a warning that retracts itself is worse in a
+        // log than no warning.
+        if (!warnedBannerOnce && diagnosticsEnabled())
+        {
+            warnedBannerOnce = true;
+            log.Debug(BannerUnavailable);
+        }
+
+        return false;
+    }
+
+    /// <summary>Generates the emblem once. Same contract as the cog's texture: the pixels are
+    /// computed here and uploaded synchronously, so it either works or it throws, and if it throws
+    /// there is simply no crest — the plate and everything on it are unaffected.</summary>
+    private bool EnsureCrestTexture()
+    {
+        if (crestFailed)
+        {
+            return false;
+        }
+
+        if (crestLoaded)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(WayfarerBitmap.Size, WayfarerBitmap.Size),
+                WayfarerBitmap.Render(),
+                "Wayfarer emblem");
+
+            // Takes ownership: the node disposes the wrap with itself.
+            crestNode.LoadTexture(wrap);
+            crestNode.TextureSize = new Vector2(WayfarerBitmap.Size, WayfarerBitmap.Size);
+            crestLoaded = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            crestFailed = true;
+            log.Error(ex, "Wayfarer readout: the plugin's emblem could not be generated, so the readout's banner has an empty crest slot. Nothing else about the readout changes.");
+            return false;
+        }
+    }
+
+    /// <summary>Lays out every line and reports how tall the readout ended up, plus the optical
+    /// centre of the first subordinate line — which is what the arrow is aligned against.
+    ///
+    /// <para><b>Three fates, decided by what the composer marked the line as, never by where it
+    /// happens to be in the list.</b>
+    /// <list type="bullet">
+    /// <item>the HEADING is not drawn as a line at all — its words are the header pill's, and the
+    /// pill is what it became. Nothing else consumes it, so the window's own quest header and the
+    /// ImGui fallback keep the fuller mode label they have always shown.</item>
+    /// <item>the SUBJECT goes on the plate, at the game's own headline metrics, in the dark fill
+    /// cream parchment demands.</item>
+    /// <item>everything else is a subordinate line beneath the plate: marked ones at the game's
+    /// 26-pixel pitch with a medallion hanging into the gutter, unmarked ones in the tracker's own
+    /// annotation block with nothing beside them. See <see cref="ReadoutLine.Marked"/>.</item>
+    /// </list></para></summary>
+    private (float Bottom, float? ArrowCentre, SubjectLine? Subject, ReadoutLine? SubjectContent) LayoutLines(
+        ReadoutFrame frame, float factor, float width, float top, bool arrowDrawable)
+    {
         var count = Math.Min(frame.Content.Lines.Count, MaxLines);
         var hitBoxPlaced = false;
-        float? firstLineCentre = null;
+        float? arrowCentre = null;
         SubjectLine? subject = null;
         ReadoutLine? subjectContent = null;
-        var lineWidth = width - gutter;
 
+        var headlineLeft = GameMetrics.Banner.HeadlineLeft * factor;
+        var headlineWidth = Math.Max(
+            width - headlineLeft - (GameMetrics.Banner.HeadlineRight * factor), factor);
+        var subLineLeft = GameMetrics.Banner.SubLineLeft * factor;
+        var subLineWidth = Math.Max(
+            width - subLineLeft - (GameMetrics.Banner.HeadlineRight * factor), factor);
+
+        var y = top + (GameMetrics.Banner.Height * factor);
         var reserved = SwitcherSlot(factor);
+        var arrowWanted = arrowDrawable && frame.ArrowRadians is not null;
 
         for (var i = 0; i < count; i++)
         {
             var line = frame.Content.Lines[i];
-            var heading = line.Emphasis == ReadoutEmphasis.Heading;
-            var fontSize = FontSizeFor(line.Emphasis) * factor;
-            var available = line.Subject ? Math.Max(lineWidth - reserved, fontSize) : lineWidth;
-            y = LayoutRule(i, line, factor, gutter, lineWidth, y);
+            markerNodes[i].IsVisible = false;
 
-            // The height this line actually needs, measured, and the advance to match it. It used
-            // to be two lines' worth of node with a ONE line advance, which is why a long nearby
-            // unlock — "Something Or Other (350 yalms)" — appeared cut off: it wrapped correctly
-            // into a node that had room for it, and then the next line was drawn on top of the
-            // wrapped remainder, 40% of a line further up than the wrap had put it.
-            var height = LayoutLine(i, line, fontSize, gutter, available, y);
-
-            // The arrow aligns to the first line that is not the heading — the objective, which is
-            // what it is pointing at — and to that line's optical centre rather than its box.
-            firstLineCentre ??= heading ? null : y + (fontSize * ArrowOpticalCentre);
-
-            // First subject only. The composer emits at most one, and a second switcher would be a
-            // second control claiming to change the same one thing.
-            if (line.Subject && subject is null)
+            if (TryLayoutOnTheBanner(i, line, factor, top, headlineLeft, headlineWidth - reserved, ref subject))
             {
-                subjectContent = line;
-                subject = MeasureSubject(i, line.Text, y, height, fontSize, available);
+                subjectContent ??= line.Subject ? line : null;
+                continue;
             }
 
-            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, gutter, lineWidth, height, y);
+            var fontSize = BaseSubLineSize * factor;
+            y = LayoutRule(i, line, factor, subLineLeft, subLineWidth, y);
+
+            // The arrow takes the first subordinate line — the objective — and that line gives up
+            // its own medallion while it has it: one mark per line, and the arrow is the stronger
+            // statement about the same thing.
+            var takenByArrow = arrowWanted && arrowCentre is null;
+            var (height, textTop) = LayoutSubLine(
+                i, line, fontSize, subLineLeft, subLineWidth, y, factor, drawMarker: !takenByArrow);
+
+            if (takenByArrow)
+            {
+                arrowCentre = textTop + (fontSize * ArrowOpticalCentre);
+            }
+
+            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, subLineLeft, subLineWidth, height, y);
             y += height;
         }
 
-        for (var i = count; i < MaxLines; i++)
-        {
-            lineNodes[i].IsVisible = false;
-            ruleNodes[i].IsVisible = false;
-        }
+        HideLinesFrom(count);
+        SettleTeleportHitBox(hitBoxPlaced);
 
-        if (!hitBoxPlaced && teleportHitBox is not null)
+        // No subordinate lines at all and still something to point at: the arrow parks where the
+        // first one would have been, rather than climbing onto the plate and colliding with the
+        // emblem already in that column.
+        arrowCentre ??= arrowWanted
+            ? y + (GameMetrics.Banner.AnnotationBlock * factor / 2f)
+            : null;
+
+        return (y + (BaseGap * factor), arrowCentre, subject, subjectContent);
+    }
+
+    /// <summary>Closes the teleport hit box out for this frame: taken down when no line offered the
+    /// click, and recorded either way, because the host rebuilds the addon's collision list from
+    /// <see cref="ClickTargets"/> and a hit box that appears without that is one that is never
+    /// hit.</summary>
+    private void SettleTeleportHitBox(bool placed)
+    {
+        if (!placed && teleportHitBox is not null)
         {
             teleportHitBox.IsVisible = false;
         }
 
-        ClickTargets = hitBoxPlaced ? TeleportTarget : 0;
-        return (y + (BaseGap * factor), firstLineCentre, subject, subjectContent);
+        ClickTargets = placed ? TeleportTarget : 0;
+    }
+
+    /// <summary>Deals with the two lines that belong to the banner itself rather than to the block
+    /// beneath it, and says whether this was one of them.
+    ///
+    /// <para>The HEADING is not drawn at all: its words became the header pill, which is written from
+    /// <see cref="ReadoutContent.StripLabel"/> instead. Nothing else consumes the heading line, so
+    /// the hub window's own quest header and the ImGui fallback keep the fuller mode label they have
+    /// always shown. The first SUBJECT goes on the plate — first only, because the composer emits at
+    /// most one and a second would be a second switcher claiming to change the same one
+    /// thing.</para></summary>
+    private bool TryLayoutOnTheBanner(
+        int index, ReadoutLine line, float factor, float top, float left, float available, ref SubjectLine? subject)
+    {
+        if (line.Emphasis == ReadoutEmphasis.Heading)
+        {
+            lineNodes[index].IsVisible = false;
+            ruleNodes[index].IsVisible = false;
+            return true;
+        }
+
+        if (!line.Subject || subject is not null)
+        {
+            return false;
+        }
+
+        ruleNodes[index].IsVisible = false;
+        subject = LayoutHeadline(index, line, factor, left, available, top);
+        return true;
+    }
+
+    /// <summary>Takes down every pooled line from <paramref name="first"/> on, with its rule and its
+    /// marker. The pool is shared and reused every frame, so a slot that is not used this frame has
+    /// to be told so, or it keeps drawing whatever it last held.</summary>
+    private void HideLinesFrom(int first)
+    {
+        for (var i = first; i < MaxLines; i++)
+        {
+            lineNodes[i].IsVisible = false;
+            ruleNodes[i].IsVisible = false;
+            markerNodes[i].IsVisible = false;
+        }
     }
 
     /// <summary>Hangs the up/down chevron off the arrow when the target is on a different level of
@@ -940,52 +1381,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         elevationNode.IsVisible = true;
     }
 
-    /// <summary>Parks the settings cog at the end of the heading, which is where the game puts a
-    /// panel's own controls and the one place on this readout that is never text.
-    ///
-    /// <para>Measured rather than pinned to the right-hand edge: the readout's box is a fixed 320
-    /// units wide while its heading is usually a third of that, so a cog in the corner would float
-    /// in empty space with nothing to belong to. The box is invisible; the words are the object.
-    /// A measurement that comes back as nothing — the node has not been drawn yet — falls back to
-    /// the right edge rather than stacking the cog on top of the first letter.</para></summary>
-    private void LayoutHeadingControls(ReadoutFrame frame, float factor, float width, float gutter)
-    {
-        if (cogNode is null)
-        {
-            return;
-        }
-
-        var size = Math.Max(BaseCog * factor, 9f);
-        var gap = BaseGap * factor * 2f;
-        var heading = frame.Content.Lines.Count > 0
-            && frame.Content.Lines[0].Emphasis == ReadoutEmphasis.Heading
-            && lineNodes[0].IsVisible
-                ? lineNodes[0]
-                : null;
-
-        // Measured from the end of the heading's words, not pinned to the right-hand edge: the
-        // readout's box is a fixed 320 units wide while its heading is usually a third of that, so
-        // a control in the corner would float in empty space with nothing to belong to. A
-        // measurement that comes back as nothing — the node has not been drawn yet — falls back to
-        // the right edge rather than stacking a control on top of the first letter.
-        var headingWidth = heading is null ? 0f : heading.GetTextDrawSize().X;
-        var top = heading is null
-            ? 0f
-            : heading.Position.Y + OpticalCentreOffset(BaseHeadingSize * factor, size);
-        var x = headingWidth > 1f ? gutter + headingWidth + gap : width - size;
-
-        // The cog alone. The switcher used to be its neighbour here and is now beside the quest
-        // name instead — see the field's own note for why that is the whole point.
-        PlaceHeadingControl(cogNode, EnsureCogTexture, size, gap, x, top, width);
-    }
-
     /// <summary>Parks the switcher immediately to the right of the words that name what is being
-    /// followed, vertically centred on them.
+    /// followed — on the plate, beside the headline.
     ///
     /// <para>Measured from where the text actually ends, and clamped to the room the line was given
     /// — which is the same room the line was truncated into, so a name that ran out of space gets
-    /// the arrow right after its ellipsis rather than off the end of the readout.</para></summary>
-    private void LayoutSwitcher(float factor, float left, float lineWidth, SubjectLine? subject)
+    /// the arrow right after its ellipsis rather than off the end of the plate.</para>
+    ///
+    /// <para>The dropdown it opens hangs from the same left edge every subordinate line shares, just
+    /// below the plate: the list is a list of things to follow, and the lines beneath the banner are
+    /// where the followed thing's own detail lives, so they line up.</para></summary>
+    private void LayoutSwitcher(float factor, float width, SubjectLine? subject)
     {
         if (switcherNode is null)
         {
@@ -999,6 +1405,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return;
         }
 
+        var left = GameMetrics.Banner.HeadlineLeft * factor;
+        var lineWidth = Math.Max(width - left - (GameMetrics.Banner.HeadlineRight * factor), factor);
         var size = Math.Max(BaseSwitcher * factor, 9f);
         var gap = BaseGap * factor;
         var x = left + Math.Min(line.TextWidth, lineWidth - size - gap) + gap;
@@ -1007,14 +1415,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         switcherNode.OriginX = size / 2f;
         switcherNode.OriginY = size / 2f;
         switcherNode.Position = new Vector2(
-            Math.Clamp(x, left, left + lineWidth - size),
+            Math.Clamp(x, left, Math.Max(left + lineWidth - size, left)),
             line.Top + OpticalCentreOffset(line.FontSize, size));
         switcherNode.IsVisible = true;
 
-        // Same left edge as the subject line itself, just below it — where the dropdown hangs,
-        // if the switcher is clicked this frame. See DropdownAnchor's own doc comment.
-        DropdownAnchor = new Vector2(left, line.Top + line.Height);
-        DropdownWidth = lineWidth;
+        // Where the dropdown hangs if the switcher is clicked this frame: the subordinate lines'
+        // own left edge, immediately below the plate. See DropdownAnchor's own doc comment.
+        var subLineLeft = GameMetrics.Banner.SubLineLeft * factor;
+        var plateBottom = line.Top
+            + ((GameMetrics.Banner.PlateHeight - GameMetrics.Banner.HeadlineTop) * factor);
+        DropdownAnchor = new Vector2(subLineLeft, plateBottom);
+        DropdownWidth = Math.Max(width - subLineLeft - (GameMetrics.Banner.HeadlineRight * factor), factor);
     }
 
     /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are
@@ -1139,61 +1550,122 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return y + (BaseGap * factor) + GameMetrics.Window.RuleHeight;
     }
 
-    /// <summary>Lays out one line and reports the height it took — which is the height it needs,
-    /// measured, not a fixed guess.
+    /// <summary>Writes the name of the tracked thing across the plate, and reports where it landed
+    /// so the switcher and the hover box can be parked against the words rather than against the
+    /// plate.
     ///
-    /// <para>The readout wraps rather than truncating (there is no marquee flag anywhere in the
-    /// engine, and the game's own journal and tooltips grow downward), so a line's height is a
-    /// function of its text and the width it has. Asking the game how wide the text draws and
-    /// dividing by that width is the only way to know, and it is exact: the same measurement the
-    /// engine uses to lay the glyphs out.</para></summary>
-    private float LayoutLine(int index, ReadoutLine line, float fontSize, float left, float width, float y)
+    /// <para>One row, always, cut short with the engine's own ellipsis rather than wrapped — see
+    /// <see cref="SubjectFlags"/>. The plate is a fixed 48 tall and does not grow, which is the same
+    /// reason the game's own headline is a single <c>Ellipsis</c> node in a 250-wide box.</para>
+    ///
+    /// <para>The fill is dark, which nothing else on the readout is, because this one line is on
+    /// cream parchment rather than over the world — see <see cref="HeadlineColor"/>.</para></summary>
+    private SubjectLine LayoutHeadline(
+        int index, ReadoutLine line, float factor, float left, float available, float bannerTop)
     {
         var node = lineNodes[index];
-        node.FontType = FontFor(line.Emphasis);
+        var fontSize = Math.Max(BaseHeadlineSize * factor, 8f);
+        var height = Math.Max(GameMetrics.Banner.HeadlineHeight * factor, fontSize);
+        var width = Math.Max(available, fontSize);
+        var top = bannerTop
+            + ((GameMetrics.Banner.PlateTop + GameMetrics.Banner.HeadlineTop) * factor);
+
+        node.FontType = FontType.Axis;
+        node.FontSize = (uint)fontSize;
+        node.LineSpacing = (uint)height;
+        node.TextColor = HeadlineColor();
+        node.TextOutlineColor = HeadlineEdgeColor();
+
+        // Assigned every frame because the pool is shared: the node that is the headline now may
+        // have been an ordinary wrapping line a frame ago, and vice versa.
+        node.TextFlags = SubjectFlags;
+
+        // Sized before the words are handed over: the engine cuts the text to the node's width at
+        // the moment it is assigned, so a name given to a node that has not been sized yet would be
+        // cut to last frame's width.
+        node.Size = new Vector2(width, height);
+
+        // Re-handed over when the room changed as well as when the words did: the engine keeps only
+        // what it drew, so a name already shortened to "Sastasha…" would stay shortened after the
+        // readout grew, having lost the letters it would now have room for.
+        var regrown = Math.Abs(width - lastSubjectWidth) > 0.5f;
+        lastSubjectWidth = width;
+        SetLineText(index, line.Text, regrown);
+        node.Position = new Vector2(left, top);
+        node.IsVisible = true;
+
+        // The UNTRUNCATED width, measured with the font the node has just been given: that overload
+        // measures arbitrary text rather than whatever the node last drew, so it answers on the
+        // frame the name changes and it answers about the whole name.
+        var full = node.GetTextDrawSize(line.Text).X;
+        return new SubjectLine(top, height, fontSize, Math.Min(full, width), full > width);
+    }
+
+    /// <summary>Lays out one subordinate line and reports the height it took and where its words
+    /// ended up. The height is measured rather than assumed: the readout wraps rather than truncating
+    /// (there is no marquee flag anywhere in the engine, and the game's own journal and tooltips grow
+    /// downward), so a line's height is a function of its text and the width it has.
+    ///
+    /// <para><b>Two shapes, and the composer decides which.</b> A marked line is the game's own
+    /// job-quest row — a 26-pixel pitch with a 32-pixel medallion hanging into the gutter, taller
+    /// than the row and deliberately so. An unmarked line is an annotation and takes the quest
+    /// tracker's own meta block instead, with nothing beside it. A line that wraps grows past either,
+    /// because a clipped line is worse than a loose one.</para></summary>
+    private (float Height, float TextTop) LayoutSubLine(
+        int index, ReadoutLine line, float fontSize, float left, float width, float y, float factor, bool drawMarker)
+    {
+        var node = lineNodes[index];
+        node.FontType = FontType.Axis;
         node.FontSize = (uint)Math.Max(fontSize, 8f);
 
         // One number for both the wrap spacing and the advance, so a wrapped line's second row and
-        // the line after it cannot disagree about where they are.
-        //
-        // The tracker leads its lines by two over the font — Axis 14 at 16 in ToDoList 1004/1005/1007,
-        // Axis 12 at 14 in 1008/1009 — against the four this used, which is the "text spacing is
-        // huge" complaint: a heads-up element leads far tighter than a window does.
-        var step = Math.Max(fontSize + (GameMetrics.Hud.LineLeading - GameMetrics.Hud.LineSize), 11f);
+        // the line after it cannot disagree about where they are. The banner leads its subordinate
+        // lines at Axis 12 over 14 — ScenarioTree 1002 #3 against the same pairing ToDoList uses in
+        // 1008/1009 — which is two over the font, exactly as the tracker does.
+        var step = Math.Max(
+            fontSize + (GameMetrics.Banner.SubLineLeading - GameMetrics.Banner.SubLineSize), 11f);
         node.LineSpacing = (uint)step;
         node.TextColor = ColorFor(line.Emphasis);
         node.TextOutlineColor = OutlineFor(line.Emphasis);
-
-        // Assigned every frame because the pool is shared: the node that is the subject now may
-        // have been an ordinary wrapping line a frame ago, and vice versa.
-        node.TextFlags = line.Subject ? SubjectFlags : BodyFlags;
-
-        if (line.Subject)
-        {
-            // One row, always, and its height is known before its words are — which is what lets the
-            // node be sized first. The engine cuts the text to the node's width when the text is
-            // handed over, so a name given to a node that has not been sized yet would be cut to
-            // last frame's width.
-            node.Size = new Vector2(width, step);
-
-            // Re-handed over when the room changed as well as when the words did: the engine keeps
-            // only what it drew, so a name already shortened to "Sastasha…" would stay shortened
-            // after the readout grew, having lost the letters it would now have room for.
-            var regrown = Math.Abs(width - lastSubjectWidth) > 0.5f;
-            lastSubjectWidth = width;
-            SetLineText(index, line.Text, regrown);
-            node.Position = new Vector2(left, y);
-            node.IsVisible = true;
-            return step;
-        }
+        node.TextFlags = BodyFlags;
 
         SetLineText(index, line.Text, forced: false);
 
-        var height = step * WrappedLines(node, width);
-        node.Size = new Vector2(width, height);
-        node.Position = new Vector2(left, y);
+        var rows = WrappedLines(node, width);
+        var block = (line.Marked ? GameMetrics.Banner.SubLinePitch : GameMetrics.Banner.AnnotationBlock) * factor;
+        var height = Math.Max(block, step * rows);
+
+        // Centred in the block for a single row, top-aligned once it wraps — a wrapped line has to
+        // start where the block does or its extra rows push into the line beneath.
+        var textTop = rows > 1f ? y : y + Math.Max((block - step) / 2f, 0f);
+
+        node.Size = new Vector2(width, step * rows);
+        node.Position = new Vector2(left, textTop);
         node.IsVisible = true;
-        return height;
+
+        LayoutMarker(index, line, factor, y, height, drawMarker);
+        return (height, textTop);
+    }
+
+    /// <summary>Hangs the game's "!" medallion into the gutter beside a marked line, centred on the
+    /// line's own block. It is 32 tall against a 26-tall row and overhangs it either side, which is
+    /// what the game does and what makes the marker read as pinned to the line rather than as part of
+    /// a column.</summary>
+    private void LayoutMarker(int index, ReadoutLine line, float factor, float y, float height, bool draw)
+    {
+        var marker = markerNodes[index];
+        if (!draw || !line.Marked || !BannerDrawable())
+        {
+            marker.IsVisible = false;
+            return;
+        }
+
+        var size = GameMetrics.Banner.MarkerSize * factor;
+        marker.Size = new Vector2(size, size);
+        marker.Position = new Vector2(
+            GameMetrics.Banner.MarkerLeft * factor,
+            y + ((Math.Min(height, GameMetrics.Banner.SubLinePitch * factor) - size) / 2f));
+        marker.IsVisible = true;
     }
 
     /// <summary>Hands the words to a line's node, but only when something about them has actually

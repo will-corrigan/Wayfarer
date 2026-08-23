@@ -13,13 +13,28 @@ namespace Wayfarer.Core.Ui;
 /// <see cref="Ui.Elevation.Classify"/> before it gets here. The distance line already says it in
 /// words; this is what lets the drawn readout hang the game's own up/down chevron off the arrow as
 /// well.</param>
+/// <param name="StripLabel">What goes in the banner's header pill — the small dark strip above the
+/// plate, where the game itself prints "Current Main Scenario Quest".
+///
+/// <para><b>It says what KIND of thing is being tracked, never which one.</b> "Current Quest",
+/// "Current Unlock", "Current Hunting Log", or the plugin's own name when nothing is being followed.
+/// The name of the actual thing is the subject line, which the banner draws on the plate itself, so
+/// the pill and the plate are a category and an instance — exactly what the game's own pair
+/// are.</para>
+///
+/// <para>The module's half of it is supplied by the guidance source that owns the arrow
+/// (<see cref="Navigation.NavigationState.SourceName"/>) and is never derived from a source id here.
+/// Nothing on the guidance path is allowed to know which features exist, and a switch on source ids
+/// — in this composer or in the renderer — would put exactly that knowledge in the one place the
+/// architecture keeps it out of.</para></param>
 public sealed record ReadoutContent(
     IReadOnlyList<ReadoutLine> Lines,
     bool ShowArrow,
     float? TargetX = null,
     float? TargetY = null,
     float? TargetZ = null,
-    ElevationHint Elevation = ElevationHint.Level)
+    ElevationHint Elevation = ElevationHint.Level,
+    string StripLabel = ReadoutComposer.PluginName)
 {
     /// <summary>Nothing to draw at all — the readout hides itself rather than showing a frame
     /// around emptiness.</summary>

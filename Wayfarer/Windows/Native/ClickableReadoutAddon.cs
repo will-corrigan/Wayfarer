@@ -62,9 +62,9 @@ internal sealed unsafe class ClickableReadoutAddon(
     /// <summary>Bit added to <see cref="lastClickTargets"/> while the follow switcher's dropdown is
     /// open — its own rows and scrollbar are collision nodes that come and go with it, same
     /// reasoning as <see cref="ReadoutBodyNode.ClickTargets"/>'s own bits. Deliberately outside that
-    /// range (1/2/4/8) rather than adding a fifth bit there: the dropdown is this host's own state,
-    /// not the body's — see <see cref="popup"/>.</summary>
-    private const int PopupOpenTarget = 16;
+    /// range (1/2/4/8/16) rather than adding another bit there: the dropdown is this host's own
+    /// state, not the body's — see <see cref="popup"/>.</summary>
+    private const int PopupOpenTarget = 32;
 
     private ReadoutBodyNode? body;
 

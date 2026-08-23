@@ -29,6 +29,41 @@ internal static class GameColors
     /// <summary>List text, warm cream — the Duty Finder's own row colour.</summary>
     public static Vector4 ListText => Get(8, new Vector4(0.933f, 0.882f, 0.773f, 1f));
 
+    /// <summary>The headline written across the readout's banner plate.
+    ///
+    /// <para><b>Dark, which nothing else in this file is, and the one value here not backed by
+    /// evidence.</b> Every other HUD text role in the plugin is light-on-transparent because it is
+    /// drawn over the 3D world. The banner's plate is a sheet of cream parchment — mean
+    /// (200, 195, 174), sampled straight off <c>ui/uld/ScenarioTree.tex (0,0) 300x48</c> across the
+    /// whole of its stretchable band — so a white headline on it would be invisible.
+    /// The game's own headline node resolves its colour through <c>IsUIColor</c> like everything else
+    /// on that layout, but WHICH <c>UIColor</c> row could not be established from the files, and
+    /// guessing a row would be worse than admitting a literal: a wrong row id looks deliberate and
+    /// reads as evidence.</para>
+    ///
+    /// <para>So this is a literal, chosen against the sampled parchment: a dark warm brown, in the
+    /// same family as the bronze the plate's own bevel is drawn in, and 8.8:1 against that mean —
+    /// comfortably past the 4.5:1 a body size needs, which is the one thing about it that IS
+    /// measured. <b>The hue is not.</b> The check is one screenshot of the game's own Main Scenario
+    /// Guide beside ours; until somebody takes it, this is a legible value rather than the right
+    /// one.</para></summary>
+    public static Vector4 BannerHeadline { get; } = new(0.180f, 0.129f, 0.075f, 1f);
+
+    /// <summary>The headline's outline — less a colour than a halo. The parchment has visible noise
+    /// in it, and a pale edge under dark letters is what keeps them crisp on a textured ground.
+    /// Paired with <see cref="BannerHeadline"/>, and unverified for the same reason.</summary>
+    public static Vector4 BannerHeadlineEdge { get; } = new(0.925f, 0.906f, 0.831f, 1f);
+
+    /// <summary>What the game's own drop-down arrow is multiplied by to sit on the plate.
+    ///
+    /// <para>The art at <c>ui/uld/DropDownA.tex (44,0) 12x12</c> is a near-white triangle —
+    /// extracted and looked at — which is right on the grey field the game draws it over and
+    /// invisible on cream parchment. Multiplying rather than replacing keeps the glyph's own shading
+    /// and anti-aliasing, and the product lands in the same brown family as
+    /// <see cref="BannerHeadline"/>, so the switcher reads as part of the headline rather than as a
+    /// mark left on it.</para></summary>
+    public static Vector3 BannerControlTint { get; } = new(0.22f, 0.17f, 0.11f);
+
     /// <summary>Reserved for genuinely bad states only. Never the sole signal for one.</summary>
     public static Vector4 Bad => Get(17, new Vector4(0.863f, 0f, 0f, 1f));
 

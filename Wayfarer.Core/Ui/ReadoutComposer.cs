@@ -29,6 +29,16 @@ public static class ReadoutComposer
     /// unlock scan, and this is where it can be tested.</summary>
     public const int MaxNearbyUnlockLines = 3;
 
+    /// <summary>What the banner's header pill says when nothing is being followed, and the fallback
+    /// whenever the active source has not named itself. The plugin's own name is the honest answer to
+    /// "what is this element?" when the answer to "what is it tracking?" is nothing.</summary>
+    public const string PluginName = "Wayfarer";
+
+    /// <summary>The word the header pill puts in front of the module's own name. Kept here rather
+    /// than at either end of the sentence it makes: the module supplies "Quest", the pill says
+    /// "Current Quest", and neither half is complete on its own.</summary>
+    private const string CurrentlyTracking = "Current";
+
     public static ReadoutContent Compose(ReadoutInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
@@ -47,7 +57,32 @@ public static class ReadoutComposer
 
         return lines.Count == 0
             ? ReadoutContent.Empty
-            : new ReadoutContent(lines, showArrow, x, y, z, inputs.Elevation);
+            : new ReadoutContent(lines, showArrow, x, y, z, inputs.Elevation, StripLabel(state));
+    }
+
+    /// <summary>The header pill's words: "Current" plus whatever the active module calls itself, or
+    /// the plugin's own name when no module owns the arrow.
+    ///
+    /// <para><b>Why the module's name and not its mode label.</b> The mode label already exists
+    /// (<see cref="NavigationState.SourceLabel"/>) and names the objective's context — "Main
+    /// Scenario", "Hunting Log - Warrior". The pill is a different statement: it names the element
+    /// itself, the way the game's own pill says "Current Main Scenario Quest" above whichever quest
+    /// happens to be in the plate. So it takes the module's name, which the module supplies, and
+    /// nothing here or downstream ever maps a source id to a word.</para>
+    ///
+    /// <para>The route position rides along, because that is where it already was: it used to be
+    /// parenthesised onto the mode heading, and the pill is what that heading became.</para></summary>
+    private static string StripLabel(NavigationState state)
+    {
+        if (state.SourceName is not { Length: > 0 } module)
+        {
+            return PluginName;
+        }
+
+        var label = $"{CurrentlyTracking} {DisplayNames.TitleCase(module)}";
+        return state.RouteStop is { } stop && state.RouteTotal is { } total
+            ? $"{label} ({stop} of {total})"
+            : label;
     }
 
     private static void AddHeading(List<ReadoutLine> lines, NavigationState state)
@@ -312,7 +347,11 @@ public static class ReadoutComposer
                 return;
             }
 
-            lines.Add(new ReadoutLine(unlock, ReadoutEmphasis.Muted, first));
+            // The only lines the readout marks. Each one names a place with a quest at the end of
+            // it, which is exactly what the banner's medallion means — see ReadoutLine.Marked. The
+            // engaged case above is deliberately NOT marked: "3 unlocks nearby" is a count, and a
+            // count is not somewhere you can walk to.
+            lines.Add(new ReadoutLine(unlock, ReadoutEmphasis.Muted, first, Marked: true));
             first = false;
             shown++;
         }

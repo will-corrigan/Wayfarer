@@ -361,4 +361,166 @@ public static class GameMetrics
         /// readout lines.</summary>
         public const float RuleHeight = 8f;
     }
+
+    /// <summary>The Main Scenario Guide's banner — the framed plate at the top of the screen that
+    /// reads "Current Main Scenario Quest", and the lines the game hangs beneath it when a job quest
+    /// is active. Measured from <c>ui/uld/ScenarioTree.uld</c> and from the art on
+    /// <c>ui/uld/ScenarioTree.tex</c> itself.
+    ///
+    /// <para><b>Why the readout wears this and not a panel of our own.</b> It is the game's one
+    /// always-on element that carries a <i>name</i> rather than a checklist, which is exactly what
+    /// the readout carries. Everything below is the game's own arrangement of it: a dark pill above,
+    /// a parchment plate, a crest hanging off the plate's left end, and subordinate lines beneath at
+    /// a fixed pitch with markers hanging into the gutter to the left of the text.</para>
+    ///
+    /// <para><b>The one thing the game does that we do not.</b> The game draws the plate as a plain
+    /// <c>Image</c> at the part's native 300x48 and ships no wider variant. The art nine-slices
+    /// cleanly at <see cref="PlateInsetX"/>, which was checked by rendering it at 400, 420 and 600
+    /// and looking at all three, so the readout wears it at <see cref="Hud.Width"/> instead.
+    /// Vertically it does not stretch — the longest run of identical rows in the art is two pixels —
+    /// so <see cref="PlateHeight"/> is fixed.</para></summary>
+    public static class Banner
+    {
+        /// <summary>Left edge of the plate part on the sheet. <c>ScenarioTree.uld</c> partlist 4,
+        /// part 0.</summary>
+        public const float PlateU = 0f;
+
+        /// <inheritdoc cref="PlateU"/>
+        public const float PlateV = 0f;
+
+        /// <summary>The plate part's own width — what the game draws it at, and the width the
+        /// nine-slice is cut from.</summary>
+        public const float PlateWidth = 300f;
+
+        /// <summary>The plate's height, which is not negotiable: the art has no stretchable band
+        /// vertically.</summary>
+        public const float PlateHeight = 48f;
+
+        /// <summary>The nine-slice's left and right insets. Twenty-four rather than something
+        /// smaller because the plate carries a small chevron near its right end, at source x=279-288,
+        /// and anything under 24 slices through it.</summary>
+        public const float PlateInsetX = 24f;
+
+        /// <summary>Where the plate sits below the top of the banner — the room the header pill needs
+        /// above it. <c>ScenarioTree.uld</c> puts the headline row <c>#13</c> at y=20 with the pill
+        /// <c>#12</c> at y=3, so the pill overhangs the plate by seventeen and the plate covers its
+        /// last seven.</summary>
+        public const float PlateTop = 20f;
+
+        /// <summary>The whole banner's height: the pill's overhang plus the plate.</summary>
+        public const float Height = PlateTop + PlateHeight;
+
+        /// <summary>The header pill's part on the sheet — partlist 4, part 3, the dark-filled state.
+        /// (Part 2 at V=48 is the same pill as an unfilled gold outline; the game swaps between them
+        /// by <c>PartId</c>.)</summary>
+        public const float StripU = 76f;
+
+        /// <inheritdoc cref="StripU"/>
+        public const float StripV = 72f;
+
+        /// <inheritdoc cref="StripU"/>
+        public const float StripPartWidth = 116f;
+
+        /// <inheritdoc cref="StripU"/>
+        public const float StripHeight = 24f;
+
+        /// <summary>The pill's own nine-slice insets. Declared in the ULD as <c>T=0 B=0 L=20
+        /// R=20</c>.</summary>
+        public const float StripInsetX = 20f;
+
+        /// <summary>What the game draws the 116-wide pill at — node <c>#12</c> is w=230. Kept rather
+        /// than scaled with the readout's width: the pill is a label's backing, not a bar, and the
+        /// game's own is a fixed size over a variable-length name.</summary>
+        public const float StripWidth = 230f;
+
+        /// <summary>The pill's top edge. ULD node <c>#12</c>, y=3.</summary>
+        public const float StripTop = 3f;
+
+        /// <summary>The crest that hangs off the plate's left end. Component <c>1001 #3</c> is a
+        /// 52x52 image; ours is the plugin's own emblem rather than the game's meteor, for the reason
+        /// <see cref="WayfarerBitmap"/> gives.</summary>
+        public const float CrestSize = 52f;
+
+        /// <summary>How far in from the banner's left edge the crest sits. The game's own hangs
+        /// <i>outside</i> the plate — the plate starts at x=39 of the row and the crest at x=12 —
+        /// which is not available to us, because our plate spans the readout's whole width. Just
+        /// inside the plate's own chamfered cap is the nearest thing to it.</summary>
+        public const float CrestLeft = 6f;
+
+        /// <summary>How far the crest rises above the plate's top edge. The game's sits at absolute
+        /// y=15 against a plate at y=20 — a deliberate five-pixel overhang, which is what makes it
+        /// read as pinned <i>to</i> the plate rather than printed on it.</summary>
+        public const float CrestRise = 5f;
+
+        /// <summary>The gap between the crest and the start of the headline's words.</summary>
+        public const float CrestGap = 6f;
+
+        /// <summary>Where the headline's words start, measured from the banner's left edge. The same
+        /// 64 the game reaches by a different route (its plate at x=39 plus a text block at x=63,
+        /// against our crest slot plus its gap).</summary>
+        public const float HeadlineLeft = CrestLeft + CrestSize + CrestGap;
+
+        /// <summary>What the headline gives back to the plate's right-hand cap. The game's own text
+        /// box is 250 wide in a 300 plate starting at 24, which leaves 26.</summary>
+        public const float HeadlineRight = 26f;
+
+        /// <summary>The headline's own line inside the plate — <c>(48 - 18) / 2</c>, which is exactly
+        /// centred, and exactly what component <c>1001 #5</c> does (y=15, h=18).</summary>
+        public const float HeadlineTop = 15f;
+
+        /// <inheritdoc cref="HeadlineTop"/>
+        public const float HeadlineHeight = 18f;
+
+        /// <summary>The headline's font. Axis 14 — the same <see cref="Type.BodySize"/> the rest of
+        /// the plugin uses for a name.</summary>
+        public const uint HeadlineSize = Type.BodySize;
+
+        /// <summary>The header pill's own text. Axis 12, centred, embossed. ULD node <c>#11</c>.
+        /// </summary>
+        public const uint StripTextSize = Type.SecondarySize;
+
+        /// <summary>The pitch of the subordinate lines beneath the banner. The game's two job-quest
+        /// components sit at y=0 and y=26 of their container.</summary>
+        public const float SubLinePitch = 26f;
+
+        /// <summary>The marker on a subordinate line — the game's "!" quest medallion, partlist 4
+        /// part 7, drawn 1:1. It is taller than the row it belongs to, and deliberately so.</summary>
+        public const float MarkerSize = 32f;
+
+        /// <inheritdoc cref="MarkerSize"/>
+        public const float MarkerU = 76f;
+
+        /// <inheritdoc cref="MarkerSize"/>
+        public const float MarkerV = 96f;
+
+        /// <summary>How far right of the headline's words a subordinate line's own words sit. In the
+        /// game's root-absolute coordinates the headline text is at x=63 and a sub-line's at x=72 —
+        /// near-flush, with a slight indent. This is the whole visual signature of the relationship:
+        /// subordinate lines are not deeply indented, their markers are what sits to the
+        /// left.</summary>
+        public const float SubLineIndent = 9f;
+
+        /// <summary>How far left of the headline's words a marker hangs. The game's sub-line icons
+        /// are at x=44 against a headline text at x=63.</summary>
+        public const float MarkerHang = 19f;
+
+        /// <summary>Where a subordinate line's words start, measured from the banner's left
+        /// edge.</summary>
+        public const float SubLineLeft = HeadlineLeft + SubLineIndent;
+
+        /// <summary>Where a marker's left edge sits.</summary>
+        public const float MarkerLeft = HeadlineLeft - MarkerHang;
+
+        /// <summary>The block an unmarked subordinate line gets — an annotation about the tracked
+        /// thing rather than a second destination. The quest tracker's own meta block
+        /// (<see cref="Hud.MetaBlock"/>), because that is what it is.</summary>
+        public const float AnnotationBlock = Hud.MetaBlock;
+
+        /// <summary>Every subordinate line's font, marked or not. Axis 12: the banner has exactly two
+        /// type levels and this is the lower one.</summary>
+        public const uint SubLineSize = Hud.MetaSize;
+
+        /// <inheritdoc cref="SubLineSize"/>
+        public const uint SubLineLeading = Hud.MetaLeading;
+    }
 }
