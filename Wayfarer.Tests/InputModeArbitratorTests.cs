@@ -15,8 +15,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Controller,
             lastGamepadActivity: T0,
             lastMouseActivity: null,
-            gamepadAvailable: true,
-            now: T0);
+            gamepadAvailable: true);
 
         Assert.Equal(InputMode.Mouse, result);
     }
@@ -30,8 +29,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Mouse,
             lastGamepadActivity: null,
             lastMouseActivity: T0,
-            gamepadAvailable: false,
-            now: T0);
+            gamepadAvailable: false);
 
         Assert.Equal(InputMode.Controller, result);
     }
@@ -47,8 +45,7 @@ public class InputModeArbitratorTests
             previous: seed,
             lastGamepadActivity: null,
             lastMouseActivity: null,
-            gamepadAvailable: true,
-            now: T0);
+            gamepadAvailable: true);
 
         Assert.Equal(seed, result);
     }
@@ -62,8 +59,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Controller,
             lastGamepadActivity: null,
             lastMouseActivity: null,
-            gamepadAvailable: false,
-            now: T0);
+            gamepadAvailable: false);
 
         Assert.Equal(InputMode.Mouse, result);
     }
@@ -79,8 +75,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Mouse,
             lastGamepadActivity: T0.AddMilliseconds(1),
             lastMouseActivity: null,
-            gamepadAvailable: true,
-            now: T0.AddMilliseconds(1));
+            gamepadAvailable: true);
 
         Assert.Equal(InputMode.Controller, result);
     }
@@ -94,8 +89,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Controller,
             lastGamepadActivity: null,
             lastMouseActivity: T0.AddMilliseconds(1),
-            gamepadAvailable: true,
-            now: T0.AddMilliseconds(1));
+            gamepadAvailable: true);
 
         Assert.Equal(InputMode.Mouse, result);
     }
@@ -112,8 +106,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Mouse,
             lastGamepadActivity: gamepadAt,
             lastMouseActivity: mouseAt,
-            gamepadAvailable: true,
-            now: gamepadAt);
+            gamepadAvailable: true);
 
         Assert.Equal(InputMode.Mouse, result);
     }
@@ -130,8 +123,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Mouse,
             lastGamepadActivity: gamepadAt,
             lastMouseActivity: mouseAt,
-            gamepadAvailable: true,
-            now: gamepadAt);
+            gamepadAvailable: true);
 
         Assert.Equal(InputMode.Controller, result);
     }
@@ -151,8 +143,7 @@ public class InputModeArbitratorTests
             previous,
             lastGamepadActivity: T0,
             lastMouseActivity: T0,
-            gamepadAvailable: true,
-            now: T0);
+            gamepadAvailable: true);
 
         Assert.Equal(previous, result);
     }
@@ -166,8 +157,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Controller,
             lastGamepadActivity: T0 + TimeSpan.FromSeconds(5),
             lastMouseActivity: T0,
-            gamepadAvailable: true,
-            now: T0 + TimeSpan.FromSeconds(5));
+            gamepadAvailable: true);
 
         Assert.Equal(InputMode.Controller, result);
     }
@@ -182,8 +172,7 @@ public class InputModeArbitratorTests
             previous: InputMode.Mouse,
             lastGamepadActivity: T0 + TimeSpan.FromSeconds(10),
             lastMouseActivity: T0,
-            gamepadAvailable: false,
-            now: T0 + TimeSpan.FromSeconds(10));
+            gamepadAvailable: false);
 
         Assert.Equal(InputMode.Mouse, result);
     }
@@ -204,8 +193,7 @@ public class InputModeArbitratorTests
                 previous,
                 lastGamepadActivity: t,
                 lastMouseActivity: t,
-                gamepadAvailable: true,
-                now: t);
+                gamepadAvailable: true);
         }
 
         Assert.Equal(InputMode.Mouse, previous);

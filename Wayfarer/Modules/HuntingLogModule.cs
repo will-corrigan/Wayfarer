@@ -6,7 +6,7 @@ using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
 
-/// <summary>Third module (spec §5): reads live hunting-log progress, resolves the current page's
+/// <summary>Reads live hunting-log progress, resolves the current page's
 /// remaining targets, and routes the arrow to them via the same pickup-target machinery
 /// <see cref="UnlockChecklistModule"/> uses. Registered <c>enabledByDefault: true</c> — same
 /// default as <see cref="UnlockChecklistModule"/> and <see cref="QuestHelperModule"/>, the only two

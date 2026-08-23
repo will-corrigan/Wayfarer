@@ -64,6 +64,10 @@ public enum HubPositionPreset
     BottomRight,
 }
 
+/// <summary>Everything Wayfarer remembers between sessions, grouped by the feature that owns it.
+/// Dalamud serialises this whole object, so a property removed here is silently dropped from an
+/// existing config file rather than breaking it — and one added here defaults for everyone until
+/// they change it.</summary>
 public sealed class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
@@ -157,8 +161,6 @@ public sealed class QuestHelperConfig
     /// time the camera swings past a compass point, so a play session would write thousands of lines
     /// nobody asked for. Real failures — a texture that will not load — are warned about regardless.</summary>
     public bool LogDiagnostics { get; set; }
-
-    public bool ArrowLocked { get; set; }
 
     public float ArrowScale { get; set; } = 1.0f;
 

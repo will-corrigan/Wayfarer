@@ -2,6 +2,9 @@ using System.Globalization;
 
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>Works out, for every catalogue entry, whether the player can go and get it — and, when
+/// they cannot, which gate is in the way. The single place that decides what the checklist claims,
+/// and deliberately the most conservative code in the plugin: see <see cref="Compute"/>.</summary>
 public static class UnlockStatusCalculator
 {
     /// <summary>Sets Status/LockReason on every entry, in precedence order: Done, Accepted,

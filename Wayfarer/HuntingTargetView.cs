@@ -23,6 +23,6 @@ internal sealed record HuntingTargetView(
     uint? DutyContentFinderConditionId)
 {
     /// <summary>True when this target has a usable world position to route/arrow toward — false
-    /// only for the Grand-Company-Elite duty-gated records (spec §5's "otherwise text-only").</summary>
+    /// only for the Grand-Company-Elite duty-gated records; every other target is text-only.</summary>
     public bool IsRoutable => DutyName is null;
 }

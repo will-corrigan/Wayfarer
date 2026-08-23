@@ -92,7 +92,7 @@ internal sealed class InputModeService
         ReverseConfirmCancel = ReadUintAsBool(SystemConfigOption.PadReverseConfirmCancel);
 
         var resolved = InputModeArbitrator.Resolve(
-            cfg.Override, seed, Mode, lastGamepadActivity, lastMouseActivity, available, now);
+            cfg.Override, seed, Mode, lastGamepadActivity, lastMouseActivity, available);
 
         if (resolved != Mode)
         {

@@ -8,7 +8,8 @@ namespace Wayfarer.Core.Input;
 public static class InputModeArbitrator
 {
     /// <summary>How much more recently the candidate device must have been active than the
-    /// currently-active device before Auto mode switches to it. Prevents rapid flip-flopping
+    /// currently-active device before Auto mode switches to it. Measured between the two devices,
+    /// not against the clock — which is why <see cref="Resolve"/> takes no current time. Prevents rapid flip-flopping
     /// from incidental cross-device noise — e.g. the mouse twitching once while the player is
     /// mid-controller-session, or analog stick drift while the mouse is the dominant device.
     /// Not applied on the very first switch away from a device that has never produced activity
@@ -40,15 +41,13 @@ public static class InputModeArbitrator
     /// <param name="gamepadAvailable">The game's own <c>PadAvailable</c> flag. When false, Auto
     /// mode never resolves to <see cref="InputMode.Controller"/> — guards against stale activity
     /// timestamps outliving a controller that just got unplugged.</param>
-    /// <param name="now">Current time, injected for testability.</param>
     public static InputMode Resolve(
         InputModeOverride overrideMode,
         InputMode seed,
         InputMode previous,
         DateTimeOffset? lastGamepadActivity,
         DateTimeOffset? lastMouseActivity,
-        bool gamepadAvailable,
-        DateTimeOffset now)
+        bool gamepadAvailable)
     {
         switch (overrideMode)
         {

@@ -1,5 +1,8 @@
 namespace Wayfarer.Core.Navigation;
 
+/// <summary>Conversions between the game's map-pixel space and world coordinates. Small enough to
+/// inline anywhere, kept in one place because the constants (1024 = map centre, sizeFactor/100)
+/// are the kind that get half-remembered wrongly at the second call site.</summary>
 public static class MapCoords
 {
     /// <summary>Converts MapMarker sheet pixel coords (0–2048, 1024 = map center)

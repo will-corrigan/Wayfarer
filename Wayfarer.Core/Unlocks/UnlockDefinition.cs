@@ -1,5 +1,12 @@
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>One row of <c>data/unlocks-by-level.json</c> as the plugin reads it: what the unlock
+/// is, what opens it, and how well corroborated that claim is.
+///
+/// <para>This is only the half of the entry the plugin acts on. The file also carries editorial
+/// fields — <c>questKind</c>, and the dataset's own header — which are there for whoever maintains
+/// the catalogue and are checked by <c>data/validate-unlocks.mjs</c>. They are deliberately absent
+/// here: a property the plugin never reads reads as a promise the plugin never keeps.</para></summary>
 public sealed class UnlockDefinition
 {
     public int Level { get; set; }
@@ -18,8 +25,6 @@ public sealed class UnlockDefinition
     /// picked one arbitrarily, which told two thirds of characters they had not done something
     /// they had. Empty for the ordinary case of one quest, one unlock.</para></summary>
     public List<uint> QuestAnyOf { get; set; } = [];
-
-    public string? QuestKind { get; set; }
 
     public string? Notes { get; set; }
 

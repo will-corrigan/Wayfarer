@@ -81,7 +81,7 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
         modules.OfType<T>().FirstOrDefault();
 
     /// <summary>Disposes every module in reverse registration order, guarding each one with its own
-    /// try/catch (spec: controller wave task 2b) so a single module throwing during teardown — e.g.
+    /// try/catch so a single module throwing during teardown — e.g.
     /// a native window's <see cref="IDisposable.Dispose"/> asserting the main thread when Dalamud
     /// unloads plugins from a thread-pool thread — can't abort the rest of the chain and strand
     /// <see cref="Plugin"/> before it reaches <c>KamiToolKitLibrary.Cleanup()</c>.</summary>
