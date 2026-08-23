@@ -41,10 +41,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private const uint QuestRowIdOffset = 65536;
 
     private const float TabBarHeight = 26f;
+    private const float TabBarGap = 6f;
     private const float RowHeight = 24f;
     private const float ChecklistControlsHeight = 92f;
-    private const float HuntingControlsHeight = 60f;
+    private const float HuntingHeaderHeight = 28f;
+    private const float HuntingControlsHeight = 64f;
     private const float ButtonHintHeight = 20f;
+
+    // All four are screen pixels, not addon units — see ComputeDefaultSize for why the difference
+    // matters. The width cap is absolute rather than a fraction of the viewport because a fraction
+    // is exactly what stretched this window across an ultrawide: 60% of 5120px is 3072px of mostly
+    // empty list. The viewport fraction is the ceiling either axis may never exceed.
+    private const float MinWindowWidth = 460f;
+    private const float MaxWindowWidth = 760f;
+    private const float MinWindowHeight = 300f;
+    private const float ViewportFraction = 0.9f;
 
     private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
 
@@ -206,9 +217,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
         AddNode(hubTabs);
 
-        var y = contentStart.Y + TabBarHeight + 6f;
-        tabContentStart = new Vector2(contentStart.X, y);
-        tabContentSize = new Vector2(contentSize.X, contentSize.Y - (y - contentStart.Y) - ButtonHintHeight);
+        MeasureTabArea();
 
         BuildButtonHint(contentStart, contentSize);
         BuildSharedList();
@@ -245,17 +254,48 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     }
 
     // ----- Private static helpers (grouped together — SA1204) ------------------------------
-    private static unsafe Vector2 ComputeDefaultSize()
+
+    /// <summary>The window's size, in the units <see cref="NativeAddon.Size"/> actually wants.
+    ///
+    /// <b>Addon size is not screen pixels.</b> The game renders a normal addon at the player's
+    /// interface scale (<c>InternalAddon-&gt;Scale == GetGlobalUIScale()</c> — KamiToolKit's own
+    /// addon-config round-trip divides by exactly that), so a size computed in screen pixels comes
+    /// out multiplied by it. The previous version <i>multiplied</i> by the scale as well, which on a
+    /// 200% interface asked for four times the intended area — that is how this window came to be
+    /// larger than an ultrawide screen. Everything here is therefore reasoned about in screen pixels
+    /// and divided by the scale exactly once, at the end.</summary>
+    private static Vector2 ComputeDefaultSize()
     {
-        var screen = new Vector2(AtkStage.Instance()->ScreenSize.Width, AtkStage.Instance()->ScreenSize.Height);
-        var scale = AtkUnitBase.GetGlobalUIScale();
-        var width = Math.Clamp(600f * scale, 460f, screen.X * 0.6f);
+        var screen = ViewportSize();
 
         // Tall by default on purpose: the Settings tab's controls are real components in a plain
         // column, and a controller can only reach the ones that are actually laid out on screen.
-        var height = Math.Clamp(screen.Y * 0.78f, 460f, screen.Y * 0.9f);
-        return new Vector2(width, height);
+        // ResizeToContent shrinks this to whatever the open tab actually needs.
+        return ToAddonUnits(new Vector2(
+            ClampWidth(MaxWindowWidth, screen),
+            ClampHeight(screen.Y * 0.7f, screen)));
     }
+
+    private static unsafe Vector2 ViewportSize() =>
+        new(AtkStage.Instance()->ScreenSize.Width, AtkStage.Instance()->ScreenSize.Height);
+
+    // Floored so a pathological scale can never divide by zero and produce an infinite size.
+    private static float UiScale() => Math.Max(AtkUnitBase.GetGlobalUIScale(), 0.1f);
+
+    private static Vector2 ToAddonUnits(Vector2 screenPixels) => screenPixels / UiScale();
+
+    private static float ClampWidth(float screenPixels, Vector2 screen) =>
+        Math.Clamp(screenPixels, MinWindowWidth, Math.Max(screen.X * ViewportFraction, MinWindowWidth));
+
+    private static float ClampHeight(float screenPixels, Vector2 screen) =>
+        Math.Clamp(screenPixels, MinWindowHeight, Math.Max(screen.Y * ViewportFraction, MinWindowHeight));
+
+    private static float ControlsHeight(HubTab tab) => tab switch
+    {
+        HubTab.Checklist => ChecklistControlsHeight,
+        HubTab.Hunting => HuntingControlsHeight,
+        _ => 0f,
+    };
 
     private static void SetBucketVisible(List<NodeBase> bucket, bool visible)
     {
@@ -368,11 +408,20 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return row;
     }
 
+    /// <summary>A section heading with a line of its own.
+    ///
+    /// The height and the alignment are both load-bearing and were both wrong. A text node's
+    /// default alignment (<c>AlignmentType.Left</c>) centres the glyphs <b>vertically</b> inside the
+    /// node, so a 20pt TrumpGothic line with an outline — which draws taller than 20 pixels — spilled
+    /// out of a 22-pixel box at the top and the bottom, and the four pixels of column spacing below
+    /// were not enough to keep it off the button row underneath. Anchoring at the top and reserving
+    /// the height the font actually occupies is what gives the heading its own line.</summary>
     private static TextNode BuildHeadingNode(string text) => new()
     {
-        Height = 22f,
+        Height = HuntingHeaderHeight,
         FontType = FontType.TrumpGothic,
         FontSize = 20,
+        AlignmentType = AlignmentType.TopLeft,
         TextColor = GameColors.Heading,
         TextOutlineColor = GameColors.HeadingEdge,
         TextFlags = TextFlags.Edge,
@@ -475,6 +524,149 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         row?.Activate?.Invoke();
     }
 
+    // ----- Geometry ---------------------------------------------------------------------------
+
+    /// <summary>Re-derives the tab body's rectangle from the window's current content area. Called
+    /// on setup and again after every resize, because <see cref="NativeAddon.ContentSize"/> is a
+    /// live read off the window node rather than a value anyone can cache.</summary>
+    private void MeasureTabArea()
+    {
+        var contentStart = ContentStartPosition;
+        var contentSize = ContentSize;
+        var top = contentStart.Y + TabBarHeight + TabBarGap;
+
+        tabContentStart = new Vector2(contentStart.X, top);
+        tabContentSize = new Vector2(
+            contentSize.X,
+            Math.Max(contentSize.Y - (top - contentStart.Y) - ButtonHintHeight, RowHeight));
+    }
+
+    /// <summary>Puts the current tab's control block and the shared list where the measured tab
+    /// area says they go. Separate from <see cref="SelectTab"/> so a resize can re-run the same
+    /// layout without re-selecting anything.</summary>
+    private void PositionTabContent()
+    {
+        if (hubTabs is not null)
+        {
+            hubTabs.Position = new Vector2(tabContentStart.X, tabContentStart.Y - TabBarHeight - TabBarGap);
+            hubTabs.Size = new Vector2(tabContentSize.X, TabBarHeight);
+        }
+
+        if (buttonHintNode is not null)
+        {
+            buttonHintNode.Position = new Vector2(tabContentStart.X, tabContentStart.Y + tabContentSize.Y);
+            buttonHintNode.Size = new Vector2(tabContentSize.X, ButtonHintHeight);
+        }
+
+        var controlsHeight = ControlsHeight(currentTab);
+        if (checklistControls is not null)
+        {
+            checklistControls.Position = tabContentStart;
+            checklistControls.Size = new Vector2(tabContentSize.X, ChecklistControlsHeight);
+        }
+
+        if (huntingControls is not null)
+        {
+            huntingControls.Position = tabContentStart;
+            huntingControls.Size = new Vector2(tabContentSize.X, HuntingControlsHeight);
+        }
+
+        if (settingsArea is not null)
+        {
+            settingsArea.Position = tabContentStart;
+            settingsArea.Size = tabContentSize;
+        }
+
+        if (list is null)
+        {
+            return;
+        }
+
+        list.IsVisible = currentTab != HubTab.Settings;
+        if (list.IsVisible)
+        {
+            // The list keeps a fixed viewport and scrolls what does not fit — it is the one thing in
+            // here that must never grow the window, because "the window grew instead of scrolling"
+            // is precisely what put it off the edge of the screen.
+            list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
+            list.Size = new Vector2(tabContentSize.X, Math.Max(tabContentSize.Y - controlsHeight, RowHeight));
+        }
+    }
+
+    /// <summary>Shrinks the window to what the open tab actually holds, up to the viewport cap —
+    /// the fix for "one hunting row and a screenful of nothing below it". Only ever changes the
+    /// height: the width is the reading measure and stays put so the window does not jump about as
+    /// rows come and go.</summary>
+    private void ResizeToContent()
+    {
+        if (!IsOpen || hubTabs is null)
+        {
+            return;
+        }
+
+        // Title bar plus content padding, measured rather than assumed — it is whatever the window
+        // node currently reserves, in the same addon units Size is expressed in.
+        var chrome = Math.Max(Size.Y - ContentSize.Y, 0f);
+        var desiredUnits = chrome + TabBarHeight + TabBarGap + ButtonHintHeight + TabBodyHeight();
+
+        var screen = ViewportSize();
+        var scale = UiScale();
+        var height = ClampHeight(desiredUnits * scale, screen) / scale;
+
+        // A pixel of hysteresis: the measured chrome and the content heights are both rounded on
+        // their way through ushort node sizes, and resizing on a sub-pixel difference every frame
+        // would rebuild the list's node pool every frame with it.
+        if (Math.Abs(height - Size.Y) < 1f)
+        {
+            return;
+        }
+
+        SetWindowSize(new Vector2(Size.X, height));
+        MeasureTabArea();
+        PositionTabContent();
+        ClampIntoViewport();
+    }
+
+    private float TabBodyHeight() => currentTab switch
+    {
+        HubTab.Settings => settingsArea?.ContentNode.Height ?? tabContentSize.Y,
+        _ => ControlsHeight(currentTab) + ListHeightForRows(),
+    };
+
+    private float ListHeightForRows()
+    {
+        var spacing = list?.ItemSpacing ?? 1f;
+
+        // Capped rather than unbounded: a checklist can hold hundreds of rows and the window is not
+        // allowed to ask for a screen it does not have. Past the cap the list scrolls, which is the
+        // behaviour that was missing.
+        var count = Math.Clamp(rows.Count, 1, 24);
+        return (count * (HubListRowNode.ItemHeight + spacing)) + spacing;
+    }
+
+    /// <summary>Keeps the whole window inside the viewport. Written only when it is actually out of
+    /// bounds, so dragging the window around inside the screen is never fought — the game's own
+    /// addons behave the same way.</summary>
+    private unsafe void ClampIntoViewport()
+    {
+        if (InternalAddon is null)
+        {
+            return;
+        }
+
+        var screen = ViewportSize();
+        var onScreen = Size * UiScale();
+        var current = new Vector2(InternalAddon->X, InternalAddon->Y);
+        var clamped = new Vector2(
+            Math.Clamp(current.X, 0f, Math.Max(screen.X - onScreen.X, 0f)),
+            Math.Clamp(current.Y, 0f, Math.Max(screen.Y - onScreen.Y, 0f)));
+
+        if (clamped != current)
+        {
+            SetWindowPosition(clamped);
+        }
+    }
+
     // ----- Tab switching / background polling -----------------------------------------------
 
     /// <summary>Switches the visible tab, force-refreshing its content (the background poll only
@@ -490,22 +682,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         SetBucketVisible(huntingNodes, tab == HubTab.Hunting);
         SetBucketVisible(settingsNodes, tab == HubTab.Settings);
 
-        if (list is not null)
-        {
-            var controlsHeight = tab switch
-            {
-                HubTab.Checklist => ChecklistControlsHeight,
-                HubTab.Hunting => HuntingControlsHeight,
-                _ => 0f,
-            };
-
-            list.IsVisible = tab != HubTab.Settings;
-            if (list.IsVisible)
-            {
-                list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
-                list.Size = new Vector2(tabContentSize.X, Math.Max(tabContentSize.Y - controlsHeight, RowHeight));
-            }
-        }
+        PositionTabContent();
 
         switch (tab)
         {
@@ -574,6 +751,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         RestoreListDownwardExit();
         UpdateStopButton();
         RefreshButtonHint();
+
+        // Cheap, and only ever writes when the window is genuinely outside the viewport — which is
+        // what makes it safe to run every tick. It catches a resolution or interface-scale change
+        // under an open window, the case a one-shot clamp on open cannot.
+        ClampIntoViewport();
     }
 
     /// <summary>Undoes KamiToolKit's <c>ListNode</c> defect 1 from the outside: its downward scroll
@@ -688,6 +870,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             return;
         }
+
+        // Geometry first: resizing rebuilds the list's recycled node pool, so publishing into it
+        // beforehand would populate nodes that are about to be thrown away.
+        ResizeToContent();
 
         var previous = lastPopulatedRows;
         list.OptionsList = [.. rows];
@@ -997,15 +1183,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Size = new Vector2(tabContentSize.X, HuntingControlsHeight),
         };
 
-        huntingHeaderNode = new TextNode
-        {
-            Height = 22f,
-            FontType = FontType.TrumpGothic,
-            FontSize = 20,
-            TextColor = GameColors.Heading,
-            TextOutlineColor = GameColors.HeadingEdge,
-            TextFlags = TextFlags.Edge,
-        };
+        huntingHeaderNode = BuildHeadingNode(string.Empty);
         huntingControls.AddNode(huntingHeaderNode);
 
         var actions = new AlignedHorizontalListNode { Height = 26f, FitToContentHeight = true, ItemSpacing = 8f };
@@ -1034,6 +1212,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         huntingControls.AddNode(actions);
 
         AddTabNode(huntingNodes, huntingControls);
+    }
+
+    /// <summary>Writes the hunting heading and re-runs the column it lives in. This is the one
+    /// heading in the window whose words arrive after its container was laid out, so the layout is
+    /// re-run here rather than trusted to still hold.</summary>
+    private void SetHuntingHeader(string text)
+    {
+        if (huntingHeaderNode is null)
+        {
+            return;
+        }
+
+        huntingHeaderNode.String = text;
+        huntingHeaderNode.Height = HuntingHeaderHeight;
+        huntingControls?.RecalculateLayout();
     }
 
     private int ComputeHuntingSignature()
@@ -1087,9 +1280,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        huntingHeaderNode.String = hunting.ActiveLogLabel is { } label
+        SetHuntingHeader(hunting.ActiveLogLabel is { } label
             ? $"{label} — Rank {hunting.CurrentRank}"
-            : hunting.NoLogReason ?? "No hunting log active.";
+            : hunting.NoLogReason ?? "No hunting log active.");
 
         var navigator = ResolveNavigator();
         var remaining = hunting.HuntHereOrder.Count;
@@ -1220,6 +1413,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         settingsArea.RecalculateSizes();
+        ResizeToContent();
+        settingsArea.RecalculateSizes();
         ApplyNavigation(settingsArea.ContentNode);
     }
 
@@ -1246,7 +1441,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     // Immediate reposition, because a controller cannot reach the game's own title-bar
     // right-click Move/Scale menu. NativeAddon persists whatever position is current when the
     // window is next hidden, so nothing extra is needed for it to survive a reopen.
-    private unsafe void ApplyPositionPreset(HubPositionPreset preset)
+    private void ApplyPositionPreset(HubPositionPreset preset)
     {
         if (!IsOpen)
         {
@@ -1254,15 +1449,22 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         const float margin = 12f;
-        var screen = new Vector2(AtkStage.Instance()->ScreenSize.Width, AtkStage.Instance()->ScreenSize.Height);
+        var screen = ViewportSize();
+
+        // The window's size on screen, not its size in addon units — the two differ by the player's
+        // interface scale, and using the unscaled figure here put every right/bottom preset off the
+        // edge on any interface larger than 100%.
+        var size = Size * UiScale();
         var position = preset switch
         {
             HubPositionPreset.TopLeft => new Vector2(margin, margin),
-            HubPositionPreset.TopRight => new Vector2(screen.X - Size.X - margin, margin),
-            HubPositionPreset.BottomLeft => new Vector2(margin, screen.Y - Size.Y - margin),
-            HubPositionPreset.BottomRight => new Vector2(screen.X - Size.X - margin, screen.Y - Size.Y - margin),
-            _ => (screen - Size) / 2f,
+            HubPositionPreset.TopRight => new Vector2(screen.X - size.X - margin, margin),
+            HubPositionPreset.BottomLeft => new Vector2(margin, screen.Y - size.Y - margin),
+            HubPositionPreset.BottomRight => new Vector2(screen.X - size.X - margin, screen.Y - size.Y - margin),
+            _ => (screen - size) / 2f,
         };
+
         SetWindowPosition(position);
+        ClampIntoViewport();
     }
 }

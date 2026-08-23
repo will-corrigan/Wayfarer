@@ -8,6 +8,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.Sheets;
 using Wayfarer.Core.Hunting;
 using Wayfarer.Core.Navigation;
+using Wayfarer.Core.Ui;
 
 namespace Wayfarer;
 
@@ -558,9 +559,13 @@ internal sealed unsafe class HuntingLogService
             : target with { IsLivePosition = false };
     }
 
+    // Title-cased here rather than at each surface, because this is the one place a monster name
+    // enters the plugin: the hub rows, the readout's hunting line, the nameplate marker match and
+    // the info-bar entry all read the name this method resolved. The sheet stores "dragonfly"; the
+    // game's own Hunting Log shows "Dragonfly" — see DisplayNames.
     private string MonsterName(uint bNpcNameId) =>
         dataManager.GetExcelSheet<BNpcName>().GetRowOrDefault(bNpcNameId)?.Singular.ExtractText() is { Length: > 0 } n
-            ? n
+            ? DisplayNames.TitleCase(n)
             : $"Monster {bNpcNameId}";
 
     private string ClassJobName(uint classJobId) =>

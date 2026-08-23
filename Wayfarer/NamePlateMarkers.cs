@@ -38,8 +38,12 @@ internal sealed class NamePlateMarkers(
 {
     private const double RefreshSeconds = 1.0;
 
-    private readonly HashSet<string> enemyNames = new(StringComparer.Ordinal);
-    private readonly HashSet<string> giverNames = new(StringComparer.Ordinal);
+    // Case-insensitive on purpose. The match set is built from data-sheet text and compared against
+    // the game's own live display name, and the two do not agree on case — the BNpcName sheet stores
+    // "dragonfly" where the nameplate reads "Dragonfly". Comparing ordinally meant the enemy set
+    // matched nothing at all.
+    private readonly HashSet<string> enemyNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> giverNames = new(StringComparer.OrdinalIgnoreCase);
 
     private DateTimeOffset lastRefresh = DateTimeOffset.MinValue;
     private int validatedIcon;

@@ -97,6 +97,12 @@ public sealed class Plugin : IDalamudPlugin
         {
             InternalName = "WayfarerHubNative",
             Title = "Wayfarer",
+
+            // Explicitly empty. KamiToolKit draws a subtitle beside the title and defaults it to the
+            // plugin name passed to Initialize above, which is what made the title bar read
+            // "Wayfarer Wayfarer" — its own guidance is to drop it when the window's title is
+            // already the plugin's name, and here it is.
+            Subtitle = string.Empty,
         };
 
         var guidance = BuildGuidance(log, config, clientState, condition, objects, dataManager, hunting);
