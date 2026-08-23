@@ -16,7 +16,7 @@ public static class UnlockStatusCalculator
         var doneByName = new HashSet<string>(StringComparer.Ordinal);
         foreach (var u in all)
         {
-            if (u.QuestRowId is { } id && ctx.IsQuestComplete(id))
+            if (u.QuestRowId is { } id && (ctx.IsQuestComplete(id) || AnyAlternativeComplete(u, ctx)))
             {
                 doneByName.Add(u.Def.Unlock);
             }
@@ -118,6 +118,23 @@ public static class UnlockStatusCalculator
         }
 
         u.Status = UnlockStatus.Available;
+    }
+
+    /// <summary>Completing any one of the rows a duplicated quest name could mean counts as
+    /// completing the unlock. A character gets exactly one of the three <c>Simply the Hest</c>
+    /// rows, decided by their starting city, so checking only the bound row reported "not done"
+    /// for two thirds of characters.</summary>
+    private static bool AnyAlternativeComplete(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        foreach (var id in u.AlternativeQuestRowIds)
+        {
+            if (ctx.IsQuestComplete(id))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary><c>QuestLock</c>: completing any (Join 2, the only value observed in game data)

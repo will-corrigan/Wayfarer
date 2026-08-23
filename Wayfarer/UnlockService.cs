@@ -227,6 +227,46 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         return classJobs;
     }
 
+    /// <summary>Groups every named Quest row under its folded name key, carrying the two facts
+    /// that separate a live row from a retired one when a name is duplicated: whether the row is
+    /// in the journal, and how many other quests depend on it. Building the inbound-reference
+    /// count means one extra pass over the sheet's <c>PreviousQuest</c> columns, paid once at
+    /// load.</summary>
+    private static Dictionary<string, List<QuestNameCandidate>> BuildNameIndex(ExcelSheet<Quest> sheet)
+    {
+        var inboundRefs = new Dictionary<uint, int>();
+        foreach (var q in sheet)
+        {
+            foreach (var prev in q.PreviousQuest)
+            {
+                if (prev.RowId != 0)
+                {
+                    inboundRefs[prev.RowId] = inboundRefs.GetValueOrDefault(prev.RowId) + 1;
+                }
+            }
+        }
+
+        var byKey = new Dictionary<string, List<QuestNameCandidate>>(StringComparer.Ordinal);
+        foreach (var q in sheet)
+        {
+            var name = q.Name.ExtractText();
+            if (name.Length == 0)
+            {
+                continue;
+            }
+
+            var key = QuestNameKey.For(name);
+            if (!byKey.TryGetValue(key, out var candidates))
+            {
+                byKey[key] = candidates = [];
+            }
+
+            candidates.Add(new QuestNameCandidate(q.RowId, q.JournalGenre.RowId, inboundRefs.GetValueOrDefault(q.RowId)));
+        }
+
+        return byKey;
+    }
+
     private void RecomputeSafe()
     {
         try
@@ -251,32 +291,23 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
         var classJobs = LoadClassJobs(dataManager);
         var enpcSheet = dataManager.GetExcelSheet<ENpcResident>();
-        var byName = new Dictionary<string, QuestFacts>(StringComparer.Ordinal);
         var sheet = dataManager.GetExcelSheet<Quest>();
-        foreach (var q in sheet)
-        {
-            var name = q.Name.ExtractText();
-            if (name.Length == 0)
-            {
-                continue;
-            }
-
-            var key = name.ToLowerInvariant();
-            if (byName.ContainsKey(key))
-            {
-                continue; // first wins; duplicates are rare and equivalent for our purpose
-            }
-
-            byName[key] = QuestFacts.From(q, classJobs, enpcSheet);
-        }
+        var byKey = BuildNameIndex(sheet);
 
         entries.Clear();
         foreach (var def in defs)
         {
             var r = new ResolvedUnlock { Def = def };
-            if (def.Quest is { } questName && byName.TryGetValue(questName.ToLowerInvariant(), out var facts))
+            if (def.Quest is { } questName
+                && byKey.TryGetValue(QuestNameKey.For(questName), out var candidates)
+                && QuestNameMatch.Resolve(candidates) is var match
+                && sheet.GetRowOrDefault(match.Best.RowId) is { } row)
             {
-                facts.ApplyTo(r, def.Level);
+                QuestFacts.From(row, classJobs, enpcSheet).ApplyTo(r, def.Level);
+                if (match.IsAmbiguous)
+                {
+                    r.AlternativeQuestRowIds = [.. match.Alternatives];
+                }
             }
 
             entries.Add(r);

@@ -38,6 +38,13 @@ public sealed class ResolvedUnlock
 
     public uint? QuestRowId { get; set; }
 
+    /// <summary>Every Quest row the catalogue's name could equally well mean, when the game ships
+    /// several the evidence can't separate — the three <c>Simply the Hest</c> rows, one per
+    /// starting city, are the canonical case. Empty when the match was unambiguous.
+    /// <see cref="QuestRowId"/> is one of these; completing any of them completes the unlock, and
+    /// when none is complete the plugin does not know which one this character was given.</summary>
+    public List<uint> AlternativeQuestRowIds { get; set; } = [];
+
     public int QuestLevel { get; set; }
 
     public List<uint> PrereqRowIds { get; set; } = [];
@@ -142,6 +149,7 @@ public sealed class ResolvedUnlock
     {
         Def = Def,
         QuestRowId = QuestRowId,
+        AlternativeQuestRowIds = AlternativeQuestRowIds,
         QuestLevel = QuestLevel,
         PrereqRowIds = PrereqRowIds,
         PrereqNames = PrereqNames,
