@@ -484,7 +484,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// node, so a 20pt TrumpGothic line with an outline — which draws taller than 20 pixels — spilled
     /// out of a 22-pixel box at the top and the bottom, and the four pixels of column spacing below
     /// were not enough to keep it off the button row underneath. Anchoring at the top and reserving
-    /// the height the font actually occupies is what gives the heading its own line.</summary>
+    /// the height the font actually occupies is what gives the heading its own line.
+    ///
+    /// <para>Trump Gothic's glyph repertoire is narrow, which is how the readout's own heading came
+    /// to show "Hunting Log tt warrior" where a middle dot had been written. Everything drawn in it
+    /// goes through <see cref="HeadingText"/> first, here as well as there.</para></summary>
     private static TextNode BuildHeadingNode(string text) => new()
     {
         Height = HuntingHeaderHeight,
@@ -494,7 +498,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         TextColor = GameColors.Heading,
         TextOutlineColor = GameColors.HeadingEdge,
         TextFlags = TextFlags.Edge,
-        String = text,
+        String = HeadingText.Plain(text),
     };
 
     private void AddTabNode(List<NodeBase> bucket, NodeBase node)
@@ -1101,7 +1105,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             Width = 150f,
             Height = 24f,
-            String = "Route me",
+            String = "Route Me",
             OnClick = OnRouteClicked,
         };
         row.AddNode(routeButton);
@@ -1407,7 +1411,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             Width = 170f,
             Height = 24f,
-            String = "Start hunting",
+            String = "Start Hunting",
             OnClick = OnHuntClicked,
         };
         actions.AddNode(huntHereButton);
@@ -1440,7 +1444,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        huntingHeaderNode.String = text;
+        // Through HeadingText for the same reason BuildHeadingNode is: this node is Trump Gothic.
+        huntingHeaderNode.String = HeadingText.Plain(text);
         huntingHeaderNode.Height = HuntingHeaderHeight;
         huntingControls?.RecalculateLayout();
     }
@@ -1497,12 +1502,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         SetHuntingHeader(hunting.ActiveLogLabel is { } label
-            ? $"{label} — Rank {hunting.CurrentRank}"
+            ? $"{label} - Rank {hunting.CurrentRank}"
             : hunting.NoLogReason ?? "No hunting log active.");
 
         var navigator = ResolveNavigator();
         var remaining = hunting.HuntHereOrder.Count;
-        huntHereButton.String = remaining > 0 ? $"Start hunting ({remaining})" : "Start hunting";
+        huntHereButton.String = remaining > 0 ? $"Start Hunting ({remaining})" : "Start Hunting";
         huntHereButton.IsEnabled = navigator != null && remaining > 0;
 
         rows.Clear();
@@ -1644,7 +1649,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             Width = 220f,
             Height = 24f,
-            String = "Follow the main scenario",
+            String = "Follow the Main Scenario",
             OnClick = OnFollowMsqClicked,
         };
         row.AddNode(followMsqButton);
@@ -1786,7 +1791,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Add(new HubListRow
         {
             Kind = HubRowKind.Heading,
-            Label = "Accepted quests",
+            Label = "Accepted Quests",
             Detail = $"{accepted.Count}",
         });
 
@@ -1924,7 +1929,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             settingsArea.ContentNode.AddNode(BuildHeadingNode(section.Title));
             foreach (var setting in section.Settings)
             {
-                settingsArea.ContentNode.AddNode(BuildSettingControl(setting));
+                var control = BuildSettingControl(setting);
+                settingsArea.ContentNode.AddNode(control);
+                WireScrollFollowsFocus(control);
             }
         }
 
@@ -1932,6 +1939,61 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ResizeToContent();
         settingsArea.RecalculateSizes();
         ApplyNavigation(settingsArea.ContentNode);
+    }
+
+    /// <summary>Gives the Settings tab the one thing its container does not have: scroll-follows-focus.
+    ///
+    /// <para><b>This is a reported defect, not a nicety.</b> The Settings tab is a
+    /// <c>ScrollingNode</c>, which clips what is out of view but has no navigation implementation at
+    /// all — so a controller cursor walked straight onto settings that were scrolled off the bottom
+    /// and the player was pressing Confirm on controls nobody could see. The list-backed tabs get
+    /// this from KamiToolKit's <c>ListNode</c>; this supplies it here from the outside, which is the
+    /// only place it can be supplied from.</para>
+    ///
+    /// <para>Driven by the node's own <c>FocusStart</c> event rather than by polling the game's
+    /// focus state every frame: it fires exactly when the cursor arrives, costs nothing the rest of
+    /// the time, and it is the same event the toolkit's own text-input node uses to know it has been
+    /// focused. Registered on the component's collision node, which is what the component nominates
+    /// as its focus target.</para></summary>
+    private void WireScrollFollowsFocus(NodeBase control)
+    {
+        if (control is not KamiToolKit.BaseTypes.ComponentNode.ComponentNode component)
+        {
+            return;
+        }
+
+        component.CollisionNode.AddEvent(AtkEventType.FocusStart, () => ScrollSettingIntoView(control));
+    }
+
+    private void ScrollSettingIntoView(NodeBase control)
+    {
+        if (settingsArea is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var bar = settingsArea.ScrollBarNode;
+            var target = ScrollIntoView.Adjust(
+                control.Y,
+                control.Height,
+                settingsArea.Height,
+                bar.ScrollPosition,
+                bar.ScrollMaxPosition);
+
+            if (Math.Abs(target - bar.ScrollPosition) >= 1f)
+            {
+                bar.ScrollPosition = target;
+            }
+        }
+        catch (Exception ex)
+        {
+            // A focus event that throws would throw again on the next cursor move, so this is
+            // swallowed rather than allowed to make the tab unusable. Worst case is the old
+            // behaviour: no scrolling, which is what this is fixing.
+            log.Warning(ex, "Wayfarer nav: scrolling a focused setting into view failed.");
+        }
     }
 
     private NodeBase BuildSettingControl(SettingDefinition setting) => setting.Kind switch
