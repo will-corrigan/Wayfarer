@@ -2,7 +2,27 @@ namespace Wayfarer.Core.Unlocks;
 
 public sealed class UnlockDefinition
 {
-    public int Level { get; set; }
+    /// <summary>The level a source states for this unlock, or <c>null</c> when no source states
+    /// one at all.
+    ///
+    /// <para>Null is not "level 0" and not "level 1". Five sections of the source guide carry no
+    /// level, and the original import quietly filled them in with the previous expansion's cap —
+    /// putting 13 entries at a number nobody had ever said. The trophy mounts are the case that
+    /// cannot be fixed by looking harder: the guide gives no level and the quest that grants them
+    /// is a hidden level-1 reward row, so their real requirement is owning a set of Extreme-trial
+    /// mounts and there is no level to print. Those entries carry a <see cref="Category"/>
+    /// instead and belong in their own section, not sorted among low-level content.</para></summary>
+    public int? Level { get; set; }
+
+    /// <summary>Where <see cref="Level"/> came from — the guide section that states it, or the
+    /// Quest row whose accept level it is. Required whenever a level is present, so that an
+    /// invented one cannot be committed without a source to point at.</summary>
+    public string? LevelSource { get; set; }
+
+    /// <summary>What this entry is, for the entries that have no <see cref="Level"/>. Taken from
+    /// the source's own section heading rather than invented ("Heavensward Unique Quest
+    /// Rewards"). Required when there is no level, and only then.</summary>
+    public string? Category { get; set; }
 
     public string Unlock { get; set; } = string.Empty;
 

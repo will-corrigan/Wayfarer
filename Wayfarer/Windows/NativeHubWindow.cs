@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -397,7 +398,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private static bool Explains(ResolvedUnlock u) =>
         u.Status is UnlockStatus.CollectionLocked or UnlockStatus.RequirementsUnknown;
 
-    private static string RequirementKey(ResolvedUnlock u) => $"{u.Def.Unlock}|{u.Def.Level}";
+    private static string RequirementKey(ResolvedUnlock u) =>
+        $"{u.Def.Unlock}|{u.Def.Level?.ToString(CultureInfo.InvariantCulture) ?? u.Def.Category}";
 
     private static IEnumerable<ResolvedUnlock> OrderInGroup(IEnumerable<ResolvedUnlock> group) =>
         group.OrderBy(u => u.Status switch
@@ -1358,7 +1360,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             {
                 Kind = HubRowKind.Note,
                 Label = u.Def.Requires?.Label is { Length: > 0 } why ? $"{u.Def.Unlock} — {why}" : u.Def.Unlock,
-                Detail = $"Lv{u.Def.Level}",
+                Detail = u.Def.Level is { } lv ? $"Lv{lv}" : u.Def.Category ?? string.Empty,
             });
         }
     }

@@ -102,6 +102,11 @@ internal sealed class UnlockWindow(
         ImGui.EndChild();
     }
 
+    /// <summary>What to show where a level would go. An entry with no level is not level 0 — no
+    /// source states a level for it — so it is labelled with what it is instead.</summary>
+    private static string LevelOrCategory(UnlockDefinition d) =>
+        d.Level is { } lv ? $"lv{lv}" : d.Category ?? "no level requirement";
+
     private static void DrawChips((string Key, string Label)[] chips, HashSet<string> active)
     {
         var first = true;
@@ -251,8 +256,17 @@ internal sealed class UnlockWindow(
     private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupEntries(List<ResolvedUnlock> visible) =>
         GroupModes[groupMode] switch
         {
-            "Level" => visible.GroupBy(u => $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}", StringComparer.Ordinal)
-                               .OrderBy(g => g.Min(u => u.QuestLevel)),
+            // An entry with no level gets its own section rather than a level band. Its quest row
+            // is a hidden level-1 reward row, so banding it would file the Extreme-trial trophy
+            // mounts under "Level 0–9" — a claim no source makes and the player would have to
+            // scroll past. Those sections sort after every level band.
+            "Level" => visible.GroupBy(
+                    u => u.Def.Level is null
+                        ? u.Def.Category ?? "No level requirement"
+                        : $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}",
+                    StringComparer.Ordinal)
+                .OrderBy(g => g.Any(u => u.Def.Level is null) ? 1 : 0)
+                .ThenBy(g => g.Min(u => u.QuestLevel)),
             "Type" => visible.GroupBy(u => UnlockFilters.Category(u.Def), StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal),
             _ => GroupByZone(visible),
         };
@@ -410,7 +424,7 @@ internal sealed class UnlockWindow(
         ImGui.TextWrapped("Nothing in the game's data backs these entries, so their status can't be checked. Each says what is known about it instead of being graded.");
         foreach (var u in unverified)
         {
-            ImGui.BulletText($"{u.Def.Unlock} (lv{u.Def.Level})");
+            ImGui.BulletText($"{u.Def.Unlock} ({LevelOrCategory(u.Def)})");
             if (!ImGui.IsItemHovered())
             {
                 continue;

@@ -598,7 +598,7 @@ public static class UnlockStatusCalculator
     /// <para>Membership is still established by quest identity: a group is marked done only when a
     /// Quest row belonging to it is actually complete. The level is what stops that evidence
     /// leaking sideways into a tier it says nothing about.</para></summary>
-    private readonly record struct AlternativeGroup(string Unlock, int Level)
+    private readonly record struct AlternativeGroup(string Unlock, int? Level)
     {
         public static AlternativeGroup Of(ResolvedUnlock u) => new(u.Def.Unlock, u.Def.Level);
     }

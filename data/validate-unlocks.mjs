@@ -83,7 +83,7 @@ const checkRequires = (where, r) => {
 };
 
 const entryKeys = new Set([
-  'level', 'unlock', 'type', 'quest', 'questKind', 'notes',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questKind', 'notes',
   'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ]);
 
@@ -100,7 +100,7 @@ for (const [i, e] of d.unlocks.entries()) {
     err(`${where}: bad description`);
   if (!prios.has(e.priority)) err(`${where}: bad priority '${e.priority}'`);
   if (typeof e.cosmetic !== 'boolean') err(`${where}: bad cosmetic`);
-  for (const k of ['level', 'unlock', 'type', 'quest', 'questKind', 'notes'])
+  for (const k of ['unlock', 'type', 'quest', 'questKind', 'notes'])
     if (!(k in e)) err(`${where}: lost original field ${k}`);
 
   // The name and the level together identify an unlock, and the status calculator relies on that:
@@ -108,8 +108,25 @@ for (const [i, e] of d.unlocks.entries()) {
   // one marks them all done. Everything the pair is made of has to be sound.
   checkScalar(where, e, 'unlock', 'string');
   if (typeof e.unlock === 'string' && e.unlock.trim().length === 0) err(`${where}: 'unlock' is blank`);
-  if (checkScalar(where, e, 'level', 'int') && (e.level < 0 || e.level > MAX_LEVEL))
-    err(`${where}: level ${e.level} out of range 0..${MAX_LEVEL}`);
+
+  // No invented levels. Five sections of the source guide state no level at all, and the
+  // original import silently filled them with the previous expansion's level cap — 13 entries
+  // at a number no source had ever said. So a level may only be present when the entry records
+  // where it came from, and an entry with no level must say what it is instead: it is not
+  // level 0, it has no level requirement, and it belongs in its own section rather than sorted
+  // among level-1 content.
+  if ('level' in e && e.level !== null) {
+    if (checkScalar(where, e, 'level', 'int') && (e.level < 1 || e.level > MAX_LEVEL))
+      err(`${where}: level ${e.level} out of range 1..${MAX_LEVEL}`);
+    if (typeof e.levelSource !== 'string' || e.levelSource.length === 0)
+      err(`${where}: has a level but does not record what grounds it in 'levelSource'`);
+    if ('category' in e)
+      err(`${where}: has a level, so 'category' (which is for level-less entries) does not apply`);
+  } else {
+    if ('levelSource' in e) err(`${where}: has no level, so 'levelSource' says nothing`);
+    if (typeof e.category !== 'string' || e.category.length < 4)
+      err(`${where}: has no level, so it needs a 'category' naming what it is`);
+  }
   if (!types.has(e.type)) err(`${where}: unknown type '${e.type}'`);
   if (e.questKind !== null && !questKinds.has(e.questKind)) err(`${where}: unknown questKind '${e.questKind}'`);
   checkScalar(where, e, 'quest', 'string', true);
@@ -153,7 +170,9 @@ for (const [i, e] of d.unlocks.entries()) {
 }
 for (const [row, idx] of byQuestRow) {
   if (idx.length < 2) continue;
-  const levels = idx.map((i) => d.unlocks[i].level);
+  // A level-less entry states no level, so it cannot disagree with one.
+  const levels = idx.map((i) => d.unlocks[i].level).filter((l) => typeof l === 'number');
+  if (levels.length < 2) continue;
   if (Math.max(...levels) - Math.min(...levels) <= LEVEL_AGREEMENT_SLACK) continue;
   for (const i of idx) {
     const e = d.unlocks[i];
