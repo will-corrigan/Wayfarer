@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.7.0](https://github.com/will-corrigan/Wayfarer/compare/v0.6.0...v0.7.0) (2026-08-23)
+
+
+### New
+
+* **readout:** open settings from a cog on the readout ([70c4a0c](https://github.com/will-corrigan/Wayfarer/commit/70c4a0cd721f2ae6d37d45054f2ea00f70bb7dbd))
+* **readout:** say when the target is above or below you ([c15a336](https://github.com/will-corrigan/Wayfarer/commit/c15a3365f50939a7994334e2c1a99cba820eb4f3))
+
+
+### Fixed
+
+* correct the trophy-mount quest requirements ([c72ec0a](https://github.com/will-corrigan/Wayfarer/commit/c72ec0a902998f1f059b42d6de310f0dc07f047e))
+* place the readout, and say when a target is above you ([fe87d06](https://github.com/will-corrigan/Wayfarer/commit/fe87d067cabb4d7575b862ee039fd70fbf95f95d))
+* **readout:** rebuild the collision list when the set of hit boxes changes ([ac2f1c6](https://github.com/will-corrigan/Wayfarer/commit/ac2f1c6c50dd79baa01841946660ee10aa4ee206))
+* **settings:** show the readout's real position on the sliders ([fa912de](https://github.com/will-corrigan/Wayfarer/commit/fa912de71aaf6b72f788afd3b36d46e72e3711a7))
+* **settings:** stop the tab stretching its controls back over the scroll bar ([17ac047](https://github.com/will-corrigan/Wayfarer/commit/17ac0473f144a6e635026c62c391f381c7053055))
+* **ui:** call the unlocks tab "Unlocks" ([ccf7e73](https://github.com/will-corrigan/Wayfarer/commit/ccf7e73ffb790e5eaa2e5da8807c73bb5720d42f))
+* **unlocks:** correct trophy-mount quest requirements ([4eff92c](https://github.com/will-corrigan/Wayfarer/commit/4eff92c150e978b3a8409cfb973a3abf493cb848))
+
 ## [0.6.0](https://github.com/will-corrigan/Wayfarer/compare/v0.5.0...v0.6.0) (2026-08-23)
 
 
