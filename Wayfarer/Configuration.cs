@@ -33,9 +33,9 @@ public enum HubPositionPreset
 /// they change it.</summary>
 public sealed class Configuration : IPluginConfiguration
 {
-    /// <summary>The version this build writes. Bumped to 3 for the "Checklist" → "Unlocks"
-    /// rename — see <see cref="Migrate"/>.</summary>
-    public const int CurrentVersion = 3;
+    /// <summary>The version this build writes. Bumped to 4 for the leaner first-run defaults — see
+    /// <see cref="Migrate"/>.</summary>
+    public const int CurrentVersion = 4;
 
     /// <summary>What <see cref="Modules.UnlockChecklistModule"/> was called before the rename, and
     /// therefore the key its saved enabled flag is under in an existing config.</summary>
@@ -73,7 +73,22 @@ public sealed class Configuration : IPluginConfiguration
     /// <para>Version 3 renames the unlocks feature from "Unlock Checklist" to "Unlocks", because
     /// the player could not tell what a checklist was. <see cref="ModuleEnabled"/> is keyed by that
     /// name, so a player who had deliberately switched the feature off would silently have had it
-    /// switched back on. The flag moves with the name.</para></summary>
+    /// switched back on. The flag moves with the name.</para>
+    ///
+    /// <para><b>Version 4 makes a fresh install leaner, and deliberately copies nothing.</b> Four
+    /// shipped defaults moved from on to off — the map flag, the nameplate markers, the
+    /// nearby-unlock lines and the hunting summary — and this step is the guarantee that only NEW
+    /// installs get them. It has nothing to copy because the config file already holds this player's
+    /// own answer for each of the four: Dalamud writes every public property on every save, all four
+    /// properties are older than the <see cref="Version"/> field itself, and deserialisation has
+    /// therefore already put the player's value back before this method is reached. Only
+    /// <c>new Configuration()</c> — which is exactly and only what a first run gets — ever sees a
+    /// declared default at all.</para>
+    ///
+    /// <para>Which is also why the step is a version stamp and NOT a re-assertion of the old values.
+    /// Setting them back to true here would be the bug it looks like a fix for: by this point the
+    /// four properties hold what the player chose, so "restoring" them would switch the markers back
+    /// on for everybody who had gone into the settings and turned them off.</para></summary>
     public bool Migrate()
     {
         if (Version >= CurrentVersion)
@@ -91,6 +106,10 @@ public sealed class Configuration : IPluginConfiguration
             ModuleEnabled[Modules.UnlockChecklistModule.FeatureName] = unlocksEnabled;
         }
 
+        // Version 4 has no step of its own, on purpose. See the note above: the file this object was
+        // loaded from already carries the player's own value for every default that moved, so the
+        // only thing version 4 has to do is record that the shipped defaults are no longer what an
+        // old file would have been written against.
         Version = CurrentVersion;
         return true;
     }
@@ -110,24 +129,30 @@ public sealed class GuidanceConfig
     /// unlock route, a hunt) is engaged, moving it as the plan advances — the map pin, minimap pin
     /// and compass marker the game itself uses.
     ///
-    /// On by default because it is what makes a chained route usable at a glance, and safe to
-    /// default on only because of the guarantee around it: the game stores exactly ONE flag and
-    /// setting it destroys the player's, so Wayfarer snapshots theirs before taking it and puts it
-    /// back the moment the route or hunt ends. Turn this off and nothing ever writes the
-    /// flag.</summary>
-    public bool MarkObjectiveWithMapFlag { get; set; } = true;
+    /// <b>Off for a new install.</b> It is genuinely useful once a player is running chained routes,
+    /// and it is safe — the game stores exactly ONE flag and setting it destroys the player's, so
+    /// Wayfarer snapshots theirs before taking it and puts it back the moment the route or hunt ends
+    /// — but it writes three marks onto surfaces the player did not ask Wayfarer to touch, and
+    /// someone meeting the plugin for the first time did not ask for their own flag to move. Turn it
+    /// on and it is exactly as it was; leave it off and nothing ever writes the flag. See
+    /// <see cref="Configuration.Migrate"/> for why nobody who already has it on loses it.</summary>
+    public bool MarkObjectiveWithMapFlag { get; set; }
 
     /// <summary>Puts the game's own quest-marker icon over the heads of hunting-log targets and
     /// unlock quest givers, through the same nameplate channel the game uses for quest availability.
     ///
-    /// <b>On by default.</b> This is the strongest form of "it should be obvious there is something
-    /// near me I can grab" — a marker over the giver's head is read without opening anything, in the
-    /// place the player already looks. Three guarantees are what make defaulting it on safe: the
-    /// icon id is validated against the game's own texture table before it is ever written (a bad
-    /// value degrades to no marker), a plate the game has already marked is never overwritten, and
-    /// the match set is limited to the current zone's targets. See <see cref="NamePlateMarkerIcon"/>
-    /// for the companion escape hatch.</summary>
-    public bool MarkTargetsOnNameplates { get; set; } = true;
+    /// <b>Off for a new install.</b> This is the strongest form of "it should be obvious there is
+    /// something near me I can grab" — a marker over the giver's head is read without opening
+    /// anything, in the place the player already looks — and that strength is exactly why it is not
+    /// the first thing a player should meet. It puts the plugin's marks into the world itself, on
+    /// characters the game did not mark, and someone who has not decided they want that has not
+    /// asked for it. Three guarantees still make it safe once it is switched on: the icon id is
+    /// validated against the game's own texture table before it is ever written (a bad value
+    /// degrades to no marker), a plate the game has already marked is never overwritten, and the
+    /// match set is limited to the current zone's targets. See <see cref="NamePlateMarkerIcon"/> for
+    /// the companion escape hatch, and <see cref="Configuration.Migrate"/> for why nobody who
+    /// already has it on loses it.</summary>
+    public bool MarkTargetsOnNameplates { get; set; }
 
     /// <summary>Which icon the nameplate marker uses. A setting rather than a constant because
     /// whether an icon "looks right" above a monster is the one thing that cannot be settled
@@ -252,16 +277,28 @@ public sealed class QuestHelperConfig
 public sealed class UnlockChecklistConfig
 {
     /// <summary>Shows the nearest few available unlocks in this zone, with live distances, as muted
-    /// lines under the readout — the glance that makes opening the checklist optional. On by
-    /// default; absent regardless when the module itself is disabled.</summary>
-    public bool ShowOnWidget { get; set; } = true;
+    /// lines under the readout — the glance that makes opening the checklist optional.
+    ///
+    /// <para><b>Off for a new install</b>, and absent regardless when the module itself is disabled.
+    /// It is up to three extra lines on a readout whose whole appeal is that it is short, and it
+    /// answers a question ("what else is around here?") the player has not asked while they are
+    /// being guided somewhere else. The unlocks are not switched off with it — they are still the
+    /// window's own tab, which is what the plugin list's main button opens. See
+    /// <see cref="Configuration.Migrate"/> for why nobody who already has it on loses it.</para></summary>
+    public bool ShowOnWidget { get; set; }
 }
 
 /// <summary>Settings for <see cref="Modules.HuntingLogModule"/>.</summary>
 public sealed class HuntingLogConfig
 {
     /// <summary>Shows the current hunting-log target and its kill count as a muted line under the
-    /// readout, for when a hunt is running but is not what the arrow is following. On by default;
-    /// absent regardless when the module itself is disabled.</summary>
-    public bool ShowOnWidget { get; set; } = true;
+    /// readout, for when a hunt is running but is not what the arrow is following.
+    ///
+    /// <para><b>Off for a new install</b>, and absent regardless when the module itself is disabled.
+    /// It is a second thing on a readout that is about one thing, and it is only ever about a hunt
+    /// the player is not currently being guided through — which is exactly the state somebody who
+    /// has just installed the plugin is not in. The hunting log is not switched off with it. See
+    /// <see cref="Configuration.Migrate"/> for why nobody who already has it on loses
+    /// it.</para></summary>
+    public bool ShowOnWidget { get; set; }
 }

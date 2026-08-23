@@ -73,9 +73,12 @@ public static class ReadoutComposer
 
     private static void AddObjective(List<ReadoutLine> lines, NavigationState state)
     {
+        // Idle is still a subject: "No quest followed" is precisely the line a player wants the
+        // switcher beside, and it is the only line the idle readout has.
         if (string.Equals(state.Mode, NavigationState.Modes.Idle, StringComparison.Ordinal))
         {
-            lines.Add(new ReadoutLine("No quest followed", ReadoutEmphasis.Muted));
+            lines.Add(new ReadoutLine(
+                "No quest followed", ReadoutEmphasis.Muted, Separated: false, ReadoutLineAction.None, Subject: true));
             return;
         }
 
@@ -85,7 +88,11 @@ public static class ReadoutComposer
             headline = $"{headline}  {progress}";
         }
 
-        lines.Add(new ReadoutLine(headline, ReadoutEmphasis.Primary));
+        // Marked as the door to the journal only when there is a quest row behind the name. A hunt
+        // and a bare "Current objective" have no journal entry, and marking them would put a hand
+        // cursor over words that then did nothing.
+        var action = state.QuestId is > 0 ? ReadoutLineAction.OpenJournal : ReadoutLineAction.None;
+        lines.Add(new ReadoutLine(headline, ReadoutEmphasis.Primary, Separated: false, action, Subject: true));
 
         if (state.StepLabel is { Length: > 0 } step
             && !string.Equals(step, state.QuestName, StringComparison.OrdinalIgnoreCase))

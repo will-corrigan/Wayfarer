@@ -201,6 +201,7 @@ internal sealed class GuidanceOverlay(
                 Teleport,
                 onSettingsClicked,
                 onFollowClicked,
+                OpenJournal,
                 textures,
                 framework,
                 log,
@@ -280,6 +281,18 @@ internal sealed class GuidanceOverlay(
         if (feed.Navigator.Current.AetheryteId is { } aetheryteId)
         {
             TeleportAction.Execute(aetheryteId, cfg, clientState, log);
+        }
+    }
+
+    /// <summary>Opens the game's own Journal at whatever is being followed right now. Read off the
+    /// live snapshot at the moment of the click rather than captured when the readout was drawn,
+    /// exactly as the teleport above is: the readout is a view of that snapshot and the snapshot is
+    /// the only thing that knows which quest the name belongs to.</summary>
+    private void OpenJournal()
+    {
+        if (feed.Navigator.Current.QuestId is { } questId)
+        {
+            QuestJournalAction.Execute(questId);
         }
     }
 

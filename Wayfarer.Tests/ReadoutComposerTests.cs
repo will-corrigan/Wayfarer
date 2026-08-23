@@ -377,7 +377,89 @@ public class ReadoutComposerTests
         Assert.Equal(withoutArea.TargetZ, explicitlyNotApplicable.TargetZ);
     }
 
-    private static NavigationState SearchAreaState() => SameZone() with { TargetRadiusYalms = 20f };
+    [Fact]
+    public void The_line_that_names_what_is_followed_is_marked_as_the_subject()
+    {
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 80f });
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal("The Ul'dahn Envoy", subject.Text);
+    }
+
+    [Fact]
+    public void The_subject_is_never_the_heading_or_the_distance()
+    {
+        // Both are near neighbours that could be mistaken for it — the heading is the first line,
+        // and the distance carries the same Primary weight the name does.
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 80f });
+
+        Assert.DoesNotContain(content.Lines, line => line.Subject && line.Emphasis == ReadoutEmphasis.Heading);
+        Assert.DoesNotContain(
+            content.Lines,
+            line => line.Subject && line.Text.Contains("yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void An_idle_readout_still_has_a_subject_to_hang_the_switcher_off()
+    {
+        // "No quest followed" is exactly the moment a player wants to choose one, so the line that
+        // says it has to be a subject too — otherwise the one readout that most needs a switcher is
+        // the one readout without one.
+        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal("No quest followed", subject.Text);
+    }
+
+    [Fact]
+    public void The_quest_name_is_marked_as_the_door_to_the_journal()
+    {
+        var state = SameZone() with { QuestId = 65_600 };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 80f });
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal(ReadoutLineAction.OpenJournal, subject.Action);
+    }
+
+    [Fact]
+    public void A_name_with_no_quest_behind_it_offers_no_journal()
+    {
+        // A hunt has a name worth reading and no journal entry to open. Marking it would put a hand
+        // cursor over words that then politely did nothing.
+        var content = ReadoutComposer.Compose(Inputs(Engaged("Hunting Log · Gladiator")));
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal(ReadoutLineAction.None, subject.Action);
+    }
+
+    [Fact]
+    public void The_journal_is_never_offered_on_a_line_that_is_not_the_name()
+    {
+        var state = SameZone() with { QuestId = 65_600 };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 80f });
+
+        Assert.All(
+            content.Lines.Where(line => line.Action == ReadoutLineAction.OpenJournal),
+            line => Assert.True(line.Subject));
+    }
+
+    [Fact]
+    public void There_is_never_more_than_one_subject()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Unlock route"),
+            HuntingSummary = "Ornery Karakul 2/3",
+            NearbyUnlocks = ["Chocobo racing"],
+            DistanceYalms = 120f,
+        });
+
+        Assert.Single(content.Lines, line => line.Subject);
+    }
 
     private static NavigationState Engaged(string sourceLabel) => new()
     {
@@ -400,4 +482,6 @@ public class ReadoutComposerTests
         TargetY = 30f,
         TargetZ = -40f,
     };
+
+    private static NavigationState SearchAreaState() => SameZone() with { TargetRadiusYalms = 20f };
 }

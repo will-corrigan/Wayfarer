@@ -132,7 +132,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "guidance.mapFlag",
             Label = "Mark the Target on the Map",
-            Description = "Restores your own flag when the route ends.",
+            Description = "Off to start with. Restores your own flag when the route ends.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkObjectiveWithMapFlag,
             WriteFlag = Write(value => config.Guidance.MarkObjectiveWithMapFlag = value),
@@ -141,7 +141,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "guidance.namePlates",
             Label = "Mark Targets Above Their Heads",
-            Description = "Uses the game's own quest marker. Never replaces one the game put there.",
+            Description = "Off to start with. Uses the game's own quest marker, and never replaces one the game put there.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkTargetsOnNameplates,
             WriteFlag = Write(value => config.Guidance.MarkTargetsOnNameplates = value),
@@ -296,6 +296,8 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.unlocks",
             Label = "Show Nearby Unlocks",
+            Description = "Adds the nearest few, with distances, as extra lines under the readout. Off to start "
+                + "with; the unlocks tab lists them all either way.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.UnlockChecklist.ShowOnWidget,
             WriteFlag = Write(value => config.UnlockChecklist.ShowOnWidget = value),
@@ -304,6 +306,8 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.hunting",
             Label = "Show Hunting Progress",
+            Description = "Adds a line about a hunt the arrow is not currently following. Off to start with; the "
+                + "hunting tab has the whole log.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.HuntingLog.ShowOnWidget,
             WriteFlag = Write(value => config.HuntingLog.ShowOnWidget = value),
