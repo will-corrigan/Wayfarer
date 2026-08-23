@@ -141,7 +141,7 @@ internal sealed class SettingsCatalog(Configuration config, ModuleRegistry modul
         {
             Id = "questHelper.logDiagnostics",
             Label = "Write readout diagnostics to the log",
-            Kind = SettingKind.Flag,
+            Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.LogDiagnostics,
             WriteFlag = Write(value => config.QuestHelper.LogDiagnostics = value),
         },

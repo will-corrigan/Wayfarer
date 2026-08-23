@@ -57,6 +57,8 @@ public sealed class Plugin : IDalamudPlugin
     /// tab all compose their own presentation from, so no two of them can say different things.</summary>
     private ReadoutFeed feed = null!;
 
+    private bool loggedHubFallback;
+
     public Plugin(
         IDalamudPluginInterface pluginInterface,
         IFramework framework,
@@ -125,7 +127,10 @@ public sealed class Plugin : IDalamudPlugin
         windows.AddWindow(configWindow);
 
         SubscribeAndStart(pluginInterface);
-        log.Information("Wayfarer loaded");
+
+        // The version belongs in this line: it is the first question asked of every pasted log,
+        // and the plugin list's answer is whatever is installed now, not what was running then.
+        log.Information($"Wayfarer {typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "?"} loaded.");
     }
 
     public void Dispose()
@@ -236,7 +241,18 @@ public sealed class Plugin : IDalamudPlugin
         }
         catch (Exception ex)
         {
-            log.Error(ex, "Plugin: the native Wayfarer window failed to open — falling back to the ImGui settings.");
+            // Once: this is reachable from the plugin list, the cog and every command, and the
+            // reason it would not open does not change between attempts.
+            if (!loggedHubFallback)
+            {
+                loggedHubFallback = true;
+                const string message =
+                    "Wayfarer: the game-styled Wayfarer window would not open, so the plugin-drawn settings "
+                    + "window is being used instead. Nothing is lost; it is best driven with a mouse. "
+                    + "Reported once.";
+                log.Warning(ex, message);
+            }
+
             fallback();
         }
     }

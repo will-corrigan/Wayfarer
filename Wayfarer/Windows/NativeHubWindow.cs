@@ -93,6 +93,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// has to be able to show that list on confirm instead.</summary>
     private readonly HashSet<string> expandedRequirements = new(StringComparer.Ordinal);
 
+    /// <summary>Tabs already reported as having more controls than their reserved index block
+    /// holds. The list rebuilds whenever its data changes; whether a tab's controls fit is a
+    /// property of that tab's layout, not of the rebuild, so it is worth saying once and no
+    /// more.</summary>
+    private readonly HashSet<HubTab> crowdedTabsLogged = [];
+
     private int groupMode;
     private HubTab pendingTab = HubTab.Checklist;
     private HubTab currentTab = HubTab.Checklist;
@@ -185,7 +191,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "NativeHubWindow: dispose on the framework thread failed or timed out.");
+            const string message =
+                "Wayfarer hub: disposing the window on the framework thread failed or timed out, so its nodes "
+                + "are leaked until the game is restarted.";
+            log.Warning(ex, message);
         }
     }
 
@@ -265,6 +274,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         framework.Update -= OnFrameworkUpdate;
 
+        // One line for the whole close, not one per node: whatever breaks a node's dispose breaks
+        // every sibling's too, and this window owns hundreds of them.
+        Exception? firstDisposeFailure = null;
+        var disposeFailures = 0;
         for (var i = ownedNodes.Count - 1; i >= 0; i--)
         {
             try
@@ -273,8 +286,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             }
             catch (Exception ex)
             {
-                log.Warning(ex, "Wayfarer hub: disposing a node while closing the window failed.");
+                disposeFailures++;
+                firstDisposeFailure ??= ex;
             }
+        }
+
+        if (firstDisposeFailure is not null)
+        {
+            var message =
+                $"Wayfarer hub: {disposeFailures} of {ownedNodes.Count} nodes would not dispose while closing "
+                + "the window, so those are leaked until the plugin is reloaded. The first failure is attached.";
+            log.Warning(firstDisposeFailure, message);
         }
 
         ownedNodes.Clear();
@@ -987,26 +1009,31 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private int PopulatedRowCount() =>
         list is null ? 0 : Math.Min(list.OptionsList.Count, list.OptionNodes.Count);
 
-    // Verbose, once per rebuild: if a report ever comes back as "the cursor got stuck", the index
-    // map at that moment is already in the log and nobody has to reproduce it.
+    // The index map is developer detail and the list rebuilds every time its data changes, so the
+    // dump itself is behind the diagnostics setting; the two warnings below are not, because they
+    // both mean a tab is unreachable with a controller.
     private void LogGraph(NodeBase? controls, int regionEnd, int populated)
     {
         var controlCount = controls is null ? 0 : NavigationWalker.CountTargets(controls);
-        log.Verbose(
-            $"Wayfarer nav [{currentTab}]: tabs {HubNavPlan.TabBar}..{HubNavPlan.TabBarLast}, " +
-            $"controls {HubNavPlan.Region}..{Math.Max(regionEnd - 1, HubNavPlan.Region)} ({controlCount}), " +
-            $"list {HubNavPlan.List} rows {populated}/{list?.OptionNodes.Count ?? 0} of {rows.Count}.");
+        if (config.QuestHelper.LogDiagnostics)
+        {
+            log.Verbose(
+                $"Wayfarer nav [{currentTab}]: tabs {HubNavPlan.TabBar}..{HubNavPlan.TabBarLast}, " +
+                $"controls {HubNavPlan.Region}..{Math.Max(regionEnd - 1, HubNavPlan.Region)} ({controlCount}), " +
+                $"list {HubNavPlan.List} rows {populated}/{list?.OptionNodes.Count ?? 0} of {rows.Count}.");
+        }
 
         // The walker hands back its start index unchanged when it refuses a region that would not
         // fit. That is the safe outcome, but it means every control on this tab is unreachable with
         // a controller, so it must not be a silent one.
-        if (controlCount > 0 && regionEnd == HubNavPlan.Region)
+        if (controlCount > 0 && regionEnd == HubNavPlan.Region && crowdedTabsLogged.Add(currentTab))
         {
             log.Warning(
                 $"Wayfarer nav [{currentTab}]: {controlCount} controls do not fit the " +
                 $"{HubNavPlan.RegionCapacity} indices reserved from {HubNavPlan.Region}, so this tab's " +
-                "controls are not reachable with a controller. Raise HubNavPlan.RegionCapacity (and the " +
-                "list block with it) or split the tab.");
+                "controls cannot be reached with a controller — use a mouse for them, or reach them from " +
+                "the game's own menus. Raise HubNavPlan.RegionCapacity (and the list block with it) or " +
+                "split the tab.");
         }
 
         var pool = list?.OptionNodes.Count ?? 0;

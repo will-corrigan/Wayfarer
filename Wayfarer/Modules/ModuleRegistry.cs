@@ -54,7 +54,10 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
         }
         catch (Exception ex)
         {
-            log.Error(ex, $"Module '{module.Name}' threw while {(enabled ? "enabling" : "disabling")}; disabling it.");
+            var message =
+                $"Wayfarer: the {module.Name} feature threw while {(enabled ? "starting" : "stopping")}, so it "
+                + "has been switched off. Everything else keeps running; turn it back on in Settings to retry.";
+            log.Error(ex, message);
             if (enabled)
             {
                 try
@@ -92,7 +95,10 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
             }
             catch (Exception ex)
             {
-                log.Error(ex, $"Module '{modules[i].Name}' threw while disposing; continuing with the remaining modules.");
+                var message =
+                    $"Wayfarer: the {modules[i].Name} feature threw while shutting down, so whatever it owns may "
+                    + "be leaked until the game is restarted. The remaining features are still being shut down.";
+                log.Error(ex, message);
             }
         }
     }

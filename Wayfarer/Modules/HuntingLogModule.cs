@@ -22,6 +22,8 @@ internal sealed class HuntingLogModule(
     IGuidanceArbiter arbiter,
     HuntingSource huntingSource) : IModule
 {
+    private bool loggedNativeFallback;
+
     public string Name => "Hunting Log";
 
     public string Description => "Tracks your current class/job hunting log (or the Grand Company Elite logs once unlocked) and routes you to the remaining targets.";
@@ -50,7 +52,15 @@ internal sealed class HuntingLogModule(
         }
         catch (Exception ex)
         {
-            log.Error(ex, "HuntingLogModule: the native window failed to open — falling back to the ImGui window.");
+            // Once, for the same reason as UnlockChecklistModule.OpenChecklist.
+            if (!loggedNativeFallback)
+            {
+                loggedNativeFallback = true;
+                const string message =
+                    "Wayfarer: the game-styled hunting window would not open, so the plugin-drawn one is being "
+                    + "used instead. Hunting still works; the window is best driven with a mouse. Reported once.";
+                log.Warning(ex, message);
+            }
         }
 
         CloseNativeWindow();

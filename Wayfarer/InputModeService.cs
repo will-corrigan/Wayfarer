@@ -36,6 +36,11 @@ internal sealed class InputModeService
     private readonly IPluginLog log;
     private readonly InputMode seed;
 
+    // One entry per option that has already been complained about. OnFrame reads two options every
+    // ImGui frame, so an option that throws once throws sixty times a second: without this the log
+    // would be nothing but this one line.
+    private readonly HashSet<SystemConfigOption> unreadableOptions = [];
+
     private DateTimeOffset? lastGamepadActivity;
     private DateTimeOffset? lastMouseActivity;
 
@@ -131,7 +136,15 @@ internal sealed class InputModeService
         }
         catch (Exception ex)
         {
-            log.Warning(ex, $"InputModeService: failed reading {option}");
+            if (unreadableOptions.Add(option))
+            {
+                var message =
+                    $"Wayfarer input: the game's {option} setting could not be read, so Wayfarer is assuming " +
+                    $"{defaultValue} for the rest of the session. Controller detection may be wrong; set Input " +
+                    "explicitly in Wayfarer's settings if it is. Not reported again.";
+                log.Warning(ex, message);
+            }
+
             return defaultValue;
         }
     }

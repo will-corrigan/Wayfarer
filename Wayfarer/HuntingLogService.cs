@@ -34,6 +34,10 @@ internal sealed unsafe class HuntingLogService
     /// exists.</summary>
     private (uint ClassJobId, uint Territory, int Signature)? lastChecked;
 
+    // A recompute runs on every kill, job swap and zone change, so a repeatable fault here would
+    // write a line for each. The first one carries the whole story; the rest are noise.
+    private bool recomputeFailureLogged;
+
     private Dictionary<uint, (string Name, uint ContentFinderConditionId)>? dutyByTerritory;
 
     private HuntingDataset? dataset;
@@ -62,10 +66,17 @@ internal sealed unsafe class HuntingLogService
         {
             Load();
             Loaded = true;
+
+            // Same reasoning as the unlock catalogue: one count, once, so a "my hunting log is
+            // empty" report arrives with the answer already in it.
+            log.Information($"Wayfarer hunting: dataset loaded, {dataset?.Logs.Count ?? 0} logs.");
         }
         catch (Exception ex)
         {
-            log.Error(ex, "HuntingLogService: dataset load failed — hunting log module disabled");
+            const string message =
+                "Wayfarer hunting: the hunting dataset could not be read, so hunting mode is off for this "
+                + "session — the readout and the window's Hunting tab will show nothing.";
+            log.Error(ex, message);
         }
     }
 
@@ -257,7 +268,14 @@ internal sealed unsafe class HuntingLogService
         }
         catch (Exception ex)
         {
-            log.Error(ex, "HuntingLogService: recompute failed");
+            if (!recomputeFailureLogged)
+            {
+                recomputeFailureLogged = true;
+                const string message =
+                    "Wayfarer hunting: refreshing hunting progress failed, so the remaining-target list and "
+                    + "any running hunt will be stale until it recomputes successfully. Reported once.";
+                log.Error(ex, message);
+            }
         }
     }
 

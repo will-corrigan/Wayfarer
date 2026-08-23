@@ -33,6 +33,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     /// construction/hot-reload, so the very first tick with a player present always recomputes.</summary>
     private (int Level, uint Territory)? lastChecked;
 
+    // A recompute runs on every zone change, level-up and pickup, so a repeatable fault here would
+    // write a line for each. The first one carries the whole story; the rest are noise.
+    private bool recomputeFailureLogged;
+
     public UnlockService(
         IPluginLog log,
         IObjectTable objects,
@@ -49,6 +53,11 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         {
             Load();
             Loaded = true;
+
+            // A count, once, at load. It is the first thing worth knowing from a pasted log: an
+            // entry that "should be there" and a catalogue that is half the expected size are the
+            // same report, and this line tells them apart without any further questions.
+            log.Information($"Wayfarer unlocks: catalogue loaded, {entries.Count} entries.");
         }
         catch (Exception ex)
         {
@@ -56,7 +65,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             // checklist reads as "you have done everything" — the same lie in a different shape.
             // Every surface that would have shown entries shows this instead.
             LoadError = ex.Message;
-            log.Error(ex, "UnlockService: dataset load failed — unlocks feature disabled");
+            const string message =
+                "Wayfarer unlocks: the unlock catalogue could not be read, so the checklist is empty and "
+                + "says so rather than pretending there is nothing left to do.";
+            log.Error(ex, message);
         }
     }
 
@@ -297,7 +309,14 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         }
         catch (Exception ex)
         {
-            log.Error(ex, "UnlockService: recompute failed");
+            if (!recomputeFailureLogged)
+            {
+                recomputeFailureLogged = true;
+                const string message =
+                    "Wayfarer unlocks: refreshing the checklist failed, so it will keep showing whatever it "
+                    + "last worked out until something makes it recompute successfully. Reported once.";
+                log.Error(ex, message);
+            }
         }
     }
 

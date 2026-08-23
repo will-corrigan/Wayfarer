@@ -65,7 +65,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "Wayfarer readout: disposing the clickable readout on the framework thread failed or timed out.");
+            const string message =
+                "Wayfarer readout: disposing the clickable readout on the framework thread failed or timed out, "
+                + "so a stray readout may remain on screen until the game is restarted.";
+            log.Warning(ex, message);
         }
     }
 
@@ -121,7 +124,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "Wayfarer readout: disposing the readout body while closing failed.");
+            const string message =
+                "Wayfarer readout: disposing the readout body while closing failed, so its text nodes are leaked "
+                + "until the plugin is reloaded. The readout itself keeps working.";
+            log.Warning(ex, message);
         }
 
         body = null;

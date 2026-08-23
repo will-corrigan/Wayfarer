@@ -200,12 +200,12 @@ public sealed class GuidanceArbiter(Action<string, Exception>? logError = null) 
 
         if (previous is not null && previousOwner is not null)
         {
-            SafeNotify(previousOwner, s => s.OnObjectiveDeactivated(previous), "deactivate failed");
+            SafeNotify(previousOwner, s => s.OnObjectiveDeactivated(previous), "deactivation");
         }
 
         if (objective is not null && owner is not null)
         {
-            SafeNotify(owner, s => s.OnObjectiveActivated(objective), "activate failed");
+            SafeNotify(owner, s => s.OnObjectiveActivated(objective), "activation");
         }
 
         OnObjectiveChanged?.Invoke(objective);
@@ -227,7 +227,11 @@ public sealed class GuidanceArbiter(Action<string, Exception>? logError = null) 
     {
         if (loggedFailures.Add($"{sourceId}:{what}"))
         {
-            logError?.Invoke($"Guidance source '{sourceId}': {what}", ex);
+            logError?.Invoke(
+                $"Wayfarer guidance: the '{sourceId}' source threw on {what}, so it may not have noticed that "
+                + "the objective changed and its part of the readout can be stale until something else "
+                + "changes it. Every other source is unaffected. Reported once per source.",
+                ex);
         }
     }
 }

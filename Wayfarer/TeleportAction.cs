@@ -20,7 +20,9 @@ internal static unsafe class TeleportAction
         var ui = UIState.Instance();
         if (ui == null || !ui->IsAetheryteUnlocked(aetheryteId))
         {
-            log.Warning($"Teleport refused: aetheryte {aetheryteId} is not attuned");
+            log.Warning(
+                $"Wayfarer: no teleport was cast — aetheryte {aetheryteId} is not attuned, so the route still "
+                + "stands but you will have to travel to it yourself.");
             return;
         }
 
@@ -33,7 +35,9 @@ internal static unsafe class TeleportAction
         telepo->UpdateAetheryteList();
         if (!telepo->Teleport(aetheryteId, 0))
         {
-            log.Warning($"Teleport to aetheryte {aetheryteId} was rejected by the game");
+            log.Warning(
+                $"Wayfarer: the game rejected the teleport to aetheryte {aetheryteId} — nothing was cast, and "
+                + "the usual reasons (not enough gil, in combat, in a duty) are the ones to check first.");
         }
     }
 }
