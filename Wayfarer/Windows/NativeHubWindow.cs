@@ -44,6 +44,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private const float TabBarHeight = 26f;
     private const float TabBarGap = 6f;
+
+    /// <summary>The Following strip, above the tab bar and on screen whatever tab is open.
+    ///
+    /// <para>Mirrors the vanilla quest tracker: a persistent line naming what you are on, sitting
+    /// above everything else. The player asked "how do I toggle between MSQ and another quest or
+    /// unlocks?" while the tab that does it was three tabs from the left and called Quests — the
+    /// feature worked and the affordance was invisible. A tab is a <i>place</i>, not a state: it can
+    /// say where to go to change something, but it cannot say what the current value is, and the
+    /// question was both halves at once.</para></summary>
+    private const float StripHeight = 26f;
+
+    private const float StripGap = 4f;
     private const float RowHeight = 24f;
     private const float ChecklistControlsHeight = 92f;
     private const float HuntingHeaderHeight = 28f;
@@ -107,8 +119,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// set the requirement rows used: the pane says what an entry needs now, so the only thing left
     /// that has to fold is the pile of entries the plugin cannot vouch for at all.</summary>
     private bool unverifiedExpanded;
-    private HubTab pendingTab = HubTab.Checklist;
-    private HubTab currentTab = HubTab.Checklist;
+    private HubTab pendingTab = HubTab.Quests;
+    private HubTab currentTab = HubTab.Quests;
     private Vector2 tabContentStart;
     private Vector2 tabContentSize;
     private int lastChecklistSignature;
@@ -140,10 +152,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private TextButtonNode? followMsqButton;
     private TextButtonNode? teleportButton;
     private TextButtonNode? dutyFinderButton;
-    private TextButtonNode? questStopButton;
 
-    private TextButtonNode? stopButton;
-    private TextButtonNode? huntingStopButton;
+    private TextNode? stripLabelNode;
+    private AlignedHorizontalListNode? stripControls;
+    private TextButtonNode? stripStopButton;
+    private int lastStripSignature = int.MinValue;
     private ScrollingNode<VerticalListNode>? settingsArea;
     private CheckboxNode? firstSettingControl;
     private TextNode? buttonHintNode;
@@ -258,14 +271,19 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Position = contentStart,
             Size = new Vector2(contentSize.X, TabBarHeight),
         };
-        hubTabs.AddTab("Unlocks", () => SelectTab(HubTab.Checklist));
-        hubTabs.AddTab("Hunting Log", () => SelectTab(HubTab.Hunting));
-        hubTabs.AddTab("Quests", () => SelectTab(HubTab.Quests));
-        hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
+
+        // Following first, and the tab the window opens on: the default loop is main-scenario
+        // autopilot, so the tab that owns it should be the one you land on. The enum keeps its old
+        // member names; this is what is on screen.
+        hubTabs.AddTab(TabLabel(HubTab.Quests), () => SelectTab(HubTab.Quests));
+        hubTabs.AddTab(TabLabel(HubTab.Checklist), () => SelectTab(HubTab.Checklist));
+        hubTabs.AddTab(TabLabel(HubTab.Hunting), () => SelectTab(HubTab.Hunting));
+        hubTabs.AddTab(TabLabel(HubTab.Settings), () => SelectTab(HubTab.Settings));
         AddOwnedNode(hubTabs);
 
         MeasureTabArea();
 
+        BuildFollowingStrip();
         BuildButtonHint(contentStart, contentSize);
         BuildSharedList();
         BuildDetailPane();
@@ -334,14 +352,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         huntingControls = null;
         huntingHeaderNode = null;
         huntHereButton = null;
-        stopButton = null;
-        huntingStopButton = null;
+        stripLabelNode = null;
+        stripControls = null;
         questControls = null;
         questHeaderNode = null;
         followMsqButton = null;
         teleportButton = null;
         dutyFinderButton = null;
-        questStopButton = null;
+        stripStopButton = null;
         settingsArea = null;
         firstSettingControl = null;
         buttonHintNode = null;
@@ -421,7 +439,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // enum member keeps its name; this is what is on screen.
         HubTab.Checklist => "Unlocks",
         HubTab.Hunting => "Hunting Log",
-        HubTab.Quests => "Quests",
+
+        // "Following", not "Quests". The tab already chose what the arrow points at; nothing on it
+        // said so, and the player asked how to toggle between the main scenario and something else
+        // while looking straight at it. It is a sentence a player can finish: Wayfarer is following
+        // the main scenario / this quest / an unlock route / your hunting log.
+        HubTab.Quests => "Following",
         _ => "Settings",
     };
 
@@ -705,6 +728,93 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         AddOwnedNode(list);
     }
 
+    /// <summary>The one line that says what Wayfarer is following, above the tab bar and on screen
+    /// whatever tab is open, with the two controls that act on it.
+    ///
+    /// <para>It says it in the readout's own words — the heading line <c>ReadoutComposer</c> puts at
+    /// the top of the HUD — so the window and the world can never disagree about what is being
+    /// followed. "Following" is the single word for this concept on every surface now: the strip,
+    /// the leftmost tab, and the Wayfarer entry in the game's own right-click menu.</para></summary>
+    private void BuildFollowingStrip()
+    {
+        stripLabelNode = new TextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = 13,
+            AlignmentType = AlignmentType.Left,
+            TextFlags = TextFlags.Ellipsis,
+            TextColor = GameColors.ListText,
+            String = "Following: Main Scenario",
+        };
+        AddOwnedNode(stripLabelNode);
+
+        stripControls = new AlignedHorizontalListNode
+        {
+            Height = 24f,
+            FitToContentHeight = true,
+            ItemSpacing = 6f,
+        };
+
+        stripControls.AddNode(new TextButtonNode
+        {
+            Width = 90f,
+            Height = 22f,
+            String = "Change",
+
+            // Goes to the tab that owns the choice rather than opening a popup: a popup has to be
+            // registered into the host addon's focusable nodes before a cursor can enter it, and a
+            // popup a controller cannot reach is the trap this whole window exists to avoid.
+            OnClick = () => SelectTab(HubTab.Quests),
+        });
+
+        // The one Stop, on the same line that says what is running. There used to be three.
+        stripStopButton = new TextButtonNode
+        {
+            Width = 80f,
+            Height = 22f,
+            String = "Stop",
+            IsEnabled = false,
+            OnClick = OnStopClicked,
+        };
+        stripControls.AddNode(stripStopButton);
+        AddOwnedNode(stripControls);
+    }
+
+    /// <summary>Keeps the strip saying what the readout says. Signature-gated because assigning the
+    /// string builds a SeString and this is on screen on every tab, every tick.</summary>
+    private void RefreshFollowingStrip()
+    {
+        if (stripLabelNode is null)
+        {
+            return;
+        }
+
+        var signature = ComputeQuestSignature();
+        if (signature == lastStripSignature)
+        {
+            return;
+        }
+
+        lastStripSignature = signature;
+        stripLabelNode.String = $"Following: {GuidanceHeading()}";
+    }
+
+    /// <summary>The readout's own heading line, verbatim. <c>GuidanceProjection</c> guarantees an
+    /// engaged objective always has one, so this is the mode indicator the plugin already had —
+    /// it is being shown in a second place, not invented in one.</summary>
+    private string GuidanceHeading()
+    {
+        foreach (var line in feed.Compose(teleportOnClick: false).Lines)
+        {
+            if (line.Emphasis == ReadoutEmphasis.Heading)
+            {
+                return line.Text;
+            }
+        }
+
+        return "nothing yet";
+    }
+
     /// <summary>The pane across the bottom of the window that says what the cursor is on. Built
     /// once and shared by every list tab — one component, three call sites, so the Unlocks, Hunting
     /// Log and Following tabs cannot disagree about how a selected thing is described.</summary>
@@ -789,7 +899,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         var contentStart = ContentStartPosition;
         var contentSize = ContentSize;
-        var top = contentStart.Y + TabBarHeight + TabBarGap;
+        var top = contentStart.Y + StripHeight + StripGap + TabBarHeight + TabBarGap;
 
         tabContentStart = new Vector2(contentStart.X, top);
         tabContentSize = new Vector2(
@@ -802,11 +912,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// layout without re-selecting anything.</summary>
     private void PositionTabContent()
     {
+        var tabBarTop = tabContentStart.Y - TabBarHeight - TabBarGap;
         if (hubTabs is not null)
         {
-            hubTabs.Position = new Vector2(tabContentStart.X, tabContentStart.Y - TabBarHeight - TabBarGap);
+            hubTabs.Position = new Vector2(tabContentStart.X, tabBarTop);
             hubTabs.Size = new Vector2(tabContentSize.X, TabBarHeight);
         }
+
+        PositionFollowingStrip(tabBarTop - StripGap - StripHeight);
 
         if (buttonHintNode is not null)
         {
@@ -849,6 +962,30 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         PositionListAndPane(controlsHeight);
+    }
+
+    /// <summary>Lays the Following strip out along the top: the words on the left, at the same left
+    /// edge as everything below them, and the two controls right-aligned where a game panel puts
+    /// its own.</summary>
+    private void PositionFollowingStrip(float top)
+    {
+        if (stripControls is null)
+        {
+            return;
+        }
+
+        const float ControlsWidth = 90f + 6f + 80f;
+
+        stripControls.Position = new Vector2(tabContentStart.X + tabContentSize.X - ControlsWidth, top + 2f);
+        stripControls.Size = new Vector2(ControlsWidth, StripHeight - 2f);
+        stripControls.RecalculateLayout();
+
+        if (stripLabelNode is not null)
+        {
+            stripLabelNode.Position = new Vector2(tabContentStart.X, top + 4f);
+            stripLabelNode.Size = new Vector2(
+                Math.Max(tabContentSize.X - ControlsWidth - 8f, 0f), StripHeight - 4f);
+        }
     }
 
     /// <summary>Puts the list and the pane below it. The pane is pinned to the bottom of the tab
@@ -898,7 +1035,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // Title bar plus content padding, measured rather than assumed — it is whatever the window
         // node currently reserves, in the same addon units Size is expressed in.
         var chrome = Math.Max(Size.Y - ContentSize.Y, 0f);
-        var desiredUnits = chrome + TabBarHeight + TabBarGap + ButtonHintHeight + TabBodyHeight();
+        var desiredUnits = chrome + StripHeight + StripGap + TabBarHeight + TabBarGap + ButtonHintHeight + TabBodyHeight();
 
         var screen = ViewportSize();
         var scale = UiScale();
@@ -1077,6 +1214,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         RestoreListDownwardExit();
         UpdateStopButton();
+        RefreshFollowingStrip();
         RefreshButtonHint();
 
         // Cheap, and only ever writes when the window is genuinely outside the viewport — which is
@@ -1128,6 +1266,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
+        ApplyStripNavigation();
+
         var populated = PopulatedRowCount();
         var firstRow = populated > 0 ? NavListBlock.RowIndex(HubNavPlan.List, 0) : HubNavPlan.TabBar;
 
@@ -1157,6 +1297,30 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         LogGraph(controls, regionEnd, populated);
+    }
+
+    /// <summary>Numbers the Following strip, and points the tab bar's "up" at it. The strip is above
+    /// the tab bar on screen and above it in the graph, so a d-pad walks off the top of the tabs
+    /// onto Change and Stop rather than into nothing — which is what the tab bar's <c>NavUp</c> was
+    /// before there was anything up there.</summary>
+    private void ApplyStripNavigation()
+    {
+        if (stripControls is null)
+        {
+            return;
+        }
+
+        var end = NavigationWalker.Apply(
+            stripControls,
+            HubNavPlan.Strip,
+            NavGraphPlanner.NoNavigation,
+            HubNavPlan.TabBar,
+            HubNavPlan.Strip + HubNavPlan.StripCapacity - 1);
+
+        if (hubTabs is not null)
+        {
+            hubTabs.NavUp = end > HubNavPlan.Strip ? HubNavPlan.Strip : NavGraphPlanner.NoNavigation;
+        }
     }
 
     /// <summary>Numbers the detail pane's action buttons into their own reserved block above the
@@ -1358,16 +1522,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         };
         row.AddNode(routeButton);
 
-        stopButton = new TextButtonNode
-        {
-            Width = 110f,
-            Height = 24f,
-            String = "Stop",
-            IsEnabled = false,
-            OnClick = OnStopClicked,
-        };
-        row.AddNode(stopButton);
-
+        // No Stop button here. There were three of them — one per tab — doing one thing and kept in
+        // lockstep by hand, which is three places to look for the way out of something and three
+        // places for it to be wrong. It lives on the Following strip now, which is the same line
+        // that says what is running.
         return row;
     }
 
@@ -1725,20 +1883,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             OnClick = OnHuntClicked,
         };
         actions.AddNode(huntHereButton);
-
-        // Its own Stop button rather than relying on the Checklist tab's — a player who started a
-        // hunt from here and stayed on this tab must not have to switch tabs to find the one way
-        // out of it. Both buttons drive the same universal exit (see OnStopClicked) and both are
-        // kept in lockstep by UpdateStopButton.
-        huntingStopButton = new TextButtonNode
-        {
-            Width = 110f,
-            Height = 24f,
-            String = "Stop",
-            IsEnabled = false,
-            OnClick = OnStopClicked,
-        };
-        actions.AddNode(huntingStopButton);
         huntingControls.AddNode(actions);
 
         AddTabNode(huntingNodes, huntingControls);
@@ -1963,19 +2107,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private void UpdateStopButton()
     {
         var engaged = ResolveNavigator()?.Current.Engaged == true;
-        if (stopButton is not null && stopButton.IsEnabled != engaged)
+        if (stripStopButton is not null && stripStopButton.IsEnabled != engaged)
         {
-            stopButton.IsEnabled = engaged;
-        }
-
-        if (huntingStopButton is not null && huntingStopButton.IsEnabled != engaged)
-        {
-            huntingStopButton.IsEnabled = engaged;
-        }
-
-        if (questStopButton is not null && questStopButton.IsEnabled != engaged)
-        {
-            questStopButton.IsEnabled = engaged;
+            stripStopButton.IsEnabled = engaged;
         }
     }
 
@@ -2026,17 +2160,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             OnClick = OnFollowMsqClicked,
         };
         row.AddNode(followMsqButton);
-
-        questStopButton = new TextButtonNode
-        {
-            Width = 110f,
-            Height = 24f,
-            String = "Stop",
-            IsEnabled = false,
-            OnClick = OnStopClicked,
-        };
-        row.AddNode(questStopButton);
-
         return row;
     }
 
@@ -2104,6 +2227,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         AddGuidanceUnavailableNote(navigator);
         SetQuestHeader(content);
         AddGuidanceLines(content);
+        AddFollowableRows(navigator);
         AddAcceptedQuestRows(navigator);
 
         if (rows.Count == 0)
@@ -2152,6 +2276,106 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             }
         }
     }
+
+    /// <summary>Everything Wayfarer can be told to follow, as rows in one list, so the answer to
+    /// "how do I toggle between MSQ and another quest or unlocks?" is a single screen with the
+    /// choices on it rather than a feature the player has to already know is there.
+    ///
+    /// <para>Four things, always all four, in the same order, whether or not they currently have
+    /// anything to offer — a choice that vanishes when it is empty cannot be learned. The ones with
+    /// nothing to do say so on their second line and are inert.</para></summary>
+    private void AddFollowableRows(QuestNavigator? navigator)
+    {
+        rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "What Wayfarer is following" });
+
+        var followingMsq = navigator is not null && navigator.FollowedOverride is null;
+        rows.Add(new HubListRow
+        {
+            Kind = HubRowKind.Entry,
+            Label = "Main Scenario",
+            Description = navigator?.Current.QuestName is { Length: > 0 } msq
+                ? msq
+                : "The next step of the main story, picked automatically.",
+            Detail = followingMsq ? "Following" : string.Empty,
+            IconId = statusIcons.For(followingMsq ? UnlockStatus.Accepted : UnlockStatus.Available),
+            StatusWord = UnlockStatusDisplay.Word(followingMsq ? UnlockStatus.Accepted : UnlockStatus.Available),
+            LabelColor = followingMsq ? GameColors.Good : null,
+            Pane = FollowableDetail(
+                "Main Scenario",
+                followingMsq ? "Following. The arrow points at your current main scenario objective." : "Not being followed right now.",
+                "Wayfarer's default: it reads the main scenario quest you are on and points at whatever it wants next.",
+                navigator is null ? [] : [new HubDetailAction("Follow the Main Scenario", OnFollowMsqClicked)]),
+            Hover = PublishDetail,
+            Activate = navigator is null ? null : OnFollowMsqClicked,
+        });
+
+        AddUnlockRouteRow(navigator);
+        AddHuntingFollowRow(navigator);
+    }
+
+    private void AddUnlockRouteRow(QuestNavigator? navigator)
+    {
+        var routable = navigator is null
+            ? 0
+            : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+
+        rows.Add(new HubListRow
+        {
+            Kind = HubRowKind.Entry,
+            Label = "Unlock route",
+            Description = routable > 0
+                ? $"{routable} available nearby, walked in order."
+                : "Nothing available to route to with the current filters.",
+            Detail = routable > 0 ? $"{routable}" : string.Empty,
+            IconId = statusIcons.For(routable > 0 ? UnlockStatus.Available : UnlockStatus.Done),
+            StatusWord = UnlockStatusDisplay.Word(routable > 0 ? UnlockStatus.Available : UnlockStatus.Done),
+            Pane = FollowableDetail(
+                "Unlock route",
+                routable > 0 ? $"{routable} unlocks are available and reachable." : "Nothing to route to right now.",
+                "Chains every available unlock you can walk to into one route, nearest first, and points the arrow at each in turn.",
+                routable > 0 && navigator is not null ? [new HubDetailAction("Follow this route", OnRouteClicked)] : []),
+            Hover = PublishDetail,
+            Activate = routable > 0 && navigator is not null ? OnRouteClicked : null,
+        });
+    }
+
+    private void AddHuntingFollowRow(QuestNavigator? navigator)
+    {
+        var remaining = hunting.HuntHereOrder.Count;
+        var label = hunting.ActiveLogLabel is { Length: > 0 } log
+            ? $"Hunting Log - {log}"
+            : "Hunting Log";
+
+        rows.Add(new HubListRow
+        {
+            Kind = HubRowKind.Entry,
+            Label = label,
+            Description = hunting.ActiveLogLabel is null
+                ? hunting.NoLogReason ?? "No hunting log active."
+                : $"Rank {hunting.CurrentRank} · {remaining} left in this zone",
+            Detail = remaining > 0 ? $"{remaining}" : string.Empty,
+            IconId = statusIcons.For(remaining > 0 ? UnlockStatus.Available : UnlockStatus.Done),
+            StatusWord = UnlockStatusDisplay.Word(remaining > 0 ? UnlockStatus.Available : UnlockStatus.Done),
+            Pane = FollowableDetail(
+                label,
+                remaining > 0 ? $"{remaining} targets left in this zone." : hunting.NoLogReason ?? "Nothing left on this rank here.",
+                "Chains this rank's remaining targets in the zone you are standing in, nearest first.",
+                remaining > 0 && navigator is not null ? [new HubDetailAction("Start hunting", OnHuntClicked)] : []),
+            Hover = PublishDetail,
+            Activate = remaining > 0 && navigator is not null ? OnHuntClicked : null,
+        });
+    }
+
+    private HubRowDetail FollowableDetail(
+        string title, string sentence, string body, IReadOnlyList<HubDetailAction> actions) => new()
+        {
+            Title = title,
+            Kind = "Something to follow",
+            StatusIconId = statusIcons.For(UnlockStatus.Accepted),
+            StatusSentence = sentence,
+            Body = body,
+            Actions = actions,
+        };
 
     private void AddAcceptedQuestRows(QuestNavigator? navigator)
     {

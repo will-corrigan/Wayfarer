@@ -10,6 +10,22 @@ public class HubNavPlanTests
         Assert.Null(HubNavPlan.Validate());
     }
 
+    /// <summary>The Following strip is on screen whatever tab is open, so it needs indices of its
+    /// own that no tab's controls can take. It sits between the tab bar and the control region —
+    /// above the tabs on screen and above them in the graph, which is what lets a d-pad walk off the
+    /// top of the tabs onto Change and Stop instead of into nothing.</summary>
+    [Fact]
+    public void The_following_strip_has_indices_of_its_own_between_the_tabs_and_the_controls()
+    {
+        Assert.True(HubNavPlan.TabBarLast < HubNavPlan.Strip);
+        Assert.True(HubNavPlan.Strip + HubNavPlan.StripCapacity <= HubNavPlan.Region);
+
+        // Two controls today (Change, Stop), with room to be wrong about that.
+        var strip = Enumerable.Repeat(2, 1).ToList();
+        Assert.True(
+            NavGraphPlanner.Fits(strip, HubNavPlan.Strip, HubNavPlan.Strip + HubNavPlan.StripCapacity - 1));
+    }
+
     [Fact]
     public void The_control_region_never_collides_with_the_tab_bar_or_the_list()
     {

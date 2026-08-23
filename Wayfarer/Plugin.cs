@@ -323,7 +323,7 @@ public sealed class Plugin : IDalamudPlugin
         IClientState clientState,
         Configuration config,
         IPluginLog log) =>
-        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, log);
+        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, OpenFollowing, log);
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.</summary>
     private NativeHubWindow BuildHub(

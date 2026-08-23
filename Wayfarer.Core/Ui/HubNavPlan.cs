@@ -8,7 +8,8 @@ namespace Wayfarer.Core.Ui;
 ///
 /// <code>
 ///   0        reserved — "no navigation"
-///   1..4     hub tab bar (Checklist | Hunting Log | Quests | Settings)
+///   1..5     hub tab bar (Following | Unlocks | Hunting Log | Settings), with room for a fifth
+///   6..9     the Following strip's own controls, on screen whatever tab is open
 ///   10..39   the active tab's control region: filter chips, action buttons, or — on the Settings
 ///            tab — every setting control, numbered top to bottom by the walker
 ///   40       the list node itself (its upward scroll sentinel)
@@ -32,6 +33,13 @@ public static class HubNavPlan
 
     /// <summary>Checklist, Hunting Log, Quests, Settings.</summary>
     public const int TabCount = 4;
+
+    /// <summary>First index of the Following strip's controls — the one row that is on screen
+    /// whatever tab is open. Above the tab bar in the graph because it is above it on screen.</summary>
+    public const int Strip = 6;
+
+    /// <summary>Indices reserved for the strip. Two buttons today (Change, Stop).</summary>
+    public const int StripCapacity = 4;
 
     /// <summary>First index of the active tab's control region.</summary>
     public const int Region = 10;
@@ -95,6 +103,18 @@ public static class HubNavPlan
         if (tabBar < 1)
         {
             return "The tab bar must not occupy the reserved index 0.";
+        }
+
+        var strip = Strip;
+        var stripEnd = Strip + StripCapacity;
+        if (tabBarLast >= strip)
+        {
+            return $"The tab bar ends at {tabBarLast}, which collides with the Following strip at {strip}.";
+        }
+
+        if (stripEnd > region)
+        {
+            return $"The Following strip ({strip}..{stripEnd - 1}) collides with the control region at {region}.";
         }
 
         if (tabBarLast >= region)
