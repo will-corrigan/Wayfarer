@@ -918,7 +918,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         var regionEnd = HubNavPlan.Region;
         if (controls is not null)
         {
-            regionEnd = NavigationWalker.Apply(controls, HubNavPlan.Region, HubNavPlan.TabBar, firstRow);
+            regionEnd = NavigationWalker.Apply(
+                controls,
+                HubNavPlan.Region,
+                HubNavPlan.TabBar,
+                firstRow,
+                HubNavPlan.Region + HubNavPlan.RegionCapacity - 1);
         }
 
         var lastRegionIndex = regionEnd > HubNavPlan.Region ? regionEnd - 1 : HubNavPlan.TabBar;
@@ -991,6 +996,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             $"Wayfarer nav [{currentTab}]: tabs {HubNavPlan.TabBar}..{HubNavPlan.TabBarLast}, " +
             $"controls {HubNavPlan.Region}..{Math.Max(regionEnd - 1, HubNavPlan.Region)} ({controlCount}), " +
             $"list {HubNavPlan.List} rows {populated}/{list?.OptionNodes.Count ?? 0} of {rows.Count}.");
+
+        // The walker hands back its start index unchanged when it refuses a region that would not
+        // fit. That is the safe outcome, but it means every control on this tab is unreachable with
+        // a controller, so it must not be a silent one.
+        if (controlCount > 0 && regionEnd == HubNavPlan.Region)
+        {
+            log.Warning(
+                $"Wayfarer nav [{currentTab}]: {controlCount} controls do not fit the " +
+                $"{HubNavPlan.RegionCapacity} indices reserved from {HubNavPlan.Region}, so this tab's " +
+                "controls are not reachable with a controller. Raise HubNavPlan.RegionCapacity (and the " +
+                "list block with it) or split the tab.");
+        }
 
         var pool = list?.OptionNodes.Count ?? 0;
         if (navigationWarningLogged || NavListBlock.Fits(HubNavPlan.List, pool))

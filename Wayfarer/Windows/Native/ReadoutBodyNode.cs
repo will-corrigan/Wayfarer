@@ -84,6 +84,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private int textureAttempts;
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
+    private string? lastBearingWords;
 
     public ReadoutBodyNode(IPluginLog log, Action? onTeleportClicked = null)
     {
@@ -255,6 +256,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             arrowNode.Rotation = radians;
             arrowNode.IsVisible = true;
             ReportArrow(ArrowHiddenReason.None);
+            ReportBearing(radians);
             return size + (BaseGap * factor);
         }
 
@@ -291,7 +293,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             var height = (fontSize + 2f) * 2f;
             LayoutLine(i, line, fontSize, width, height, y);
 
-            hitBoxPlaced |= TryPlaceHitBox(line, hitBoxPlaced, width, height, y);
+            hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, width, height, y);
             y += height * 0.6f;
         }
 
@@ -347,11 +349,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     }
 
     /// <summary>Parks the invisible click target over the teleport line, if this host has one and
-    /// the readout is offering one. First match only: there is never more than one teleport advice,
-    /// and a second hit box would be a click target over the wrong words.</summary>
-    private bool TryPlaceHitBox(ReadoutLine line, bool alreadyPlaced, float width, float height, float y)
+    /// this frame is actually offering the click. First match only: there is never more than one
+    /// teleport advice, and a second hit box would be a click target over the wrong words.
+    ///
+    /// <para>The frame's own offer is what decides, not the line's action mark. With
+    /// click-to-teleport turned off the composer still marks the line — the mark describes the line,
+    /// not the surface — and placing a hit box on it gave the player a hand cursor over words that
+    /// would then politely refuse to do anything.</para></summary>
+    private bool TryPlaceHitBox(
+        ReadoutFrame frame, ReadoutLine line, bool alreadyPlaced, float width, float height, float y)
     {
-        if (alreadyPlaced || teleportHitBox is null || line.Action != ReadoutLineAction.Teleport)
+        if (alreadyPlaced || teleportHitBox is null || !frame.ClickableTeleport || line.Action != ReadoutLineAction.Teleport)
         {
             return false;
         }
@@ -427,5 +435,36 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         log.Debug(message);
+    }
+
+    /// <summary>Writes down what the chevron is currently claiming, so the one thing about it that
+    /// cannot be settled by reading the code can be settled by looking at the screen once.
+    ///
+    /// <para><c>NavMath.ArrowAngle</c> is defined as "0 = straight up", and the words fallback is
+    /// built from the same number, so the words are right by construction. The image node is not:
+    /// the angle is handed straight to <c>Rotation</c>, which is only correct if the chevron in
+    /// <c>ui/uld/NaviMap.tex</c> points straight up at rest — likely, and unverified. If it does
+    /// not, every arrow is wrong by a fixed multiple of 90 degrees while the words stay right,
+    /// which is a quiet way to send someone the wrong way.</para>
+    ///
+    /// <para>So: on every change of compass direction, this logs the rotation being applied and the
+    /// direction it is supposed to mean. Compare one line against the arrow on screen and the
+    /// question is closed — if the readout says "north-east" and the chevron points down-right, the
+    /// rest orientation is a quarter turn out.</para></summary>
+    private void ReportBearing(float radians)
+    {
+        var words = NavMath.DescribeDirection(radians);
+        if (string.Equals(words, lastBearingWords, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastBearingWords = words;
+        var degrees = radians * 180f / MathF.PI;
+        log.Debug(
+            $"Wayfarer readout: chevron rotation {degrees:F0}° = {words}. The art at " +
+            $"{ArrowCoordinates[0].X},{ArrowCoordinates[0].Y} of {ArrowTexturePath} is assumed to point " +
+            "straight up unrotated; if the arrow on screen and these words disagree by a quarter turn, " +
+            "that assumption is what is wrong.");
     }
 }

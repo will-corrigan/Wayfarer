@@ -27,8 +27,14 @@ public static class HubNavPlan
     /// <summary>First index of the active tab's control region.</summary>
     public const int Region = 10;
 
-    /// <summary>Indices reserved for the control region before the list block starts.</summary>
-    public const int RegionCapacity = List - Region;
+    /// <summary>Indices reserved for the control region before the list block starts.
+    ///
+    /// <para>Written down as its own number rather than derived as <c>List - Region</c>. Derived,
+    /// it could never disagree with the layout, which made <see cref="Validate"/>'s collision
+    /// guard unreachable and its covering test the tautology <c>39 &lt; 40</c> — moving
+    /// <see cref="List"/> from 40 to 12 left the whole suite green. The two are independent now,
+    /// so the guard has something real to compare.</para></summary>
+    public const int RegionCapacity = 30;
 
     /// <summary>The list block's own index.</summary>
     public const int List = 40;

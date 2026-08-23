@@ -90,11 +90,16 @@ public static class NavGraphPlanner
         return startIndex + total - 1;
     }
 
-    /// <summary>Whether a layout fits the addressable index space. Callers should treat a
+    /// <summary>Whether a layout fits the indices available to it. Callers should treat a
     /// <see langword="false"/> here as "do not wire this region at all" rather than wiring it and
-    /// letting the truncation silently orphan it.</summary>
-    public static bool Fits(IReadOnlyList<int> rowSizes, int startIndex) =>
-        startIndex >= 1 && HighestIndex(rowSizes, startIndex) <= MaxIndex;
+    /// letting the overflow silently orphan or collide with something.
+    ///
+    /// <para><paramref name="ceiling"/> is the highest index this region may occupy. It defaults to
+    /// the hard <see cref="MaxIndex"/> byte ceiling, but a region that shares the space with others
+    /// has a lower one — the hub's control region must stop before the list block, and running past
+    /// it does not truncate, it collides, which teleports the cursor rather than losing it.</para></summary>
+    public static bool Fits(IReadOnlyList<int> rowSizes, int startIndex, int ceiling = MaxIndex) =>
+        startIndex >= 1 && HighestIndex(rowSizes, startIndex) <= Math.Min(ceiling, MaxIndex);
 
     private static List<NavLink> PlanRow(
         IReadOnlyList<int> rowSizes, int[] starts, List<int> occupied, int row, int navUp, int navDown)

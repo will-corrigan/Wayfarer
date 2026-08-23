@@ -66,21 +66,32 @@ internal sealed class ContextMenuActions : IDisposable
 
     public void Dispose() => contextMenu.OnMenuOpened -= OnMenuOpened;
 
+    /// <summary>Runs inside the game's own menu-building path, which is why it cannot be allowed to
+    /// throw: an exception here surfaces as the player's right-click menu failing, not as a Wayfarer
+    /// problem, and this is a controller player's main way in. Every other game callback on this
+    /// plugin is wrapped; this one was the exception.</summary>
     private void OnMenuOpened(IMenuOpenedArgs args)
     {
-        if (args.MenuType != ContextMenuType.Default
-            || modules.Get<QuestHelperModule>() is not { Enabled: true }
-            || !ShouldShowMenu())
+        try
         {
-            return;
-        }
+            if (args.MenuType != ContextMenuType.Default
+                || modules.Get<QuestHelperModule>() is not { Enabled: true }
+                || !ShouldShowMenu())
+            {
+                return;
+            }
 
-        args.AddMenuItem(new MenuItem
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Wayfarer",
+                IsSubmenu = true,
+                OnClicked = OnWayfarerClicked,
+            });
+        }
+        catch (Exception ex)
         {
-            Name = "Wayfarer",
-            IsSubmenu = true,
-            OnClicked = OnWayfarerClicked,
-        });
+            log.Error(ex, "Wayfarer: adding the context-menu entry failed — the game's own menu is unaffected.");
+        }
     }
 
     /// <summary>Evaluated fresh on every menu open (see class doc comment) — cheap enough that a

@@ -16,6 +16,10 @@ namespace Wayfarer.Windows.Native;
 /// <param name="Scale">The player's own text-size setting. Multiplied by the game's interface
 /// scale inside the node — see <see cref="GuidanceOverlayNode"/> for why that is not automatic.</param>
 /// <param name="Position">Which anchor the readout uses.</param>
+/// <param name="ClickableTeleport">Whether this frame's teleport line is actually offered as a
+/// click. A line is marked as a teleport whether or not the surface can act on it — the mark says
+/// what the line means — so the host has to be told separately, or a player who has turned
+/// click-to-teleport off still gets a hand cursor over a line that will refuse them.</param>
 internal readonly record struct ReadoutFrame(
     ReadoutContent Content,
     float? ArrowRadians,
@@ -23,4 +27,5 @@ internal readonly record struct ReadoutFrame(
     ArrowIconVariant ArrowIcon,
     float ArrowScale,
     float Scale,
-    ReadoutPosition Position);
+    ReadoutPosition Position,
+    bool ClickableTeleport);

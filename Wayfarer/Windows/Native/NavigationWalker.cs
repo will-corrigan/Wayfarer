@@ -28,9 +28,16 @@ internal static class NavigationWalker
     /// as a vertical stack of rows: the children of a horizontal container form one row that chains
     /// left/right, everything else is a row of its own. The first row's "up" and the last row's
     /// "down" leave the region via <paramref name="navUp"/> / <paramref name="navDown"/>.</summary>
+    /// <param name="root">Subtree to number.</param>
+    /// <param name="startIndex">First index to allocate.</param>
+    /// <param name="navUp">Where "up" from the first row leaves the region.</param>
+    /// <param name="navDown">Where "down" from the last row leaves the region.</param>
+    /// <param name="ceiling">Highest index this region is allowed to occupy. The hub's control
+    /// region shares one byte-wide space with the tab bar above it and the list block below, so its
+    /// real limit is where the list starts, not 255.</param>
     /// <returns>The next free index after this region, or <paramref name="startIndex"/> when there
-    /// was nothing visible to number.</returns>
-    public static int Apply(NodeBase root, int startIndex, int navUp, int navDown)
+    /// was nothing visible to number or the region would not fit.</returns>
+    public static int Apply(NodeBase root, int startIndex, int navUp, int navDown, int ceiling)
     {
         var rows = new List<List<NavTarget>>();
         CollectRows(root, rows);
@@ -40,11 +47,14 @@ internal static class NavigationWalker
         }
 
         var sizes = rows.ConvertAll(row => row.Count);
-        if (!NavGraphPlanner.Fits(sizes, startIndex))
+        if (!NavGraphPlanner.Fits(sizes, startIndex, ceiling))
         {
-            // Numbering it anyway would push indices past 255, where KamiToolKit's unchecked byte
-            // cast silently turns them into 0 ("not in the graph") — a region that is half
-            // reachable is worse than one that is uniformly not, so refuse and leave it alone.
+            // Two ways to overrun and both are silent. Past 255, KamiToolKit's unchecked byte cast
+            // turns an index into 0 ("not in the graph") and the region disappears. Past the
+            // neighbouring region's start, the indices are valid but belong to something else, and
+            // the cursor teleports out of this window's controls into a list row. A region that is
+            // uniformly unreachable is better than either, so refuse and leave it alone; the caller
+            // sees startIndex back and says so in the log.
             return startIndex;
         }
 
