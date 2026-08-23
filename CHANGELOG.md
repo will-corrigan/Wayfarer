@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.6.0](https://github.com/will-corrigan/Wayfarer/compare/v0.5.0...v0.6.0) (2026-08-23)
+
+
+### New
+
+* regenerate the unlock catalogue from its sources ([5d34edb](https://github.com/will-corrigan/Wayfarer/commit/5d34edbc8260973929a250b33f91f56eb044fec3))
+* **tools:** resolve catalogue names against the game's own sheets ([5854f9f](https://github.com/will-corrigan/Wayfarer/commit/5854f9f742016a8a13b61fe1f0233a3484565e88))
+* **unlocks:** regenerate the catalogue from link targets; stop inventing levels ([9e2da17](https://github.com/will-corrigan/Wayfarer/commit/9e2da1714595ef6f04fa1f319ccaec00f35676bb))
+* **unlocks:** teach the generator the gates the hand pass found ([666778b](https://github.com/will-corrigan/Wayfarer/commit/666778b83eb0eaeb6e24957e0d017a8c202eb198))
+
+
+### Fixed
+
+* a real arrow, and put the readout where you want it ([d535d40](https://github.com/will-corrigan/Wayfarer/commit/d535d403309c00f19f8b9f8be6c498f8b3dfdc99))
+* **data:** ground the catalogue in the guide's links, not its display text ([3057281](https://github.com/will-corrigan/Wayfarer/commit/3057281c086d00b45f34ebef3aca4c0579a73fc4))
+* **dtr:** make the info bar describe the next step, not the mode ([11e7c3e](https://github.com/will-corrigan/Wayfarer/commit/11e7c3e37797ae8f71b652f869c34b9e3fcf0528))
+* **hub:** scroll the focused setting into view, and title-case the window ([1acc27c](https://github.com/will-corrigan/Wayfarer/commit/1acc27c8b04bcf841d7434d188e3e49ecccf5d32))
+* **hud:** keep readout diagnostics out of the log unless asked for ([1929c89](https://github.com/will-corrigan/Wayfarer/commit/1929c89c2200d040fc097e25c7636b7f918fa742))
+* **hunting:** repair the mangled "Hunting Log tt warrior" heading ([a0e7540](https://github.com/will-corrigan/Wayfarer/commit/a0e7540654f391ddd1cd3a37c2f3eb0caf363f11))
+* **logging:** make the whole plugin's log worth reading ([bcb48e1](https://github.com/will-corrigan/Wayfarer/commit/bcb48e138907042f839d780466e6e02104ad7959))
+* quieter logs, honest catalogue, less dead code ([b0fd73c](https://github.com/will-corrigan/Wayfarer/commit/b0fd73c8d67c3f1e05b24bb7fb087bb67c3bde13))
+* **readout:** draw a real direction arrow and let the player place the readout ([61ff952](https://github.com/will-corrigan/Wayfarer/commit/61ff95256289fc3b698ac2451d7f2c88f12caaf9))
+* **settings:** title-case the readout-diagnostics label ([c37d128](https://github.com/will-corrigan/Wayfarer/commit/c37d128eea52554e093d8250f04b1020da83c700))
+
 ## [0.5.0](https://github.com/will-corrigan/Wayfarer/compare/v0.4.0...v0.5.0) (2026-08-22)
 
 
