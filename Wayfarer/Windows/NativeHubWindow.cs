@@ -1942,7 +1942,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         settingsArea = new ScrollingNode<VerticalListNode>
         {
-            ContentNode = { FitWidth = true, FitContents = true, ItemSpacing = 4f },
+            // FitWidth is deliberately OFF. It stretches every control to the container's own
+            // width, and the container draws its scroll bar inside that width and clips at its own
+            // edge — which is the reported "the sliders clip outside the border". The widths are set
+            // explicitly instead, by ApplySettingWidths, which reserves the bar's gutter. Leaving
+            // FitWidth on would simply undo that on the next layout pass.
+            ContentNode = { FitWidth = false, FitContents = true, ItemSpacing = 4f },
             AutoHideScrollBar = true,
             Position = tabContentStart,
             Size = tabContentSize,
@@ -1988,7 +1993,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// reported "the sliders clip outside the border". <c>ScrollingNode</c> forces its content node
     /// back to its own width on every size change, so the reservation cannot live there; it is
     /// applied to the controls themselves, and re-applied after anything that could have resized the
-    /// tab.</para></summary>
+    /// tab. This is also why the list's own <c>FitWidth</c> is off — see
+    /// <see cref="BuildSettingsTab"/>.</para></summary>
     private void ApplySettingWidths()
     {
         if (settingsArea is null)
