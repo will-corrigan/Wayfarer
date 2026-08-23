@@ -26,7 +26,7 @@ internal sealed class HuntingLogModule(
 
     public string Name => "Hunting Log";
 
-    public string Description => "Tracks your current class/job hunting log (or the Grand Company Elite logs once unlocked) and routes you to the remaining targets.";
+    public string Description => "Tracks your hunting log and routes you to what is left.";
 
     public bool Enabled { get; private set; }
 

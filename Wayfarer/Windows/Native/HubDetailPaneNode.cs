@@ -246,12 +246,15 @@ internal sealed class HubDetailPaneNode : ResNode
         hasStatusIcon = false;
         statusNode.String = "Move the cursor over an entry.";
 
+        // The gloss for each word is the same one UnlockStatusDisplay uses when a row is actually
+        // selected. Two competing definitions of the same five words, seconds apart in the same
+        // pane, is worse than none.
         bodyNode.String =
-            $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Available)} — you can start this now\n"
-            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Accepted)} — you have already taken it\n"
-            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Done)} — nothing left to do\n"
-            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.LevelLocked)} — the entry says what is missing\n"
-            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.UnknownGate)} — Wayfarer isn't certain about this one";
+            $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Available)} — start it now\n"
+            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Accepted)} — already taken\n"
+            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.Done)} — nothing left\n"
+            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.LevelLocked)} — see what it needs\n"
+            + $"{UnlockStatusDisplay.Word(Core.Unlocks.UnlockStatus.UnknownGate)} — cannot be checked";
 
         wantedBodyLines = DetailPaneLayout.MaxBodyLines;
         wantedRequirementLines = 0;

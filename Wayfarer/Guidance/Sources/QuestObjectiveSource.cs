@@ -231,7 +231,7 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
         }
 
         return new ObjectiveDestination.Unresolved(
-            "this step has no map location (it may take place inside a duty or cutscene)");
+            "no map location for this step");
     }
 
     private string QuestName(ushort id) =>

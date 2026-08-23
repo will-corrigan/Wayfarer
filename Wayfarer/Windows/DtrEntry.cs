@@ -82,10 +82,9 @@ internal sealed class DtrEntry(
     /// while the target was fifty-six yalms away in the same zone.</summary>
     private static SeString BuildTooltip() =>
         new SeStringBuilder()
-            .AddText("Wayfarer. The crystal means the next step uses the aetheryte network - the words beside it say "
-                + "where. No crystal means walk there, and the numbers are how far through and how far left. "
-                + "An exclamation mark means there is an unlock you can pick up in this zone. "
-                + "Left-click opens your unlocks, right-click opens settings, shift-click stops the current hunt or route.")
+            .AddText("Wayfarer. A crystal means the next step is a teleport; no crystal, walk it. "
+                + "An exclamation mark means an unlock you can pick up here.\n"
+                + "Left-click: unlocks. Right-click: settings. Shift-click: stop.")
             .Build();
 
     private static SeString BuildText(DtrText text)

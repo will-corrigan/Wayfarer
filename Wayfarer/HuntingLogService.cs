@@ -362,7 +362,7 @@ internal sealed unsafe class HuntingLogService
             grandCompanyId = ps != null ? ps->GrandCompany : (byte)0;
             if (grandCompanyId == 0)
             {
-                SetNoLog("This job has no class hunting log, and you haven't joined a Grand Company yet for the Elite logs.");
+                SetNoLog("No hunting log for this job, and no Grand Company yet.");
                 return null;
             }
 
@@ -380,7 +380,7 @@ internal sealed unsafe class HuntingLogService
 
         if (!ds.Logs.TryGetValue(jobKey, out var huntingLog))
         {
-            SetNoLog("Hunting log data missing for this job.");
+            SetNoLog("No hunting log data for this job.");
             return null;
         }
 

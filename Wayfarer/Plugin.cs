@@ -239,11 +239,7 @@ public sealed class Plugin : IDalamudPlugin
 
         commands.AddHandler("/wayfarer", new(OnCommand)
         {
-            HelpMessage = "Shortcut for the Wayfarer window and its Stop button — everything here is also a click or "
-                + "a d-pad press away: the server info bar entry, the plugin list, and the window's own controls. "
-                + "\"/wayfarer unlocks\" opens what you can unlock now, \"/wayfarer hunt\" the hunting log, "
-                + "\"/wayfarer quests\" the quest list and its teleport button, \"/wayfarer settings\" the settings, "
-                + "\"/wayfarer stop\" ends the current route or hunt.",
+            HelpMessage = "Opens Wayfarer. Also: unlocks, hunt, quests, settings, stop.",
         });
     }
 

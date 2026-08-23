@@ -213,7 +213,7 @@ internal sealed class ContextMenuActions : IDisposable
             {
                 items.Add(new MenuItem
                 {
-                    Name = $"Unlock route ({routable.Count})",
+                    Name = $"Unlock Route ({routable.Count})",
                     OnClicked = _ => StartUnlockRoute(navigator, unlockModule, routable),
                 });
             }
@@ -224,7 +224,7 @@ internal sealed class ContextMenuActions : IDisposable
         // Choosing which quest needs a list of quests, which is a list and not a menu item — so it
         // is the one choice that hands off to the window. The tab it opens is the same one the
         // readout's follow caret opens and the same one the Change button on the strip opens.
-        items.Add(new MenuItem { Name = "A quest...", OnClicked = _ => openFollowing() });
+        items.Add(new MenuItem { Name = "A Quest...", OnClicked = _ => openFollowing() });
         return items;
     }
 
@@ -234,7 +234,7 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem
             {
-                Name = "Open unlocks",
+                Name = "Open Unlocks",
                 OnClicked = _ => unlockModule.OpenChecklist(),
             });
         }
@@ -243,7 +243,7 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem
             {
-                Name = "Open hunting log",
+                Name = "Open Hunting Log",
                 OnClicked = _ => huntingModule.OpenLog(),
             });
         }
@@ -253,7 +253,7 @@ internal sealed class ContextMenuActions : IDisposable
         // so the same one press lands here instead of behind a walk through the plugin list.
         items.Add(new MenuItem
         {
-            Name = "Open settings",
+            Name = "Open Settings",
             OnClicked = _ => openSettings(),
         });
 
@@ -263,7 +263,7 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem
             {
-                Name = "Follow MSQ",
+                Name = "Main Scenario",
                 OnClicked = _ => navigator.FollowedOverride = null,
             });
         }
@@ -316,7 +316,7 @@ internal sealed class ContextMenuActions : IDisposable
 
         items.Add(new MenuItem
         {
-            Name = $"Start hunting ({order.Count})",
+            Name = $"Start Hunting ({order.Count})",
             OnClicked = _ =>
             {
                 var targets = order.Select(huntingModule.Hunting.ToPickupTarget)
@@ -331,7 +331,7 @@ internal sealed class ContextMenuActions : IDisposable
         });
     }
 
-    /// <summary>"Start unlock route" when at least one available, locatable unlock exists to route
+    /// <summary>"Start Unlock Route" when at least one available, locatable unlock exists to route
     /// through — the same predicate and ordering (<see cref="RoutePlanner.Order"/>) as
     /// UnlockWindow's "Route me" button. Only ever offered while nothing is already engaged (see
     /// the caller) — the "Stop" item is what ends a route once one is running.</summary>
@@ -347,7 +347,7 @@ internal sealed class ContextMenuActions : IDisposable
 
         items.Add(new MenuItem
         {
-            Name = "Start unlock route",
+            Name = "Start Unlock Route",
             OnClicked = _ => StartUnlockRoute(navigator, unlockModule, routable),
         });
     }

@@ -104,12 +104,11 @@ public static class UnlockStatusDisplay
 
         return unlock.Status switch
         {
-            UnlockStatus.Available => "Available — you can do this now.",
-            UnlockStatus.Accepted => "In progress — you have accepted this.",
+            UnlockStatus.Available => "Available.",
+            UnlockStatus.Accepted => "In progress.",
             UnlockStatus.Done => "Complete.",
-            UnlockStatus.LockedOut => "Missed — this can no longer be started on this character.",
-            UnlockStatus.Unverified =>
-                "Unverified — Wayfarer found this in its catalogue but could not confirm it in game data.",
+            UnlockStatus.LockedOut => "Missed. No longer obtainable.",
+            UnlockStatus.Unverified => "Unverified. Not backed by the game's data.",
             UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => UnknownSentence(unlock),
             _ => LockedSentence(unlock),
         };
@@ -117,8 +116,8 @@ public static class UnlockStatusDisplay
 
     private static string UnknownSentence(ResolvedUnlock unlock) =>
         unlock.LockReason is { Length: > 0 } reason
-            ? $"Wayfarer can't tell what this needs — {reason}."
-            : "Wayfarer can't tell what this needs.";
+            ? $"Requirements unknown — {reason}."
+            : "Requirements unknown.";
 
     // The calculator already phrases every gate as a verb phrase ("needs level 15", "requires
     // clearing Sastasha"), so this reads as one sentence rather than two glued together. The
@@ -133,14 +132,14 @@ public static class UnlockStatusDisplay
 
         return unlock.Status switch
         {
-            UnlockStatus.LevelLocked when unlock.QuestLevel > 0 => $"Locked — you need level {unlock.QuestLevel}.",
-            UnlockStatus.QuestLocked => "Locked — an earlier quest has to be finished first.",
-            UnlockStatus.InstanceLocked => "Locked — a duty has to be cleared first.",
-            UnlockStatus.GrandCompanyLocked => "Locked — it needs Grand Company rank.",
-            UnlockStatus.BeastTribeLocked => "Locked — it needs beast tribe reputation.",
-            UnlockStatus.MountLocked => "Locked — it needs a mount you do not have.",
-            UnlockStatus.CollectionLocked => "Locked — you need several other things first.",
-            _ => "Locked — you cannot start this yet.",
+            UnlockStatus.LevelLocked when unlock.QuestLevel > 0 => $"Locked — needs level {unlock.QuestLevel}.",
+            UnlockStatus.QuestLocked => "Locked — needs an earlier quest.",
+            UnlockStatus.InstanceLocked => "Locked — needs a duty cleared.",
+            UnlockStatus.GrandCompanyLocked => "Locked — needs Grand Company rank.",
+            UnlockStatus.BeastTribeLocked => "Locked — needs beast tribe reputation.",
+            UnlockStatus.MountLocked => "Locked — needs a mount.",
+            UnlockStatus.CollectionLocked => "Locked — needs several things.",
+            _ => "Locked.",
         };
     }
 }

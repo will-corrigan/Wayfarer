@@ -57,7 +57,7 @@ internal sealed class UnlockWindow(
     {
         if (!unlocks.Loaded)
         {
-            ImGui.TextWrapped("Wayfarer could not read its unlock catalogue, so this list is empty for that reason and not because there is nothing left to do.");
+            ImGui.TextWrapped("The unlock catalogue could not be read.");
             if (unlocks.LoadError is { Length: > 0 } why)
             {
                 ImGui.TextWrapped(why);
@@ -172,14 +172,14 @@ internal sealed class UnlockWindow(
     /// <see cref="DrawRow"/>, so it shares this text too.</summary>
     private static string StatusTagTooltip(UnlockStatus status) => status switch
     {
-        UnlockStatus.Available => "Ready to pick up from the quest giver.",
-        UnlockStatus.Accepted => "Picked up but not finished — check your Journal for the next step.",
+        UnlockStatus.Available => "Ready to pick up.",
+        UnlockStatus.Accepted => "In progress. See your Journal.",
         UnlockStatus.Done => "Completed.",
-        UnlockStatus.LockedOut => "No longer obtainable — a quest that locks it out was completed.",
-        UnlockStatus.CollectionLocked => "Needs a set of collectibles first — hover the row for the list.",
-        UnlockStatus.RequirementsUnknown => "This plugin can't work out what this takes, so it won't guess — treat it as not yet available.",
-        UnlockStatus.UnknownGate => "Gated behind something this plugin can't check — treat as not yet available.",
-        _ => "Locked — requirements not yet met.",
+        UnlockStatus.LockedOut => "No longer obtainable.",
+        UnlockStatus.CollectionLocked => "Needs a set of collectibles. Hover for the list.",
+        UnlockStatus.RequirementsUnknown => "Requirements unknown. Treat as not available.",
+        UnlockStatus.UnknownGate => "Requirements unknown. Treat as not available.",
+        _ => "Locked.",
     };
 
     private void DrawFilterBar()
@@ -195,7 +195,7 @@ internal sealed class UnlockWindow(
 
         ImGui.SameLine();
         var showDone = filter.ShowDone;
-        if (ImGui.Checkbox("Done", ref showDone))
+        if (ImGui.Checkbox("Complete", ref showDone))
         {
             filter.ShowDone = showDone;
         }
@@ -212,11 +212,11 @@ internal sealed class UnlockWindow(
         var routable = visible.Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null).ToList();
         if (navigator == null)
         {
-            ImGui.TextDisabled($"Route me ({routable.Count}) — enable Quest Helper to navigate");
+            ImGui.TextDisabled($"Route Me ({routable.Count}) — enable Quest Helper");
             return;
         }
 
-        if (ImGui.Button($"Route me ({routable.Count})") && routable.Count > 0)
+        if (ImGui.Button($"Route Me ({routable.Count})") && routable.Count > 0)
         {
             var player = objects.LocalPlayer;
             var ordered = RoutePlanner.Order(
@@ -233,13 +233,13 @@ internal sealed class UnlockWindow(
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Guides you through picking up every quest shown above, nearest first. The arrow advances automatically as you accept each one.");
+            ImGui.SetTooltip("Walks every quest above, nearest first.");
         }
 
         DrawStopButton();
 
         ImGui.SameLine();
-        ImGui.TextDisabled("chains the arrow through every available pickup shown");
+        ImGui.TextDisabled("nearest first");
     }
 
     // The universal exit, mirrored from the hub window's own Stop button — this window is only
@@ -391,14 +391,14 @@ internal sealed class UnlockWindow(
             ImGui.TextDisabled(u.GiverTerritory == null
                 ? "Location unknown — find the quest giver manually."
                 : navigator != null
-                    ? "Click to have the arrow guide you there."
+                    ? "Click to be guided there."
                     : "Enable Quest Helper to navigate.");
         }
         else if (u.Status == UnlockStatus.Accepted)
         {
             ImGui.TextDisabled(navigator != null
-                ? "In your journal — click to follow it with the arrow."
-                : "In your journal — enable Quest Helper to follow it with the arrow.");
+                ? "In your journal — click to follow it."
+                : "In your journal — enable Quest Helper to follow it.");
 
             // Live objective: only available while Quest Helper is enabled
             // (navigator != null) and only once the game has published a marker for this step.
@@ -427,7 +427,7 @@ internal sealed class UnlockWindow(
             return;
         }
 
-        ImGui.TextWrapped("Nothing in the game's data backs these entries, so their status can't be checked. Each says what is known about it instead of being graded.");
+        ImGui.TextWrapped("Nothing in the game's data backs these up, so they cannot be checked.");
         foreach (var u in unverified)
         {
             ImGui.BulletText($"{u.Def.Unlock} ({LevelOrCategory(u.Def)})");

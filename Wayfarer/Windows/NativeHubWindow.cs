@@ -498,6 +498,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         _ => GameColors.ListText,
     };
 
+    /// <summary>A category key in the word the filter chip uses for it. Grouping by the key alone put
+    /// lowercase "content" and "cosmetic" on screen as section headings.</summary>
+    private static string CategoryWord(string key) =>
+        Array.Find(CategoryChips, chip => string.Equals(chip.Key, key, StringComparison.Ordinal)).Label
+        ?? DisplayNames.TitleCase(key);
+
     /// <summary>The catalogue's nine <c>type</c> values in the game's own words. A closed set — the
     /// dataset validator enforces it — so there is no unknown branch to design for, only a default
     /// that would mean the catalogue had grown a tenth.</summary>
@@ -506,7 +512,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         "dungeon" => "Dungeon",
         "trial" => "Trial",
         "raid" => "Raid",
-        "alliance-raid" => "Alliance raid",
+        "alliance-raid" => "Alliance Raid",
         "zone" => "Zone",
         "mount" => "Mount",
         "minion" => "Minion",
@@ -551,7 +557,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             // The handful of system entries that simply happen to you. Saying nothing here would
             // read as missing data rather than as "there is nowhere to go".
-            return u.Def.Requires?.Unverifiable == true ? "This unlocks on its own — there is nobody to visit." : string.Empty;
+            return u.Def.Requires?.Unverifiable == true ? "No quest giver." : string.Empty;
         }
 
         if (giver is null)
@@ -920,7 +926,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             rows.Add(new HubListRow
             {
                 Kind = HubRowKind.Note,
-                Label = "Turn Quest Helper on in Settings to be guided anywhere from here.",
+                Label = "Turn Quest Helper on in Settings to be guided from here.",
             });
         }
     }
@@ -1663,7 +1669,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             rows.Add(new HubListRow
             {
                 Kind = HubRowKind.Note,
-                Label = "Wayfarer could not read its unlock catalogue — this list is empty for that reason, not because there is nothing left to do.",
+                Label = "The unlock catalogue could not be read.",
             });
             if (unlocks.LoadError is { Length: > 0 } why)
             {
@@ -1705,7 +1711,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         groupButton.String = $"Group: {GroupModes[groupMode]}";
         var routable = visible.Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
-        routeButton.String = routable > 0 ? $"Route me ({routable})" : "Route me";
+        routeButton.String = routable > 0 ? $"Route Me ({routable})" : "Route Me";
         routeButton.IsEnabled = navigator != null && routable > 0;
     }
 
@@ -1771,7 +1777,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Requirements = MissingFor(u),
             From = FromLine(u),
             Provenance = string.Equals(u.Def.Confidence, "unverified", StringComparison.Ordinal)
-                ? "Wayfarer is not certain about this entry."
+                ? "Not certain about this entry."
                 : string.Empty,
             Actions = UnlockActions(u, navigator),
         };
@@ -1876,11 +1882,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         Title = "Unverified entries",
         Kind = $"{count} entries",
         StatusIconId = statusIcons.For(UnlockStatus.Unverified),
-        StatusSentence = unverifiedExpanded ? "Showing — select to hide again." : "Hidden — select to show them.",
+        StatusSentence = unverifiedExpanded ? "Showing." : "Hidden.",
         Body =
-            "Nothing in the game's own data backs these entries up. Wayfarer found them in its catalogue "
-            + "but could not confirm the quest that grants them, so it cannot tell whether you have done "
-            + "them or what they need — and it will never claim one of them is available.",
+            "Nothing in the game's data backs these up. Wayfarer cannot check them, and never calls one "
+            + "available.",
     };
 
     private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupUnlockEntries(List<ResolvedUnlock> visible) =>
@@ -1888,7 +1893,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             "Level" => visible.GroupBy(u => $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}", StringComparer.Ordinal)
                                .OrderBy(g => g.Min(u => u.QuestLevel)),
-            "Type" => visible.GroupBy(u => UnlockFilters.Category(u.Def), StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal),
+            "Type" => visible
+                .GroupBy(u => CategoryWord(UnlockFilters.Category(u.Def)), StringComparer.Ordinal)
+                .OrderBy(g => g.Key, StringComparer.Ordinal),
             _ => GroupByZone(visible),
         };
 
@@ -2121,11 +2128,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Kind = $"{target.Killed} of {target.Required} killed",
             StatusIconId = HuntingRowIcon(target),
             StatusSentence = done
-                ? "Complete — this one is done."
+                ? "Complete."
                 : $"{target.Required - target.Killed} left to kill.",
             Body = target.IsRoutable
-                ? "Wayfarer can point you at this one and chain it with the rest of the rank."
-                : "This one lives inside an instanced Grand Company duty, so it has to be queued for rather than walked to.",
+                ? "Can be chained with the rest of the rank."
+                : "Inside a Grand Company duty. Queue for it.",
             From = HuntingRowWhere(target),
         };
     }
@@ -2278,7 +2285,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (rows.Count == 0)
         {
-            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing to follow right now." });
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing to follow." });
         }
 
         RefreshQuestActions();
@@ -2332,7 +2339,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// nothing to do say so on their second line and are inert.</para></summary>
     private void AddFollowableRows(QuestNavigator? navigator)
     {
-        rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "What Wayfarer is following" });
+        rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "Following" });
 
         var followingMsq = navigator is not null && navigator.FollowedOverride is null;
         rows.Add(new HubListRow
@@ -2341,15 +2348,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Label = "Main Scenario",
             Description = navigator?.Current.QuestName is { Length: > 0 } msq
                 ? msq
-                : "The next step of the main story, picked automatically.",
+                : "The next step of the main story.",
             Detail = followingMsq ? "Following" : string.Empty,
             IconId = statusIcons.For(followingMsq ? UnlockStatus.Accepted : UnlockStatus.Available),
             StatusWord = UnlockStatusDisplay.Word(followingMsq ? UnlockStatus.Accepted : UnlockStatus.Available),
             LabelColor = followingMsq ? GameColors.Good : null,
             Pane = FollowableDetail(
                 "Main Scenario",
-                followingMsq ? "Following. The arrow points at your current main scenario objective." : "Not being followed right now.",
-                "Wayfarer's default: it reads the main scenario quest you are on and points at whatever it wants next.",
+                followingMsq ? "Following." : "Not followed.",
+                "Points at your next main scenario step.",
                 navigator is null ? [] : [new HubDetailAction("Follow the Main Scenario", OnFollowMsqClicked)]),
             Hover = PublishDetail,
             Activate = navigator is null ? null : OnFollowMsqClicked,
@@ -2368,17 +2375,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Add(new HubListRow
         {
             Kind = HubRowKind.Entry,
-            Label = "Unlock route",
+            Label = "Unlock Route",
             Description = routable > 0
-                ? $"{routable} available nearby, walked in order."
-                : "Nothing available to route to with the current filters.",
+                ? $"{routable} nearby, nearest first."
+                : "Nothing to route to.",
             Detail = routable > 0 ? $"{routable}" : string.Empty,
             IconId = statusIcons.For(routable > 0 ? UnlockStatus.Available : UnlockStatus.Done),
             StatusWord = UnlockStatusDisplay.Word(routable > 0 ? UnlockStatus.Available : UnlockStatus.Done),
             Pane = FollowableDetail(
-                "Unlock route",
-                routable > 0 ? $"{routable} unlocks are available and reachable." : "Nothing to route to right now.",
-                "Chains every available unlock you can walk to into one route, nearest first, and points the arrow at each in turn.",
+                "Unlock Route",
+                routable > 0 ? $"{routable} available nearby." : "Nothing to route to.",
+                "Walks every available unlock nearby, nearest first.",
                 routable > 0 && navigator is not null ? [new HubDetailAction("Follow this route", OnRouteClicked)] : []),
             Hover = PublishDetail,
             Activate = routable > 0 && navigator is not null ? OnRouteClicked : null,
@@ -2405,8 +2412,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Pane = FollowableDetail(
                 label,
                 remaining > 0 ? $"{remaining} targets left in this zone." : hunting.NoLogReason ?? "Nothing left on this rank here.",
-                "Chains this rank's remaining targets in the zone you are standing in, nearest first.",
-                remaining > 0 && navigator is not null ? [new HubDetailAction("Start hunting", OnHuntClicked)] : []),
+                "Walks this rank's remaining targets, nearest first.",
+                remaining > 0 && navigator is not null ? [new HubDetailAction("Start Hunting", OnHuntClicked)] : []),
             Hover = PublishDetail,
             Activate = remaining > 0 && navigator is not null ? OnHuntClicked : null,
         });
@@ -2440,7 +2447,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (accepted.Count == 0)
         {
-            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "You have not accepted any quests." });
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "No accepted quests." });
             return;
         }
 
@@ -2489,9 +2496,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Kind = "Accepted quest",
             StatusIconId = statusIcons.For(UnlockStatus.Accepted),
             StatusSentence = isFollowed
-                ? "Following — the arrow is pointing at this."
-                : "In progress — you have accepted this.",
-            Body = objective is { Length: > 0 } text ? text : "The game records no objective text for this step.",
+                ? "Following."
+                : "In progress.",
+            Body = objective is { Length: > 0 } text ? text : "No objective text for this step.",
             Actions = actions,
         };
     }

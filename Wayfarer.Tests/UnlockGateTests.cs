@@ -270,7 +270,7 @@ public class UnlockGateTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
 
         Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
-        Assert.Contains("3 quests with this name", u.LockReason, StringComparison.Ordinal);
+        Assert.Contains("3 quests share this name", u.LockReason, StringComparison.Ordinal);
     }
 
     /// <summary>The ordering, not just the outcome. Every gate below Accepted reads one Quest row,

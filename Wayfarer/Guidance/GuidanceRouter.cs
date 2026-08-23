@@ -46,9 +46,9 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         // deserves.
         ObjectiveDestination.TerritoryOnly t => OtherZone(objective, t.Territory, t.MapId ?? 0, 0f, 0f, ctx),
         ObjectiveDestination.InstancedDuty d => (RouteResult?)DutyRoute(objective, d.DutyTerritory)
-            ?? new RouteResult.NoLocation("this objective is inside instanced duty content"),
+            ?? new RouteResult.NoLocation("this objective is inside a duty"),
         ObjectiveDestination.Unresolved u => new RouteResult.NoLocation(u.Reason),
-        _ => new RouteResult.NoLocation("this step has no map location (it may take place inside a duty or cutscene)"),
+        _ => new RouteResult.NoLocation("no map location for this step"),
     };
 
     /// <summary>Where the player would arrive in <paramref name="territory"/> if they teleported

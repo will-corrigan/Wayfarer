@@ -75,7 +75,7 @@ public static class UnlockStatusCalculator
         if (u.AlternativeQuestRowIds.Count > 1)
         {
             u.Status = UnlockStatus.RequirementsUnknown;
-            u.LockReason = $"the game ships {u.AlternativeQuestRowIds.Count} quests with this name and only your character knows which is yours — status unknown";
+            u.LockReason = $"{u.AlternativeQuestRowIds.Count} quests share this name";
             return;
         }
 
@@ -129,7 +129,7 @@ public static class UnlockStatusCalculator
         }
 
         u.Status = UnlockStatus.RequirementsUnknown;
-        u.LockReason = "everything this plugin can check for it is done, but there is no quest to read for whether you have taken it — status unknown";
+        u.LockReason = "no quest to read for this";
     }
 
     /// <summary>InstanceContent, Grand Company, beast tribe, mount, and unmodeled-gate checks —
@@ -198,7 +198,7 @@ public static class UnlockStatusCalculator
         if (u.HasUnmodeledGate)
         {
             u.Status = UnlockStatus.UnknownGate;
-            u.LockReason = "has a requirement this plugin can't check (festival window or housing) — status unknown";
+            u.LockReason = "needs a festival or a house";
             return;
         }
 
@@ -214,7 +214,7 @@ public static class UnlockStatusCalculator
         if (u.HasNoDiscoverableGate && u.Def.Requires?.HasCheckableRequirement != true)
         {
             u.Status = UnlockStatus.RequirementsUnknown;
-            u.LockReason = "the game records no requirement for this at all, which usually means it has one this plugin can't see — status unknown";
+            u.LockReason = "the game records no requirement for this";
             return;
         }
 
@@ -264,7 +264,7 @@ public static class UnlockStatusCalculator
         }
 
         status = UnlockStatus.RequirementsUnknown;
-        reason = "has an extra requirement this plugin can't identify — status unknown";
+        reason = "has a requirement Wayfarer cannot read";
         return true;
     }
 
@@ -316,7 +316,7 @@ public static class UnlockStatusCalculator
         {
             reason = u.MissingRequirements.Count == 1
                 ? $"requires {u.MissingRequirements[0]}"
-                : $"requires {u.MissingRequirements.Count} more of {req.Label ?? "a set of collectibles"}; next: {u.MissingRequirements[0]}";
+                : $"needs {u.MissingRequirements.Count} more of {req.Label ?? "a set"} — next: {u.MissingRequirements[0]}";
             return true;
         }
 
@@ -327,8 +327,8 @@ public static class UnlockStatusCalculator
 
         status = UnlockStatus.RequirementsUnknown;
         reason = req.Label is { Length: > 0 } label
-            ? $"{label} — status unknown"
-            : "has a requirement this plugin can't check — status unknown";
+            ? label
+            : "has a requirement Wayfarer cannot read";
         return true;
     }
 

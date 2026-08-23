@@ -115,7 +115,7 @@ public class UnlockStatusDisplayTests
             QuestLevel = 58,
         };
 
-        Assert.Equal("Locked — you need level 58.", UnlockStatusDisplay.Sentence(noReason));
+        Assert.Equal("Locked — needs level 58.", UnlockStatusDisplay.Sentence(noReason));
     }
 
     [Fact]

@@ -179,7 +179,7 @@ public static class ReadoutComposer
                 Separated: false,
                 ReadoutLineAction.Teleport)
             : new ReadoutLine(
-                $"Nearest aetheryte is {aetheryte}, and you are not attuned there.",
+                $"Not attuned to {aetheryte}",
                 ReadoutEmphasis.Secondary));
     }
 

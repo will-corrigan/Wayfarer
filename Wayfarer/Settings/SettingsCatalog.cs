@@ -131,7 +131,7 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "guidance.mapFlag",
-            Label = "Mark the Target with the Map Flag",
+            Label = "Mark the Target on the Map",
             Description = "Restores your own flag when the route ends.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkObjectiveWithMapFlag,
@@ -141,7 +141,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "guidance.namePlates",
             Label = "Mark Targets Above Their Heads",
-            Description = "Uses the game's own quest marker. Never replaces a marker the game put there.",
+            Description = "Uses the game's own quest marker. Never replaces one the game put there.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkTargetsOnNameplates,
             WriteFlag = Write(value => config.Guidance.MarkTargetsOnNameplates = value),
@@ -158,7 +158,7 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "questHelper.logDiagnostics",
-            Label = "Write Readout Diagnostics to the Log",
+            Label = "Log Readout Diagnostics",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.LogDiagnostics,
             WriteFlag = Write(value => config.QuestHelper.LogDiagnostics = value),
@@ -166,8 +166,8 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "guidance.clickTeleport",
-            Label = "Teleport When the Readout's Aetheryte Is Clicked",
-            Description = "The only thing Wayfarer ever does that the server sees.",
+            Label = "Click the Readout to Teleport",
+            Description = "The only thing Wayfarer does that the server sees.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.ClickTeleportEnabled,
             WriteFlag = Write(value => config.QuestHelper.ClickTeleportEnabled = value),
@@ -190,8 +190,8 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "readout.dtr",
-            Label = "Show the Wayfarer Entry in the Server Info Bar",
-            Description = "Left-click opens your unlocks, right-click opens settings. The one entry point that's always on screen no matter how the readout above is set.",
+            Label = "Show in the Server Info Bar",
+            Description = "Left-click opens your unlocks, right-click opens settings. Always on screen, whatever the readout is set to.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => !config.QuestHelper.DtrHidden,
             WriteFlag = Write(value => config.QuestHelper.DtrHidden = !value),
@@ -211,7 +211,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.arrowIcon",
             Label = "Arrow Colour",
-            Description = "Which colour the direction arrow is drawn in. Takes effect at once.",
+            Description = "Applies at once.",
             Kind = SettingKind.Choice,
             Options = ArrowIconLabels,
             ReadOption = () => (int)config.QuestHelper.ArrowIcon,
@@ -245,7 +245,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.position",
             Label = "Position",
-            Description = "A starting point. Nudging it below, or dragging it, keeps wherever you leave it.",
+            Description = "A starting point. Nudge or drag it and it stays where you leave it.",
             Kind = SettingKind.Choice,
             Options = ReadoutPositionLabels,
             ReadOption = () => IndexOf(ReadoutPositionValues, config.QuestHelper.ReadoutPosition),
@@ -255,7 +255,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.positionX",
             Label = "Across the Screen",
-            Description = "0% is hard left, 100% is hard right. Moves the readout as you change it.",
+            Description = "0% is hard left, 100% is hard right.",
             Kind = SettingKind.Scale,
             Minimum = 0f,
             Maximum = 100f,
@@ -283,7 +283,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.moveMode",
             Label = "Move the Readout with the Mouse",
-            Description = "Puts a HUD-Layout style handle on the readout so you can drag it. Turn it off when you're done — while it's on, clicks on the readout move it instead of going through to the world.",
+            Description = "Puts a drag handle on the readout. While it is on, clicks on the readout move it instead of reaching the world.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.ReadoutMoveMode,
             WriteFlag = Write(value => config.QuestHelper.ReadoutMoveMode = value),
@@ -327,8 +327,8 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "readout.native",
-            Label = "Draw the Readout with the Game's Own Text",
-            Description = "Turn this off to fall back to the old plugin-drawn widget.",
+            Label = "Use the Game's Own Text",
+            Description = "Turn off to fall back to the older widget.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.QuestHelper.UseNativeReadout,
             WriteFlag = Write(value => config.QuestHelper.UseNativeReadout = value),
@@ -350,7 +350,7 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "input.cursorNavigation",
-            Label = "Move Around This Window with the D-Pad",
+            Label = "Move with the D-Pad",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.InputMode.CursorNavigation,
             WriteFlag = Write(value => config.InputMode.CursorNavigation = value),
@@ -358,8 +358,8 @@ internal sealed class SettingsCatalog(
         new SettingDefinition
         {
             Id = "input.contextMenu",
-            Label = "Show Wayfarer in the Game's Menus",
-            Description = "The only way to reach Wayfarer's actions without a cursor.",
+            Label = "Show in the Game's Menus",
+            Description = "Reaches Wayfarer's actions without a cursor.",
             Kind = SettingKind.Choice,
             Options = ContextMenuLabels,
             ReadOption = () => (int)config.QuestHelper.MenuMode,

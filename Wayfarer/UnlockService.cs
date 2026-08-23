@@ -65,10 +65,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             // checklist reads as "you have done everything" — the same lie in a different shape.
             // Every surface that would have shown entries shows this instead.
             LoadError = ex.Message;
-            const string message =
-                "Wayfarer unlocks: the unlock catalogue could not be read, so the unlocks list is empty and "
-                + "says so rather than pretending there is nothing left to do.";
-            log.Error(ex, message);
+            log.Error(ex, "Wayfarer: the unlock catalogue could not be read.");
         }
     }
 

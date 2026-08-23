@@ -29,7 +29,7 @@ public static class OtherZoneResolution
     /// <see cref="NavigationState.Reason"/> and ArrowWindow just displays it, rather than
     /// each side independently deciding when to show it.</summary>
     public static string InteriorMessage(string? zoneName) =>
-        $"Objective is inside {zoneName ?? "another zone"} — find the entrance nearby.";
+        $"In {zoneName ?? "another zone"} — find the entrance";
 
     /// <summary>Picks the outcome: a real routed candidate always wins; failing that, a
     /// caller-supplied marker fallback wins (it's still an exact position, better than

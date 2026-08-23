@@ -31,7 +31,7 @@ internal sealed class UnlockChecklistModule(
 
     public string Name => FeatureName;
 
-    public string Description => "Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.";
+    public string Description => "Tracks what you can unlock now, and routes you to the quest givers.";
 
     public bool Enabled { get; private set; }
 
