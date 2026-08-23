@@ -138,7 +138,7 @@ internal sealed class GuidanceOverlay(
             // Exactly one controller for the plugin's lifetime — a second would duplicate the
             // addon-creation state machine and its per-frame handler.
             controller = new OverlayController();
-            node = new GuidanceOverlayNode(() => BuildFrame(forClickableHost: false), log);
+            node = new GuidanceOverlayNode(() => BuildFrame(forClickableHost: false), log, () => cfg.LogDiagnostics);
             controller.AddNode(node);
         }
         catch (Exception ex)
@@ -151,7 +151,7 @@ internal sealed class GuidanceOverlay(
         try
         {
             clickable = new ClickableReadoutAddon(
-                () => BuildFrame(forClickableHost: true), Teleport, framework, log)
+                () => BuildFrame(forClickableHost: true), Teleport, framework, log, () => cfg.LogDiagnostics)
             {
                 InternalName = "WayfarerReadout",
                 Title = "Wayfarer",

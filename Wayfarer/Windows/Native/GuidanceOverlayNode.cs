@@ -26,14 +26,14 @@ internal sealed class GuidanceOverlayNode : OverlayNode
 
     private bool broken;
 
-    public GuidanceOverlayNode(Func<ReadoutFrame?> provider, IPluginLog log)
+    public GuidanceOverlayNode(Func<ReadoutFrame?> provider, IPluginLog log, Func<bool> diagnosticsEnabled)
     {
         this.provider = provider;
         this.log = log;
 
         // No click handler: an overlay is click-through by construction, so offering one would be
         // a lie. The body renders identically either way.
-        body = new ReadoutBodyNode(log);
+        body = new ReadoutBodyNode(log, diagnosticsEnabled);
         body.AttachNode(this);
     }
 

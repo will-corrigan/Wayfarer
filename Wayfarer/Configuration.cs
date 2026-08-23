@@ -152,6 +152,12 @@ public sealed class InputModeConfig
 /// (see <see cref="Modules.IModule.Enabled"/>) governs whether it runs at all.</summary>
 public sealed class QuestHelperConfig
 {
+    /// <summary>Writes the readout's per-change diagnostics (why there is no arrow, what rotation
+    /// the chevron is being given) to the log. Off by default: the compass direction changes every
+    /// time the camera swings past a compass point, so a play session would write thousands of lines
+    /// nobody asked for. Real failures — a texture that will not load — are warned about regardless.</summary>
+    public bool LogDiagnostics { get; set; }
+
     public bool ArrowLocked { get; set; }
 
     public float ArrowScale { get; set; } = 1.0f;

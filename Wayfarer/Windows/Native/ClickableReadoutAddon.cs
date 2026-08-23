@@ -38,7 +38,8 @@ internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
     Action onTeleportClicked,
     IFramework framework,
-    IPluginLog log) : NativeAddon
+    IPluginLog log,
+    Func<bool> diagnosticsEnabled) : NativeAddon
 {
     private ReadoutBodyNode? body;
     private Vector2 lastSize;
@@ -93,7 +94,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         // every time would be the loudest thing about a readout that is meant to be furniture.
         addon->DisableShowHideSoundEffects = true;
 
-        body = new ReadoutBodyNode(log, onTeleportClicked)
+        body = new ReadoutBodyNode(log, diagnosticsEnabled, onTeleportClicked)
         {
             Position = Vector2.Zero,
         };
