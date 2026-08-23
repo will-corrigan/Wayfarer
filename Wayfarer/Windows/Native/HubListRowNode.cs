@@ -28,14 +28,30 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
 
     private const float LineGap = 6f;
 
+    /// <summary>The state column. 24px is the size the game's own 60640-block padlock composites
+    /// are authored at, and the 71000 markers downsample to it cleanly.</summary>
+    private const float IconSize = 24f;
+
+    private const float IconColumn = IconSize + 8f;
+
+    private readonly IconImageNode iconNode;
     private readonly TextNode labelNode;
     private readonly TextNode trailingNode;
     private readonly TextNode descriptionNode;
 
     private HubRowKind kind = HubRowKind.Entry;
+    private bool hasIcon;
 
     public HubListRowNode()
     {
+        iconNode = new IconImageNode
+        {
+            Size = new Vector2(IconSize, IconSize),
+            FitTexture = true,
+            IsVisible = false,
+        };
+        iconNode.AttachNode(this);
+
         labelNode = new TextNode
         {
             FontType = FontType.Axis,
@@ -89,7 +105,9 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         if (ItemData is { } data)
         {
             trailingNode.String = data.Detail;
-            descriptionNode.String = data.Description;
+            descriptionNode.String = !hasIcon && data.StatusWord is { Length: > 0 } word
+                ? Prefixed(word, data.Description)
+                : data.Description;
         }
     }
 
@@ -98,9 +116,16 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     {
         kind = itemData.Kind;
 
+        ApplyIcon(itemData.IconId);
+
         labelNode.String = itemData.Label;
         trailingNode.String = itemData.Detail;
-        descriptionNode.String = itemData.Description;
+
+        // The state's word only appears when its shape could not be drawn — and it goes on line
+        // two, which has room for a word, rather than back into the gutter that could not hold it.
+        descriptionNode.String = !hasIcon && itemData.StatusWord is { Length: > 0 } word
+            ? Prefixed(word, itemData.Description)
+            : itemData.Description;
 
         labelNode.TextColor = itemData.LabelColor ?? DefaultColor(itemData.Kind);
         labelNode.FontSize = itemData.Kind switch
@@ -144,17 +169,55 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         _ => GameColors.ListText,
     };
 
+    private static string Prefixed(string word, string description) =>
+        description.Length == 0 ? word : $"{word} — {description}";
+
+    /// <summary>The size the icon is authored at, which is what the part's UV rectangle has to be
+    /// or the node samples past the edge of the texture. Read off the loaded texture when the game
+    /// can answer immediately; otherwise seeded from the block the id belongs to — the 60640
+    /// padlock composites are 24x24, the 71000 markers and the 63xxx monster portraits are larger —
+    /// and corrected on the next assignment if the seed was wrong.</summary>
+    private static float SourceSize(uint iconId) => iconId switch
+    {
+        >= 60000 and < 61000 => 24f,
+        >= 63000 and < 64000 => 48f,
+        _ => 32f,
+    };
+
+    private void ApplyIcon(uint iconId)
+    {
+        hasIcon = iconId != 0;
+        iconNode.IsVisible = hasIcon;
+        if (!hasIcon)
+        {
+            return;
+        }
+
+        iconNode.IconId = iconId;
+
+        var actual = iconNode.ActualTextureSize;
+        var source = actual.X > 0f && actual.Y > 0f ? actual : new Vector2(SourceSize(iconId), SourceSize(iconId));
+        iconNode.TextureSize = source;
+    }
+
     private void Layout()
     {
-        var inner = Math.Max(Width - (Padding * 2f), 0f);
         var lineHeight = Math.Max((Height - LineGap) / 2f, 1f);
+
+        // The text column starts after the state column on entry rows and at the padding on the
+        // others — a heading with a 32px indent and nothing in it reads as a broken row.
+        var textLeft = kind == HubRowKind.Entry ? Padding + IconColumn : Padding;
+        var textWidth = Math.Max(Width - textLeft - Padding, 0f);
+
+        iconNode.IsVisible = hasIcon && kind == HubRowKind.Entry;
+        iconNode.Position = new Vector2(Padding, Math.Max((Height - IconSize) / 2f, 0f));
 
         switch (kind)
         {
             case HubRowKind.Note:
                 // Both lines, one wrapping block.
-                labelNode.Position = new Vector2(Padding, 2f);
-                labelNode.Size = new Vector2(inner, Math.Max(Height - 4f, 1f));
+                labelNode.Position = new Vector2(textLeft, 2f);
+                labelNode.Size = new Vector2(textWidth, Math.Max(Height - 4f, 1f));
                 trailingNode.IsVisible = false;
                 descriptionNode.IsVisible = false;
                 return;
@@ -162,25 +225,25 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
             case HubRowKind.Heading:
                 // One line, centred in the row's height — a heading has no second line to balance
                 // against, and floating it at the top would leave it orphaned above a gap.
-                labelNode.Position = new Vector2(Padding, (Height - lineHeight) / 2f);
-                labelNode.Size = new Vector2(Math.Max(inner - TrailingWidth - Padding, 0f), lineHeight);
+                labelNode.Position = new Vector2(textLeft, (Height - lineHeight) / 2f);
+                labelNode.Size = new Vector2(Math.Max(textWidth - TrailingWidth - Padding, 0f), lineHeight);
                 trailingNode.IsVisible = true;
-                trailingNode.Position = new Vector2(Padding + inner - TrailingWidth, (Height - lineHeight) / 2f);
+                trailingNode.Position = new Vector2(Width - Padding - TrailingWidth, (Height - lineHeight) / 2f);
                 trailingNode.Size = new Vector2(TrailingWidth, lineHeight);
                 descriptionNode.IsVisible = false;
                 return;
 
             default:
-                labelNode.Position = new Vector2(Padding, 2f);
-                labelNode.Size = new Vector2(Math.Max(inner - TrailingWidth - Padding, 0f), lineHeight);
+                labelNode.Position = new Vector2(textLeft, 2f);
+                labelNode.Size = new Vector2(Math.Max(textWidth - TrailingWidth - Padding, 0f), lineHeight);
 
                 trailingNode.IsVisible = true;
-                trailingNode.Position = new Vector2(Padding + inner - TrailingWidth, 3f);
+                trailingNode.Position = new Vector2(Width - Padding - TrailingWidth, 3f);
                 trailingNode.Size = new Vector2(TrailingWidth, lineHeight);
 
                 descriptionNode.IsVisible = true;
-                descriptionNode.Position = new Vector2(Padding, lineHeight + LineGap - 2f);
-                descriptionNode.Size = new Vector2(inner, lineHeight);
+                descriptionNode.Position = new Vector2(textLeft, lineHeight + LineGap - 2f);
+                descriptionNode.Size = new Vector2(textWidth, lineHeight);
                 return;
         }
     }

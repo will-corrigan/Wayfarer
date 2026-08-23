@@ -23,6 +23,15 @@ internal sealed class HubListRow
     /// what lets the list virtualize (and therefore what lets it carry controller navigation).</summary>
     public string Detail { get; set; } = string.Empty;
 
+    /// <summary>The game icon in the row's left column — the state's shape. Already validated by
+    /// <see cref="HubStatusIcons"/>: 0 means "there is no icon to draw", and the row says its state
+    /// in <see cref="StatusWord"/> instead rather than leaving a hole where the state should be.</summary>
+    public uint IconId { get; set; }
+
+    /// <summary>The state in one word, used only when <see cref="IconId"/> is 0. Colour is never
+    /// the only signal and neither is a shape that did not load.</summary>
+    public string StatusWord { get; init; } = string.Empty;
+
     /// <summary>Overrides the kind's default colour — used for per-status unlock colouring.</summary>
     public Vector4? LabelColor { get; init; }
 

@@ -78,6 +78,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly Configuration config;
     private readonly SettingsCatalog settings;
     private readonly InputModeService inputMode;
+    private readonly HubStatusIcons statusIcons;
     private readonly IPluginLog log;
 
     private readonly FilterState filter = new();
@@ -153,8 +154,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         Configuration config,
         SettingsCatalog settings,
         InputModeService inputMode,
+        HubStatusIcons statusIcons,
         IPluginLog log)
     {
+        this.statusIcons = statusIcons;
         this.unlocks = unlocks;
         this.hunting = hunting;
         this.feed = feed;
@@ -410,18 +413,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
     }
 
-    private static (string Label, Vector4 Color) StatusPresentation(UnlockStatus status) => status switch
+    /// <summary>Colour as the second channel only. <c>Good</c> (the clean green) is deliberately
+    /// retired from the checklist: it was the whole of "does green mean I can do it now?", and an
+    /// available row is now a normal row carrying the game's own gold marker. The green survives in
+    /// exactly one place — the "following" marker, where it means one thing.</summary>
+    private static Vector4 StatusColor(UnlockStatus status) => UnlockStatusDisplay.Tone(status) switch
     {
-        UnlockStatus.Done => ("Complete", GameColors.Dimmed),
-        UnlockStatus.Accepted => ("Accepted", GameColors.ListText),
-        UnlockStatus.Available => ("Available", GameColors.Good),
-        UnlockStatus.LockedOut => ("Missed", GameColors.Bad),
-
-        // Two shades of "not yet", both dimmed like every other locked state — the word carries
-        // the meaning, so the palette stays the three signals it already had.
-        UnlockStatus.CollectionLocked => ("Collect", GameColors.Dimmed),
-        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("Unknown", GameColors.Dimmed),
-        _ => ("Locked", GameColors.Dimmed),
+        UnlockStatusTone.Bad => GameColors.Bad,
+        UnlockStatusTone.Dimmed => GameColors.Dimmed,
+        _ => GameColors.ListText,
     };
 
     /// <summary>True when confirming the row has something to say rather than somewhere to go:
@@ -1339,15 +1339,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private HubListRow BuildChecklistRow(ResolvedUnlock u, INavigationProvider? navigator)
     {
-        var (_, color) = StatusPresentation(u.Status);
-
         return new HubListRow
         {
             Kind = HubRowKind.Entry,
             Label = UnlockRowText.Name(u),
             Description = UnlockRowText.Description(u),
             Detail = UnlockRowText.Trailing(u),
-            LabelColor = color,
+            IconId = statusIcons.For(u.Status),
+            StatusWord = UnlockStatusDisplay.Word(u.Status),
+            LabelColor = StatusColor(u.Status),
 
             // An explainable row stays confirmable even with guidance off: there is nowhere to
             // navigate to, but there is still something to read.
@@ -1424,6 +1424,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 Label = UnlockRowText.Name(u),
                 Description = UnlockRowText.Description(u),
                 Detail = UnlockRowText.Trailing(u),
+                IconId = statusIcons.For(UnlockStatus.Unverified),
+                StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Unverified),
                 LabelColor = GameColors.Dimmed,
             });
         }
@@ -1881,6 +1883,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 // was the longest string on the row competing for the narrowest space on it.
                 Description = navigator.GetAcceptedQuestObjective(questId) ?? string.Empty,
                 Detail = isFollowed ? "Following" : string.Empty,
+                IconId = statusIcons.For(UnlockStatus.Accepted),
+                StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Accepted),
                 LabelColor = isFollowed ? GameColors.Good : null,
                 Activate = () => FollowQuest(questId),
             });
