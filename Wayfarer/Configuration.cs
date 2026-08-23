@@ -27,6 +27,10 @@ public enum HubPositionPreset
     BottomRight,
 }
 
+/// <summary>Everything Wayfarer remembers between sessions, grouped by the feature that owns it.
+/// Dalamud serialises this whole object, so a property removed here is silently dropped from an
+/// existing config file rather than breaking it — and one added here defaults for everyone until
+/// they change it.</summary>
 public sealed class Configuration : IPluginConfiguration
 {
     /// <summary>The version this build writes. Bumped to 2 for the readout-position rework — see
@@ -144,7 +148,11 @@ public sealed class InputModeConfig
 /// (see <see cref="Modules.IModule.Enabled"/>) governs whether it runs at all.</summary>
 public sealed class QuestHelperConfig
 {
-    public bool ArrowLocked { get; set; }
+    /// <summary>Writes the readout's per-change diagnostics (why there is no arrow, what rotation
+    /// the chevron is being given) to the log. Off by default: the compass direction changes every
+    /// time the camera swings past a compass point, so a play session would write thousands of lines
+    /// nobody asked for. Real failures — a texture that will not load — are warned about regardless.</summary>
+    public bool LogDiagnostics { get; set; }
 
     public float ArrowScale { get; set; } = 1.0f;
 

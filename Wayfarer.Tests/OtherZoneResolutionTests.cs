@@ -3,7 +3,7 @@ using Wayfarer.Core.Navigation;
 namespace Wayfarer.Tests;
 
 /// <summary>Pure fallback-message decision extracted from QuestNavigator.OtherZone /
-/// ArrowWindow (task-fix-interior-report.md fix round 3, re-review finding 2).</summary>
+/// ArrowWindow.</summary>
 public class OtherZoneResolutionTests
 {
     private static readonly RouteCandidate Candidate = new(RouteMode.Entrance, 10f, 1f, 1f);

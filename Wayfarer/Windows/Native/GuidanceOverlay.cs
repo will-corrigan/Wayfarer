@@ -122,7 +122,10 @@ internal sealed class GuidanceOverlay(
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "Wayfarer readout: disposing the overlay on the framework thread failed or timed out.");
+            const string message =
+                "Wayfarer readout: disposing the overlay on the framework thread failed or timed out, so a "
+                + "stray readout may remain on screen until the game is restarted.";
+            log.Warning(ex, message);
         }
     }
 
@@ -149,20 +152,50 @@ internal sealed class GuidanceOverlay(
             // Exactly one controller for the plugin's lifetime — a second would duplicate the
             // addon-creation state machine and its per-frame handler.
             controller = new OverlayController();
-            node = new GuidanceOverlayNode(() => BuildFrame(forClickableHost: false), placement, textures, log);
+            node = new GuidanceOverlayNode(
+                () => BuildFrame(forClickableHost: false), placement, textures, log, () => cfg.LogDiagnostics);
             controller.AddNode(node);
         }
         catch (Exception ex)
         {
             controller = null;
             node = null;
-            log.Error(ex, "Wayfarer readout: the overlay could not be created — falling back to the plugin-drawn widget.");
+            const string message =
+                "Wayfarer readout: the game-styled readout could not be created, so the plugin-drawn widget is "
+                + "being used instead for this session. The same words and the same arrow; it just will not "
+                + "match the game's fonts.";
+            log.Warning(ex, message);
         }
 
+        CreateClickable();
+
+        // Checked again: Dispose runs on whichever thread Dalamud unloads on, so it can have
+        // arrived while the two constructors above were running and found nothing yet to tear
+        // down. Undoing it here is what makes the guard at the top of this method total.
+        if (disposed)
+        {
+            Dispose();
+            return;
+        }
+
+        framework.Update += OnFrameworkUpdate;
+    }
+
+    /// <summary>The mouse-only half of <see cref="Create"/>: an addon that can be clicked, as
+    /// opposed to the overlay, which is click-through by construction. Failing here costs the
+    /// teleport click and nothing else, which is why it is guarded separately.</summary>
+    private void CreateClickable()
+    {
         try
         {
             clickable = new ClickableReadoutAddon(
-                () => BuildFrame(forClickableHost: true), placement, Teleport, textures, framework, log)
+                () => BuildFrame(forClickableHost: true),
+                placement,
+                Teleport,
+                textures,
+                framework,
+                log,
+                () => cfg.LogDiagnostics)
             {
                 InternalName = "WayfarerReadout",
                 Title = "Wayfarer",
@@ -178,19 +211,12 @@ internal sealed class GuidanceOverlay(
         catch (Exception ex)
         {
             clickable = null;
-            log.Error(ex, "Wayfarer readout: the clickable readout could not be created — a mouse player gets the read-only overlay and the window's Quests tab.");
+            const string message =
+                "Wayfarer readout: the clickable readout could not be created, so the readout still shows the "
+                + "route but clicking its teleport line will do nothing. Teleport from the window's Quests tab "
+                + "or the game's right-click menu instead.";
+            log.Warning(ex, message);
         }
-
-        // Checked again: Dispose runs on whichever thread Dalamud unloads on, so it can have
-        // arrived while the two constructors above were running and found nothing yet to tear
-        // down. Undoing it here is what makes the guard at the top of this method total.
-        if (disposed)
-        {
-            Dispose();
-            return;
-        }
-
-        framework.Update += OnFrameworkUpdate;
     }
 
     /// <summary>Opens and closes the clickable host as the player changes device. Cheap: two field
@@ -221,14 +247,21 @@ internal sealed class GuidanceOverlay(
         {
             var failed = clickable;
             clickable = null;
-            log.Error(ex, "Wayfarer readout: the clickable readout failed to open — falling back to the read-only overlay.");
+            const string message =
+                "Wayfarer readout: the clickable readout failed to open, so the read-only overlay is being used "
+                + "for the rest of the session — the readout still shows the route, but its teleport line is no "
+                + "longer clickable.";
+            log.Warning(ex, message);
             try
             {
                 failed.Dispose();
             }
             catch (Exception disposeEx)
             {
-                log.Warning(disposeEx, "Wayfarer readout: disposing the failed clickable readout also threw.");
+                const string disposeMessage =
+                    "Wayfarer readout: disposing the failed clickable readout also threw, so an empty readout "
+                    + "frame may remain on screen until the game is restarted.";
+                log.Warning(disposeEx, disposeMessage);
             }
         }
     }

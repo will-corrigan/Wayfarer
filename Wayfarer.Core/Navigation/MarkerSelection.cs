@@ -35,6 +35,9 @@ public enum MarkerMatch
 /// that map's own coordinate space.</summary>
 public sealed record MarkerPoint(float X, float Y, float Z, uint TerritoryId, uint MapId);
 
+/// <summary>Picks which of the game's live quest markers the readout should point at, and how it
+/// relates to where the player is standing. Extracted from the marker scan so the tie-break rules
+/// can be tested without a game attached.</summary>
 public static class MarkerSelection
 {
     /// <summary>Picks the tier (<see cref="MarkerMatch"/>) and, within that tier, the

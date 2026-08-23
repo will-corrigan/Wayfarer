@@ -125,6 +125,20 @@ internal sealed class ResolvedName
     /// than never seen.</summary>
     public List<uint> QuestCandidates { get; init; } = [];
 
+    /// <summary>Rows whose name is this name plus a trailing parenthetical — "Squadron and
+    /// Commander (Maelstrom)" for "Squadron and Commander". Populated ONLY when the name itself
+    /// matches no Quest row, and never used to pick one.
+    ///
+    /// <para>This is deliberately not part of <see cref="QuestNameKey"/> and must never become
+    /// so. Folding the parenthetical away as a matching rule is what the name-reconciliation
+    /// audit measured and rejected: it collapses the ten "A Relic Reborn" weapon rows and every
+    /// Grand Company triple onto one key, so a name match would then bind an arbitrary one. What
+    /// this field supports is the opposite operation — recording the whole SET as alternatives,
+    /// which is what the guide means by "one of the A Relic Reborn Sidequests" and "the
+    /// applicable Let the Hunt Begin sidequest". Picking is the error; enumerating is the
+    /// fix.</para></summary>
+    public List<uint> QuestVariants { get; init; } = [];
+
     public SortedDictionary<string, List<SheetHit>> Sheets { get; init; } = [];
 }
 
@@ -137,6 +151,18 @@ internal sealed class SheetHit
     /// <summary>ContentFinderCondition.ClassJobLevelRequired, for the duty-page infobox
     /// cross-check. Null on sheets that have no such column.</summary>
     public int? Level { get; init; }
+
+    /// <summary>For duty rows only: the <c>InstanceContent</c> row that points at this
+    /// ContentFinderCondition.
+    ///
+    /// <para>Two ids for one duty is not redundancy. The wiki and the guide name duties the way
+    /// ContentFinderCondition does, so that is the row a link target resolves to and the row the
+    /// catalogue cites as provenance — but <c>UIState.IsInstanceContentCompleted</c> takes an
+    /// InstanceContent id, and the two numbering schemes are unrelated (Basic Training: Enemy
+    /// Parties is CFC 42 and InstanceContent 10001). Emitting both here is what lets the
+    /// catalogue cite the row a human can look up and still hand the plugin the row it can
+    /// actually ask about.</para></summary>
+    public uint? ContentId { get; init; }
 }
 
 internal sealed class QuestFacts
@@ -163,15 +189,19 @@ internal sealed class SheetIndex
 {
     private SheetIndex(
         Dictionary<string, List<QuestNameCandidate>> questsByKey,
+        Dictionary<string, List<uint>> questVariantsByBaseKey,
         Dictionary<uint, QuestFacts> questRows,
         Dictionary<string, Dictionary<string, List<SheetHit>>> sheets)
     {
         this.QuestsByKey = questsByKey;
+        this.QuestVariantsByBaseKey = questVariantsByBaseKey;
         this.QuestRows = questRows;
         this.Sheets = sheets;
     }
 
     public Dictionary<string, List<QuestNameCandidate>> QuestsByKey { get; }
+
+    public Dictionary<string, List<uint>> QuestVariantsByBaseKey { get; }
 
     public Dictionary<uint, QuestFacts> QuestRows { get; }
 
@@ -194,6 +224,7 @@ internal sealed class SheetIndex
         }
 
         var questsByKey = new Dictionary<string, List<QuestNameCandidate>>(StringComparer.Ordinal);
+        var variantsByBaseKey = new Dictionary<string, List<uint>>(StringComparer.Ordinal);
         var questRows = new Dictionary<uint, QuestFacts>();
         foreach (var q in quests)
         {
@@ -201,6 +232,24 @@ internal sealed class SheetIndex
             if (raw.Length == 0)
             {
                 continue;
+            }
+
+            // "Squadron and Commander (Maelstrom)" also files under "squadron and commander", in
+            // a separate index that is only ever read as a SET. See ResolvedName.QuestVariants.
+            var display = QuestNameKey.Display(raw);
+            var open = display.LastIndexOf('(');
+            if (open > 0 && display.EndsWith(')') && display.IndexOf(')', open) == display.Length - 1)
+            {
+                var baseKey = QuestNameKey.For(display[..open].TrimEnd());
+                if (baseKey.Length > 0)
+                {
+                    if (!variantsByBaseKey.TryGetValue(baseKey, out var variants))
+                    {
+                        variantsByBaseKey[baseKey] = variants = [];
+                    }
+
+                    variants.Add(q.RowId);
+                }
             }
 
             var refs = inbound.GetValueOrDefault(q.RowId);
@@ -228,7 +277,8 @@ internal sealed class SheetIndex
             ["duty"] = Fold(
                 game.GetExcelSheet<ContentFinderCondition>(),
                 r => r.Name.ExtractText(),
-                r => r.ClassJobLevelRequired),
+                r => r.ClassJobLevelRequired,
+                InstanceContentOf),
             ["item"] = Fold(game.GetExcelSheet<Item>(), r => r.Name.ExtractText()),
             ["mount"] = Fold(game.GetExcelSheet<Mount>(), r => r.Singular.ExtractText()),
             ["minion"] = Fold(game.GetExcelSheet<Companion>(), r => r.Singular.ExtractText()),
@@ -238,7 +288,7 @@ internal sealed class SheetIndex
             ["action"] = Fold(game.GetExcelSheet<Lumina.Excel.Sheets.Action>(), r => r.Name.ExtractText()),
         };
 
-        return new SheetIndex(questsByKey, questRows, sheets);
+        return new SheetIndex(questsByKey, variantsByBaseKey, questRows, sheets);
     }
 
     public ResolvedName Resolve(string raw)
@@ -256,6 +306,13 @@ internal sealed class SheetIndex
                 QuestAnyOf = [.. match.Alternatives.Order()],
                 QuestCandidates = [.. candidates.Select(c => c.RowId).Order()],
             };
+        }
+        else if (this.QuestVariantsByBaseKey.TryGetValue(key, out var variants) && variants.Count > 1)
+        {
+            // No row carries this name, but several carry it with a parenthetical after it. The
+            // caller decides whether the guide's sentence means "any of these"; all this does is
+            // hand over the set, never one of them.
+            resolved = new ResolvedName { Key = key, QuestVariants = [.. variants.Order()] };
         }
 
         foreach (var (sheet, byKey) in this.Sheets)
@@ -278,6 +335,11 @@ internal sealed class SheetIndex
             {
                 wanted.Add(id);
             }
+
+            foreach (var id in n.QuestVariants)
+            {
+                wanted.Add(id);
+            }
         }
 
         var facts = new SortedDictionary<string, QuestFacts>(StringComparer.Ordinal);
@@ -292,10 +354,23 @@ internal sealed class SheetIndex
         return facts;
     }
 
+    /// <summary>The InstanceContent row a duty row points at — the id
+    /// <c>UIState.IsInstanceContentCompleted</c> takes.
+    ///
+    /// <para>Read from the ContentFinderCondition row's own <c>Content</c> reference rather than
+    /// by scanning InstanceContent for rows that point back here, because that scan is ambiguous
+    /// and demonstrably wrong once: two InstanceContent rows name ContentFinderCondition 16, and
+    /// the Praetorium's live one is 86, not the retired 16 that a first-match scan returns.
+    /// <c>ContentLinkType</c> is what says the reference is an InstanceContent row at all, so it
+    /// is checked rather than assumed.</para></summary>
+    private static uint? InstanceContentOf(ContentFinderCondition row) =>
+        row.ContentLinkType == 1 && row.Content.RowId != 0 ? row.Content.RowId : null;
+
     private static Dictionary<string, List<SheetHit>> Fold<T>(
         Lumina.Excel.ExcelSheet<T>? sheet,
         Func<T, string> name,
-        Func<T, int>? level = null)
+        Func<T, int>? level = null,
+        Func<T, uint?>? contentId = null)
         where T : struct, Lumina.Excel.IExcelRow<T>
     {
         var byKey = new Dictionary<string, List<SheetHit>>(StringComparer.Ordinal);
@@ -323,6 +398,7 @@ internal sealed class SheetIndex
                 RowId = row.RowId,
                 Name = QuestNameKey.Display(raw),
                 Level = level?.Invoke(row),
+                ContentId = contentId?.Invoke(row),
             });
         }
 

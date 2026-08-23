@@ -6,6 +6,9 @@ namespace Wayfarer.Core.Navigation;
 /// from the source Aetheryte sheet row (Territory.RowId, AethernetGroup).</summary>
 public sealed record AetherytePoint(uint Id, string Name, float X, float Z, uint Territory = 0, uint Group = 0);
 
+/// <summary>Decides whether flying to an aetheryte actually beats running, for one zone. The
+/// answer is a comparison of walking legs against a direct run plus a fixed margin — see the
+/// constants below for what that margin is paying for.</summary>
 public static class AetherytePicker
 {
     // The combined walking legs must beat the direct run by at least this (covers the

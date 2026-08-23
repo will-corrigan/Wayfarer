@@ -9,12 +9,17 @@ using Wayfarer.Modules;
 
 namespace Wayfarer.Windows;
 
-/// <summary>ImGui (Mouse-mode) presentation of the hunting log — same data source
-/// (<see cref="HuntingLogService"/>), same row actions (SetPickup/SetRoute through
-/// <see cref="INavigationProvider"/>) as the Hunting Log tab of <see cref="NativeHubWindow"/>, the
-/// Controller-mode counterpart (spec §5). Duty-gated (non-routable) Grand Company Elite targets
-/// render their duty name as a clickable "Open in Duty Finder" link instead of a Go button,
-/// mirroring <see cref="ArrowWindow"/>'s own duty-objective link.</summary>
+/// <summary>The ImGui rendering of the hunting log — same data source
+/// (<see cref="HuntingLogService"/>) and same row actions (SetPickup/SetRoute through
+/// <see cref="INavigationProvider"/>) as the Hunting tab of <see cref="NativeHubWindow"/>.
+///
+/// This is a <b>fallback surface</b>, not a destination: the native window serves mouse and
+/// controller alike, and everything opens that. This exists for the case where it cannot be
+/// created at all, so hunting is never simply unreachable.
+///
+/// Duty-gated (non-routable) Grand Company Elite targets render their duty name as a clickable
+/// "Open in Duty Finder" link instead of a Go button, mirroring <see cref="ArrowWindow"/>'s own
+/// duty-objective link.</summary>
 internal sealed class HuntingWindow(
     HuntingLogService hunting,
     ModuleRegistry modules,

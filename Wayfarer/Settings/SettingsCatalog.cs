@@ -157,6 +157,14 @@ internal sealed class SettingsCatalog(
         },
         new SettingDefinition
         {
+            Id = "questHelper.logDiagnostics",
+            Label = "Write readout diagnostics to the log",
+            Kind = SettingKind.Toggle,
+            ReadFlag = () => config.QuestHelper.LogDiagnostics,
+            WriteFlag = Write(value => config.QuestHelper.LogDiagnostics = value),
+        },
+        new SettingDefinition
+        {
             Id = "guidance.clickTeleport",
             Label = "Teleport When the Readout's Aetheryte Is Clicked",
             Description = "The only thing Wayfarer ever does that the server sees.",

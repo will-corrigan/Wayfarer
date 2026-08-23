@@ -76,7 +76,7 @@ internal sealed unsafe class ArrowWindow : Window
 
     public override void PreDraw()
     {
-        Flags = cfg.ArrowLocked ? SharedFlags | ImGuiWindowFlags.NoMove : SharedFlags;
+        Flags = SharedFlags;
 
         // Width is freely user-resizable between the min floor and unbounded; height is pinned to
         // desiredHeight via EQUAL min/max, so a vertical drag is clamped straight back every frame

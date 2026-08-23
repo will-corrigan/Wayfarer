@@ -2,6 +2,9 @@ using System.Globalization;
 
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>Works out, for every catalogue entry, whether the player can go and get it — and, when
+/// they cannot, which gate is in the way. The single place that decides what the checklist claims,
+/// and deliberately the most conservative code in the plugin: see <see cref="Compute"/>.</summary>
 public static class UnlockStatusCalculator
 {
     /// <summary>Sets Status/LockReason on every entry, in precedence order: Done, Accepted,
@@ -43,10 +46,11 @@ public static class UnlockStatusCalculator
         u.LockReason = null;
 
         // An entry with no quest bound to it has no completion evidence of its own, and cannot
-        // borrow another entry's: it is unverified, never Done.
+        // borrow another entry's: it is never Done. It can still be told apart from "we know
+        // nothing", though, when the catalogue curated a gate for it.
         if (u.QuestRowId is not { } rowId)
         {
-            u.Status = UnlockStatus.Unverified;
+            ComputeWithoutQuest(u, ctx);
             return;
         }
 
@@ -97,6 +101,35 @@ public static class UnlockStatusCalculator
         }
 
         ComputeRemainingGates(u, ctx);
+    }
+
+    /// <summary>Entries with no Quest row at all. Most are honestly unknowable and say so. Some
+    /// are not: the guide gates them on clearing a duty or on carrying a treasure map, and the
+    /// catalogue records that as a curated requirement. Running it here turns "status unknown" —
+    /// which is all these entries could ever say — into "requires clearing Sigmascape V4.0
+    /// (Savage)", which is the difference between a shrug and an answer.
+    ///
+    /// <para>Satisfying the gate still never yields Available. Clearing the prerequisite duty
+    /// opens the door; whether the player has walked through it (talked to the Wandering Minstrel)
+    /// is not something the client records anywhere a plugin can read, and guessing at it is
+    /// exactly the class of confident wrongness this calculator exists to avoid.</para></summary>
+    private static void ComputeWithoutQuest(ResolvedUnlock u, UnlockGateContext ctx)
+    {
+        if (u.Def.Requires?.HasCheckableRequirement != true)
+        {
+            u.Status = UnlockStatus.Unverified;
+            return;
+        }
+
+        if (CuratedRequirementBlocking(u, ctx, out var reason, out var status))
+        {
+            u.Status = status;
+            u.LockReason = reason;
+            return;
+        }
+
+        u.Status = UnlockStatus.RequirementsUnknown;
+        u.LockReason = "everything this plugin can check for it is done, but there is no quest to read for whether you have taken it — status unknown";
     }
 
     /// <summary>InstanceContent, Grand Company, beast tribe, mount, and unmodeled-gate checks —
@@ -268,6 +301,16 @@ public static class UnlockStatusCalculator
             }
         }
 
+        // Duties before collectibles, and with their own status: "you have not cleared this duty"
+        // is a different kind of answer from "you are missing four minions", and the checklist
+        // groups them differently.
+        if (MissingDuty(u, ctx, req) is { } duty)
+        {
+            status = UnlockStatus.InstanceLocked;
+            reason = $"requires clearing {duty}";
+            return true;
+        }
+
         CollectMissing(u, ctx, req);
         if (u.MissingRequirements.Count > 0)
         {
@@ -287,6 +330,27 @@ public static class UnlockStatusCalculator
             ? $"{label} — status unknown"
             : "has a requirement this plugin can't check — status unknown";
         return true;
+    }
+
+    /// <summary>The first curated duty the player has not cleared, or null when they all are.
+    /// Also records every uncleared one in <see cref="ResolvedUnlock.MissingRequirements"/>, for
+    /// the same reason the collectible list does: naming only the first of several is a small lie
+    /// the window can easily avoid telling.</summary>
+    private static string? MissingDuty(ResolvedUnlock u, UnlockGateContext ctx, UnlockRequirement req)
+    {
+        string? first = null;
+        foreach (var duty in req.Duties)
+        {
+            if (ctx.IsInstanceContentCompleted(duty.Id))
+            {
+                continue;
+            }
+
+            first ??= duty.Name;
+            u.MissingRequirements.Add(duty.Name);
+        }
+
+        return first;
     }
 
     private static void CollectMissing(ResolvedUnlock u, UnlockGateContext ctx, UnlockRequirement req)

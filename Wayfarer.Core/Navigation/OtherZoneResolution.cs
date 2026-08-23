@@ -5,7 +5,7 @@ namespace Wayfarer.Core.Navigation;
 /// <c>chosen == null ? fallbackWhenNoCandidate : route</c> branch) and ArrowWindow (the
 /// interior-message text it used to reconstruct from raw state fields) so this
 /// three-way choice — and the message text itself — has unit-test coverage
-/// independent of Dalamud. See task-fix-interior-report.md fix round 3.</summary>
+/// independent of Dalamud.</summary>
 public enum OtherZoneOutcome
 {
     /// <summary>Route costing found a real candidate (aethernet/entrance/teleport) —

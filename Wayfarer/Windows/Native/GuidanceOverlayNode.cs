@@ -28,7 +28,11 @@ internal sealed class GuidanceOverlayNode : OverlayNode
     private bool broken;
 
     public GuidanceOverlayNode(
-        Func<ReadoutFrame?> provider, ReadoutPlacement placement, ITextureProvider textures, IPluginLog log)
+        Func<ReadoutFrame?> provider,
+        ReadoutPlacement placement,
+        ITextureProvider textures,
+        IPluginLog log,
+        Func<bool> diagnosticsEnabled)
     {
         this.provider = provider;
         this.placement = placement;
@@ -41,7 +45,7 @@ internal sealed class GuidanceOverlayNode : OverlayNode
         // for. It runs off a VIEWPORT event listener rather than this addon's collision list, so it
         // works without making the overlay clickable, focusable or reachable by a controller — and
         // it is only ever wired up while the player has explicitly turned move mode on.
-        body = new ReadoutBodyNode(log, textures, onMoved: delta => placement.MoveTo(Position + delta));
+        body = new ReadoutBodyNode(log, textures, diagnosticsEnabled, onMoved: delta => placement.MoveTo(Position + delta));
         body.AttachNode(this);
     }
 

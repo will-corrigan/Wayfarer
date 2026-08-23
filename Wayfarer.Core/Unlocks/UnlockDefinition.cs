@@ -1,5 +1,12 @@
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>One row of <c>data/unlocks-by-level.json</c> as the plugin reads it: what the unlock
+/// is, what opens it, and how well corroborated that claim is.
+///
+/// <para>This is only the half of the entry the plugin acts on. The file also carries editorial
+/// fields — <c>questKind</c>, and the dataset's own header — which are there for whoever maintains
+/// the catalogue and are checked by <c>data/validate-unlocks.mjs</c>. They are deliberately absent
+/// here: a property the plugin never reads reads as a promise the plugin never keeps.</para></summary>
 public sealed class UnlockDefinition
 {
     /// <summary>The level a source states for this unlock, or <c>null</c> when no source states
@@ -30,7 +37,14 @@ public sealed class UnlockDefinition
 
     public string? Quest { get; set; }
 
-    public string? QuestKind { get; set; }
+    /// <summary>Quest sheet row ids, any ONE of which completes this unlock — the Grand Company,
+    /// starting-city and relic-weapon variants, where a character does exactly one of the set.
+    ///
+    /// <para>Row ids rather than a name, because the name is precisely what was ambiguous: the
+    /// game ships three quests called <c>The Company You Keep</c> and matching on the string
+    /// picked one arbitrarily, which told two thirds of characters they had not done something
+    /// they had. Empty for the ordinary case of one quest, one unlock.</para></summary>
+    public List<uint> QuestAnyOf { get; set; } = [];
 
     public string? Notes { get; set; }
 

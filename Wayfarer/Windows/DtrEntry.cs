@@ -68,7 +68,10 @@ internal sealed class DtrEntry(
         }
         catch (Exception ex)
         {
-            log.Warning(ex, "Wayfarer: removing the server info bar entry failed — it may linger until the next full reload.");
+            const string message =
+                "Wayfarer: removing the server info bar entry failed, so a dead Wayfarer entry may sit on the "
+                + "bar until the game is restarted. Nothing else is affected.";
+            log.Warning(ex, message);
         }
 
         entry = null;
@@ -168,7 +171,10 @@ internal sealed class DtrEntry(
         }
         catch (Exception ex)
         {
-            log.Error(ex, "Wayfarer: the server info bar entry's click handler failed.");
+            const string message =
+                "Wayfarer: clicking the server info bar entry did nothing — the window it should have opened "
+                + "is still reachable from the plugin list or /wayfarer.";
+            log.Error(ex, message);
         }
     }
 
@@ -180,6 +186,10 @@ internal sealed class DtrEntry(
         }
 
         loggedFailure = true;
-        log.Error(ex, "Wayfarer: the server info bar entry is unavailable — every other way into Wayfarer keeps working.");
+        const string message =
+            "Wayfarer: the server info bar entry is unavailable, so there is no Wayfarer icon on the bar for "
+            + "the rest of the session. Every other way in — the readout, the plugin list, /wayfarer, the "
+            + "game's own menus — keeps working. Reported once.";
+        log.Warning(ex, message);
     }
 }

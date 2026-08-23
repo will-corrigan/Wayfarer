@@ -61,6 +61,8 @@ public sealed class Plugin : IDalamudPlugin
     /// tab all compose their own presentation from, so no two of them can say different things.</summary>
     private ReadoutFeed feed = null!;
 
+    private bool loggedHubFallback;
+
     public Plugin(
         IDalamudPluginInterface pluginInterface,
         IFramework framework,
@@ -113,11 +115,11 @@ public sealed class Plugin : IDalamudPlugin
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
 
         modules.Register(
-            BuildUnlockChecklistModule(framework, objects, clientState, unlocks, inputMode, config, SaveConfig, log, guidance),
+            BuildUnlockChecklistModule(framework, objects, clientState, unlocks, inputMode, config, log, guidance),
             enabledByDefault: true);
 
         modules.Register(
-            BuildHuntingLogModule(framework, objects, hunting, inputMode, config, SaveConfig, log, guidance),
+            BuildHuntingLogModule(framework, objects, hunting, config, log, guidance),
             enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
@@ -132,7 +134,10 @@ public sealed class Plugin : IDalamudPlugin
         windows.AddWindow(configWindow);
 
         SubscribeAndStart(pluginInterface);
-        log.Information("Wayfarer loaded");
+
+        // The version belongs in this line: it is the first question asked of every pasted log,
+        // and the plugin list's answer is whatever is installed now, not what was running then.
+        log.Information($"Wayfarer {typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "?"} loaded.");
     }
 
     public void Dispose()
@@ -153,7 +158,7 @@ public sealed class Plugin : IDalamudPlugin
             // Modules are disposed before the hub they call into is torn down. ModuleRegistry's
             // own Dispose() guards each module individually, and NativeHubWindow.Dispose() guards
             // its own main-thread marshalling — but this try/finally is the actual fix for the
-            // unload crash + leaked hook (task 2): whatever throws or however long disposal takes
+            // unload crash + leaked hook: whatever throws or however long disposal takes
             // above, KamiToolKitLibrary.Cleanup() below is what releases the static FireCallback
             // hook, and it must always run.
             mapFlag.Dispose();
@@ -258,7 +263,18 @@ public sealed class Plugin : IDalamudPlugin
         }
         catch (Exception ex)
         {
-            log.Error(ex, "Plugin: the native Wayfarer window failed to open — falling back to the ImGui settings.");
+            // Once: this is reachable from the plugin list, the cog and every command, and the
+            // reason it would not open does not change between attempts.
+            if (!loggedHubFallback)
+            {
+                loggedHubFallback = true;
+                const string message =
+                    "Wayfarer: the game-styled Wayfarer window would not open, so the plugin-drawn settings "
+                    + "window is being used instead. Nothing is lost; it is best driven with a mouse. "
+                    + "Reported once.";
+                log.Warning(ex, message);
+            }
+
             fallback();
         }
     }
@@ -329,7 +345,7 @@ public sealed class Plugin : IDalamudPlugin
         log);
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer —
-    /// builds the widget (with its Controller-mode "Open Wayfarer ▸" entry point wired straight to
+    /// builds the widget (with its "Open Wayfarer ▸" entry point wired straight to
     /// <see cref="hub"/>) and its owning module.</summary>
     private QuestHelperModule BuildQuestHelperModule(
         ReadoutHosts services,
@@ -379,7 +395,6 @@ public sealed class Plugin : IDalamudPlugin
         UnlockService unlocks,
         InputModeService inputMode,
         Configuration config,
-        Action saveConfig,
         IPluginLog log,
         GuidanceGraph guidance)
     {
@@ -403,9 +418,7 @@ public sealed class Plugin : IDalamudPlugin
         IFramework framework,
         IObjectTable objects,
         HuntingLogService hunting,
-        InputModeService inputMode,
         Configuration config,
-        Action saveConfig,
         IPluginLog log,
         GuidanceGraph guidance)
     {

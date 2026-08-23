@@ -9,6 +9,12 @@ using Wayfarer.Modules;
 
 namespace Wayfarer.Windows;
 
+/// <summary>The ImGui rendering of the unlock checklist — same data and same row actions as the
+/// Checklist tab of <see cref="NativeHubWindow"/>.
+///
+/// This is a <b>fallback surface</b>, not a destination: the native window serves mouse and
+/// controller alike, and everything opens that. This exists for the case where it cannot be created
+/// at all, so the checklist is never simply unreachable.</summary>
 internal sealed class UnlockWindow(
     IUnlockProvider unlocks,
     ModuleRegistry modules,

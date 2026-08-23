@@ -27,16 +27,71 @@ Two sources, and neither one alone is trusted.
    produced 180 catalogue entries that matched no quest in the game, 7 bound to the wrong quest,
    and entries shown as available with nothing gating them. Parsing `[[link targets]]` is the fix
    this pipeline exists to make permanent.
-2. **The game's own sheets** — `Quest`, `ContentFinderCondition`, `Item`, `Mount`, `Companion`,
-   `Emote`, `Orchestrion`, `TripleTriadCard`, `Action` — via `tools/Wayfarer.CatalogueGen`.
+2. **The game's own sheets** — `Quest`, `ContentFinderCondition`, `InstanceContent`, `Item`,
+   `Mount`, `Companion`, `Emote`, `Orchestrion`, `TripleTriadCard`, `Action` — via
+   `tools/Wayfarer.CatalogueGen`.
 
 Every quest binding is then cross-checked against a **third**, independently maintained statement:
 the linked page's own `{{ARR Infobox Quest}}` `Quest Number`, which the wiki's import bot writes.
 Pages marked `DontBot = yes` are hand-written and are **not** used — several of those carry a
-copy-pasted quest number that is simply wrong.
+copy-pasted quest number that is simply wrong. A treasure-map page's `{{ARR Infobox Map Chest}}`
+`Type` is read the same way, and for the same reason: it is the page's own statement of the item
+row behind a name the guide only shows in its display form.
 
 Disagreements between sources are **recorded, never silently resolved**. An entry whose sources
 disagree loses its `verified` standing and says so in `notes`.
+
+## What a row can be gated on
+
+Not every unlock is opened by a quest, and the catalogue used to pretend otherwise: a row whose
+requirement named a duty or a treasure map had that name written into `quest`, where it matched no
+Quest row and left the entry with no identity at all. Four gate kinds are now derived, each from
+the guide's own link target.
+
+| The guide's requirement links | What the entry gets | Graded? |
+|---|---|---|
+| one Quest row | `quest` + `game-data:Quest#N` | yes |
+| several Quest rows that are variants of one quest | `questAnyOf` + one source line each | yes — any one counts |
+| a ContentFinderCondition row | `requires.duties` (InstanceContent id) + the CFC source | no — see below |
+| an Item row, directly or through the linked page's `{{ARR Infobox Map Chest}}` `Type` | `requires.items` + the Item source | no |
+
+`questAnyOf` exists because the game ships one quest per starting city and per Grand Company, and
+binding the lowest row id told two thirds of characters they had not done something they had. The
+set is taken only when a source says it is a choice: the rows differ solely by the parenthetical
+the sheet disambiguates them with and share a level, or the guide's sentence says "one of", "the
+applicable", or "or" without describing a sequence. **Picking one of several is the error this
+field exists to end; enumerating them is the fix.** Note what is *not* done — the parenthetical is
+never folded away to match a name against a row. That collapses the ten "A Relic Reborn" weapon
+quests onto one key, and the name-reconciliation audit measured and rejected it.
+
+A duty or item gate is real but **does not make the entry gradeable**. Clearing Sigmascape opens
+the Ultimate; whether the player then spoke to the Wandering Minstrel is written nowhere a plugin
+can read. Those entries keep `requires.unverifiable` *and* cite their rows — that combination is
+correct, and it is the difference between "status unknown" and "requires clearing Sigmascape V4.0
+(Savage)".
+
+## Where the generator reaches into curated fields
+
+It owns identity and provenance and leaves prose alone, with three narrow exceptions. The first
+two are reported by name in `generation-report.json` rather than merely counted.
+
+**`type`, from the guide's row icon.** Only for an entry the catalogue typed `mount` whose label
+resolves to a ContentFinderCondition row and to no Mount row. The catalogue typed entries by the
+first word of their own name, so every duty called "Mount Ordeals" or "Mount Rokkon" was filed as
+a mount; the row icon says trial or dungeon and the game agrees.
+
+**Deletion, for unreleased content.** A guide page for an expansion that has not shipped is the
+previous expansion's page with the quest names blanked to `???`. Thirty-three of the Evercold
+page's thirty-four rows are blanked; the one that is not was imported as a real level-105 entry
+duplicating a level-92 one. The rule is the measurement, not the page name — a page that is mostly
+placeholders describes content that does not exist, and an entry whose only guide row is on such a
+page is dropped. This is the **only** deletion the generator performs.
+
+**The "Level disputed" sentence in `notes`.** That sentence is *written* by the generator, so it is
+stripped before the disputes pass and rewritten from the current set. Carrying it forward the way
+the rest of `notes` is carried forward made it permanent: five entries kept a note about a dispute
+that a later regeneration had already resolved, and the note then held them at `single-source`
+because confidence was reading it. Everything else in `notes` is yours and is left alone.
 
 ## Generated fields vs curated fields
 
@@ -44,10 +99,12 @@ The generator owns the entry's **identity and provenance**. It preserves everyth
 
 | Generated every run | Carried forward from the committed file |
 |---|---|
-| `quest` (display name of the resolved row) | `unlock`, `type`, `questKind` |
-| `sources` | `description`, `notes`, `priority`, `cosmetic` |
-| `confidence` | `requires` (curated script-only requirements) |
+| `quest` (display name of the resolved row) | `unlock`, `questKind` |
+| `questAnyOf` | `description`, `notes`, `priority`, `cosmetic` |
+| `sources` | `requires` (curated script-only requirements) |
+| `confidence` | `type`, except the one correction above |
 | `level`, `levelSource`, `category` | |
+| `requires.duties`, `requires.items` where the guide states one | |
 
 The committed dataset is therefore also the **curation store**. Editing prose in it is expected;
 the next regeneration keeps that prose and rewrites only the identity fields around it.
@@ -131,7 +188,10 @@ readable:
 - **a recorded identity for every entry** — either the game rows it rests on, or an explicit
   `requires.unverifiable`, so nothing can be silently identity-less;
 - **no entry claiming Available on an absent gate** — an entry with no game row must be marked
-  unverifiable, and one that cites a row must not be;
+  unverifiable; one citing a **Quest** row must not be, because the client records that
+  completion; one citing only non-quest rows must be, because nothing records the unlock itself;
+- **every `questAnyOf` id cited by the entry's own sources**, and every duty gate backed by the
+  `ContentFinderCondition` row it came from;
 - **grounded levels** — a level needs a `levelSource`, and a `levelSource` naming a quest row must
   name a row the entry itself cites;
 - **no duplicate identities** — same unlock, same level, same rows.

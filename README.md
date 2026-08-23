@@ -155,6 +155,18 @@ type drives the version bump:
 - `feat:` bumps the minor version
 - a `!` after the type (or a `BREAKING CHANGE:` footer) bumps the major version
 
+Reserve `feat:` for something a player can point at and use — a new module, a new surface, a
+capability that did not exist. Repairing, tightening or completing something that was already
+advertised is `fix:`, even when the diff is large; a release that only repairs things should be a
+patch. Work with no user-visible effect (`refactor:`, `chore:`, `test:`, `ci:`, `docs:`) is hidden
+from the changelog entirely, and `data:` is used for changes to the unlock catalogue.
+
+The subject line of every one of these becomes a line in the release notes, so write it for the
+person installing the plugin rather than for the person reviewing the diff: say what changed for
+them, in the words they would use. "fix: stop the arrow vanishing when a hunting target is chosen"
+belongs in a changelog; "fix: correct completion signal ownership in the arbiter" does not — that
+belongs in the commit body, which readers of the repository will find and players never need.
+
 release-please keeps an up-to-date pull request open with the next version bump and a generated
 `CHANGELOG.md`. Before merging it, check the pull request's checks: because it's authored by
 `github-actions[bot]`, GitHub usually holds its CI run for manual approval (a banner reading

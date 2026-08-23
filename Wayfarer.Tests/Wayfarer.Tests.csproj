@@ -22,9 +22,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- For HuntingDatasetShapeTests and UnlockDatasetShapeTests, which load the real shipped
-         files rather than a fixture, so the fixture test can't silently drift from the packaged
-         data. -->
+    <!-- For HuntingDatasetShapeTests, UnlockDatasetShapeTests and UnlockCatalogueShapeTests,
+         which load the real shipped files rather than a fixture, so the fixture tests can't
+         silently drift from the packaged data. -->
     <Content Include="../data/hunting-targets.json" Link="hunting-targets.json" CopyToOutputDirectory="PreserveNewest"/>
     <Content Include="../data/unlocks-by-level.json" Link="unlocks-by-level.json" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>

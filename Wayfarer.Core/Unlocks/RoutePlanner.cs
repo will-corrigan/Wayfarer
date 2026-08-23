@@ -1,5 +1,8 @@
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>Orders a set of unlock pickups into a route worth walking: this zone first, nearest
+/// first, then the other zones in the order their content becomes relevant. The whole of what
+/// "Route me" means, with no game dependency.</summary>
 public static class RoutePlanner
 {
     /// <summary>Orders pickups: current-territory entries greedy-nearest from the

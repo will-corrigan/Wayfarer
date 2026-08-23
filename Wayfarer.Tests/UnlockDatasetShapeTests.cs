@@ -16,19 +16,30 @@ public class UnlockDatasetShapeTests
     /// <summary>An entry with no game row behind it must say so. This is the guard that keeps
     /// "I found no gate" from being reported as "go and get it": the status calculator refuses to
     /// grade an entry carrying <c>requires.unverifiable</c>, and nothing else in the file would
-    /// stop it falling through to Available.</summary>
+    /// stop it falling through to Available.
+    ///
+    /// <para>Identity and gradeability are separate. A Quest row is a gate the client records, so
+    /// an entry citing one can be graded and must not also claim to be unverifiable. A
+    /// ContentFinderCondition or Item row identifies the entry without being a gate: clearing
+    /// Sigmascape opens the Ultimate, but whether the player then took the unlock is written
+    /// nowhere a plugin can read. Those entries carry rows AND the marker, and that is
+    /// correct.</para></summary>
     [Fact]
     public void EveryEntryEitherRestsOnAGameRowOrDeclaresItRestsOnNothing()
     {
         foreach (var d in Load())
         {
             var hasRow = d.Sources.Exists(s => s.StartsWith("game-data:", StringComparison.Ordinal));
+            var hasQuestRow = d.Sources.Exists(s => s.StartsWith("game-data:Quest#", StringComparison.Ordinal));
             Assert.True(
                 hasRow || d.Requires?.Unverifiable == true,
                 $"'{d.Unlock}' cites no game row and is not marked unverifiable");
             Assert.False(
-                hasRow && d.Requires?.Unverifiable == true,
-                $"'{d.Unlock}' is marked unverifiable but cites {string.Join(", ", d.Sources)}");
+                hasQuestRow && d.Requires?.Unverifiable == true,
+                $"'{d.Unlock}' is marked unverifiable but cites a Quest row: {string.Join(", ", d.Sources)}");
+            Assert.False(
+                hasRow && !hasQuestRow && d.Requires?.Unverifiable != true,
+                $"'{d.Unlock}' cites only non-quest rows, so nothing says whether the unlock was taken: {string.Join(", ", d.Sources)}");
         }
     }
 

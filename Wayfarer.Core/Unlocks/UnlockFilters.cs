@@ -1,5 +1,8 @@
 namespace Wayfarer.Core.Unlocks;
 
+/// <summary>The chip filters over the checklist — category, priority, level band, zone — and the
+/// mapping from an entry's type to the category chip it answers to. Kept out of the windows so the
+/// native window and the ImGui fallback cannot filter differently.</summary>
 public static class UnlockFilters
 {
     public static string Category(UnlockDefinition d) => d.Type switch
@@ -45,6 +48,9 @@ public static class UnlockFilters
     }
 }
 
+/// <summary>What the player has narrowed the checklist to right now — the chip selections, the
+/// level band, the zone, and whether finished entries are shown. Held by whichever window is
+/// drawing so the two presentations cannot drift apart on what "filtered" means.</summary>
 public sealed class FilterState
 {
     public HashSet<string> Categories { get; set; } = [];
