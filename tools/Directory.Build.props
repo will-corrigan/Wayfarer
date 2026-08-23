@@ -1,0 +1,26 @@
+<Project>
+  <!-- MSBuild stops walking up at the first Directory.Build.props it finds, so this file
+       deliberately REPLACES the repo-root one for everything under tools/. That is the point:
+       tools/ holds developer-only utilities that are NOT part of the shipped plugin, are NOT
+       listed in Wayfarer.slnx, and are never built by CI.
+
+       They must not inherit the root settings because:
+         - Central Package Management + lock files: CI restores the solution in locked mode,
+           and a tool project that needs no packages would still be forced to carry a
+           packages.lock.json that nothing verifies.
+         - The Lumina references below resolve against a local game/Dalamud install. A CI
+           runner has neither, so any solution-scoped build that reached this project would
+           fail on a machine that is doing nothing wrong.
+
+       Analyzers and TreatWarningsAsErrors are intentionally off here for the same reason:
+       these projects are run by hand by a developer who has the game installed, and their
+       output is reviewed as a diff against the committed dataset, not shipped to players. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14.0</LangVersion>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

@@ -5,3 +5,7 @@ local.props
 *.user
 TestResults/
 .env
+# Wikitext fetched by scripts/build-unlock-catalogue.mjs, plus the candidate dataset and the
+# generation report it writes. Local scratch: the committed dataset is the output that matters,
+# and a re-fetch reproduces the cache. See data/README.md.
+.catalogue-cache/
