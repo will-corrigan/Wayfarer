@@ -132,7 +132,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "guidance.mapFlag",
             Label = "Mark the Target on the Map",
-            Description = "Off to start with. Restores your own flag when the route ends.",
+            Description = "Restores your own flag when the route ends.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkObjectiveWithMapFlag,
             WriteFlag = Write(value => config.Guidance.MarkObjectiveWithMapFlag = value),
@@ -141,7 +141,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "guidance.namePlates",
             Label = "Mark Targets Above Their Heads",
-            Description = "Off to start with. Uses the game's own quest marker, and never replaces one the game put there.",
+            Description = "Uses the game's own quest marker, and never replaces one the game put there.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.Guidance.MarkTargetsOnNameplates,
             WriteFlag = Write(value => config.Guidance.MarkTargetsOnNameplates = value),
@@ -306,7 +306,7 @@ internal sealed class SettingsCatalog(
         {
             Id = "readout.hunting",
             Label = "Show Hunting Progress",
-            Description = "Adds a line about a hunt the arrow is not currently following. Off to start with; the "
+            Description = "Adds a line about a hunt the arrow is not currently following.  The "
                 + "hunting tab has the whole log.",
             Kind = SettingKind.Toggle,
             ReadFlag = () => config.HuntingLog.ShowOnWidget,

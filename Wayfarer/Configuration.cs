@@ -136,7 +136,7 @@ public sealed class GuidanceConfig
     /// someone meeting the plugin for the first time did not ask for their own flag to move. Turn it
     /// on and it is exactly as it was; leave it off and nothing ever writes the flag. See
     /// <see cref="Configuration.Migrate"/> for why nobody who already has it on loses it.</summary>
-    public bool MarkObjectiveWithMapFlag { get; set; }
+    public bool MarkObjectiveWithMapFlag { get; set; } = true;
 
     /// <summary>Puts the game's own quest-marker icon over the heads of hunting-log targets and
     /// unlock quest givers, through the same nameplate channel the game uses for quest availability.
@@ -152,7 +152,7 @@ public sealed class GuidanceConfig
     /// match set is limited to the current zone's targets. See <see cref="NamePlateMarkerIcon"/> for
     /// the companion escape hatch, and <see cref="Configuration.Migrate"/> for why nobody who
     /// already has it on loses it.</summary>
-    public bool MarkTargetsOnNameplates { get; set; }
+    public bool MarkTargetsOnNameplates { get; set; } = true;
 
     /// <summary>Which icon the nameplate marker uses. A setting rather than a constant because
     /// whether an icon "looks right" above a monster is the one thing that cannot be settled
@@ -285,7 +285,7 @@ public sealed class UnlockChecklistConfig
     /// being guided somewhere else. The unlocks are not switched off with it — they are still the
     /// window's own tab, which is what the plugin list's main button opens. See
     /// <see cref="Configuration.Migrate"/> for why nobody who already has it on loses it.</para></summary>
-    public bool ShowOnWidget { get; set; }
+    public bool ShowOnWidget { get; set; } = true;
 }
 
 /// <summary>Settings for <see cref="Modules.HuntingLogModule"/>.</summary>
@@ -300,5 +300,5 @@ public sealed class HuntingLogConfig
     /// has just installed the plugin is not in. The hunting log is not switched off with it. See
     /// <see cref="Configuration.Migrate"/> for why nobody who already has it on loses
     /// it.</para></summary>
-    public bool ShowOnWidget { get; set; }
+    public bool ShowOnWidget { get; set; } = true;
 }

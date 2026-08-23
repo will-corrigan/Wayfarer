@@ -22,7 +22,8 @@ namespace Wayfarer.Tests;
 /// about.</para></summary>
 public partial class ConfigurationDefaultsTests
 {
-    /// <summary>Everything a first run must leave switched off.
+    /// <summary>Everything a first run must have switched ON. The user asked for these explicitly:
+    /// "I want them all on by default."
     ///
     /// <list type="bullet">
     /// <item><description><c>MarkObjectiveWithMapFlag</c> moves the player's own map flag.</description></item>
@@ -30,12 +31,12 @@ public partial class ConfigurationDefaultsTests
     /// <item><description><c>ShowOnWidget</c> — both of them, the nearby unlocks and the hunting
     /// summary — adds extra lines to a readout whose appeal is that it is short.</description></item>
     /// </list></summary>
-    public static TheoryData<string> OffByDefault =>
+    public static TheoryData<string> OnByDefault =>
         ["MarkObjectiveWithMapFlag", "MarkTargetsOnNameplates", "ShowOnWidget"];
 
     [Theory]
-    [MemberData(nameof(OffByDefault))]
-    public void An_extra_is_never_switched_on_for_a_new_install(string property)
+    [MemberData(nameof(OnByDefault))]
+    public void Every_surface_is_switched_on_for_a_new_install(string property)
     {
         var source = ConfigurationSource();
 
@@ -43,9 +44,8 @@ public partial class ConfigurationDefaultsTests
         // on would pass for the wrong reason forever.
         Assert.Contains(property, source, StringComparison.Ordinal);
 
-        // "= true" on the declaration is what would switch it on; a bool with no initialiser is
-        // false, which is the shape all of these must have.
-        Assert.DoesNotContain($"bool {property} {{ get; set; }} = true", source, StringComparison.Ordinal);
+        // A bool with no initialiser is false, which would leave the surface off on a first run.
+        Assert.Contains($"bool {property} {{ get; set; }} = true", source, StringComparison.Ordinal);
     }
 
     [Fact]
