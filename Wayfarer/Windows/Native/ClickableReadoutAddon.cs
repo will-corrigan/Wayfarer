@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
@@ -35,6 +36,12 @@ namespace Wayfarer.Windows.Native;
 /// that can receive the click. The overlay deliberately does not draw one — see
 /// <see cref="ReadoutBodyNode"/>.
 ///
+/// <b>The follow switcher's dropdown.</b> Also only here, and for the same reason as the cog — a
+/// controller's readout is click-through by construction and cannot host anything interactive at
+/// all, let alone a popup list. <see cref="popup"/> is owned by this addon rather than by the body,
+/// toggled by the switcher's click, and closes on a click anywhere else, on Escape, or on picking a
+/// row — see <see cref="FollowSwitcherPopupNode"/>.
+///
 /// <b>Scale.</b> The game renders a normal addon at the player's interface scale, while the body
 /// multiplies that scale in by hand (it was written for an overlay, which is de-scaled to raw
 /// pixels). Applying the same de-scaling here is what keeps the two hosts identical instead of
@@ -44,20 +51,41 @@ internal sealed unsafe class ClickableReadoutAddon(
     ReadoutPlacement placement,
     Action onTeleportClicked,
     Action onSettingsClicked,
-    Action onFollowClicked,
+    Func<IReadOnlyList<FollowChoice>> getFollowChoices,
     Action onQuestNameClicked,
     ITextureProvider textures,
     IFramework framework,
+    IKeyState keyState,
     IPluginLog log,
     Func<bool> diagnosticsEnabled) : NativeAddon
 {
+    /// <summary>Bit added to <see cref="lastClickTargets"/> while the follow switcher's dropdown is
+    /// open — its own rows and scrollbar are collision nodes that come and go with it, same
+    /// reasoning as <see cref="ReadoutBodyNode.ClickTargets"/>'s own bits. Deliberately outside that
+    /// range (1/2/4/8) rather than adding a fifth bit there: the dropdown is this host's own state,
+    /// not the body's — see <see cref="popup"/>.</summary>
+    private const int PopupOpenTarget = 16;
+
     private ReadoutBodyNode? body;
+
+    /// <summary>The follow switcher's dropdown — a sibling of <see cref="body"/>, not a part of it.
+    /// See <see cref="FollowSwitcherPopupNode"/>'s own doc comment for why it lives here rather than
+    /// in the body shared with the click-through overlay.</summary>
+    private FollowSwitcherPopupNode? popup;
+
     private Vector2 lastSize;
     private Vector2 lastPosition;
 
     /// <summary>The set of clickable nodes the collision list was last built for. Starts at -1,
     /// which no real set can equal, so the first frame always builds one.</summary>
     private int lastClickTargets = -1;
+
+    /// <summary>Edge-detects Escape for the dropdown. This addon is deliberately outside the game's
+    /// own focus stack (<c>DisableFocusability</c> — see the class doc comment), so it cannot rely
+    /// on the native "Escape closes the focused popup" behaviour a real window gets for free, and
+    /// polls the key itself instead, only while the dropdown is actually open.</summary>
+    private bool escapeWasDown;
+
     private bool broken;
 
     /// <inheritdoc/>
@@ -118,12 +146,19 @@ internal sealed unsafe class ClickableReadoutAddon(
             onTeleportClicked,
             onMoved: delta => placement.MoveTo(lastPosition + delta),
             onSettingsClicked: onSettingsClicked,
-            onFollowClicked: onFollowClicked,
+            onFollowClicked: ToggleFollowSwitcher,
             onQuestNameClicked: onQuestNameClicked)
         {
             Position = Vector2.Zero,
         };
         AddNode(body);
+
+        // Attached after the body, so its rows and its outside-click coverage sit above the
+        // body's own controls in hit-test order while open — the same ordering KamiToolKit's own
+        // DropDownNode uses between its popup and the collision node that dismisses it. Built
+        // empty and toggled open by the switcher; see ToggleFollowSwitcher.
+        popup = new FollowSwitcherPopupNode();
+        AddNode(popup);
 
         framework.Update += OnFrameworkUpdate;
     }
@@ -146,6 +181,7 @@ internal sealed unsafe class ClickableReadoutAddon(
             // thing NodeBase.Dispose does not clean up — see ReadoutBodyNode.StopMoving.
             body?.StopMoving();
             body?.Dispose();
+            popup?.Dispose();
         }
         catch (Exception ex)
         {
@@ -156,10 +192,46 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
 
         body = null;
+        popup = null;
         lastSize = Vector2.Zero;
         lastPosition = Vector2.Zero;
         lastClickTargets = -1;
+        escapeWasDown = false;
         broken = false;
+    }
+
+    /// <summary>The full screen, in the same raw pixels this addon's own content already lives in
+    /// once <see cref="ApplyRawPixelScale"/> has run. Read fresh every frame rather than cached: a
+    /// resolution change is exactly the kind of thing a dropdown's dismiss coverage has to keep up
+    /// with immediately, not on whatever frame next happens to touch it.</summary>
+    private static Vector2 ScreenSize()
+    {
+        var stage = AtkStage.Instance();
+        return stage is null ? Vector2.Zero : new Vector2(stage->ScreenSize.Width, stage->ScreenSize.Height);
+    }
+
+    /// <summary>What the follow switcher's click does: close the dropdown if it is already open,
+    /// otherwise open it at the switcher's current position with the same list the Following tab
+    /// shows — see <see cref="FollowSwitcherPopupNode"/> and
+    /// <see cref="Windows.NativeHubWindow.GetFollowChoices"/>. Nothing opens a window any more; the
+    /// caret's whole job is this dropdown.</summary>
+    private void ToggleFollowSwitcher()
+    {
+        if (popup is null || body is null)
+        {
+            return;
+        }
+
+        if (popup.IsOpen)
+        {
+            popup.Close();
+            return;
+        }
+
+        if (body.DropdownAnchor is { } anchor)
+        {
+            popup.Open(getFollowChoices(), anchor, body.DropdownWidth);
+        }
     }
 
     private void OnFrameworkUpdate(IFramework tick)
@@ -172,6 +244,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         try
         {
             Render();
+            PollEscape();
         }
         catch (Exception ex)
         {
@@ -181,6 +254,27 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
     }
 
+    /// <summary>Closes the follow switcher's dropdown on Escape — see <see cref="escapeWasDown"/>
+    /// for why this addon has to poll rather than being told. Edge-detected so holding the key down
+    /// does not matter, and read only while the dropdown is actually open, which costs nothing on
+    /// every other frame of a session that may never open it at all.</summary>
+    private void PollEscape()
+    {
+        if (popup is not { IsOpen: true })
+        {
+            escapeWasDown = false;
+            return;
+        }
+
+        var down = keyState[VirtualKey.ESCAPE];
+        if (down && !escapeWasDown)
+        {
+            popup.Close();
+        }
+
+        escapeWasDown = down;
+    }
+
     private void Render()
     {
         ApplyRawPixelScale();
@@ -188,6 +282,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         if (provider() is not { } frame || frame.Content.IsEmpty)
         {
             body!.HideAll();
+            popup?.Close();
             RefreshCollision();
             return;
         }
@@ -213,6 +308,14 @@ internal sealed unsafe class ClickableReadoutAddon(
         // and the body has no way to ask the addon where that was.
         lastPosition = position;
         SetWindowPosition(position);
+
+        // The dropdown's own outside-click coverage has to track where this addon actually is on
+        // screen every frame it is open, because the readout — and the addon under it — can be
+        // dragged while the dropdown is up. See FollowSwitcherPopupNode.Reposition.
+        if (popup is { IsOpen: true })
+        {
+            popup.Reposition(position, ScreenSize());
+        }
     }
 
     /// <summary>Rebuilds the addon's collision list when the set of clickable nodes changes. The
@@ -220,7 +323,7 @@ internal sealed unsafe class ClickableReadoutAddon(
     /// hit box that is never hit.</summary>
     private void RefreshCollision()
     {
-        var live = body?.ClickTargets ?? 0;
+        var live = (body?.ClickTargets ?? 0) | (popup is { IsOpen: true } ? PopupOpenTarget : 0);
         if (live == lastClickTargets)
         {
             return;

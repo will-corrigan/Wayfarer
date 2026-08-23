@@ -169,8 +169,9 @@ internal sealed class ContextMenuActions : IDisposable
     }
 
     /// <summary>"Follow" — the controller's parallel path to the window's Following tab and the
-    /// readout's follow caret, with the same word and the same choices, so there is one concept with
-    /// one name on every surface instead of three names for one feature.
+    /// readout's own follow-switcher dropdown (mouse only), with the same word and the same choices,
+    /// so there is one concept with one name on every surface instead of three names for one
+    /// feature.
     ///
     /// <para>A real submenu rather than a flat list: it inherits the game's own d-pad navigation,
     /// which is the whole reason this menu is the controller's action surface at all.</para></summary>
@@ -223,7 +224,8 @@ internal sealed class ContextMenuActions : IDisposable
 
         // Choosing which quest needs a list of quests, which is a list and not a menu item — so it
         // is the one choice that hands off to the window. The tab it opens is the same one the
-        // readout's follow caret opens and the same one the Change button on the strip opens.
+        // readout's own follow-switcher dropdown reads its rows from and the same one the Change
+        // button on the strip opens.
         items.Add(new MenuItem { Name = "A Quest...", OnClicked = _ => openFollowing() });
         return items;
     }

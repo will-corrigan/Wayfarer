@@ -270,6 +270,64 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ApplyPositionPreset(config.Hub.Position);
     }
 
+    /// <summary>The one list of everything Wayfarer can be told to follow — this tab's own rows and
+    /// the readout's switcher dropdown both build from this and nothing else, so the two surfaces
+    /// can never disagree about what the choices are or what picking one does. Always the same four
+    /// kinds, in the same order — the main scenario, the unlock route, the hunting log, then every
+    /// accepted quest — whether or not they currently have anything to offer, because a choice that
+    /// vanishes when it is empty cannot be learned.
+    ///
+    /// <para>Deliberately thin: a label, whether it is the one being followed, and what activating
+    /// it does. The richer per-row cosmetics below — descriptions, icons, detail panes — stay in
+    /// this tab, which is the one surface that has room for them; the dropdown draws its rows from
+    /// the same three fields, so nothing about the pickable set itself is defined twice.</para></summary>
+    internal IReadOnlyList<FollowChoice> GetFollowChoices()
+    {
+        var navigator = ResolveNavigator();
+        var choices = new List<FollowChoice>();
+
+        var followingMsq = navigator is not null && navigator.FollowedOverride is null;
+        choices.Add(new FollowChoice(
+            "Main Scenario",
+            followingMsq ? "Following" : string.Empty,
+            followingMsq,
+            navigator is null ? null : OnFollowMsqClicked));
+
+        var routable = navigator is null
+            ? 0
+            : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+        choices.Add(new FollowChoice(
+            "Unlock Route",
+            routable > 0 ? $"{routable}" : string.Empty,
+            false,
+            routable > 0 && navigator is not null ? OnRouteClicked : null));
+
+        var remaining = hunting.HuntHereOrder.Count;
+        var huntLabel = hunting.ActiveLogLabel is { Length: > 0 } log ? $"Hunting Log - {log}" : "Hunting Log";
+        choices.Add(new FollowChoice(
+            huntLabel,
+            remaining > 0 ? $"{remaining}" : string.Empty,
+            false,
+            remaining > 0 && navigator is not null ? OnHuntClicked : null));
+
+        if (navigator is not null)
+        {
+            var followed = navigator.FollowedOverride;
+            foreach (var (id, name) in navigator.GetAcceptedQuests())
+            {
+                var questId = id;
+                var isFollowed = followed == questId;
+                choices.Add(new FollowChoice(
+                    name,
+                    isFollowed ? "Following" : string.Empty,
+                    isFollowed,
+                    () => FollowQuest(questId)));
+            }
+        }
+
+        return choices;
+    }
+
     protected override unsafe void OnSetup(AtkUnitBase* addon, Span<AtkValue> values)
     {
         if (!unlocks.Loaded && !hunting.Loaded)
@@ -2274,14 +2332,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         var navigator = ResolveNavigator();
         var content = feed.Compose(teleportOnClick: false);
+        var choices = GetFollowChoices();
 
         rows.Clear();
         distanceRows.Clear();
         AddGuidanceUnavailableNote(navigator);
         SetQuestHeader(content);
         AddGuidanceLines(content);
-        AddFollowableRows(navigator);
-        AddAcceptedQuestRows(navigator);
+        AddFollowableRows(navigator, choices);
+        AddAcceptedQuestRows(navigator, choices);
 
         if (rows.Count == 0)
         {
@@ -2337,85 +2396,80 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// <para>Four things, always all four, in the same order, whether or not they currently have
     /// anything to offer — a choice that vanishes when it is empty cannot be learned. The ones with
     /// nothing to do say so on their second line and are inert.</para></summary>
-    private void AddFollowableRows(QuestNavigator? navigator)
+    private void AddFollowableRows(QuestNavigator? navigator, IReadOnlyList<FollowChoice> choices)
     {
         rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "Following" });
 
-        var followingMsq = navigator is not null && navigator.FollowedOverride is null;
+        var msq = choices[0];
         rows.Add(new HubListRow
         {
             Kind = HubRowKind.Entry,
-            Label = "Main Scenario",
-            Description = navigator?.Current.QuestName is { Length: > 0 } msq
-                ? msq
+            Label = msq.Label,
+            Description = navigator?.Current.QuestName is { Length: > 0 } questName
+                ? questName
                 : "The next step of the main story.",
-            Detail = followingMsq ? "Following" : string.Empty,
-            IconId = statusIcons.For(followingMsq ? UnlockStatus.Accepted : UnlockStatus.Available),
-            StatusWord = UnlockStatusDisplay.Word(followingMsq ? UnlockStatus.Accepted : UnlockStatus.Available),
-            LabelColor = followingMsq ? GameColors.Good : null,
+            Detail = msq.Detail,
+            IconId = statusIcons.For(msq.IsFollowed ? UnlockStatus.Accepted : UnlockStatus.Available),
+            StatusWord = UnlockStatusDisplay.Word(msq.IsFollowed ? UnlockStatus.Accepted : UnlockStatus.Available),
+            LabelColor = msq.IsFollowed ? GameColors.Good : null,
             Pane = FollowableDetail(
                 "Main Scenario",
-                followingMsq ? "Following." : "Not followed.",
+                msq.IsFollowed ? "Following." : "Not followed.",
                 "Points at your next main scenario step.",
-                navigator is null ? [] : [new HubDetailAction("Follow the Main Scenario", OnFollowMsqClicked)]),
+                msq.Activate is null ? [] : [new HubDetailAction("Follow the Main Scenario", msq.Activate)]),
             Hover = PublishDetail,
-            Activate = navigator is null ? null : OnFollowMsqClicked,
+            Activate = msq.Activate,
         });
 
-        AddUnlockRouteRow(navigator);
-        AddHuntingFollowRow(navigator);
+        AddUnlockRouteRow(choices[1]);
+        AddHuntingFollowRow(choices[2]);
     }
 
-    private void AddUnlockRouteRow(QuestNavigator? navigator)
+    private void AddUnlockRouteRow(FollowChoice choice)
     {
-        var routable = navigator is null
-            ? 0
-            : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+        var routable = choice.Activate is not null;
 
         rows.Add(new HubListRow
         {
             Kind = HubRowKind.Entry,
-            Label = "Unlock Route",
-            Description = routable > 0
-                ? $"{routable} nearby, nearest first."
+            Label = choice.Label,
+            Description = routable
+                ? $"{choice.Detail} nearby, nearest first."
                 : "Nothing to route to.",
-            Detail = routable > 0 ? $"{routable}" : string.Empty,
-            IconId = statusIcons.For(routable > 0 ? UnlockStatus.Available : UnlockStatus.Done),
-            StatusWord = UnlockStatusDisplay.Word(routable > 0 ? UnlockStatus.Available : UnlockStatus.Done),
+            Detail = choice.Detail,
+            IconId = statusIcons.For(routable ? UnlockStatus.Available : UnlockStatus.Done),
+            StatusWord = UnlockStatusDisplay.Word(routable ? UnlockStatus.Available : UnlockStatus.Done),
             Pane = FollowableDetail(
-                "Unlock Route",
-                routable > 0 ? $"{routable} available nearby." : "Nothing to route to.",
+                choice.Label,
+                routable ? $"{choice.Detail} available nearby." : "Nothing to route to.",
                 "Walks every available unlock nearby, nearest first.",
-                routable > 0 && navigator is not null ? [new HubDetailAction("Follow this route", OnRouteClicked)] : []),
+                choice.Activate is null ? [] : [new HubDetailAction("Follow this route", choice.Activate)]),
             Hover = PublishDetail,
-            Activate = routable > 0 && navigator is not null ? OnRouteClicked : null,
+            Activate = choice.Activate,
         });
     }
 
-    private void AddHuntingFollowRow(QuestNavigator? navigator)
+    private void AddHuntingFollowRow(FollowChoice choice)
     {
         var remaining = hunting.HuntHereOrder.Count;
-        var label = hunting.ActiveLogLabel is { Length: > 0 } log
-            ? $"Hunting Log - {log}"
-            : "Hunting Log";
 
         rows.Add(new HubListRow
         {
             Kind = HubRowKind.Entry,
-            Label = label,
+            Label = choice.Label,
             Description = hunting.ActiveLogLabel is null
                 ? hunting.NoLogReason ?? "No hunting log active."
                 : $"Rank {hunting.CurrentRank} · {remaining} left in this zone",
-            Detail = remaining > 0 ? $"{remaining}" : string.Empty,
-            IconId = statusIcons.For(remaining > 0 ? UnlockStatus.Available : UnlockStatus.Done),
-            StatusWord = UnlockStatusDisplay.Word(remaining > 0 ? UnlockStatus.Available : UnlockStatus.Done),
+            Detail = choice.Detail,
+            IconId = statusIcons.For(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
+            StatusWord = UnlockStatusDisplay.Word(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
             Pane = FollowableDetail(
-                label,
+                choice.Label,
                 remaining > 0 ? $"{remaining} targets left in this zone." : hunting.NoLogReason ?? "Nothing left on this rank here.",
                 "Walks this rank's remaining targets, nearest first.",
-                remaining > 0 && navigator is not null ? [new HubDetailAction("Start Hunting", OnHuntClicked)] : []),
+                choice.Activate is null ? [] : [new HubDetailAction("Start Hunting", choice.Activate)]),
             Hover = PublishDetail,
-            Activate = remaining > 0 && navigator is not null ? OnHuntClicked : null,
+            Activate = choice.Activate,
         });
     }
 
@@ -2430,7 +2484,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Actions = actions,
         };
 
-    private void AddAcceptedQuestRows(QuestNavigator? navigator)
+    private void AddAcceptedQuestRows(QuestNavigator? navigator, IReadOnlyList<FollowChoice> choices)
     {
         if (navigator is null)
         {
@@ -2451,11 +2505,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        var followed = navigator.FollowedOverride;
-        foreach (var (id, name) in accepted)
+        // The three fixed entries — main scenario, unlock route, hunting log — come first in
+        // GetFollowChoices; every accepted quest follows in the same order GetAcceptedQuests()
+        // returned them, which is the order choices was built in.
+        const int FixedChoiceCount = 3;
+        for (var i = 0; i < accepted.Count; i++)
         {
-            var isFollowed = followed == id;
-            var questId = id;
+            var (questId, name) = accepted[i];
+            var choice = choices[FixedChoiceCount + i];
             rows.Add(new HubListRow
             {
                 Kind = HubRowKind.Entry,
@@ -2464,13 +2521,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 // The objective moves to line two, where a whole sentence fits. In the gutter it
                 // was the longest string on the row competing for the narrowest space on it.
                 Description = navigator.GetAcceptedQuestObjective(questId) ?? string.Empty,
-                Detail = isFollowed ? "Following" : string.Empty,
+                Detail = choice.Detail,
                 IconId = statusIcons.For(UnlockStatus.Accepted),
                 StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Accepted),
-                LabelColor = isFollowed ? GameColors.Good : null,
-                Pane = BuildQuestDetail(name, navigator.GetAcceptedQuestObjective(questId), isFollowed, questId),
+                LabelColor = choice.IsFollowed ? GameColors.Good : null,
+                Pane = BuildQuestDetail(name, navigator.GetAcceptedQuestObjective(questId), choice.IsFollowed, questId),
                 Hover = PublishDetail,
-                Activate = () => FollowQuest(questId),
+                Activate = choice.Activate,
             });
         }
     }

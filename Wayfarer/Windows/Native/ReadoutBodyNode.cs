@@ -94,14 +94,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// column: its gutter is 28 for a 24-wide marker.</summary>
     private const float BaseGap = (GameMetrics.Hud.Gutter - GameMetrics.Hud.IconSize) / 2f;
 
-    /// <summary>Where the arrow's centre sits on its line, as a fraction of that line's font size
-    /// measured down from the text's top edge.
-    ///
-    /// <para>Not half the line box. Axis draws with its cap height in the upper part of the em, so
-    /// the <i>optical</i> centre of a line of text is above its geometric centre; aligning to the
-    /// box put the arrow a couple of pixels low against every line it sat beside. 0.58 of the font
-    /// size is the cap-height centre, which is what the eye actually aligns to.</para></summary>
-    private const float ArrowOpticalCentre = 0.58f;
+    /// <summary>Where the arrow's centre sits on its line — <see cref="GameMetrics.Type.CapHeightCentre"/>,
+    /// shared with every other small mark this readout hangs beside a line of text (the settings
+    /// cog, the follow switcher), so all three read as siblings rather than each finding its own
+    /// answer. See that constant's own doc comment for why it is not simply half the line box.</summary>
+    private const float ArrowOpticalCentre = GameMetrics.Type.CapHeightCentre;
 
     /// <summary>The settings cog's side, before scale. Sized against the heading it sits beside
     /// rather than against the readout: it is a mark on that line, not a button on a panel.</summary>
@@ -127,11 +124,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="DropDownTexture"/>
     private const float BaseSwitcher = 12f;
 
-    /// <summary>The rotation the game applies to that arrow while its list is closed, taken
-    /// verbatim from the collapsed frame of <c>DropDownNode</c>'s own timeline. The switcher is
-    /// always in that state — the list it opens is the window's Following tab, not a popup on the
-    /// readout — so there is no second rotation to animate to.</summary>
-    private const float DropDownCollapsedRotation = 4.712389f;
+    /// <summary>The rotation that draws this arrow pointing down — the pose
+    /// <c>DropDownNode</c>'s own timeline rotates <i>to</i> when its list opens (frame 60 of its
+    /// <c>CollapseArrowNode</c> timeline is unrotated; the closed pose is a further 270° from
+    /// there), taken rather than the closed pose because down is what "there is a list beneath
+    /// this" actually looks like — the closed pose is the same glyph lying on its side, which read
+    /// as a play button rather than a drop-down once it was next to a quest name instead of inside
+    /// a settings pill. This node always draws it in this one pose — the popup it toggles is a
+    /// sibling in the clickable host, not something this node animates open — so there is no second
+    /// rotation to switch to.</summary>
+    private const float DropDownOpenRotation = 0f;
 
     /// <summary>How visible the cog is when the pointer is not on it.
     ///
@@ -226,12 +228,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// The cog stays on the heading: it is about the plugin, not about what the plugin is
     /// following.</para>
     ///
-    /// <para>Two things it is still not. It is not a menu hanging off the cog — the cog opens
-    /// settings and this opens a list, and hiding a second meaning behind one mark is how the info
-    /// bar's right-click ended up being described as unintuitive. And it is not the list itself: the
-    /// readout owns exactly one objective and never carries choices, which is the rule that keeps it
-    /// glanceable and click-through-able. It is the door to the list, which lives in the
-    /// window.</para>
+    /// <para>One thing it is still not: a menu hanging off the cog. The cog opens settings and this
+    /// opens a list, and hiding a second meaning behind one mark is how the info bar's right-click
+    /// ended up being described as unintuitive. It also draws no list of its own — <i>this</i> node
+    /// still owns exactly one objective, which is the rule that keeps it glanceable and
+    /// click-through-able on the overlay. What clicking it does is not this node's business at all:
+    /// the clickable host wires it to a sibling of the whole body, <c>FollowSwitcherPopupNode</c>,
+    /// so the objective the overlay draws and the list the switcher drops are two node trees that
+    /// happen to sit next to each other rather than one that would have to be different on the two
+    /// hosts.</para>
     ///
     /// <para>Mouse only, for the same reason as the cog. A controller reaches the same list through
     /// the window's Following tab and through the Wayfarer entry in the game's own right-click
@@ -352,6 +357,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// stays true across the teleport line appearing under a cog that was already there, and the
     /// list would never be rebuilt for it — a hit box that is never hit.</para></summary>
     public int ClickTargets { get; private set; }
+
+    /// <summary>Where the switcher's dropdown should anchor this frame — the same left edge every
+    /// other line in the block shares, just below the subject line — and null whenever there is no
+    /// switcher to hang one off (no host wired for it, or its art has not loaded). The clickable
+    /// host reads this at the moment the switcher is clicked; nothing here owns the dropdown
+    /// itself, which is deliberately a sibling of this node rather than a child of it — see
+    /// <see cref="ClickableReadoutAddon"/>.</summary>
+    public Vector2? DropdownAnchor { get; private set; }
+
+    /// <inheritdoc cref="DropdownAnchor"/>
+    public float DropdownWidth { get; private set; }
 
     /// <summary>Lays the whole readout out for this frame and returns the size it needs, in the
     /// host's own units. The host positions and sizes itself from that; nothing else about the
@@ -555,6 +571,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private static FontType FontFor(ReadoutEmphasis emphasis) =>
         emphasis == ReadoutEmphasis.Heading ? FontType.TrumpGothic : FontType.Axis;
 
+    /// <summary>How far below a line's own top edge a <paramref name="size"/>-square control has to
+    /// sit to have its centre land on that line's optical centre —
+    /// <see cref="GameMetrics.Type.CapHeightCentre"/> of <paramref name="fontSize"/> down from the
+    /// top, then pulled back up by half the control's own size. Shared by the cog and the switcher
+    /// so both centre on the text beside them the same way; the arrow uses the same fraction
+    /// directly in <see cref="LayoutArrow"/>, where it already has a line centre in hand rather than
+    /// a line top.
+    ///
+    /// <para>Clamped to never go negative: a control taller than the line it sits beside centres as
+    /// low as the line's own top rather than climbing above it.</para></summary>
+    private static float OpticalCentreOffset(float fontSize, float size) =>
+        Math.Max((fontSize * ArrowOpticalCentre) - (size / 2f), 0f);
+
     /// <summary>An image node that holds one of the generated arrow textures — the bearing arrow, or
     /// the smaller up/down chevron beside it.
     ///
@@ -612,11 +641,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return cog;
     }
 
-    /// <summary>The switcher, wired to open the window on its Following tab — where every followable
-    /// thing is one list of rows: the main scenario, each accepted quest, an unlock route, a hunt.
-    /// The list is not duplicated here. The readout owns exactly one objective and never carries
-    /// choices; that rule is what keeps it glanceable and is why the click-through host can exist at
-    /// all.
+    /// <summary>The switcher: an image node and a click event, nothing more. What the click does is
+    /// the clickable host's business (see <see cref="ClickableReadoutAddon.ToggleFollowSwitcher"/>)
+    /// — toggling a dropdown built from the same list the window's Following tab shows, the main
+    /// scenario, each accepted quest, an unlock route, a hunt. This node draws none of that: the
+    /// readout still owns exactly one objective and never carries choices itself, which is what
+    /// keeps it glanceable and is why the click-through host can exist at all.
     ///
     /// <para>The texture is read straight out of the game's own drop-down sheet — see
     /// <see cref="DropDownTexture"/> — rather than generated, so the mark beside the quest name is
@@ -635,7 +665,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             IsVisible = false,
             Alpha = CogIdleAlpha,
             WrapMode = WrapMode.Stretch,
-            Rotation = DropDownCollapsedRotation,
+            Rotation = DropDownOpenRotation,
             OriginX = BaseSwitcher / 2f,
             OriginY = BaseSwitcher / 2f,
         };
@@ -941,7 +971,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var headingWidth = heading is null ? 0f : heading.GetTextDrawSize().X;
         var top = heading is null
             ? 0f
-            : heading.Position.Y + Math.Max(((BaseHeadingSize * factor) - size) / 2f, 0f);
+            : heading.Position.Y + OpticalCentreOffset(BaseHeadingSize * factor, size);
         var x = headingWidth > 1f ? gutter + headingWidth + gap : width - size;
 
         // The cog alone. The switcher used to be its neighbour here and is now beside the quest
@@ -965,6 +995,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         if (subject is not { } line || !SwitcherDrawable())
         {
             switcherNode.IsVisible = false;
+            DropdownAnchor = null;
             return;
         }
 
@@ -977,8 +1008,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         switcherNode.OriginY = size / 2f;
         switcherNode.Position = new Vector2(
             Math.Clamp(x, left, left + lineWidth - size),
-            line.Top + Math.Max((line.FontSize - size) / 2f, 0f));
+            line.Top + OpticalCentreOffset(line.FontSize, size));
         switcherNode.IsVisible = true;
+
+        // Same left edge as the subject line itself, just below it — where the dropdown hangs,
+        // if the switcher is clicked this frame. See DropdownAnchor's own doc comment.
+        DropdownAnchor = new Vector2(left, line.Top + line.Height);
+        DropdownWidth = lineWidth;
     }
 
     /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are

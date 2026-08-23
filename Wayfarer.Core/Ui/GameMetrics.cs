@@ -106,6 +106,21 @@ public static class GameMetrics
         /// <summary>A count or numeral pinned to the right of a section row. Journal <c>1021 #3</c>
         /// is TrumpGothic 23.</summary>
         public const uint SectionCountSize = 23u;
+
+        /// <summary>Where a line of text's optical centre sits, as a fraction of its font size
+        /// measured down from the top of the em. Not 0.5: Axis draws with its cap height in the
+        /// upper part of the em, so the glyphs' visual weight sits above the geometric middle of
+        /// the line box, and a control centred on the box reads as sitting a couple of pixels low
+        /// beside it.
+        ///
+        /// <para>Not a <c>.uld</c> measurement like the rest of this file — there is no font-metrics
+        /// node to read a cap-height off — but a font-rendering constant established once, against
+        /// the readout's direction arrow next to its objective line, and now the one number every
+        /// small mark beside a line of text aligns to, so two controls beside two different lines
+        /// (the readout's follow switcher beside the quest name, its settings cog beside the
+        /// heading) read as siblings rather than each having found its own answer. See
+        /// <c>ReadoutBodyNode.LayoutArrow</c> for where this was first tuned in.</para></summary>
+        public const float CapHeightCentre = 0.58f;
     }
 
     /// <summary>List rows. Journal's tree list (<c>1027</c>) and ContentsFinder's (<c>1030</c>) are

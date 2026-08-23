@@ -77,6 +77,7 @@ public sealed class Plugin : IDalamudPlugin
         INamePlateGui namePlateGui,
         ITextureProvider textureProvider,
         IDtrBar dtrBar,
+        IKeyState keyState,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -111,7 +112,7 @@ public sealed class Plugin : IDalamudPlugin
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, inputMode, textureProvider, log);
 
-        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
+        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider, keyState);
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
 
         modules.Register(
@@ -248,10 +249,12 @@ public sealed class Plugin : IDalamudPlugin
     /// ImGui config window remains only as the fallback when the native one cannot be opened.</summary>
     private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
 
-    /// <summary>What the readout's follow caret opens: the one list of everything that can be
-    /// followed. Deliberately the same tab the window's own leftmost tab is, and the same list the
-    /// game's right-click Wayfarer menu drives — there is one source of truth for what is
-    /// followable and this is a door onto it, not a second copy of it.</summary>
+    /// <summary>What the game's own Follow submenu hands off to for "A Quest..." — the one tab
+    /// listing every followable thing, for the controller player that menu is built for. The
+    /// readout's own follow caret no longer opens this: on a mouse it drops its own list in place
+    /// (see <see cref="Windows.Native.ClickableReadoutAddon"/>), reading the same
+    /// <see cref="NativeHubWindow.GetFollowChoices"/> this tab does — one source of truth for what
+    /// is followable, two doors onto it.</summary>
     private void OpenFollowing() => OpenHub(HubTab.Quests, () => configWindow.IsOpen = true);
 
     /// <summary>The plugin list's main button opens what the plugin is FOR — the unlocks list —
@@ -378,8 +381,9 @@ public sealed class Plugin : IDalamudPlugin
             services.ClientState,
             services.Framework,
             services.Textures,
+            services.KeyState,
             OpenConfig,
-            OpenFollowing,
+            hub.GetFollowChoices,
             log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,
@@ -459,7 +463,8 @@ public sealed class Plugin : IDalamudPlugin
         IClientState ClientState,
         IObjectTable Objects,
         InputModeService InputMode,
-        ITextureProvider Textures);
+        ITextureProvider Textures,
+        IKeyState KeyState);
 
     /// <summary>What <see cref="BuildGuidance"/> hands back, so the module builders can take one
     /// parameter instead of five.</summary>
