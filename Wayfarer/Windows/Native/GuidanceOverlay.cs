@@ -209,7 +209,8 @@ internal sealed class GuidanceOverlay(
         // never promises a click the surface it is drawn on cannot deliver.
         var content = feed.Compose(teleportOnClick: forClickableHost && cfg.ClickTeleportEnabled);
         var (radians, hidden) = Bearing(content);
-        return new ReadoutFrame(content, radians, hidden, cfg.ArrowIcon, cfg.TextScale, cfg.ReadoutPosition);
+        return new ReadoutFrame(
+            content, radians, hidden, cfg.ArrowIcon, cfg.ArrowScale, cfg.TextScale, cfg.ReadoutPosition);
     }
 
     /// <summary>The arrow's rotation, or the reason there isn't one. The reason is carried rather

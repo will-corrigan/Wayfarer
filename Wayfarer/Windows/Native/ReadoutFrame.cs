@@ -12,6 +12,7 @@ namespace Wayfarer.Windows.Native;
 /// <see cref="ArrowHiddenReason"/>.</param>
 /// <param name="ArrowIcon">Which of the minimap's chevrons to cut the arrow from. Read every frame
 /// so the setting applies without a reload.</param>
+/// <param name="ArrowScale">The player's own arrow-size setting, on top of the interface scale.</param>
 /// <param name="Scale">The player's own text-size setting. Multiplied by the game's interface
 /// scale inside the node — see <see cref="GuidanceOverlayNode"/> for why that is not automatic.</param>
 /// <param name="Position">Which anchor the readout uses.</param>
@@ -20,5 +21,6 @@ internal readonly record struct ReadoutFrame(
     float? ArrowRadians,
     ArrowHiddenReason ArrowHidden,
     ArrowIconVariant ArrowIcon,
+    float ArrowScale,
     float Scale,
     ReadoutPosition Position);

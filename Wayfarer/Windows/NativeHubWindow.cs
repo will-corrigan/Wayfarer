@@ -13,9 +13,10 @@ using Wayfarer.Windows.Native;
 namespace Wayfarer.Windows;
 
 /// <summary>The Wayfarer window — one native (KamiToolKit <see cref="NativeAddon"/>) window holding
-/// everything the plugin has to show, for mouse and controller alike. The game's own windows are
-/// mouse-first and cursor-navigable at the same time; copying that is what lets one surface serve
-/// both players instead of two parallel stacks drifting apart.
+/// everything the plugin has to show, in four tabs (Checklist, Hunting Log, Quests, Settings), for
+/// mouse and controller alike. The game's own windows are mouse-first and cursor-navigable at the
+/// same time; copying that is what lets one surface serve both players instead of two parallel
+/// stacks drifting apart.
 ///
 /// <b>Navigation.</b> The game drives a controller through any window with an explicit index graph
 /// stored per interactive component (<c>AtkCursorNavigationInfo</c>: five bytes, self index plus

@@ -10,11 +10,11 @@ namespace Wayfarer;
 /// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu — a native row
 /// that inherits the game's own d-pad focus navigation, no cursor required.
 ///
-/// This was parked when the readout was a clickable ImGui widget, on the grounds that it was
-/// redundant for mouse players. It is no longer redundant for anyone on a controller: the readout
-/// is now a click-through overlay and carries no affordances at all, so this is the one place a
-/// controller player can reach the checklist, the hunting log and the teleport the readout is
-/// recommending without typing a command. <see cref="QuestHelperConfig.MenuMode"/> therefore
+/// This is the controller's action surface. A controller gets the click-through readout, which by
+/// construction carries no affordances, so this is where starting a hunt, stopping one, reaching
+/// the checklist and taking the teleport the readout is recommending all live without a cursor and
+/// without typing a command. A mouse clicks the readout itself, which is why this is off for a
+/// mouse by default. <see cref="QuestHelperConfig.MenuMode"/> therefore
 /// defaults to <see cref="ContextMenuMode.ControllerOnly"/> — evaluated fresh via
 /// <see cref="InputModeService.Mode"/> on every
 /// menu open (not registered/unregistered on mode flips, since checking is cheap and avoids a
@@ -33,9 +33,8 @@ namespace Wayfarer;
 /// routes through the existing <see cref="TeleportAction"/> gate (click-to-teleport setting,
 /// login state, attunement) — the plugin's only server-affecting action stays exactly that.
 ///
-/// Pure DI: constructed once by <see cref="Plugin"/> with the same services already threaded
-/// through <see cref="Windows.ArrowWindow"/>/<see cref="Windows.UnlockWindow"/>, and disposed by
-/// unregistering the one event subscription.</summary>
+/// Pure DI: constructed once by <see cref="Plugin"/>, and disposed by unregistering the one event
+/// subscription.</summary>
 internal sealed class ContextMenuActions : IDisposable
 {
     private readonly IContextMenu contextMenu;
@@ -187,9 +186,8 @@ internal sealed class ContextMenuActions : IDisposable
         }
 
         // The guided quest's objective is inside instanced content it can be queued for right now
-        // (see DutyObjectiveGuidance) — this and the readout's own clickable duty line
-        // (ArrowWindow.DrawSecondary) are the only two ways to reach it; a controller has only
-        // this one, since the readout is click-through.
+        // (see DutyObjectiveGuidance). This is the cursor-free way to reach it; the window's Quests
+        // tab has the same button for a mouse.
         if (state.DutyContentFinderConditionId is { } cfcId)
         {
             items.Add(new MenuItem

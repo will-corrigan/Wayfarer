@@ -12,22 +12,20 @@ using Wayfarer.Windows.Native;
 
 namespace Wayfarer.Windows;
 
-/// <summary>The plugin-drawn guidance readout — now a <b>fallback</b>, not the primary surface.
+/// <summary>The plugin-drawn guidance readout — a <b>fallback</b>, not a surface anyone should
+/// normally see.
 ///
-/// The readout is a native overlay drawn with the game's own text nodes, fonts and colours; this
-/// window only appears when that overlay could not be created, or when the player has deliberately
-/// turned it off. It renders the exact same <see cref="ReadoutContent"/> the overlay does, so the
-/// two cannot say different things, and the several hundred lines of bespoke layout that used to
-/// live here — and that were the actual cause of the "half the text is cut off" complaint — are
-/// gone with it.
+/// The readout proper is drawn with the game's own text nodes, fonts and colours (see
+/// <see cref="Native.ReadoutBodyNode"/>) in one of two native hosts. This window appears only when
+/// neither of those could be created, or when the player has deliberately turned the native readout
+/// off. It renders the exact same <see cref="ReadoutContent"/> they do, so no two of them can say
+/// different things, and the several hundred lines of bespoke layout that used to live here — and
+/// that were the actual cause of the "half the text is cut off" complaint — are gone with it.
 ///
-/// It keeps what the overlay physically cannot have: clickable teleport and duty-finder lines, and
-/// the entry buttons at the bottom that open the checklist, open the hunting log and stop whatever
-/// mode is engaged. An overlay is click-through by construction, which is exactly why it can never
-/// be in the way — but it also means that whenever this window is the one on screen (the overlay
-/// off, or unavailable), it must be a genuinely usable way back into Wayfarer on its own, not just
-/// a readout. See <see cref="DtrEntry"/> for the surface that covers the same job while the overlay
-/// <i>is</i> active.</summary>
+/// It keeps clickable teleport and duty-finder lines and the entry buttons at the bottom, because
+/// whenever it <i>is</i> the one on screen it has to be a usable way back into Wayfarer on its own
+/// and not merely something to read. See <see cref="DtrEntry"/> for the surface that covers the
+/// same job the rest of the time.</summary>
 internal sealed unsafe class ArrowWindow : Window
 {
     private const ImGuiWindowFlags SharedFlags =

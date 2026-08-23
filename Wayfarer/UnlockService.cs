@@ -17,7 +17,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 {
     private const uint QuestRowIdOffset = 65536;
 
-    /// <summary>How many entries <see cref="GlanceableHere"/> caps at — spec §4's "top 2-3".</summary>
+    /// <summary>How many entries <see cref="GlanceableHere"/> caps at. The readout enforces its own
+    /// line budget on top of this (<c>ReadoutComposer.MaxNearbyUnlockLines</c>).</summary>
     private const int GlanceableMax = 3;
 
     private readonly IPluginLog log;
@@ -59,15 +60,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
     public IReadOnlyList<ResolvedUnlock> Entries => entries;
 
-    public int AvailableHereCount { get; private set; }
-
     /// <summary>Top <see cref="GlanceableMax"/> Available unlocks in the current zone, nearest-
-    /// first from the player position as of the last recompute — read straight by
-    /// <see cref="Windows.ArrowWindow"/>'s glanceable lines (spec §4, task A3), never rescanned
-    /// per-frame. Recomputed at the same cadence as <see cref="AvailableHereCount"/> (zone/level
-    /// change or an advanced pickup) via <see cref="Recompute"/>; the widget refreshes only the
-    /// live distance to each already-selected entry every frame, which is cheap arithmetic, not a
-    /// new scan.</summary>
+    /// first from the player position as of the last recompute. This is what the readout's "there
+    /// is something here" lines and the info bar's alert marker are both built from, and it is
+    /// never rescanned per-frame: it is recomputed only on a zone or level change or an advanced
+    /// pickup, and the surfaces refresh only the live distance to each already-selected entry,
+    /// which is arithmetic rather than a new scan.</summary>
     public IReadOnlyList<ResolvedUnlock> GlanceableHere { get; private set; } = [];
 
     public PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
@@ -126,7 +124,6 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
         UnlockStatusCalculator.Compute(entries, ctx);
         var territory = clientState.TerritoryType;
-        AvailableHereCount = UnlockStatusCalculator.CountAvailableIn(entries, territory);
 
         var player = objects.LocalPlayer;
         GlanceableHere = RoutePlanner.TopAvailableHere(

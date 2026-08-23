@@ -32,7 +32,7 @@ internal sealed class HuntingLogModule(
 
     internal HuntingWindow Window { get; } = huntingWindow;
 
-    /// <summary>Read by <see cref="Windows.ArrowWindow"/> for the glanceable-line toggle (spec
+    /// <summary>Read by <see cref="Windows.ReadoutFeed"/> for the hunting-progress toggle (spec
     /// §4/§5) — the coherent home for it since the data comes from this module, mirroring
     /// <see cref="UnlockChecklistModule.Config"/>.</summary>
     internal HuntingLogConfig Config { get; } = cfg;

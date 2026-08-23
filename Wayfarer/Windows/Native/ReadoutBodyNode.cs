@@ -241,7 +241,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return 0f;
         }
 
-        var size = BaseArrow * factor;
+        // The arrow-size setting has to be applied here as well as the text-size one: before this
+        // it moved nothing at all on the readout that is actually on screen, because only the ImGui
+        // fallback ever read it.
+        var size = BaseArrow * factor * Math.Clamp(frame.ArrowScale, 0.5f, 2f);
         if (EnsureArrowTexture(frame.ArrowIcon))
         {
             arrowWordsNode.IsVisible = false;

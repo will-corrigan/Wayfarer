@@ -36,9 +36,9 @@ public sealed class Plugin : IDalamudPlugin
     /// fallback already share, so all three surfaces read from one place.</summary>
     private readonly DtrEntry dtrEntry;
 
-    /// <summary>The one window the plugin has — Checklist, Hunting Log and Settings — for mouse and
-    /// controller alike. Owned here rather than by any module, since every module opens into it.
-    /// See <see cref="NativeHubWindow"/>'s doc comment.</summary>
+    /// <summary>The one window the plugin has — Checklist, Hunting Log, Quests and Settings — for
+    /// mouse and controller alike. Owned here rather than by any module, since every module opens
+    /// into it. See <see cref="NativeHubWindow"/>'s doc comment.</summary>
     private readonly NativeHubWindow hub;
 
     /// <summary>The single writer of the game map flag — held here purely so it is unsubscribed

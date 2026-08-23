@@ -453,20 +453,6 @@ public class UnlockStatusTests
     }
 
     [Fact]
-    public void CountAvailableIn_FiltersByTerritory()
-    {
-        var a = Make("A", 1, 1);
-        a.GiverTerritory = 132;
-        var b = Make("B", 2, 1);
-        b.GiverTerritory = 130;
-        var c = Make("C", 3, 1);
-        c.GiverTerritory = 132;
-        var all = new List<ResolvedUnlock> { a, b, c };
-        UnlockStatusCalculator.Compute(all, Ctx(playerLevel: 50));
-        Assert.Equal(2, UnlockStatusCalculator.CountAvailableIn(all, 132));
-    }
-
-    [Fact]
     public void Snapshot_IsIndependentOfLaterMutation()
     {
         var original = Make("X", 100, 10);

@@ -29,7 +29,6 @@ public class ReadoutComposerTests
         var content = ReadoutComposer.Compose(new ReadoutInputs
         {
             State = Engaged("Unlock route"),
-            AmbientObjectiveName = "A Realm Reborn",
             HuntingSummary = "Ornery Karakul 2/3",
             NearbyUnlocks = ["Chocobo racing"],
             DistanceYalms = 120f,
@@ -49,42 +48,16 @@ public class ReadoutComposerTests
     }
 
     [Fact]
-    public void The_ambient_objective_is_demoted_and_fenced_off_while_a_mode_is_engaged()
+    public void The_quest_you_happen_to_be_on_is_not_shown_beside_an_engaged_mode()
     {
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = Engaged("Hunting Log · Gladiator"),
-            AmbientObjectiveName = "The Ul'dahn Envoy",
-        });
+        var content = ReadoutComposer.Compose(
+            Inputs(Engaged("Hunting Log · Gladiator") with { QuestName = "The Ul'dahn Envoy" }));
 
-        var ambient = Assert.Single(content.Lines, line => line.Text.Contains("Ul'dahn", StringComparison.Ordinal));
-        Assert.Equal(ReadoutEmphasis.Muted, ambient.Emphasis);
-        Assert.True(ambient.Separated, "the subordinate block must be fenced off from the active objective");
-        Assert.Equal("Main Scenario: The Ul'dahn Envoy", ambient.Text);
-
-        // ...and it is never drawn with the same weight as the thing the arrow follows.
-        Assert.DoesNotContain(content.Lines, line => line.Emphasis == ReadoutEmphasis.Primary && line.Text.Contains("Ul'dahn", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void The_ambient_objective_is_not_repeated_when_nothing_is_engaged()
-    {
-        var state = new NavigationState
-        {
-            Mode = NavigationState.Modes.SameZone,
-            SourceLabel = "Main Scenario",
-            QuestName = "The Ul'dahn Envoy",
-            TargetX = 10f,
-            TargetZ = 10f,
-        };
-
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = state,
-            AmbientObjectiveName = "The Ul'dahn Envoy",
-        });
-
-        Assert.Single(content.Lines, line => line.Text.Contains("Ul'dahn", StringComparison.Ordinal));
+        // The objective line belongs to the mode, so the quest name it carries is the mode's own.
+        // Nothing anywhere in the readout names a second thing that could be what the arrow follows.
+        Assert.DoesNotContain(
+            content.Lines,
+            line => line.Text.StartsWith("Main Scenario:", StringComparison.Ordinal));
     }
 
     [Fact]

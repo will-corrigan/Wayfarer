@@ -8,14 +8,14 @@ namespace Wayfarer.Windows;
 /// <summary>The plugin's one entry in Dalamud's server info bar (the "DTR" — the row of addon
 /// text beside the clock).
 ///
-/// This is the fix for a specific gap: the guidance readout is click-through by design (see
-/// <c>Native.GuidanceOverlay</c>'s doc comment), so on a default setup it carries no affordances
-/// at all, and the ImGui fallback it replaces only ever appears once that readout is off. Before
-/// this existed the only ways back into Wayfarer once its window was closed were the plugin
-/// installer's own buttons, the slash commands, and — for a controller only — the game's context
-/// menu; none of those is a visible, mouse-reachable, always-on-screen affordance. The bar entry
-/// is exactly that: it sits where the player is already looking, in the corner the game itself
-/// reserves for addon status text, and it never depends on the readout's own visibility.
+/// It does two jobs. It is the way back into Wayfarer that is always on screen and always
+/// clickable: the readout can be hidden, hidden in combat, or — on a controller — click-through,
+/// and before this existed the only remaining routes in were the plugin installer's buttons, the
+/// slash commands and the context menu. And it is where the ambient loop's alert lives: an
+/// exclamation marker whenever this zone has an unlock available, which keeps showing while a route
+/// or a hunt is running, because walking past a pickup mid-route is exactly when it is worth
+/// knowing. It sits in the corner the game itself reserves for addon status text and never depends
+/// on the readout's own visibility.
 ///
 /// Text is refreshed from <see cref="ReadoutFeed.ComposeDtr"/>, so it can never say something the
 /// readout itself disagrees with, and the decision of what to say lives in the tested

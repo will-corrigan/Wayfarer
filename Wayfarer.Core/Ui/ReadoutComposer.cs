@@ -14,11 +14,10 @@ namespace Wayfarer.Core.Ui;
 /// indicator; there is no separate badge and no second place to look.</description></item>
 /// <item><description><b>One arrow.</b> It follows whatever the snapshot says is active. Nothing
 /// else in the readout gets a direction indicator.</description></item>
-/// <item><description><b>No competing peers.</b> While an explicit mode is engaged, the ambient
-/// objective is demoted to a single muted line below a rule, prefixed with its own name. It is
-/// kept rather than dropped because the player does still want to know what quest they are on —
-/// but it can never be mistaken for the thing being guided to, because the gold heading, the
-/// arrow and the distance all sit above the rule and belong to the mode.</description></item>
+/// <item><description><b>No competing peers.</b> While an explicit mode is engaged, the quest the
+/// player happens to be on is not shown at all. Showing it — even demoted — was the "which one is
+/// this pointing at?" confusion this exists to remove: the player asked for the arrow to follow a
+/// hunt or a route, and everything above the rule belongs to that mode.</description></item>
 /// <item><description><b>Nothing appears twice.</b> A hunting summary is emitted only when the
 /// hunt is not already the primary objective.</description></item>
 /// </list></summary>
@@ -211,12 +210,6 @@ public static class ReadoutComposer
         if (!inputs.HuntingIsPrimary && inputs.HuntingSummary is { Length: > 0 } hunting)
         {
             lines.Add(new ReadoutLine(hunting, ReadoutEmphasis.Muted, separated));
-            separated = false;
-        }
-
-        if (state.Engaged && inputs.AmbientObjectiveName is { Length: > 0 } ambient)
-        {
-            lines.Add(new ReadoutLine($"Main Scenario: {ambient}", ReadoutEmphasis.Muted, separated));
             separated = false;
         }
 

@@ -14,11 +14,6 @@ public sealed record ReadoutInputs
     /// frame. Null when there is no target or no player.</summary>
     public float? DistanceYalms { get; init; }
 
-    /// <summary>The ambient followed quest's name. Shown only as subordinate context while an
-    /// explicit mode is engaged, and only because the player still wants to know it — never as a
-    /// peer of the thing the arrow is following.</summary>
-    public string? AmbientObjectiveName { get; init; }
-
     /// <summary>A one-line summary of hunting progress, for the case where a hunt is running but is
     /// NOT what the arrow is following. Suppressed by <see cref="HuntingIsPrimary"/> when it is,
     /// because repeating the primary objective further down the readout is the duplication that

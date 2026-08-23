@@ -35,13 +35,6 @@ internal sealed class ReadoutFeed(
             HuntingSummary = HuntingSummary(),
             HuntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal),
             NearbyUnlocks = NearbyUnlocks(),
-
-            // The ambient objective is omitted outright while an explicit mode is engaged rather
-            // than demoted to a dimmed line: the player asked for the arrow to follow a hunt or a
-            // route, and showing the quest they happen to be on alongside it is exactly the "which
-            // one is this pointing at?" confusion the readout exists to remove. The composer still
-            // supports the demoted form if that judgement is ever revisited.
-            AmbientObjectiveName = null,
             TeleportOnClick = teleportOnClick,
         });
     }

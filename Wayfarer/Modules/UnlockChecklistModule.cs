@@ -30,8 +30,8 @@ internal sealed class UnlockChecklistModule(
 
     internal UnlockWindow Window { get; } = unlockWindow;
 
-    /// <summary>Read by <see cref="Windows.ArrowWindow"/> for the glanceable-lines toggle
-    /// (spec §4, task A3) — the coherent home for it since the data comes from this module.</summary>
+    /// <summary>Read by <see cref="Windows.ReadoutFeed"/> for the "unlocks nearby" toggle — the
+    /// coherent home for it since the data comes from this module.</summary>
     internal UnlockChecklistConfig Config { get; } = cfg;
 
     /// <summary>Opens the checklist. There is one checklist and it is the native window, for mouse

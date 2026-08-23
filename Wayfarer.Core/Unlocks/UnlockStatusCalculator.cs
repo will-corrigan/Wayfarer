@@ -28,20 +28,6 @@ public static class UnlockStatusCalculator
         }
     }
 
-    public static int CountAvailableIn(IEnumerable<ResolvedUnlock> all, uint territory)
-    {
-        var n = 0;
-        foreach (var u in all)
-        {
-            if (u.Status == UnlockStatus.Available && u.GiverTerritory == territory)
-            {
-                n++;
-            }
-        }
-
-        return n;
-    }
-
     /// <summary>Resolves Status/LockReason for a single entry through the first four precedence
     /// stages (Done, Accepted, LockedOut, job/level, prereq chain), then hands off to
     /// <see cref="ComputeRemainingGates"/> for the rest.</summary>

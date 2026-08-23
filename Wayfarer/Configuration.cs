@@ -184,40 +184,39 @@ public sealed class QuestHelperConfig
 
     public bool ClickTeleportEnabled { get; set; } = true;
 
-    /// <summary>Toggled by <c>/way</c>; checked by <c>ArrowWindow.DrawConditions</c>.</summary>
+    /// <summary>Hides the readout entirely, whichever host is drawing it. Toggled by <c>/way</c>;
+    /// checked by <see cref="Windows.ReadoutFeed.ShouldShow"/>.</summary>
     public bool WidgetHidden { get; set; }
 
-    /// <summary>Hides Wayfarer's entry in Dalamud's server info bar. Off by default: the readout
-    /// is click-through by design and the ImGui fallback only ever appears once that readout is
-    /// off, so the bar entry is normally the plugin's one always-visible, always-clickable way
-    /// back in — see <see cref="Windows.DtrEntry"/>.</summary>
+    /// <summary>Hides Wayfarer's entry in Dalamud's server info bar. Off by default: the bar entry
+    /// is the plugin's one surface that is on screen whatever else is hidden, and it is where the
+    /// "there is something to pick up here" marker lives — see <see cref="Windows.DtrEntry"/>.</summary>
     public bool DtrHidden { get; set; }
 
     /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to
-    /// <see cref="ContextMenuMode.ControllerOnly"/>: the readout is a click-through overlay and can
-    /// carry no affordances at all, so a controller player needs one native, d-pad-navigable place
-    /// to reach the checklist, the hunting log and the teleport the readout is recommending — and
+    /// <see cref="ContextMenuMode.ControllerOnly"/>: a controller gets the click-through readout,
+    /// which by construction carries no affordances, so it needs one native, d-pad-navigable place
+    /// to start a hunt, reach the checklist and take the teleport the readout is recommending — and
     /// the game's own context menu is exactly that, with no new chrome and no cursor. Left off for
-    /// mouse players by default, where an entry in every right-click menu is noise.</summary>
+    /// mouse players by default, where the readout itself is clickable and an entry in every
+    /// right-click menu is noise.</summary>
     public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.ControllerOnly;
 }
 
 /// <summary>Settings for <see cref="Modules.UnlockChecklistModule"/>.</summary>
 public sealed class UnlockChecklistConfig
 {
-    /// <summary>Shows the top 2-3 Available unlocks in the current zone as small lines on
-    /// <see cref="Windows.ArrowWindow"/> (spec §4, task A3) — a quick glance that makes opening
-    /// the checklist window optional. On by default; absent regardless when the module itself is
-    /// disabled.</summary>
+    /// <summary>Shows the nearest few available unlocks in this zone, with live distances, as muted
+    /// lines under the readout — the glance that makes opening the checklist optional. On by
+    /// default; absent regardless when the module itself is disabled.</summary>
     public bool ShowOnWidget { get; set; } = true;
 }
 
 /// <summary>Settings for <see cref="Modules.HuntingLogModule"/>.</summary>
 public sealed class HuntingLogConfig
 {
-    /// <summary>Shows the current hunting-log target and its kill count as a small line on
-    /// <see cref="Windows.ArrowWindow"/> (spec §4/§5) — a quick glance that makes opening the
-    /// hunting log window optional. On by default; absent regardless when the module itself is
-    /// disabled.</summary>
+    /// <summary>Shows the current hunting-log target and its kill count as a muted line under the
+    /// readout, for when a hunt is running but is not what the arrow is following. On by default;
+    /// absent regardless when the module itself is disabled.</summary>
     public bool ShowOnWidget { get; set; } = true;
 }
