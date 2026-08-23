@@ -52,7 +52,10 @@ internal sealed unsafe class ClickableReadoutAddon(
     private ReadoutBodyNode? body;
     private Vector2 lastSize;
     private Vector2 lastPosition;
-    private bool lastHadClickTarget;
+
+    /// <summary>The set of clickable nodes the collision list was last built for. Starts at -1,
+    /// which no real set can equal, so the first frame always builds one.</summary>
+    private int lastClickTargets = -1;
     private bool broken;
 
     /// <inheritdoc/>
@@ -151,7 +154,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         body = null;
         lastSize = Vector2.Zero;
         lastPosition = Vector2.Zero;
-        lastHadClickTarget = false;
+        lastClickTargets = -1;
         broken = false;
     }
 
@@ -194,7 +197,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         {
             lastSize = size;
             SetWindowSize(size);
-            lastHadClickTarget = !body.HasLiveClickTarget;
+
+            // Force the collision list to be rebuilt below: resizing the host moves every hit box
+            // inside it, whether or not the set of them changed.
+            lastClickTargets = -1;
         }
 
         RefreshCollision();
@@ -210,13 +216,13 @@ internal sealed unsafe class ClickableReadoutAddon(
     /// hit box that is never hit.</summary>
     private void RefreshCollision()
     {
-        var live = body is { HasLiveClickTarget: true };
-        if (live == lastHadClickTarget)
+        var live = body?.ClickTargets ?? 0;
+        if (live == lastClickTargets)
         {
             return;
         }
 
-        lastHadClickTarget = live;
+        lastClickTargets = live;
         InternalAddon->UpdateCollisionNodeList(false);
     }
 

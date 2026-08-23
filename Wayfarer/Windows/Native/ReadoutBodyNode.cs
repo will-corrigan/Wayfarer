@@ -67,6 +67,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// pixels.</para></summary>
     private const float CogIdleAlpha = 0.4f;
 
+    /// <summary>Bits of <see cref="ClickTargets"/> — one per clickable node the readout can put on
+    /// screen.</summary>
+    private const int TeleportTarget = 1;
+
+    /// <inheritdoc cref="TeleportTarget"/>
+    private const int CogTarget = 2;
+
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
     /// line would otherwise be dragged by a box that no longer fits it.</summary>
@@ -171,11 +178,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
     }
 
-    /// <summary>Whether a clickable target is on screen right now. The host watches this: the
-    /// game only dispatches mouse events to nodes in its addon's collision list, and that list has
-    /// to be rebuilt when the set of live collision nodes changes — which here means when the
-    /// teleport advice appears or goes away, not only when the readout resizes.</summary>
-    public bool HasLiveClickTarget { get; private set; }
+    /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
+    /// advice and the settings cog.
+    ///
+    /// <para>The host watches this: the game only dispatches mouse events to nodes in its addon's
+    /// collision list, and that list has to be rebuilt when the <b>set</b> of live collision nodes
+    /// changes. A bool was enough while there was one of them; with two, "something is clickable"
+    /// stays true across the teleport line appearing under a cog that was already there, and the
+    /// list would never be rebuilt for it — a hit box that is never hit.</para></summary>
+    public int ClickTargets { get; private set; }
 
     /// <summary>Lays the whole readout out for this frame and returns the size it needs, in the
     /// host's own units. The host positions and sizes itself from that; nothing else about the
@@ -213,7 +224,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         // The cog is a live collision node whenever it is drawn, and the clickable host watches
         // this to know when the addon's collision list has to be rebuilt.
-        HasLiveClickTarget |= cogNode is { IsVisible: true };
+        if (cogNode is { IsVisible: true })
+        {
+            ClickTargets |= CogTarget;
+        }
 
         var size = new Vector2(width, bottom);
         Size = size;
@@ -257,7 +271,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             cogNode.IsVisible = false;
         }
 
-        HasLiveClickTarget = false;
+        ClickTargets = 0;
 
         for (var i = 0; i < MaxLines; i++)
         {
@@ -518,7 +532,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             teleportHitBox.IsVisible = false;
         }
 
-        HasLiveClickTarget = hitBoxPlaced;
+        ClickTargets = hitBoxPlaced ? TeleportTarget : 0;
         return (y + (BaseGap * factor), firstLineCentre);
     }
 
