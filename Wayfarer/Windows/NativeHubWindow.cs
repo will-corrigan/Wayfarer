@@ -248,7 +248,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Position = contentStart,
             Size = new Vector2(contentSize.X, TabBarHeight),
         };
-        hubTabs.AddTab("Checklist", () => SelectTab(HubTab.Checklist));
+        hubTabs.AddTab("Unlocks", () => SelectTab(HubTab.Checklist));
         hubTabs.AddTab("Hunting Log", () => SelectTab(HubTab.Hunting));
         hubTabs.AddTab("Quests", () => SelectTab(HubTab.Quests));
         hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
@@ -389,7 +389,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private static string TabLabel(HubTab tab) => tab switch
     {
-        HubTab.Checklist => "Checklist",
+        // "Unlocks", not "Checklist": the player could not tell what a Checklist tab held —
+        // "Is checklist the unlocks section?" — and the word for what is in it is unlocks. The
+        // enum member keeps its name; this is what is on screen.
+        HubTab.Checklist => "Unlocks",
         HubTab.Hunting => "Hunting Log",
         HubTab.Quests => "Quests",
         _ => "Settings",

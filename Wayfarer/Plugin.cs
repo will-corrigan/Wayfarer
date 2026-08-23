@@ -241,8 +241,9 @@ public sealed class Plugin : IDalamudPlugin
         {
             HelpMessage = "Shortcut for the Wayfarer window and its Stop button — everything here is also a click or "
                 + "a d-pad press away: the server info bar entry, the plugin list, and the window's own controls. "
-                + "\"/wayfarer hunt\" opens the hunting log, \"/wayfarer quests\" the quest list and its teleport "
-                + "button, \"/wayfarer settings\" the settings, \"/wayfarer stop\" ends the current route or hunt.",
+                + "\"/wayfarer unlocks\" opens what you can unlock now, \"/wayfarer hunt\" the hunting log, "
+                + "\"/wayfarer quests\" the quest list and its teleport button, \"/wayfarer settings\" the settings, "
+                + "\"/wayfarer stop\" ends the current route or hunt.",
         });
     }
 
@@ -251,7 +252,7 @@ public sealed class Plugin : IDalamudPlugin
     /// ImGui config window remains only as the fallback when the native one cannot be opened.</summary>
     private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
 
-    /// <summary>The plugin list's main button opens what the plugin is FOR — the checklist —
+    /// <summary>The plugin list's main button opens what the plugin is FOR — the unlocks list —
     /// rather than its settings, which have their own button right beside it.</summary>
     private void OpenMain() => modules.Get<UnlockChecklistModule>()?.OpenChecklist();
 

@@ -85,7 +85,7 @@ internal sealed class DtrEntry(
             .AddText("Wayfarer. The crystal means the next step uses the aetheryte network - the words beside it say "
                 + "where. No crystal means walk there, and the numbers are how far through and how far left. "
                 + "An exclamation mark means there is an unlock you can pick up in this zone. "
-                + "Left-click opens the checklist, right-click opens settings, shift-click stops the current hunt or route.")
+                + "Left-click opens your unlocks, right-click opens settings, shift-click stops the current hunt or route.")
             .Build();
 
     private static SeString BuildText(DtrText text)
