@@ -38,7 +38,6 @@ internal sealed unsafe class ArrowWindow : Window
     private readonly ReadoutFeed feed;
     private readonly GuidanceOverlay overlay;
     private readonly ModuleRegistry modules;
-    private readonly InputModeService inputMode;
     private readonly QuestHelperConfig cfg;
     private readonly IObjectTable objects;
     private readonly IClientState clientState;
@@ -54,7 +53,6 @@ internal sealed unsafe class ArrowWindow : Window
         ReadoutFeed feed,
         GuidanceOverlay overlay,
         ModuleRegistry modules,
-        InputModeService inputMode,
         QuestHelperConfig cfg,
         IObjectTable objects,
         IClientState clientState,
@@ -65,7 +63,6 @@ internal sealed unsafe class ArrowWindow : Window
         this.feed = feed;
         this.overlay = overlay;
         this.modules = modules;
-        this.inputMode = inputMode;
         this.cfg = cfg;
         this.objects = objects;
         this.clientState = clientState;
@@ -127,10 +124,15 @@ internal sealed unsafe class ArrowWindow : Window
 
     // The fallback's own way back into Wayfarer — restored after the native-overlay rewrite
     // dropped them along with the rest of this window's bespoke layout (see the class doc
-    // comment). A mouse can click these directly; a controller gets the same information as
-    // plain text, exactly like the old widget did, because the game's own context menu (see
-    // ContextMenuMode) is that player's real entry point and a stray focusable ImGui button here
-    // would just be a second, worse one.
+    // comment).
+    //
+    // Real buttons on a controller too. They were plain text for a while, on the argument that the
+    // game's own context menu is that player's real entry point and a focusable ImGui control here
+    // would only be a worse second one. That argument does not survive the situation this window
+    // is actually for: it draws only when no native host is on screen, so nothing is being
+    // duplicated, and a controller player looking at three labels that do not respond has no
+    // affordance here at all — which is what the widget on main gave them. The window is not open
+    // unless something has already gone wrong; it should be at its most usable then, not least.
     private void DrawEntryButtons()
     {
         var drewChecklist = DrawChecklistButton();
@@ -158,11 +160,7 @@ internal sealed unsafe class ArrowWindow : Window
             ImGui.SameLine();
         }
 
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            ImGui.TextUnformatted("Stop");
-        }
-        else if (ImGui.SmallButton("Stop"))
+        if (ImGui.SmallButton("Stop"))
         {
             navigator.ClearPickup();
         }
@@ -177,12 +175,7 @@ internal sealed unsafe class ArrowWindow : Window
             return false;
         }
 
-        const string label = "Open Wayfarer ▸";
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            ImGui.TextUnformatted(label);
-        }
-        else if (ImGui.SmallButton(label))
+        if (ImGui.SmallButton("Open Wayfarer ▸"))
         {
             unlockModule.OpenChecklist();
         }
@@ -207,11 +200,7 @@ internal sealed unsafe class ArrowWindow : Window
             ImGui.SameLine();
         }
 
-        if (inputMode.Mode == InputMode.Controller)
-        {
-            ImGui.TextUnformatted(label);
-        }
-        else if (ImGui.SmallButton(label))
+        if (ImGui.SmallButton(label))
         {
             huntingModule.OpenLog();
         }

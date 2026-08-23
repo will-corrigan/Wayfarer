@@ -102,11 +102,31 @@ internal sealed unsafe class ClickableReadoutAddon(
         framework.Update += OnFrameworkUpdate;
     }
 
+    /// <summary>Runs on the framework thread immediately before the game deallocates the addon.
+    ///
+    /// <para>This host is opened and closed automatically as the player changes device, and the
+    /// addon — node tree and all — is built again from scratch on every open. Nothing else frees
+    /// the tree: the toolkit's unload-time net skips anything still parented, so dropping the
+    /// reference would leave a whole readout behind on every transition. Disposing the body root
+    /// takes its children with it and reverses the attach; it is guarded against running twice, so
+    /// a second close is a no-op rather than a fault.</para></summary>
     protected override unsafe void OnFinalize(AtkUnitBase* addon)
     {
         framework.Update -= OnFrameworkUpdate;
+
+        try
+        {
+            body?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            log.Warning(ex, "Wayfarer readout: disposing the readout body while closing failed.");
+        }
+
         body = null;
         lastSize = Vector2.Zero;
+        lastHadClickTarget = false;
+        broken = false;
     }
 
     private void OnFrameworkUpdate(IFramework tick)

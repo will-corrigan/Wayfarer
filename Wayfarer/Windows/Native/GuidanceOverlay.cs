@@ -25,8 +25,10 @@ namespace Wayfarer.Windows.Native;
 ///
 /// The failure modes are what make this safe to do at all: a host that never attaches draws nothing,
 /// and "nothing appears" is recoverable. If the clickable addon cannot be created the overlay covers
-/// mouse players too — read-only, but there; and if neither exists, <see cref="IsActive"/> reports
-/// false and the ImGui widget takes over.</summary>
+/// mouse players too — read-only, but there. And whenever the host this player's device would
+/// actually use is missing, in either direction, <see cref="IsActive"/> reports false and the ImGui
+/// widget takes over: there is no arrangement of failures that leaves a readout on no surface at
+/// all.</summary>
 internal sealed class GuidanceOverlay(
     ReadoutFeed feed,
     QuestHelperConfig cfg,
@@ -40,11 +42,18 @@ internal sealed class GuidanceOverlay(
     private GuidanceOverlayNode? node;
     private ClickableReadoutAddon? clickable;
     private bool started;
+    private bool disposed;
 
-    /// <summary>Whether the readout is actually on screen in one host or the other. False before
-    /// they have been created and permanently false if both failed — which is what the ImGui
-    /// fallback keys off, so a player is never left with no guidance at all.</summary>
-    public bool IsActive => (node is not null || clickable is not null) && cfg.UseNativeReadout;
+    /// <summary>Whether the readout is actually on screen <b>in the host this player's current
+    /// device would use</b>. That qualification is the whole of it: asking only whether either host
+    /// exists is what let a controller player end up with nothing at all. The clickable host is
+    /// closed outside mouse mode by design, so if the overlay failed to construct while the
+    /// clickable one succeeded, "a host exists" was true, the ImGui fallback stood down, and the
+    /// surface that existed was the one deliberately not being shown.
+    ///
+    /// <para>The ImGui widget keys off this, so it now takes over in exactly the cases where
+    /// nothing native is going to draw — in either mode.</para></summary>
+    public bool IsActive => cfg.UseNativeReadout && (UseClickableHost || node is not null);
 
     // The overlay is the fallback host as well as the controller's host, so it takes over whenever
     // the clickable one is absent for any reason at all.
@@ -69,6 +78,10 @@ internal sealed class GuidanceOverlay(
 
     public void Dispose()
     {
+        // Set before anything is torn down, so a Create() still sitting in the framework queue
+        // sees it and declines rather than building an overlay for a plugin that no longer exists.
+        disposed = true;
+
         framework.Update -= OnFrameworkUpdate;
 
         clickable?.Dispose();
@@ -108,8 +121,18 @@ internal sealed class GuidanceOverlay(
         return cameraManager != null && cameraManager->Camera != null ? cameraManager->Camera->DirH : 0f;
     }
 
+    /// <summary>Builds both hosts. Queued onto the framework thread by <see cref="Start"/>, which
+    /// does not wait for it — so by the time this runs the plugin may already have been unloaded.
+    /// Without the guard, that path ends with an overlay controller, a native addon and a live
+    /// per-frame subscription all belonging to a plugin that is gone, which is the shape of an
+    /// unload crash this plugin has shipped once already.</summary>
     private void Create()
     {
+        if (disposed)
+        {
+            return;
+        }
+
         try
         {
             // Exactly one controller for the plugin's lifetime — a second would duplicate the
@@ -145,6 +168,15 @@ internal sealed class GuidanceOverlay(
         {
             clickable = null;
             log.Error(ex, "Wayfarer readout: the clickable readout could not be created — a mouse player gets the read-only overlay and the window's Quests tab.");
+        }
+
+        // Checked again: Dispose runs on whichever thread Dalamud unloads on, so it can have
+        // arrived while the two constructors above were running and found nothing yet to tear
+        // down. Undoing it here is what makes the guard at the top of this method total.
+        if (disposed)
+        {
+            Dispose();
+            return;
         }
 
         framework.Update += OnFrameworkUpdate;

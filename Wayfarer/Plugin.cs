@@ -325,7 +325,6 @@ public sealed class Plugin : IDalamudPlugin
             feed,
             overlay,
             modules,
-            inputMode,
             config.QuestHelper,
             objects,
             clientState,

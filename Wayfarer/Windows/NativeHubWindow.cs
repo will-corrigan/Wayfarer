@@ -82,6 +82,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly FilterState filter = new();
     private readonly List<NodeBase> checklistNodes = [];
     private readonly List<NodeBase> huntingNodes = [];
+    private readonly List<NodeBase> ownedNodes = [];
     private readonly List<NodeBase> questNodes = [];
     private readonly List<NodeBase> settingsNodes = [];
     private readonly List<HubListRow> rows = [];
@@ -208,7 +209,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         if (!unlocks.Loaded && !hunting.Loaded)
         {
-            AddNode(new TextNode
+            AddOwnedNode(new TextNode
             {
                 Position = ContentStartPosition,
                 Size = new Vector2(ContentSize.X, 40f),
@@ -236,7 +237,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         hubTabs.AddTab("Hunting Log", () => SelectTab(HubTab.Hunting));
         hubTabs.AddTab("Quests", () => SelectTab(HubTab.Quests));
         hubTabs.AddTab("Settings", () => SelectTab(HubTab.Settings));
-        AddNode(hubTabs);
+        AddOwnedNode(hubTabs);
 
         MeasureTabArea();
 
@@ -252,9 +253,31 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         framework.Update += OnFrameworkUpdate;
     }
 
+    /// <summary>Runs on the framework thread, immediately before the game deallocates the addon —
+    /// which is the last moment the tree this window built is still valid to take apart.
+    ///
+    /// <para>Disposing the roots is enough: a node disposes its own children first, then detaches
+    /// itself from native, from the addon's UldManager object list, and from its parent, exactly
+    /// reversing the attach. Every dispose is guarded against being run twice and against running
+    /// off-thread or during a game shutdown, so the reverse order here is tidiness rather than a
+    /// requirement.</para></summary>
     protected override unsafe void OnFinalize(AtkUnitBase* addon)
     {
         framework.Update -= OnFrameworkUpdate;
+
+        for (var i = ownedNodes.Count - 1; i >= 0; i--)
+        {
+            try
+            {
+                ownedNodes[i].Dispose();
+            }
+            catch (Exception ex)
+            {
+                log.Warning(ex, "Wayfarer hub: disposing a node while closing the window failed.");
+            }
+        }
+
+        ownedNodes.Clear();
         distanceRows.Clear();
         rows.Clear();
         checklistNodes.Clear();
@@ -474,8 +497,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private void AddTabNode(List<NodeBase> bucket, NodeBase node)
     {
-        AddNode(node);
+        AddOwnedNode(node);
         bucket.Add(node);
+    }
+
+    /// <summary>Attaches a node to the addon root and remembers that this window built it, so
+    /// <see cref="OnFinalize"/> can take it apart again.
+    ///
+    /// <para>The addon is reallocated from scratch on every open, node tree and all, and the
+    /// toolkit's unload-time safety net deliberately skips anything still parented. Nothing else
+    /// will ever free these: dropping the field references, which is what this used to do, leaves
+    /// the whole subtree behind holding pointers into memory the game has since reclaimed.</para></summary>
+    private void AddOwnedNode(NodeBase node)
+    {
+        AddNode(node);
+        ownedNodes.Add(node);
     }
 
     /// <summary>The game's own button-hint line, along the bottom edge. Drawn only on a controller,
@@ -497,7 +533,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             String = ControllerGlyphs.WindowHint(lastReverseConfirmCancel),
             IsVisible = inputMode.Mode == Core.Input.InputMode.Controller,
         };
-        AddNode(buttonHintNode);
+        AddOwnedNode(buttonHintNode);
     }
 
     private void RefreshButtonHint()
@@ -544,7 +580,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             OptionsList = [],
             OnItemSelected = OnRowClicked,
         };
-        AddNode(list);
+        AddOwnedNode(list);
     }
 
     /// <summary>A disabled button with no explanation is the shape of the original "nothing in
@@ -756,10 +792,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     /// <summary>Seeds the cursor somewhere valid when a tab opens, and puts it back somewhere valid
     /// after a rebuild that could have pulled the row out from under it. Only ever targets a real
-    /// component that is on screen right now.</summary>
+    /// component that is on screen right now.
+    ///
+    /// <para>Controller only. This calls the game's own SetFocus, and it runs on every tab switch,
+    /// every open and every automatic list shrink — including shrinks triggered in the background
+    /// by a hunting target dying while the player is doing something else. On a mouse that is
+    /// game focus being taken away from whatever the player was actually using, by a window that
+    /// was only sitting there. A controller has to have its cursor somewhere; a mouse does
+    /// not.</para></summary>
     private void FocusTabAnchor(HubTab tab)
     {
-        if (!config.InputMode.CursorNavigation)
+        if (!config.InputMode.CursorNavigation || inputMode.Mode != Core.Input.InputMode.Controller)
         {
             return;
         }
@@ -865,6 +908,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (!config.InputMode.CursorNavigation)
         {
+            RemoveFromCursorGraph();
             return;
         }
 
@@ -885,6 +929,37 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         LogGraph(controls, regionEnd, populated);
+    }
+
+    /// <summary>Takes the window out of the cursor graph entirely when the player has turned
+    /// controller navigation off.
+    ///
+    /// <para>"Off" has to mean unwired, not half-wired. The tab bar and the list are given their
+    /// indices when they are built, before this setting is consulted, and only the control region
+    /// is numbered from here — so simply declining to number the region left a window that was
+    /// still navigable but with a hole in the middle of it: down from the tabs pointed at index 10,
+    /// nothing occupied index 10, and the list was unreachable from the tab bar. Someone turning
+    /// this off to fix a problem got a worse window, not a plainer one. Now they get the mouse
+    /// window, which is what the setting says.</para></summary>
+    private void RemoveFromCursorGraph()
+    {
+        if (hubTabs is not null)
+        {
+            hubTabs.NavIndex = NavGraphPlanner.NoNavigation;
+            hubTabs.NavUp = NavGraphPlanner.NoNavigation;
+            hubTabs.NavDown = NavGraphPlanner.NoNavigation;
+        }
+
+        if (list is null)
+        {
+            return;
+        }
+
+        list.NavIndex = NavGraphPlanner.NoNavigation;
+        list.NavUp = NavGraphPlanner.NoNavigation;
+        list.NavDown = NavGraphPlanner.NoNavigation;
+        list.NavLeft = NavGraphPlanner.NoNavigation;
+        list.NavRight = NavGraphPlanner.NoNavigation;
     }
 
     /// <summary>Undoes KamiToolKit's <c>ListNode</c> defect 2 from the outside: its per-row loop

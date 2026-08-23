@@ -22,12 +22,15 @@ namespace Wayfarer;
 /// marker mid-fight. Writing only into an empty slot also happens to be the right behaviour
 /// anyway, since a mob the game has already marked does not need marking twice.
 ///
-/// <b>Fail-safes, because nobody can watch this.</b> It is off by default; the icon id is a
-/// setting rather than a constant and is checked against the game's own texture table before it is
-/// ever written, so a bad id means "no marker" rather than a broken nameplate; the match set is
-/// rebuilt on a timer and the per-frame path is a set lookup and nothing else; and the handler
-/// unsubscribes itself permanently on its first exception, because a feature that turns itself off
-/// is safe and one that throws sixty times a second in the render path is not.</summary>
+/// <b>Fail-safes, because nobody can watch this.</b> It is on by default (see
+/// <see cref="QuestHelperConfig.MarkTargetsOnNameplates"/> for the argument), so the fail-safes are
+/// what carry it: the icon id is a setting rather than a constant and is checked against the game's
+/// own texture table before it is ever written, so a bad id means "no marker" rather than a broken
+/// nameplate; a plate the game has already marked is never overwritten; the match set is rebuilt on
+/// a timer, limited to the current zone, and the per-frame path is a set lookup and nothing else;
+/// and the handler unsubscribes itself permanently on its first exception, because a feature that
+/// turns itself off is safe and one that throws sixty times a second in the render path is
+/// not.</summary>
 internal sealed class NamePlateMarkers(
     INamePlateGui namePlates,
     ITextureProvider textures,
@@ -229,8 +232,9 @@ internal sealed class NamePlateMarkers(
         // Matched by name, which is not unique — the same monster name appears in several zones and
         // NPC names repeat. It is the only key the hunting dataset and the nameplate agree on
         // today; carrying the resident/base row id in the datasets would make this exact. Until
-        // then the feature stays off by default and the match set is limited to the current zone's
-        // targets, which bounds the blast radius to "an unrelated mob of the same name".
+        // then the match set is limited to the current zone's targets, which is what bounds the
+        // blast radius to "an unrelated mob of the same name in the zone you are standing in" —
+        // and that bound is the whole argument for this being on by default, so it is not optional.
         if (handler.GameObject is { } gameObject && names.Contains(gameObject.Name.TextValue))
         {
             handler.MarkerIconId = icon;
