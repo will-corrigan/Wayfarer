@@ -42,6 +42,27 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <summary>The most rows one line is allowed to wrap into.</summary>
     private const float MaxWrappedLines = 3f;
 
+    /// <summary>How every ordinary line behaves. Edge is not decoration over the 3D world — without
+    /// an outline the text vanishes against bright terrain. WordWrap plus MultiLine is how the
+    /// game's own journal and tooltips grow downward instead of truncating.</summary>
+    private const TextFlags BodyFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
+
+    /// <summary>How the line that names what is being followed behaves instead: cut short with the
+    /// engine's own ellipsis rather than wrapped.
+    ///
+    /// <para><b>Why this one line is the exception.</b> Everything else on the readout is a sentence
+    /// about the objective and reads fine over two rows. The name is a label — it is what the
+    /// switcher is attached to and what the eye lands on first — and a label that reflows the whole
+    /// readout downward every time the quest changes is the thing that makes a tracker feel
+    /// unsteady. <c>TextFlags.Ellipsis</c> is the game's own flag for exactly this, so the mark at
+    /// the end is the mark the game uses everywhere else it runs out of room, at the width this
+    /// readout actually has.</para>
+    ///
+    /// <para>A cut name is not a lost name: the full text is on the node's tooltip, and on a
+    /// controller — which has no pointer to hover with — it is in full on the window's Following
+    /// tab, on the row that is currently selected.</para></summary>
+    private const TextFlags SubjectFlags = TextFlags.Edge | TextFlags.Ellipsis;
+
     private const float BaseWidth = 320f;
     private const float BaseHeadingSize = 20f;
     private const float BasePrimarySize = 15f;
@@ -119,6 +140,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     /// <inheritdoc cref="TeleportTarget"/>
     private const int SwitcherTarget = 4;
+
+    /// <inheritdoc cref="TeleportTarget"/>
+    private const int SubjectTarget = 8;
 
     /// <summary>What is said, once, when the switcher has no art. Losing it costs the shortcut and
     /// nothing else, which is what this says rather than making it sound fatal.</summary>
@@ -201,6 +225,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// menu, both of which take no cursor.</para></summary>
     private readonly SimpleImageNode? switcherNode;
 
+    /// <summary>An invisible box over the words of the subject line, or null in a host that takes no
+    /// mouse. It carries the full name as the game's own tooltip when the drawn name has been cut
+    /// short, which is the other half of truncating it.
+    ///
+    /// <para>Its own box rather than the text node's: the text node is as wide as the room the line
+    /// was given, including the slot reserved for the switcher, and a hover region that reached
+    /// under the switcher would put a tooltip over a control that is not the name. This is exactly
+    /// as wide as the words drew.</para></summary>
+    private readonly ResNode? subjectHitBox;
+
     private ArrowIconVariant? loadedVariant;
     private ArrowIconVariant? loadedElevationVariant;
     private bool arrowFailed;
@@ -209,6 +243,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private bool cogFailed;
     private bool switcherFailed;
     private bool warnedSwitcherOnce;
+
+    /// <summary>The room the subject line had last frame, and the tooltip it was last given. Both
+    /// exist so the per-frame path writes nothing that has not changed: re-handing the engine a
+    /// string re-runs its text flow, and re-handing a node a tooltip rebuilds the addon's whole
+    /// collision list.</summary>
+    private float lastSubjectWidth = -1f;
+
+    /// <inheritdoc cref="lastSubjectWidth"/>
+    private string lastSubjectTooltip = string.Empty;
+
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
@@ -258,7 +302,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
-        switcherNode = onFollowClicked is null ? null : BuildSwitcher(onFollowClicked);
+
+        // Both hang off the subject line and both need a pointer, so they live and die together:
+        // a host with no switcher is a host with nothing to hover, and drawing a tooltip region on
+        // the click-through overlay would be a collision rectangle nobody asked for.
+        if (onFollowClicked is not null)
+        {
+            switcherNode = BuildSwitcher(onFollowClicked);
+            subjectHitBox = new ResNode { IsVisible = false };
+            subjectHitBox.AttachNode(this);
+        }
     }
 
     /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
@@ -304,11 +357,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         var drawable = frame.ArrowRadians is not null && EnsureArrowTexture(frame.ArrowIcon);
         var y = LayoutWords(frame, drawable, factor, width);
-        var (bottom, firstLineCentre, subject) = LayoutLines(frame, factor, width, gutter, y);
+        var (bottom, firstLineCentre, subject, subjectText) = LayoutLines(frame, factor, width, gutter, y);
         LayoutArrow(frame, drawable, arrowSize, gutter, firstLineCentre);
         LayoutElevation(frame, arrowSize);
         LayoutHeadingControls(frame, factor, width, gutter);
         LayoutSwitcher(factor, gutter, width - gutter, subject);
+        LayoutSubjectHitBox(subject, subjectText, gutter);
 
         // The cog and the switcher are live collision nodes whenever they are drawn, and the
         // clickable host watches this to know when the addon's collision list has to be rebuilt.
@@ -320,6 +374,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         if (switcherNode is { IsVisible: true })
         {
             ClickTargets |= SwitcherTarget;
+        }
+
+        if (subjectHitBox is { IsVisible: true })
+        {
+            ClickTargets |= SubjectTarget;
         }
 
         var size = new Vector2(width, bottom);
@@ -367,6 +426,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         if (switcherNode is not null)
         {
             switcherNode.IsVisible = false;
+        }
+
+        if (subjectHitBox is not null)
+        {
+            subjectHitBox.IsVisible = false;
         }
 
         ClickTargets = 0;
@@ -578,11 +642,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
                 FontSize = (uint)BaseSecondarySize,
                 AlignmentType = AlignmentType.TopLeft,
 
-                // Edge is not decoration over the 3D world — without an outline the text vanishes
-                // against bright terrain. WordWrap plus MultiLine is how the game's own journal and
-                // tooltips grow downward instead of truncating, which is the fix for the widget's
-                // "half the text is cut off" complaint.
-                TextFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine,
+                // A starting point only — every line is given its own flags each frame, because the
+                // pool is shared and the subject line behaves differently. See BodyFlags.
+                TextFlags = BodyFlags,
                 TextColor = GameColors.Body,
                 TextOutlineColor = GameColors.BodyEdge,
                 IsVisible = false,
@@ -689,13 +751,38 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return height + (BaseGap * factor);
     }
 
+    /// <summary>The room the switcher will want beside the subject line, or nothing at all when
+    /// there is no switcher to draw.
+    ///
+    /// <para>Taken off the subject line before it is laid out rather than after: text measured
+    /// against the full width would run under the arrow, and reserving the slot up front is also
+    /// what makes the line truncate in the right place rather than a control's width too
+    /// late.</para></summary>
+    private float SwitcherSlot(float factor) =>
+        switcherNode is not null && SwitcherDrawable()
+            ? Math.Max(BaseSwitcher * factor, 9f) + (BaseGap * factor * 2f)
+            : 0f;
+
+    /// <summary>Writes down where the subject line ended up and whether its name fitted.
+    ///
+    /// <para>The width asked for is the UNTRUNCATED one, measured with the font the node has just
+    /// been given. That overload measures arbitrary text rather than whatever the node last drew, so
+    /// it answers on the frame the name changes and it answers about the whole name — which is what
+    /// makes "did it fit?" a decision rather than a guess.</para></summary>
+    private SubjectLine MeasureSubject(
+        int index, string text, float top, float height, float fontSize, float available)
+    {
+        var full = lineNodes[index].GetTextDrawSize(text).X;
+        return new SubjectLine(top, height, fontSize, Math.Min(full, available), full > available);
+    }
+
     /// <summary>Lays out every line and reports how tall the readout ended up, plus the vertical
     /// centre of the first line of the block — which is what the arrow is aligned against.
     ///
     /// <para>Every line, heading included, starts at the same left edge past the arrow gutter, so
     /// the readout is one block with one edge and the arrow is a mark beside it rather than
     /// something the body hangs off.</para></summary>
-    private (float Bottom, float? FirstLineCentre, SubjectLine? Subject) LayoutLines(
+    private (float Bottom, float? FirstLineCentre, SubjectLine? Subject, string? SubjectText) LayoutLines(
         ReadoutFrame frame, float factor, float width, float gutter, float top)
     {
         var y = top;
@@ -703,14 +790,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var hitBoxPlaced = false;
         float? firstLineCentre = null;
         SubjectLine? subject = null;
+        string? subjectText = null;
         var lineWidth = width - gutter;
 
-        // The room the switcher will want, taken off the subject line before it is laid out rather
-        // than after: text that has already been measured against the full width would run under
-        // the arrow, and reserving the slot is also what makes the line truncate in the right place.
-        var reserved = switcherNode is not null && SwitcherDrawable()
-            ? Math.Max(BaseSwitcher * factor, 9f) + (BaseGap * factor * 2f)
-            : 0f;
+        var reserved = SwitcherSlot(factor);
 
         for (var i = 0; i < count; i++)
         {
@@ -735,8 +818,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             // second control claiming to change the same one thing.
             if (line.Subject && subject is null)
             {
-                subject = new SubjectLine(
-                    y, height, fontSize, Math.Min(lineNodes[i].GetTextDrawSize(line.Text).X, available));
+                subjectText = line.Text;
+                subject = MeasureSubject(i, line.Text, y, height, fontSize, available);
             }
 
             hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, gutter, lineWidth, height, y);
@@ -755,7 +838,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         ClickTargets = hitBoxPlaced ? TeleportTarget : 0;
-        return (y + (BaseGap * factor), firstLineCentre, subject);
+        return (y + (BaseGap * factor), firstLineCentre, subject, subjectText);
     }
 
     /// <summary>Hangs the up/down chevron off the arrow when the target is on a different level of
@@ -1003,18 +1086,86 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         node.TextColor = ColorFor(line.Emphasis);
         node.TextOutlineColor = OutlineFor(line.Emphasis);
 
-        // Assigning String builds a SeString; only do it when the words actually changed.
-        if (!string.Equals(lastText[index], line.Text, StringComparison.Ordinal))
+        // Assigned every frame because the pool is shared: the node that is the subject now may
+        // have been an ordinary wrapping line a frame ago, and vice versa.
+        node.TextFlags = line.Subject ? SubjectFlags : BodyFlags;
+
+        if (line.Subject)
         {
-            lastText[index] = line.Text;
-            node.String = line.Text;
+            // One row, always, and its height is known before its words are — which is what lets the
+            // node be sized first. The engine cuts the text to the node's width when the text is
+            // handed over, so a name given to a node that has not been sized yet would be cut to
+            // last frame's width.
+            node.Size = new Vector2(width, step);
+
+            // Re-handed over when the room changed as well as when the words did: the engine keeps
+            // only what it drew, so a name already shortened to "Sastasha…" would stay shortened
+            // after the readout grew, having lost the letters it would now have room for.
+            var regrown = Math.Abs(width - lastSubjectWidth) > 0.5f;
+            lastSubjectWidth = width;
+            SetLineText(index, line.Text, regrown);
+            node.Position = new Vector2(left, y);
+            node.IsVisible = true;
+            return step;
         }
+
+        SetLineText(index, line.Text, forced: false);
 
         var height = step * WrappedLines(node, width);
         node.Size = new Vector2(width, height);
         node.Position = new Vector2(left, y);
         node.IsVisible = true;
         return height;
+    }
+
+    /// <summary>Hands the words to a line's node, but only when something about them has actually
+    /// changed. Assigning <c>String</c> builds a SeString and re-runs the engine's text flow, and
+    /// this is a per-frame path.</summary>
+    private void SetLineText(int index, string text, bool forced)
+    {
+        if (!forced && string.Equals(lastText[index], text, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastText[index] = text;
+        lineNodes[index].String = text;
+    }
+
+    /// <summary>Parks the hover region over the words of the subject line and gives it the full name
+    /// as a tooltip, or takes it away when the name is drawn in full.
+    ///
+    /// <para>Only when the name was actually cut short. A tooltip repeating words the player can
+    /// already read is noise, and it would also mean a collision rectangle sitting over the quest
+    /// name on every readout rather than only on the ones that need one.</para></summary>
+    private void LayoutSubjectHitBox(SubjectLine? subject, string? fullText, float left)
+    {
+        if (subjectHitBox is null)
+        {
+            return;
+        }
+
+        if (subject is not { Truncated: true } line || fullText is not { Length: > 0 } full)
+        {
+            subjectHitBox.IsVisible = false;
+            if (lastSubjectTooltip.Length > 0)
+            {
+                lastSubjectTooltip = string.Empty;
+                subjectHitBox.TextTooltip = default;
+            }
+
+            return;
+        }
+
+        if (!string.Equals(lastSubjectTooltip, full, StringComparison.Ordinal))
+        {
+            lastSubjectTooltip = full;
+            subjectHitBox.TextTooltip = full;
+        }
+
+        subjectHitBox.Size = new Vector2(Math.Max(line.TextWidth, 1f), line.Height);
+        subjectHitBox.Position = new Vector2(left, line.Top);
+        subjectHitBox.IsVisible = true;
     }
 
     /// <summary>Parks the invisible click target over the teleport line, if this host has one and

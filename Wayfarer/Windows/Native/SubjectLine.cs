@@ -14,7 +14,12 @@ namespace Wayfarer.Windows.Native;
 /// centred against.</param>
 /// <param name="TextWidth">How wide the words actually drew, already clamped to the room the line
 /// was given.</param>
+/// <param name="Truncated">The name did not fit and the engine cut it short with an ellipsis.
+/// Decided by measuring the untruncated words against the room the line has, rather than by reading
+/// the node back — the node reports whatever it last drew, and the answer is wanted on the frame the
+/// name changes.</param>
 /// <remarks>Never marshalled — the layout kind is explicit only because the analyzer asks every
 /// all-blittable struct to say so, and Auto is what "this is a value, not a memory shape" means.</remarks>
 [StructLayout(LayoutKind.Auto)]
-internal readonly record struct SubjectLine(float Top, float Height, float FontSize, float TextWidth);
+internal readonly record struct SubjectLine(
+    float Top, float Height, float FontSize, float TextWidth, bool Truncated);
