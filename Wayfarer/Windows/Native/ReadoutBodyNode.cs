@@ -38,6 +38,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     // allocated per frame: nothing in a per-frame path should allocate.
     private const int MaxLines = 12;
 
+    /// <summary>The most rows one line is allowed to wrap into.</summary>
+    private const float MaxWrappedLines = 3f;
+
     private const float BaseWidth = 320f;
     private const float BaseHeadingSize = 20f;
     private const float BasePrimarySize = 15f;
@@ -354,6 +357,35 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <summary>Puts one heading-line control at <paramref name="x"/> and reports where the next one
     /// starts. A control whose art could not be generated is hidden and consumes no space, so the
     /// row closes up rather than leaving a gap where it would have been.</summary>
+    /// <summary>How many rows this line's text will occupy at the width it has been given.
+    ///
+    /// <para><c>GetTextDrawSize</c> is the engine's own measurement and answers immediately — it is
+    /// not a read of something that has to have been drawn first. Both of its axes are consulted
+    /// because a node that is already wrapping reports a wrapped height while one that is not
+    /// reports its full unwrapped width, and taking the larger estimate is right in either case. A
+    /// measurement that comes back as nothing falls back to one row, which is the old behaviour and
+    /// is never worse than it.</para></summary>
+    private static float WrappedLines(TextNode node, float width)
+    {
+        if (width <= 1f)
+        {
+            return 1f;
+        }
+
+        var drawn = node.GetTextDrawSize();
+        if (drawn.X <= 0f && drawn.Y <= 0f)
+        {
+            return 1f;
+        }
+
+        var byWidth = MathF.Ceiling(drawn.X / width);
+        var byHeight = MathF.Ceiling(drawn.Y / Math.Max(node.LineSpacing, 1f));
+
+        // Capped: a line that wants five rows is a content problem, and letting it push the rest of
+        // the readout off the bottom of its slot would be trading a clipped line for a lost one.
+        return Math.Clamp(Math.Max(byWidth, byHeight), 1f, MaxWrappedLines);
+    }
+
     private static float PlaceHeadingControl(
         ImGuiImageNode? node, Func<bool> ensureTexture, float size, float gap, float x, float top, float width)
     {
@@ -621,20 +653,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             var fontSize = FontSizeFor(line.Emphasis) * factor;
             y = LayoutRule(i, line, factor, gutter, lineWidth, y);
 
-            // Two lines' worth of height so a wrapped line has somewhere to go. WordWrap needs a
-            // fixed width and grows downward into whatever height the node has; the advance below is
-            // the single-line height, so an unwrapped line does not leave a blank one under it.
-            var height = (fontSize + 2f) * 2f;
-            LayoutLine(i, line, fontSize, gutter, lineWidth, height, y);
-
-            var advance = height * 0.6f;
+            // The height this line actually needs, measured, and the advance to match it. It used
+            // to be two lines' worth of node with a ONE line advance, which is why a long nearby
+            // unlock — "Something Or Other (350 yalms)" — appeared cut off: it wrapped correctly
+            // into a node that had room for it, and then the next line was drawn on top of the
+            // wrapped remainder, 40% of a line further up than the wrap had put it.
+            var height = LayoutLine(i, line, fontSize, gutter, lineWidth, y);
 
             // The arrow aligns to the first line that is not the heading — the objective, which is
             // what it is pointing at — and to that line's optical centre rather than its box.
             firstLineCentre ??= heading ? null : y + (fontSize * ArrowOpticalCentre);
 
             hitBoxPlaced |= TryPlaceHitBox(frame, line, hitBoxPlaced, gutter, lineWidth, height, y);
-            y += advance;
+            y += height;
         }
 
         for (var i = count; i < MaxLines; i++)
@@ -854,13 +885,24 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return y + (BaseGap * factor) + 4f;
     }
 
-    private void LayoutLine(
-        int index, ReadoutLine line, float fontSize, float left, float width, float height, float y)
+    /// <summary>Lays out one line and reports the height it took — which is the height it needs,
+    /// measured, not a fixed guess.
+    ///
+    /// <para>The readout wraps rather than truncating (there is no marquee flag anywhere in the
+    /// engine, and the game's own journal and tooltips grow downward), so a line's height is a
+    /// function of its text and the width it has. Asking the game how wide the text draws and
+    /// dividing by that width is the only way to know, and it is exact: the same measurement the
+    /// engine uses to lay the glyphs out.</para></summary>
+    private float LayoutLine(int index, ReadoutLine line, float fontSize, float left, float width, float y)
     {
         var node = lineNodes[index];
         node.FontType = FontFor(line.Emphasis);
         node.FontSize = (uint)Math.Max(fontSize, 8f);
-        node.LineSpacing = (uint)Math.Max(fontSize + 2f, 10f);
+
+        // One number for both the wrap spacing and the advance, so a wrapped line's second row and
+        // the line after it cannot disagree about where they are.
+        var step = Math.Max(fontSize + 4f, 11f);
+        node.LineSpacing = (uint)step;
         node.TextColor = ColorFor(line.Emphasis);
         node.TextOutlineColor = OutlineFor(line.Emphasis);
 
@@ -871,9 +913,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             node.String = line.Text;
         }
 
+        var height = step * WrappedLines(node, width);
         node.Size = new Vector2(width, height);
         node.Position = new Vector2(left, y);
         node.IsVisible = true;
+        return height;
     }
 
     /// <summary>Parks the invisible click target over the teleport line, if this host has one and
