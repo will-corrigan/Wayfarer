@@ -1,4 +1,6 @@
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Navigation;
+using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Tests;
 
@@ -105,6 +107,59 @@ public class InteriorRouteTests
         // The arrow points at the shard the player boards, in their own territory's space.
         Assert.Equal(45.0f, route.ArrowX!.Value, 2);
         Assert.Equal(1.0f, route.ArrowZ!.Value, 2);
+    }
+
+    /// <summary>The reported case all the way to the words on screen: the costed leg, through
+    /// <see cref="GuidanceProjection"/>, out of <see cref="ReadoutComposer"/>. Pins both what the
+    /// player now reads AND that the arrow points at the shard they board — and that the readout
+    /// says "Fortemps Manor" exactly once, where it used to say it three times.</summary>
+    [Fact]
+    public void TheReportedCase_ReadsAsAShardHopWithThePlaceNamedOnce()
+    {
+        var leg = InteriorRoute.Route(
+            FortempsManor, Foundation, 45.0f, 1.0f, FoundationShards, PillarsShards, [], []);
+
+        var objective = new GuidanceObjective(
+            new ObjectiveKey("quest", "67782"),
+            new ObjectiveDestination.TerritoryOnly(433, 222),
+            new ObjectiveCopy("Heroes of the Hour", "Enter Fortemps Manor.", "Main Scenario"),
+            QuestId: 67782);
+
+        var state = GuidanceProjection.Build(
+            objective,
+            GuidanceEngagement.Ambient,
+            new RouteResult.OtherZone(
+                "Fortemps Manor",
+                0f,
+                0f,
+                EntranceX: leg!.ArrowX,
+                EntranceZ: leg.ArrowZ,
+                AethernetEntryName: leg.AethernetEntryName,
+                AethernetExitName: leg.AethernetExitName,
+                RemainingYalms: leg.RemainingYalms));
+
+        var content = ReadoutComposer.Compose(new ReadoutInputs { State = state });
+
+        Assert.Equal(
+            [
+                "Main Scenario",
+                "Heroes of the Hour",
+                "Enter Fortemps Manor.",
+                "To The Forgotten Knight aetheryte",
+                "Aethernet to The Last Vigil, then 42 yalms",
+            ],
+            content.Lines.Select(line => line.Text),
+            StringComparer.Ordinal);
+
+        Assert.True(content.ShowArrow);
+        Assert.Equal(45.0f, content.TargetX!.Value, 2);
+        Assert.Equal(1.0f, content.TargetZ!.Value, 2);
+
+        Assert.Single(
+            content.Lines,
+            line => line.Text.Contains("Fortemps Manor", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            content.Lines, line => line.Text.Contains("find the entrance", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>The same shape in a different split city, so the fix is a property of split cities
