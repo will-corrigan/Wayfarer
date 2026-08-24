@@ -413,6 +413,21 @@ public static class GameMetrics
     {
         public const string Texture = "ui/uld/Journal_Detail.tex";
 
+        /// <summary>The page's own parchment. JournalDetail <c>#54</c> is a <c>NineGrid</c> on part
+        /// list 9 part 4 — <c>Journal_Detail.tex</c> (376,28) 96x96 — with corner offsets
+        /// T20 B28 L24 R24, drawn at 496x618 under everything else on the page. This is the surface
+        /// the gilt frame is nailed to, and the reason the page reads as paper.</summary>
+        public const float ParchmentPartSize = 96f;
+
+        /// <inheritdoc cref="ParchmentPartSize"/>
+        public const float ParchmentTopOffset = 20f;
+
+        /// <inheritdoc cref="ParchmentPartSize"/>
+        public const float ParchmentBottomOffset = 28f;
+
+        /// <inheritdoc cref="ParchmentPartSize"/>
+        public const float ParchmentSideOffset = 24f;
+
         /// <summary>The document-with-lines disc. Part list 6 part 6; the game puts it over
         /// Information, Requirements and Summary.</summary>
         public static readonly (float U, float V) GlyphDocument = (24f, 0f);
@@ -433,6 +448,99 @@ public static class GameMetrics
 
         /// <summary>The level badge disc, 40x40.</summary>
         public static readonly (float U, float V) LevelBadge = (420f, 124f);
+
+        /// <inheritdoc cref="ParchmentPartSize"/>
+        public static readonly (float U, float V) Parchment = (376f, 28f);
+    }
+
+    /// <summary>The Journal's ornate gilt border, node for node.
+    ///
+    /// <para><b>Why it can be worn now.</b> The frame is assembled by JournalDetail's node
+    /// <c>#11</c> — a <c>Res</c> at (0,20) sized 496x628 — out of sixteen children (<c>#13</c>–
+    /// <c>#28</c>) at hard-coded positions on part list 10, which is
+    /// <c>ui/uld/Journal_Frame.tex</c>. Fourteen of them are plain <c>Image</c> nodes drawn at the
+    /// size their art is authored at; only two, the vertical rails <c>#13</c>/<c>#14</c>, are
+    /// <c>NineGrid</c>s that stretch. So the assembly is authored for <b>one width and one width
+    /// only — 496</b>, and the earlier survey was right to refuse to stretch it across a
+    /// variable-width window. A window that simply <i>is</i> 496 wide has no such problem: the
+    /// horizontal run is used exactly as authored, and the rails carry every height difference,
+    /// which is precisely what the game does with them.</para>
+    ///
+    /// <para><b>The mirror.</b> Five pieces are drawn twice, the second time with the image node's
+    /// own <c>FlipH</c> flag — the game sets it on <c>#23</c>/<c>#24</c>/<c>#25</c>/<c>#26</c>/
+    /// <c>#27</c>. That is why a 240x192 sheet holding one corner, one edge run and one boss can
+    /// close a border on all four sides.</para></summary>
+    public static class JournalFrame
+    {
+        public const string Texture = "ui/uld/Journal_Frame.tex";
+
+        /// <summary>The width the assembly is authored for. JournalDetail <c>#11</c> is 496 wide and
+        /// its horizontal pieces tile that width exactly: 0..56 corner, 56..160 run, 160..208 bar,
+        /// 208..288 centre boss, 288..336 bar, 336..440 run, 440..496 corner.</summary>
+        public const float Width = 496f;
+
+        /// <summary>The frame's authored height. JournalDetail <c>#11</c> is 628 tall.</summary>
+        public const float AuthoredHeight = 628f;
+
+        /// <summary>Everything above the stretching rails. <c>#14</c> (the left rail) starts at
+        /// y=192.</summary>
+        public const float TopFixed = 192f;
+
+        /// <summary>Everything below them. <c>#14</c> is 340 tall and ends at y=532, which is 96
+        /// short of the frame's 628.</summary>
+        public const float BottomFixed = 96f;
+
+        /// <summary>The shortest frame that can be assembled without the fixed top and bottom
+        /// overlapping — the rails go to zero here and the border still closes.</summary>
+        public const float MinHeight = TopFixed + BottomFixed;
+
+        /// <summary>The rails' own width and the inner edge they leave. <c>#14</c> is 32 wide at x=0
+        /// and <c>#13</c> is 32 wide at x=464, so the border eats 32 pixels on each side.</summary>
+        public const float RailWidth = 32f;
+
+        /// <summary>Where the parchment starts inside the frame. JournalDetail draws the frame group
+        /// at y=20 and the parchment <c>#54</c> at y=30, so the paper begins ten pixels down the
+        /// border and runs to its foot.</summary>
+        public const float ParchmentTop = 10f;
+
+        /// <summary>The top of the title band, in the frame's own space. JournalDetail's level badge
+        /// group <c>#8</c> is at y=62 and its title <c>#38</c> at y=72 in a root whose frame starts
+        /// at y=20 — so the band opens 42 pixels down the border.</summary>
+        public const float TitleTop = 42f;
+
+        /// <summary>The rule under the title. JournalDetail <c>#39</c> is at y=120, which is 100
+        /// inside the frame — and that is exactly <see cref="TitleTop"/> plus the band's own
+        /// <see cref="Journal.PageTitleHeight"/> plus a rule gap either side, so the two derivations
+        /// agree.</summary>
+        public const float TitleRuleTop = 100f;
+
+        /// <summary>The top of the body. JournalDetail's body group <c>#40</c> is at y=128, which is
+        /// 108 inside the frame.</summary>
+        public const float BodyTop = 108f;
+
+        /// <summary>How far the button row's foot sits above the frame's own foot. JournalDetail's
+        /// button row <c>#49</c> is at y=584 and 28 tall, so it ends at 612 in a root whose frame
+        /// ends at 648.</summary>
+        public const float ButtonBottomInset = 36f;
+
+        /// <summary>How far the footer rule sits above the frame's foot. JournalDetail <c>#48</c> is
+        /// at y=568, which is 80 above the frame's 648.</summary>
+        public const float FooterRuleBottomInset = 80f;
+
+        /// <summary>The small round button the game parks beside its button row. JournalDetail
+        /// <c>#53</c> is a 28x28 <c>Button</c> at (414,582) — the chat-log icon in the player's
+        /// screenshot.</summary>
+        public const float IconButtonSize = 28f;
+
+        /// <summary>The page's content column, and where the frame's own numbers put it.
+        ///
+        /// <para>JournalDetail's canvas <c>#43</c> is 394 wide at x=42 — the authored
+        /// <see cref="Journal.SectionWidth"/> — leaving 60 to the right edge rather than 42. The
+        /// asymmetry is the scroll bar: <c>#2</c> is a 20-wide bar at x=458, and the page reserves
+        /// its gutter. This window has no scroll bar, so the same authored column is centred
+        /// instead, which is the one deliberate deviation on this surface and is stated rather than
+        /// hidden.</para></summary>
+        public static float ColumnLeft => (Width - Journal.SectionWidth) / 2f;
     }
 
     /// <summary>The heads-up readout. Measured from the quest tracker, <c>ToDoList.uld</c>, which is
