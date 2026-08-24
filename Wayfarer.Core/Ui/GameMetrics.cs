@@ -696,5 +696,9 @@ public static class GameMetrics
 
         /// <inheritdoc cref="SubLineSize"/>
         public const uint SubLineLeading = Hud.MetaLeading;
+
+        /// <summary>The settings cog's side. Sized against the heading it sits beside rather than
+        /// against the readout: it is a mark on the pill's line, not a button on a panel.</summary>
+        public const float CogSize = 13f;
     }
 }
