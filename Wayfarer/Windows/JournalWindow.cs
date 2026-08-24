@@ -326,6 +326,23 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         Height = GameMetrics.Journal.FootnoteHeight,
     };
 
+    /// <summary>The requirements block as one string: the game's own "not yet available" sentence when
+    /// there is one, then the unmet requirements as bullets.
+    ///
+    /// <para><c>Addon</c> row 479 is the string <c>AddonJournalDetail</c>'s own requirements label is
+    /// authored with, so a quest-gated entry leads with Square Enix's sentence in the player's own
+    /// language rather than a paraphrase of it. Offered only for a quest gate: over a duty's or a
+    /// mount's requirements the same words would be about something they are not. See
+    /// <see cref="HubRowDetail.GatedByQuest"/>.</para></summary>
+    private string Requirements(HubRowDetail detail)
+    {
+        var lead = JournalRequirementText.NotMetLead(words.NotAvailable, detail.GatedByQuest);
+
+        return lead is null
+            ? DetailText.Bullets(detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _)
+            : DetailText.Led(lead, detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _);
+    }
+
     private void Build()
     {
         frame = new JournalFrameNode(log) { Position = Vector2.Zero };
@@ -638,12 +655,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
         // The requirements are assembled before the state line, because whether there are any is what
         // decides what the state line is allowed to say. See JournalRequirementText.
-        var lead = JournalRequirementText.NotMetLead(words.NotAvailable, detail.GatedByQuest);
-        var requirements = DetailText.Led(
-            lead ?? string.Empty, detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _);
-        requirements = lead is null
-            ? DetailText.Bullets(detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _)
-            : requirements;
+        var requirements = Requirements(detail);
 
         SetLine(
             statusNode!,
