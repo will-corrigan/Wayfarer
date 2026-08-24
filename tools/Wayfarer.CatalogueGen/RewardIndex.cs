@@ -443,8 +443,14 @@ internal sealed class RewardIndex
     }
 
     /// <summary>What an item actually grants, from its <c>ItemAction</c>. Null for an item that
-    /// grants nothing enumerable — most quest rewards are gear and gil.</summary>
-    private static Candidate? FromItem(Item item, UnlockLinkIndex unlockLinks)
+    /// grants nothing enumerable — most quest rewards are gear and gil.
+    ///
+    /// <para>Shared with <see cref="UnlockEnumeration"/> rather than reimplemented there. The
+    /// <c>ItemAction</c> type numbers and the which-column-holds-the-payload rule above are
+    /// community-reverse-engineered and do move between Lumina releases; a second copy would be a
+    /// second set of answers, and the one that was not being maintained would be the one producing
+    /// the coverage figures.</para></summary>
+    internal static Candidate? FromItem(Item item, UnlockLinkIndex unlockLinks)
     {
         if (item.ItemAction.ValueNullable is not { } action || action.RowId == 0)
         {

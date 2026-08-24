@@ -35,6 +35,15 @@
 // The guide's own value for level and type IS read every run and compared against the curated
 // one. Disagreements are recorded in the report, never silently resolved.
 //
+// THE COMPLETENESS CHECK
+// The guide decides what EXISTS, which means anything the guide omits is something this pipeline
+// can never learn about — a sixth trophy-mount quest was missing until another plugin's data
+// revealed it. So every run also asks the game what IT thinks is unlockable, across the 36
+// channels that state a quest gate, and writes the diff to data/coverage.json. That artefact is
+// committed and data/validate-coverage.mjs holds it against the committed catalogue in CI, with no
+// game installation. Nothing in this step changes the catalogue's contents; it only makes the gap
+// measurable and self-policing.
+//
 // DETERMINISM
 // -----------
 // Same cache in, byte-identical file out: sheet resolution is ordered by row id, entries keep the
@@ -45,10 +54,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { buildCoverage, canonicaliseCoverage, catalogueFingerprint } from '../data/coverage-diff.mjs';
 import { ALL as REWARD_KINDS, drawsAnIcon } from '../data/reward-kinds.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATASET = path.join(REPO, 'data', 'unlocks-by-level.json');
+const COVERAGE = path.join(REPO, 'data', 'coverage.json');
 const TOOL = path.join(REPO, 'tools', 'Wayfarer.CatalogueGen', 'Wayfarer.CatalogueGen.csproj');
 
 const API = 'https://ffxiv.gamerescape.com/w/api.php';
@@ -88,7 +99,8 @@ function parseArgs(argv) {
 if (args.help) {
   process.stdout.write(`Usage: node scripts/build-unlock-catalogue.mjs [options]
 
-  --write            overwrite data/unlocks-by-level.json with the candidate (default: don't)
+  --write            overwrite data/unlocks-by-level.json and data/coverage.json with the
+                     candidates (default: don't)
   --offline          use only what is already cached; never contact the wiki
   --no-cross-check   skip the per-quest infobox second source (much faster, weaker evidence)
   --out DIR          where to write the candidate and the report (default <cache>/out)
@@ -440,6 +452,109 @@ function resolveRewards(joins, sqpack) {
     );
   }
   return JSON.parse(fs.readFileSync(resPath, 'utf8')).rewards ?? {};
+}
+
+/** Everything the GAME says is unlockable, with no wiki input — the other half of the answer.
+ *
+ * The catalogue's EXISTENCE set comes from one guide, so anything the guide omits is something
+ * this pipeline can never learn about on its own. That is not hypothetical: a sixth trophy-mount
+ * quest was missing until another plugin's data revealed it. This walks the 36 channels the game
+ * states a quest gate for and hands back the row ids; the diff against the catalogue about to be
+ * emitted is written to data/coverage.json, which CI can then hold against the committed catalogue
+ * with no game data at all. See tools/Wayfarer.CatalogueGen/UnlockEnumeration.cs. */
+function enumerateUnlocks(sqpack) {
+  fs.mkdirSync(OUT, { recursive: true });
+  const reqPath = path.join(OUT, 'enumerate-request.json');
+  const resPath = path.join(OUT, 'enumerate-response.json');
+  fs.writeFileSync(reqPath, JSON.stringify({ sqpack }, null, 1));
+
+  const run = spawnSync(
+    'dotnet',
+    ['run', '--project', TOOL, '-c', 'Debug', '--', 'enumerate', reqPath, resPath],
+    { stdio: ['ignore', 'inherit', 'inherit'], encoding: 'utf8' },
+  );
+  if (run.status !== 0) {
+    throw new Error(
+      `tools/Wayfarer.CatalogueGen enumerate exited ${run.status}. Generation needs a local game ` +
+        'installation; pass --sqpack or set WAYFARER_SQPACK. CI validates the committed coverage ' +
+        'artefact instead — see data/README.md.',
+    );
+  }
+  return JSON.parse(fs.readFileSync(resPath, 'utf8'));
+}
+
+/** The completeness check's committed artefact.
+ *
+ * Generated beside the catalogue CANDIDATE rather than beside the committed file, so what it
+ * records is the diff for the entries that are about to be written. It carries the whole
+ * enumeration, so data/validate-coverage.mjs can recompute the classification of every row from
+ * the same inputs and require the same answer without ever touching sqpack.
+ *
+ * @returns {number} 0 when the committed artefact already matches, 1 when it does not.
+ */
+function writeCoverage(enumeration, unlocks) {
+  const committed = fs.existsSync(COVERAGE)
+    ? JSON.parse(fs.readFileSync(COVERAGE, 'utf8'))
+    : null;
+
+  // A channel that has silently gone to zero is the schema-drift failure that matters. The
+  // ItemAction type numbers and the sheet column names are community-reverse-engineered and DO
+  // move between Lumina releases, and a join that stops matching raises no error of its own — it
+  // produces a coverage artefact saying the game has nothing in that channel, and a catalogue that
+  // therefore looks complete. Caught here, against the counts the last generation recorded.
+  for (const [channel, was] of Object.entries(committed?.game?.channelCounts ?? {})) {
+    if (was > 0 && (enumeration.channelCounts[channel] ?? 0) === 0) {
+      throw new Error(
+        `channel '${channel}' enumerated ${was} rows last time and 0 now. A join has stopped ` +
+          'matching — check its columns in tools/Wayfarer.CatalogueGen/UnlockEnumeration.cs ' +
+          'against this Lumina build before accepting a coverage artefact that drops it.',
+      );
+    }
+  }
+
+  const coverage = buildCoverage(enumeration.unlocks, unlocks);
+  const candidate = canonicaliseCoverage({
+    generated: today(),
+    purpose:
+      'What the GAME says is unlockable, against what the catalogue ships. Generated locally ' +
+      'beside the catalogue, committed, and checked in CI by data/validate-coverage.mjs with no ' +
+      'game installation. Every row the catalogue does not cover is classified recommended / ' +
+      'excluded / undecided by data/coverage-policy.mjs.',
+    policy: 'data/coverage-policy.mjs',
+    catalogue: { entries: unlocks.length, identityFingerprint: catalogueFingerprint(unlocks) },
+    game: {
+      // Deliberately no sqpack path: it is one developer's disk layout and it would be the only
+      // thing in data/ that changes with whose machine ran the generator.
+      questRows: enumeration.questRowCount,
+      rows: enumeration.unlocks.length,
+      channelCounts: enumeration.channelCounts,
+    },
+    totals: coverage.totals,
+    channels: coverage.channels,
+    reasons: coverage.reasons,
+    shipped: coverage.shipped,
+    unlocks: coverage.rows,
+  });
+  fs.writeFileSync(path.join(OUT, 'coverage.json'), candidate);
+
+  const t = coverage.totals;
+  const identical = committed !== null && fs.readFileSync(COVERAGE, 'utf8') === candidate;
+  console.log('');
+  console.log(`coverage: the game proposes ${t.gameRows} rows across ${t.gameChannels} channels; ` +
+    `the catalogue covers ${t.covered}`);
+  console.log(`  missing: ${t.recommended} recommended, ${t.undecided} undecided, ` +
+    `${t.excluded} excluded by policy`);
+  console.log(`  entries: ${t.entriesTiedToAnEnumeratedRow} tied to an enumerated row, ` +
+    `${t.entriesAllowedByRule} allowed by rule, ${t.entriesUnaccountedFor} unaccounted for`);
+  console.log(identical
+    ? 'coverage REPRODUCES the committed artefact byte for byte.'
+    : `coverage DIFFERS from the committed artefact. Candidate: ${path.join(OUT, 'coverage.json')}`);
+
+  if (args.write) {
+    fs.writeFileSync(COVERAGE, candidate);
+    console.log(`written to ${COVERAGE}`);
+  }
+  return identical ? 0 : 1;
 }
 
 /** Every link on the requirement side of a row, plus the ones the colon split could not place.
@@ -1709,7 +1824,18 @@ async function main() {
   } else if (!identical) {
     console.log('Re-run with --write to accept, after reviewing the diff (see data/README.md).');
   }
-  return identical ? 0 : 1;
+
+  // ------------------------------------------------------------------ completeness
+  //
+  // Runs on the candidate, not on the committed file, so the artefact always describes the
+  // catalogue it was generated beside. It is a separate exit condition from the catalogue's: a
+  // catalogue that reproduces byte for byte can still have a stale coverage artefact next to it
+  // when a patch has added unlocks, and that is precisely the case this exists to make loud.
+  const coverageStale = writeCoverage(enumerateUnlocks(sqpack), JSON.parse(candidate).unlocks);
+  if (coverageStale && !args.write) {
+    console.log('Re-run with --write to accept the coverage artefact too.');
+  }
+  return identical && !coverageStale ? 0 : 1;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
