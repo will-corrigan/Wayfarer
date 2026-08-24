@@ -37,6 +37,11 @@ internal sealed class HubRowDetail
     /// </summary>
     public System.Numerics.Vector2 RewardIconSize { get; init; }
 
+    /// <summary>The 376x120 piece of art at the top of the journal page's left column, or 0 when
+    /// the game ships none for this entry. Drawn only by the page: the strip has no room for it,
+    /// which is half the reason the page exists.</summary>
+    public uint BannerIconId { get; init; }
+
     /// <summary>The state's shape, already validated. 0 draws no icon and leans on the sentence.</summary>
     public uint StatusIconId { get; init; }
 
@@ -57,6 +62,17 @@ internal sealed class HubRowDetail
     /// <summary>Who gives it and where — the giver's name, the zone, the map coordinates. Kept out
     /// of the row's title because it is <i>where you go</i>, not <i>what it is</i>.</summary>
     public string From { get; init; } = string.Empty;
+
+    /// <summary>The giver's position in the numbers the game prints on its own map — "(x11.4,
+    /// y11.0)". Empty when there is no giver or no map. The page's Information section carries it;
+    /// the strip has no room and would only ellipsise it away.</summary>
+    public string Coordinates { get; init; } = string.Empty;
+
+    /// <summary>The quest that grants this, by name. The page says it in the Information section
+    /// rather than in the title: the quest is <i>how you get it</i> and the unlock is <i>what it
+    /// is</i>, and a player looking for "Chocobo Mount Access" is not looking for "My Little
+    /// Chocobo".</summary>
+    public string QuestName { get; init; } = string.Empty;
 
     /// <summary>One dimmed line when the catalogue is not sure about this entry. Hidden otherwise:
     /// a provenance note on every row would be noise, and on the rows that need it, it is the most

@@ -38,6 +38,13 @@ public static class JournalPageLayout
     /// coordinates, and the quest that grants it.</summary>
     public const int MaxInformationLines = 3;
 
+    /// <summary>Most lines the status sentence will ever take. It is the one line that says both
+    /// what state the entry is in and what is holding it — "Locked — you need level 58, and to clear
+    /// Into the Aery first" — and ellipsising the second half of that would remove the part worth
+    /// reading. Two lines at the page's column width holds every sentence
+    /// <c>UnlockStatusDisplay</c> produces.</summary>
+    public const int MaxStatusLines = 2;
+
     /// <summary>Where the page's content box starts: below the top rule, the title band and the
     /// rule under it.</summary>
     public static float ContentTop =>
@@ -72,7 +79,7 @@ public static class JournalPageLayout
     /// <summary>The text column with everything in it: the status line, then three
     /// heading-and-body sections at their full budgets.</summary>
     private static float FullTextColumn =>
-        GameMetrics.Detail.HeadingHeight
+        BlockHeight(MaxStatusLines)
         + (GameMetrics.Detail.HeadingHeight * 3f)
         + BlockHeight(MaxRequirementLines)
         + BlockHeight(MaxDescriptionLines)
@@ -199,7 +206,8 @@ public static class JournalPageLayout
         var text = available;
         var art = twoColumn ? available : 0f;
 
-        var status = Take(ref text, GameMetrics.Detail.HeadingHeight);
+        var status = Fit(text, MaxStatusLines);
+        text -= BlockHeight(status);
         var requirements = Section(ref text, requirementLines, MaxRequirementLines);
         var reward = hasReward
                      && TakeArt(ref text, ref art, twoColumn, GameMetrics.Detail.HeadingHeight + GameMetrics.Journal.TrayHeight);
@@ -288,7 +296,7 @@ public static class JournalPageLayout
 
         // Stacked, the status line leads: it is the one sentence that says what state the entry is
         // in, and burying it under a picture would be the wrong answer to "what is this".
-        var statusLine = Advance(ref textY, textColumn, budget.Status, GameMetrics.Detail.HeadingHeight);
+        var statusLine = Advance(ref textY, textColumn, budget.Status > 0, BlockHeight(budget.Status));
         var statusIcon = StatusIcon(statusLine, hasStatusIcon);
         var statusIndent = statusIcon.IsEmpty
             ? 0f
@@ -525,7 +533,7 @@ public static class JournalPageLayout
     private readonly record struct Budget(
         bool Banner,
         bool Reward,
-        bool Status,
+        int Status,
         bool RequirementsLabel,
         int Requirements,
         bool DescriptionLabel,

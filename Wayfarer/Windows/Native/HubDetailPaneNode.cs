@@ -174,7 +174,8 @@ internal sealed class HubDetailPaneNode : ResNode
         bodyNode.String = detail.Body;
         wantedBodyLines = detail.Body.Length == 0 ? 0 : DetailPaneLayout.MaxBodyLines;
 
-        requirementsNode.String = JoinRequirements(detail.Requirements, out wantedRequirementLines);
+        requirementsNode.String = DetailText.Bullets(
+            detail.Requirements, DetailPaneLayout.MaxRequirementLines, out wantedRequirementLines);
 
         hasFrom = detail.From.Length > 0;
         fromNode.String = detail.From;
@@ -192,34 +193,6 @@ internal sealed class HubDetailPaneNode : ResNode
     {
         base.OnSizeChanged();
         Layout();
-    }
-
-    /// <summary>Joins the requirement lines into one wrapping block, with an honest tail when there
-    /// are more than fit. Truncating silently would be the same defect as the row's ellipsised
-    /// gutter: the player cannot tell there was more.</summary>
-    private static string JoinRequirements(IReadOnlyList<string> lines, out int drawn)
-    {
-        if (lines.Count == 0)
-        {
-            drawn = 0;
-            return string.Empty;
-        }
-
-        var shown = Math.Min(lines.Count, DetailPaneLayout.MaxRequirementLines);
-        var text = string.Join('\n', lines.Take(shown).Select(line => $"• {line}"));
-        if (lines.Count <= shown)
-        {
-            drawn = shown;
-            return text;
-        }
-
-        // The tail costs a line of its own, so it replaces the last bullet rather than being added
-        // past the budget — which is how the block used to run out of the bottom of the pane.
-        drawn = shown;
-        return shown <= 1
-            ? $"• and {lines.Count} more"
-            : $"{string.Join('\n', lines.Take(shown - 1).Select(line => $"• {line}"))}"
-                + $"\n• and {lines.Count - shown + 1} more";
     }
 
     private static void Place(TextNode node, ScreenRect rect)
