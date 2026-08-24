@@ -307,6 +307,82 @@ public static class GameMetrics
         public const float KindWidth = 64f;
     }
 
+    /// <summary>The Journal's own page vocabulary — the section glyphs, the level badge and the
+    /// reward tray. Measured from <c>ui/uld/JournalDetail.uld</c> and its
+    /// <c>AtkComponentJournalCanvas</c> (component <c>1010</c>), which is the game's own answer to
+    /// "tell me what this thing is and what it gives you".
+    ///
+    /// <para>Everything here is a <b>page</b> measurement. The list side needs none of it: every
+    /// number a list row is built from is already in <see cref="Row"/>, measured from the same
+    /// file.</para></summary>
+    public static class Journal
+    {
+        /// <summary>The page's inner column. JournalDetail <c>#45</c> (the banner), <c>#46</c> (the
+        /// prose) and the canvas's own banner and reward tray are all authored at 376 inside a
+        /// 496-wide page.</summary>
+        public const float ColumnWidth = 376f;
+
+        /// <summary>A section glyph. JournalCanvas <c>#6</c>/<c>#10</c>/<c>#19</c>/<c>#28</c> are all
+        /// 24x24 at x=0 — the open book over Description, the document over Requirements, the
+        /// treasure chest over Reward.</summary>
+        public const float GlyphSize = 24f;
+
+        /// <summary>Where a section's heading text starts, past its glyph. JournalCanvas
+        /// <c>#7</c>/<c>#11</c>/<c>#20</c>/<c>#29</c> are all at x=22 — two pixels under the glyph's
+        /// right edge, because the glyph art carries its own transparent margin.</summary>
+        public const float GlyphTextLeft = 22f;
+
+        /// <summary>The reward tray, one row of slots. <c>Journal_Detail.tex</c> (0,28) 376x52,
+        /// drawn by JournalCanvas <c>1013 #2</c>. It is a plain image in the game, not a nine-grid:
+        /// it is drawn at its authored width and never stretched.</summary>
+        public const float TrayHeight = 52f;
+
+        /// <summary>The tray's left inset to the first slot. JournalCanvas <c>#34</c>/<c>#35</c>/
+        /// <c>#36</c> — all three slot templates — are authored at x=15.</summary>
+        public const float TrayInset = 15f;
+
+        /// <summary>A reward icon. JournalCanvas <c>1012 #3</c> is 36x36.</summary>
+        public const float SlotIconSize = 36f;
+
+        /// <summary>Where that icon sits inside its slot. JournalCanvas <c>1012 #3</c> is at y=8 in
+        /// a 44-tall slot.</summary>
+        public const float SlotIconTop = 8f;
+
+        /// <summary>The level badge's black disc. JournalDetail <c>#10</c>,
+        /// <c>Journal_Detail.tex</c> (420,124) 40x40, with <c>#9</c>'s TrumpGothic 20 centred over
+        /// it.</summary>
+        public const float BadgeSize = 40f;
+
+        /// <summary>The face of the number on that badge. JournalDetail <c>#9</c> is TrumpGothic 20,
+        /// centred, with an edge.</summary>
+        public const uint BadgeTextSize = 20u;
+    }
+
+    /// <summary>Where in <c>ui/uld/Journal_Detail.tex</c> each piece of the journal's page art
+    /// lives. Coordinates and sizes both, because an image node samples a rectangle: give it the
+    /// right origin and the wrong size and it draws a band of nothing.</summary>
+    public static class JournalArt
+    {
+        public const string Texture = "ui/uld/Journal_Detail.tex";
+
+        /// <summary>The document-with-lines disc. Part list 6 part 6; the game puts it over
+        /// Information, Requirements and Summary.</summary>
+        public static readonly (float U, float V) GlyphDocument = (24f, 0f);
+
+        /// <summary>The treasure chest. Part 7, and the game's own marker for Reward.</summary>
+        public static readonly (float U, float V) GlyphReward = (48f, 0f);
+
+        /// <summary>The open book. Part 8, over Description.</summary>
+        public static readonly (float U, float V) GlyphDescription = (72f, 0f);
+
+        /// <summary>The one-row reward tray: a flat dark rounded panel with a fine noise texture and
+        /// a 1px bevel, authored at 376x52.</summary>
+        public static readonly (float U, float V) TrayOneRow = (0f, 28f);
+
+        /// <summary>The level badge disc, 40x40.</summary>
+        public static readonly (float U, float V) LevelBadge = (420f, 124f);
+    }
+
     /// <summary>The heads-up readout. Measured from the quest tracker, <c>ToDoList.uld</c>, which is
     /// the game's own always-on overlay and therefore the only correct model for ours — its register
     /// is much tighter than a window's.</summary>

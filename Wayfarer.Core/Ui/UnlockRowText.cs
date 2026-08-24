@@ -64,6 +64,28 @@ public static class UnlockRowText
         return zone.Length == 0 ? level : $"{level} · {zone}";
     }
 
+    /// <summary>Just the number — "25" — for the Journal's level badge, or empty when no source
+    /// states one.
+    ///
+    /// <para>Empty rather than a zero or a dash: the badge is hidden when this is empty, and the
+    /// entries with no level are a real class — the trophy mounts are gated on owning a set of
+    /// other mounts, so any number printed against them would be invented. A blank disc reads as a
+    /// failure to load; no disc reads as "this has no level requirement", which is the fact.</para>
+    /// </summary>
+    public static string LevelNumber(ResolvedUnlock unlock)
+    {
+        ArgumentNullException.ThrowIfNull(unlock);
+
+        if (unlock.QuestLevel > 0)
+        {
+            return unlock.QuestLevel.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return unlock.Def.Level is { } level and > 0
+            ? level.ToString(CultureInfo.InvariantCulture)
+            : string.Empty;
+    }
+
     /// <summary>"Lv 25", or the catalogue's own section name for the handful of entries that have
     /// no level at all — the trophy mounts, whose requirement is a set of other mounts and for
     /// which any printed level would be invented. Never "Lv 0".</summary>

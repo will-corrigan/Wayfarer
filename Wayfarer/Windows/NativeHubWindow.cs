@@ -113,6 +113,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly SettingsCatalog settings;
     private readonly InputModeService inputMode;
     private readonly HubStatusIcons statusIcons;
+    private readonly HubRewardIcons rewardIcons;
     private readonly IPluginLog log;
 
     private readonly FilterState filter = new();
@@ -197,9 +198,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         SettingsCatalog settings,
         InputModeService inputMode,
         HubStatusIcons statusIcons,
+        HubRewardIcons rewardIcons,
         IPluginLog log)
     {
         this.statusIcons = statusIcons;
+        this.rewardIcons = rewardIcons;
         this.unlocks = unlocks;
         this.hunting = hunting;
         this.feed = feed;
@@ -925,7 +928,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// Log and Following tabs cannot disagree about how a selected thing is described.</summary>
     private void BuildDetailPane()
     {
-        detailPane = new HubDetailPaneNode
+        detailPane = new HubDetailPaneNode(log)
         {
             Position = tabContentStart,
             Size = new Vector2(tabContentSize.X, HubDetailPaneNode.PaneHeight),
@@ -1822,13 +1825,23 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// what you have opened. The pane shows the same lines without moving anything.</para></summary>
     private HubRowDetail BuildUnlockDetail(ResolvedUnlock u, INavigationProvider? navigator)
     {
-        var level = UnlockRowText.LevelToken(u);
+        var number = UnlockRowText.LevelNumber(u);
         var kind = UnlockTypeWord(u.Def.Type);
+
+        // The level has moved onto the badge, where the Journal puts it, so the caption beside the
+        // title is now just the kind word. The level-LESS entries keep the composite: they get no
+        // badge, and the catalogue's category is the only thing standing in for one.
+        var token = number.Length > 0 ? string.Empty : UnlockRowText.LevelToken(u);
+        var reward = u.Def.Reward;
 
         return new HubRowDetail
         {
             Title = u.Def.Unlock,
-            Kind = level.Length > 0 ? $"{level} · {kind}" : kind,
+            Kind = token.Length > 0 ? $"{token} · {kind}" : kind,
+            Level = number,
+            RewardName = reward?.Name ?? string.Empty,
+            RewardIconId = rewardIcons.For(reward),
+            RewardIconSize = reward is null ? Vector2.Zero : HubRewardIcons.SourceSize(reward.Kind),
             StatusIconId = statusIcons.For(u.Status),
             StatusSentence = UnlockStatusDisplay.Sentence(u),
             Body = UnlockRowText.Description(u),

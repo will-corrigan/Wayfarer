@@ -1,7 +1,10 @@
 using System.Numerics;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
+using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
+using KamiToolKit.Nodes.Simplified;
 using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Windows.Native;
@@ -38,14 +41,24 @@ internal sealed class HubDetailPaneNode : ResNode
 
     private const int MaxActions = 3;
 
+    private readonly IPluginLog log;
     private readonly HorizontalLineNode rule;
+    private readonly SimpleImageNode levelBadgeNode;
+    private readonly TextNode levelNode;
     private readonly TextNode titleNode;
     private readonly TextNode kindNode;
     private readonly IconImageNode statusIconNode;
     private readonly TextNode statusNode;
+    private readonly SimpleImageNode bodyGlyphNode;
     private readonly TextNode bodyNode;
+    private readonly SimpleImageNode requirementsGlyphNode;
     private readonly TextNode requirementsLabelNode;
     private readonly TextNode requirementsNode;
+    private readonly SimpleImageNode rewardGlyphNode;
+    private readonly TextNode rewardLabelNode;
+    private readonly SimpleImageNode rewardTrayNode;
+    private readonly IconImageNode rewardIconNode;
+    private readonly TextNode rewardNameNode;
     private readonly TextNode fromNode;
     private readonly TextNode provenanceNode;
     private readonly AlignedHorizontalListNode actionRow;
@@ -53,71 +66,63 @@ internal sealed class HubDetailPaneNode : ResNode
 
     private HubRowDetail? current;
     private bool hasStatusIcon;
+    private bool hasLevel;
+    private bool hasReward;
+    private bool hasRewardIcon;
     private bool hasFrom;
     private bool hasProvenance;
     private int wantedBodyLines = DetailPaneLayout.MaxBodyLines;
     private int wantedRequirementLines;
 
-    public HubDetailPaneNode()
+    public HubDetailPaneNode(IPluginLog log)
     {
+        this.log = log;
+
         rule = new HorizontalLineNode();
         rule.AttachNode(this);
 
-        // The detail title is the game's own — JournalDetail sets its heading in Axis 18 at leading
-        // 20, not in the window-title face. TrumpGothic belongs on the window's own title bar.
-        titleNode = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = GameMetrics.Type.DetailTitleSize,
-            LineSpacing = GameMetrics.Type.DetailTitleLine,
-            AlignmentType = AlignmentType.TopLeft,
-            TextFlags = TextFlags.Edge | TextFlags.Ellipsis,
-            TextColor = GameColors.Heading,
-            TextOutlineColor = GameColors.HeadingEdge,
-        };
-        titleNode.AttachNode(this);
+        // The Journal's own level treatment: a TrumpGothic numeral centred on a 40x40 black disc,
+        // beside the title rather than inside it. It is the one place on the page the game uses
+        // that face, and it is why a journal entry reads as a level first and a name second.
+        levelBadgeNode = BuildArt(GameMetrics.JournalArt.LevelBadge, GameMetrics.Journal.BadgeSize);
+        levelNode = BuildLevel();
 
-        kindNode = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = GameMetrics.Type.SecondarySize,
-            LineSpacing = GameMetrics.Type.SecondaryLine,
-            AlignmentType = AlignmentType.TopRight,
-            TextFlags = TextFlags.Ellipsis,
-            TextColor = GameColors.Dimmed,
-        };
-        kindNode.AttachNode(this);
+        titleNode = BuildTitle();
+        kindNode = BuildKind();
 
-        statusIconNode = new IconImageNode
-        {
-            Size = new Vector2(GameMetrics.Detail.HeadingIconSize, GameMetrics.Detail.HeadingIconSize),
-            FitTexture = true,
-            IsVisible = false,
-        };
-        statusIconNode.AttachNode(this);
+        // The Journal's category-image slot: the shape that says what state this is in, beside the
+        // sentence that says it in words.
+        statusIconNode = BuildMarker(GameMetrics.Detail.HeadingIconSize);
+        statusNode = BuildLine(GameMetrics.Type.BodySize, GameColors.ListText, TextFlags.Ellipsis);
 
-        statusNode = BuildBodyText(GameMetrics.Type.BodySize, GameColors.ListText, TextFlags.Ellipsis);
-        statusNode.AttachNode(this);
-
-        bodyNode = BuildBodyText(
+        // Journal canvas section #5: the open book over the description.
+        bodyGlyphNode = BuildArt(GameMetrics.JournalArt.GlyphDescription, GameMetrics.Journal.GlyphSize);
+        bodyNode = BuildLine(
             GameMetrics.Type.BodySize, GameColors.Body, TextFlags.WordWrap | TextFlags.MultiLine);
-        bodyNode.AttachNode(this);
 
-        requirementsLabelNode = BuildBodyText(
-            GameMetrics.Type.SecondarySize, GameColors.Heading, TextFlags.Ellipsis);
-        requirementsLabelNode.String = "Requirements";
-        requirementsLabelNode.AttachNode(this);
-
-        requirementsNode = BuildBodyText(
+        // Section #22: the document, which the game puts over Requirements, Information and Summary
+        // alike. Addon text 2835 is its heading, and it is the word used here.
+        requirementsGlyphNode = BuildArt(GameMetrics.JournalArt.GlyphDocument, GameMetrics.Journal.GlyphSize);
+        requirementsLabelNode = BuildHeading("Requirements");
+        requirementsNode = BuildLine(
             GameMetrics.Type.SecondarySize, GameColors.Dimmed, TextFlags.WordWrap | TextFlags.MultiLine);
-        requirementsNode.AttachNode(this);
 
-        fromNode = BuildBodyText(GameMetrics.Type.SecondarySize, GameColors.ListText, TextFlags.Ellipsis);
-        fromNode.AttachNode(this);
+        // Section #26: the treasure chest over Reward, the tray it sits on, and one slot. Built in
+        // this order because it is the order they stack — the tray behind, the icon and the name on
+        // top of it. The name is always drawn, never replaced by the icon: a KamiToolKit tooltip
+        // registers on mouse events only, so an icon on its own is unreadable with a pad in your
+        // hands, which is the exact failure this pane exists to fix.
+        rewardGlyphNode = BuildArt(GameMetrics.JournalArt.GlyphReward, GameMetrics.Journal.GlyphSize);
+        rewardLabelNode = BuildHeading("Reward");
+        rewardTrayNode = BuildArt(
+            GameMetrics.JournalArt.TrayOneRow,
+            GameMetrics.Journal.ColumnWidth,
+            GameMetrics.Journal.TrayHeight);
+        rewardIconNode = BuildMarker(GameMetrics.Journal.SlotIconSize);
+        rewardNameNode = BuildLine(GameMetrics.Type.BodySize, GameColors.ListText, TextFlags.Ellipsis);
 
-        provenanceNode = BuildBodyText(GameMetrics.Type.SecondarySize, GameColors.Dimmed, TextFlags.Ellipsis);
-        provenanceNode.AttachNode(this);
-
+        fromNode = BuildLine(GameMetrics.Type.SecondarySize, GameColors.ListText, TextFlags.Ellipsis);
+        provenanceNode = BuildLine(GameMetrics.Type.SecondarySize, GameColors.Dimmed, TextFlags.Ellipsis);
         actionRow = BuildActionRow();
     }
 
@@ -146,6 +151,11 @@ internal sealed class HubDetailPaneNode : ResNode
         titleNode.String = HeadingText.Plain(detail.Title);
         kindNode.String = detail.Kind;
 
+        hasLevel = detail.Level.Length > 0;
+        levelNode.String = detail.Level;
+
+        ApplyReward(detail);
+
         hasStatusIcon = detail.StatusIconId != 0;
         if (hasStatusIcon)
         {
@@ -164,7 +174,7 @@ internal sealed class HubDetailPaneNode : ResNode
         bodyNode.String = detail.Body;
         wantedBodyLines = detail.Body.Length == 0 ? 0 : DetailPaneLayout.MaxBodyLines;
 
-        requirementsNode.String = Join(detail.Requirements, out wantedRequirementLines);
+        requirementsNode.String = JoinRequirements(detail.Requirements, out wantedRequirementLines);
 
         hasFrom = detail.From.Length > 0;
         fromNode.String = detail.From;
@@ -187,7 +197,7 @@ internal sealed class HubDetailPaneNode : ResNode
     /// <summary>Joins the requirement lines into one wrapping block, with an honest tail when there
     /// are more than fit. Truncating silently would be the same defect as the row's ellipsised
     /// gutter: the player cannot tell there was more.</summary>
-    private static string Join(IReadOnlyList<string> lines, out int drawn)
+    private static string JoinRequirements(IReadOnlyList<string> lines, out int drawn)
     {
         if (lines.Count == 0)
         {
@@ -224,6 +234,34 @@ internal sealed class HubDetailPaneNode : ResNode
         node.Size = new Vector2(rect.Width, rect.Height);
     }
 
+    /// <summary>Places a crop of the journal's page art. The node's own size is set <b>and</b> its
+    /// part rectangle is left where <see cref="BuildArt"/> put it: the art is authored at one size
+    /// and the game never stretches it, so the tray narrows by showing less of itself rather than
+    /// by distorting.</summary>
+    private static void PlaceArt(SimpleImageNode node, ScreenRect rect)
+    {
+        node.IsVisible = !rect.IsEmpty;
+        if (rect.IsEmpty)
+        {
+            return;
+        }
+
+        node.Position = new Vector2(rect.X, rect.Y);
+        node.Size = new Vector2(rect.Width, rect.Height);
+    }
+
+    private static void PlaceIcon(IconImageNode node, ScreenRect rect)
+    {
+        node.IsVisible = !rect.IsEmpty;
+        if (rect.IsEmpty)
+        {
+            return;
+        }
+
+        node.Position = new Vector2(rect.X, rect.Y);
+        node.Size = new Vector2(rect.Width, rect.Height);
+    }
+
     private static TextNode BuildBodyText(uint size, Vector4 color, TextFlags flags) => new()
     {
         FontType = FontType.Axis,
@@ -236,6 +274,154 @@ internal sealed class HubDetailPaneNode : ResNode
             : GameMetrics.Type.SecondaryLine,
     };
 
+    /// <summary>A crop of the Journal's own page art — a section glyph, the level disc, the reward
+    /// tray. All of them live in <c>ui/uld/Journal_Detail.tex</c>, and the part rectangle has to be
+    /// the authored one or the node samples past the edge of the texture and draws a band of
+    /// nothing.
+    ///
+    /// <para>The load is guarded the same way the readout's own art is: a texture that a patch has
+    /// moved must cost the pane a glyph, not the whole pane. A failed node stays invisible, and the
+    /// text it decorates is drawn regardless — the glyphs are the journal's accent, never its
+    /// content.</para></summary>
+    private SimpleImageNode BuildArt((float U, float V) at, float width, float height = 0f)
+    {
+        var size = new Vector2(width, height > 0f ? height : width);
+        var node = new SimpleImageNode { Size = size, WrapMode = WrapMode.Stretch, IsVisible = false };
+
+        try
+        {
+            node.LoadTexture(GameMetrics.JournalArt.Texture);
+            node.TextureCoordinates = new Vector2(at.U, at.V);
+            node.TextureSize = size;
+        }
+        catch (Exception ex)
+        {
+            var why = $"Wayfarer hub: {GameMetrics.JournalArt.Texture} could not be read, so the detail "
+                + "pane will draw its sections without the journal's glyphs. Nothing else is affected.";
+            log.Warning(ex, why);
+        }
+
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>The reward tray's contents.
+    ///
+    /// <para>Half the reward kinds the game ships have no artwork at all — there is no picture of a
+    /// title, an Aether Current, a folklore book or a hunt board anywhere in the files. The tray and
+    /// the name are drawn either way and only the icon is dropped, so an entry with no icon reads as
+    /// "here is what you get" rather than as a slot that failed to load. The layout puts the name at
+    /// the tray's own left inset when there is no icon, so there is not even a gap where one would
+    /// have been.</para></summary>
+    private void ApplyReward(HubRowDetail detail)
+    {
+        hasReward = detail.RewardName.Length > 0;
+        rewardNameNode.String = detail.RewardName;
+
+        hasRewardIcon = hasReward && detail.RewardIconId != 0;
+        if (!hasRewardIcon)
+        {
+            return;
+        }
+
+        rewardIconNode.IconId = detail.RewardIconId;
+
+        // Same rule as the row's icon column and the status marker: the part rectangle has to match
+        // the size the art is authored at, or the node samples past the edge of the texture and
+        // draws a band of nothing. The loaded texture answers when it can; the reward's own kind is
+        // the seed for when it cannot.
+        var actual = rewardIconNode.ActualTextureSize;
+        rewardIconNode.TextureSize = actual.X > 0f && actual.Y > 0f ? actual : detail.RewardIconSize;
+    }
+
+    /// <summary>A line of the pane's body text, attached and ready to be placed.</summary>
+    private TextNode BuildLine(uint size, Vector4 color, TextFlags flags)
+    {
+        var node = BuildBodyText(size, color, flags);
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>The entry's name. The game's own treatment — JournalDetail sets its heading in Axis
+    /// 18 at leading 20, not in the window-title face. TrumpGothic belongs on the window's own title
+    /// bar and on the level badge, nowhere else.</summary>
+    private TextNode BuildTitle()
+    {
+        var node = new TextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.DetailTitleSize,
+            LineSpacing = GameMetrics.Type.DetailTitleLine,
+            AlignmentType = AlignmentType.TopLeft,
+            TextFlags = TextFlags.Edge | TextFlags.Ellipsis,
+            TextColor = GameColors.Heading,
+            TextOutlineColor = GameColors.HeadingEdge,
+        };
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>The kind word, pinned to the right of the title — the game's own dimmed caption
+    /// column. The level used to share this line and now has the badge to itself.</summary>
+    private TextNode BuildKind()
+    {
+        var node = new TextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
+            AlignmentType = AlignmentType.TopRight,
+            TextFlags = TextFlags.Ellipsis,
+            TextColor = GameColors.Dimmed,
+        };
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>The number on the level badge. TrumpGothic is the Journal's own face for it, and
+    /// the only place the page uses that face.</summary>
+    private TextNode BuildLevel()
+    {
+        var node = new TextNode
+        {
+            FontType = FontType.TrumpGothic,
+            FontSize = GameMetrics.Journal.BadgeTextSize,
+            AlignmentType = AlignmentType.Center,
+            TextFlags = TextFlags.Edge,
+            TextColor = GameColors.Heading,
+            TextOutlineColor = GameColors.HeadingEdge,
+            IsVisible = false,
+        };
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>A section heading in the journal's register: Axis over the glyph beside it, in the
+    /// heading colour. The words are the game's own — Addon 2835 "Requirements", 463 "Reward".
+    /// </summary>
+    private TextNode BuildHeading(string text)
+    {
+        var node = BuildBodyText(GameMetrics.Type.SecondarySize, GameColors.Heading, TextFlags.Ellipsis);
+        node.String = text;
+        node.AttachNode(this);
+        return node;
+    }
+
+    /// <summary>A square of runtime-chosen icon art — the status marker, or a reward's own picture.
+    /// Hidden until something fills it, and sized by the caller because the two slots are different
+    /// sizes.</summary>
+    private IconImageNode BuildMarker(float size)
+    {
+        var node = new IconImageNode
+        {
+            Size = new Vector2(size, size),
+            FitTexture = true,
+            IsVisible = false,
+        };
+        node.AttachNode(this);
+        return node;
+    }
+
     /// <summary>The status vocabulary, shown before the cursor has touched anything. This is the
     /// legend, and it is the only one — it lives where it costs nothing and disappears the moment
     /// there is something real to say.</summary>
@@ -244,6 +430,9 @@ internal sealed class HubDetailPaneNode : ResNode
         titleNode.String = HeadingText.Plain("Wayfarer");
         kindNode.String = string.Empty;
         hasStatusIcon = false;
+        hasLevel = false;
+        hasReward = false;
+        hasRewardIcon = false;
         statusNode.String = "Move the cursor over an entry.";
 
         // The gloss for each word is the same one UnlockStatusDisplay uses when a row is actually
@@ -326,28 +515,39 @@ internal sealed class HubDetailPaneNode : ResNode
             Width,
             Height,
             hasStatusIcon,
+            hasLevel,
             wantedBodyLines,
             wantedRequirementLines,
+            hasReward,
             hasFrom,
             hasProvenance);
 
         rule.Position = new Vector2(blocks.Rule.X, blocks.Rule.Y);
         rule.Size = new Vector2(blocks.Rule.Width, blocks.Rule.Height);
 
+        // The number and its disc share one rectangle: the game centres the numeral on the plate
+        // (JournalDetail #9 over #10) rather than setting it beside.
+        PlaceArt(levelBadgeNode, blocks.LevelBadge);
+        Place(levelNode, blocks.LevelBadge);
+
         Place(titleNode, blocks.Title);
         Place(kindNode, blocks.Kind);
 
-        statusIconNode.IsVisible = !blocks.StatusIcon.IsEmpty;
-        if (!blocks.StatusIcon.IsEmpty)
-        {
-            statusIconNode.Position = new Vector2(blocks.StatusIcon.X, blocks.StatusIcon.Y);
-            statusIconNode.Size = new Vector2(blocks.StatusIcon.Width, blocks.StatusIcon.Height);
-        }
+        PlaceIcon(statusIconNode, blocks.StatusIcon);
 
         Place(statusNode, blocks.Status);
+        PlaceArt(bodyGlyphNode, blocks.BodyGlyph);
         Place(bodyNode, blocks.Body);
+        PlaceArt(requirementsGlyphNode, blocks.RequirementsGlyph);
         Place(requirementsLabelNode, blocks.RequirementsLabel);
         Place(requirementsNode, blocks.Requirements);
+
+        PlaceArt(rewardGlyphNode, blocks.RewardGlyph);
+        Place(rewardLabelNode, blocks.RewardLabel);
+        PlaceArt(rewardTrayNode, blocks.RewardTray);
+        PlaceIcon(rewardIconNode, hasRewardIcon ? blocks.RewardIcon : default);
+        Place(rewardNameNode, blocks.RewardName);
+
         Place(fromNode, blocks.From);
         Place(provenanceNode, blocks.Provenance);
 
