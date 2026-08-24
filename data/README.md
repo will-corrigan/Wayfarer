@@ -304,7 +304,11 @@ committed. CI checks it with no game installation.
 | `chocobo-companion` | 2 | 0 | 0 | 0 | — | — | 2 |
 | `facewear` | 1 | 0 | 0 | 0 | — | — | 1 |
 | `hairstyle` | 1 | 0 | 0 | 0 | — | — | 1 |
-| **total** | **3,091** | **919** | **315** | **462** | **378** | **157** | **1,637** |
+| **total** | **3,091** | **919** | **319** | — | **378** | **157** | **1,637** |
+
+The `our entries` column has no meaningful total: an entry can cover rows in more than one channel
+and would be counted twice. The entry-level figures are **462 of 587 tied to an enumerated row**
+(315 through an identity, 147 through a gate) and **125 allowed by rule**.
 
 **378 rows are recommended for inclusion** and nothing in this pipeline imports them — that is a
 separate, deliberate piece of work. The largest are the 150 quest-completion titles and the 47
