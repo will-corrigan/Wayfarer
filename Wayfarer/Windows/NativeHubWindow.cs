@@ -284,12 +284,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// reachable caller of this method already is.</summary>
     internal void LeaveTabIfActive(HubTab ownedTab)
     {
-        if (!IsOpen || currentTab != ownedTab)
+        if (!IsOpen)
         {
             return;
         }
 
-        SelectTab(HubTab.Settings);
+        var resolved = TabOwnership.ResolveAfterModuleDisabled(currentTab, ownedTab, HubTab.Settings);
+        if (resolved != currentTab)
+        {
+            SelectTab(resolved);
+        }
     }
 
     /// <summary>The one list of everything Wayfarer can be told to follow — this tab's own rows and
@@ -1251,7 +1255,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // forever after the first time any list tab is shown.
         if (list is not null)
         {
-            list.IsVisible = tab != HubTab.Settings;
+            list.IsVisible = TabOwnership.IsVisibleOn(tab, HubTab.Settings);
         }
 
         SetBucketVisible(checklistNodes, tab == HubTab.Checklist);
