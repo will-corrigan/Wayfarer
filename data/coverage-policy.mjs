@@ -19,14 +19,15 @@
 // THE RULE ABOUT RULES
 // Two layers, and mixing them up is the bug to watch for.
 //
-//   Layer 1 (CHANNELS below) is editorial taste. It cannot be derived from anything and has to be
-//   written down: whether a channel belongs in a level checklist at all is a judgement about the
-//   product. It is also where 1,463 of the 2,064 missing rows are resolved, in about twenty lines.
+//   Layer 1 (CHANNELS, DUTY_CONTENT_TYPES) is editorial taste. It cannot be derived from anything
+//   and has to be written down: whether a channel belongs in a level checklist at all is a
+//   judgement about the product. It is also where 1,596 of the 2,172 uncovered rows are resolved,
+//   in about forty lines.
 //
-//   Layer 2 (classifyMissing below) is facts, and must NEVER be written down as a list, because
-//   the facts change every patch: does the gate quest still exist, does the identity have a name,
-//   is the gate a seasonal event. A fact that gets pasted into layer 1 is how an exclusion list
-//   rots.
+//   Layer 2 (the per-row predicates in classifyMissing) is facts, and must NEVER be written down as
+//   a list, because the facts change every patch: does the gate quest still exist, does the
+//   identity have a name, is the gate a seasonal event. It settles the remaining 198. A fact that
+//   gets pasted into layer 1 is how an exclusion list rots.
 //
 // There is no layer 3. There is deliberately no per-identity exception list — an exclusion that
 // has to name a row id is a sign the rule is wrong, and a list of row ids is precisely the thing
@@ -236,7 +237,7 @@ export function classifyMissing(row) {
   if (row.questRowId !== null && row.questRowId !== undefined && !row.gateLive) {
     return { classification: 'excluded', reason: 'row:dead-gate' };
   }
-  if (!row.name) return { classification: 'excluded', reason: 'row:unnameable' };
+  if (row.unnamed) return { classification: 'excluded', reason: 'row:unnameable' };
   if (row.festival) return { classification: 'excluded', reason: 'row:seasonal' };
 
   // ---- per-channel refinements
@@ -291,22 +292,25 @@ function classifyDuty(row) {
  * Both are derived from the entry itself. Neither names a row id. An entry that DOES carry an
  * identity gets no allowance at all: it must appear in the enumeration, or the check fails.
  *
- * @returns {{ rule: string, why: string } | null} null when the entry needs no allowance.
+ * @returns {{ rule: string } | null} null when the entry needs no allowance.
  */
 export function allowanceFor(entry) {
   if (entry.reward) return null;
   return entry.type === 'system'
-    ? {
-      rule: 'system-features-have-no-game-row',
-      why: 'the game keeps no row for this feature anywhere; there is no general system-unlock '
-        + 'table to enumerate against',
-    }
-    : {
-      rule: 'label-names-no-game-row',
-      why: 'the entry\'s label shape names something no sheet holds, so the generator declined to '
-        + 'guess an identity and there is nothing to look up',
-    };
+    ? { rule: 'system-features-have-no-game-row' }
+    : { rule: 'label-names-no-game-row' };
 }
+
+/** The two allowance rules, so the artefact carries their wording once and a reader does not have
+ * to come here for it. Same reasoning as `ROW_REASONS`: a rule cited 125 times is written once. */
+export const ALLOWANCE_RULES = {
+  'system-features-have-no-game-row':
+    'the game keeps no row for this feature anywhere; there is no general system-unlock table to '
+    + 'enumerate against, so systems stay curated',
+  'label-names-no-game-row':
+    'the entry\'s label shape names something no sheet holds, so the generator declined to guess an '
+    + 'identity and there is nothing to look up',
+};
 
 /** Every Quest row a catalogue entry is bound to. The entry's own `sources` are the record — the
  * generator writes one `game-data:Quest#N` line per row — so this reads them rather than the

@@ -36,7 +36,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { buildCoverage, canonicaliseCoverage, catalogueFingerprint } from './coverage-diff.mjs';
-import { CHANNELS, reasonText } from './coverage-policy.mjs';
+import { ALLOWANCE_RULES, CHANNELS, reasonText } from './coverage-policy.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const rawCoverage = fs.readFileSync(path.join(HERE, 'coverage.json'), 'utf8');
@@ -91,6 +91,21 @@ for (const s of unaccounted) {
   err(`entry #${s.entry} ${JSON.stringify(s.unlock)}: the game enumerates nothing that matches it `
     + 'and no rule in data/coverage-policy.mjs allows it to be absent. Either it names something '
     + 'the game does not have, or a join is missing.');
+}
+
+// A rule cited by name has to be a rule this policy has, with the wording this policy gives it.
+// Checked once per distinct rule rather than once per entry: 125 identical lines is not a better
+// error message than one.
+for (const rule of new Set((coverage.shipped ?? []).map((s) => s.allowedBy).filter(Boolean))) {
+  const cited = (coverage.shipped ?? []).filter((s) => s.allowedBy === rule).length;
+  if (!ALLOWANCE_RULES[rule]) {
+    err(`${cited} entr${cited === 1 ? 'y cites' : 'ies cite'} allowance rule '${rule}', which `
+      + 'data/coverage-policy.mjs does not have. An entry may only be excused by a rule that '
+      + 'exists.');
+  } else if (coverage.reasons?.[`allowance:${rule}`] !== ALLOWANCE_RULES[rule]) {
+    err(`allowance rule '${rule}' (cited by ${cited} entries): its wording in coverage.json is not `
+      + `what data/coverage-policy.mjs says it is. ${REGENERATE}`);
+  }
 }
 
 // An identity is a row id. A row id that the enumeration does not contain is either a reward join

@@ -30,7 +30,8 @@
 // duty.
 import crypto from 'node:crypto';
 import {
-  CHANNELS, allowanceFor, classifyMissing, identityProjection, questRowsOf, reasonText,
+  ALLOWANCE_RULES, CHANNELS, allowanceFor, classifyMissing, identityProjection, questRowsOf,
+  reasonText,
 } from './coverage-policy.mjs';
 
 /** The order data/coverage.json's own keys are written in. Part of the canonical form. */
@@ -90,6 +91,19 @@ const identityKey = (kind, id, subrow) =>
 /** A field, or nothing at all when it has no value. */
 const opt = (key, value) => (value === null || value === undefined ? {} : { [key]: value });
 
+/** Whether the game has a player-facing name for this row's identity.
+ *
+ * Three cases, and getting them muddled is how the recompute in CI would disagree with the
+ * generator: the enumerator always sends a `name` field, possibly empty, so its emptiness is the
+ * answer; a committed row carrying `unnamed` says so outright; and a committed row with neither is
+ * one whose name was deliberately left off, which means it HAD one. `!row.name` alone would read
+ * every excluded row in the artefact as nameless and reclassify half of it. */
+function hasName(row) {
+  if (row.unnamed === true) return false;
+  if ('name' in row) return Boolean(row.name);
+  return true;
+}
+
 /**
  * @param {Array} enumerated rows from tools/Wayfarer.CatalogueGen's `enumerate` verb, or the
  *   `game.unlocks` array of a committed coverage.json — the same shape either way.
@@ -120,18 +134,36 @@ export function buildCoverage(enumerated, unlocks) {
     const gateHits = row.questRowId ? byQuest.get(row.questRowId) ?? [] : [];
     const hits = [...new Set([...identityHits, ...gateHits])].sort((a, b) => a - b);
 
-    // Fields at their default are omitted rather than written out. There are 3,091 rows and the
-    // key names alone cost more than the values; a row with no gate quest has nothing to say about
-    // its gate, and saying it four times over is what turns a reviewable artefact into a megabyte
+    const named = hasName(row);
+    const verdict = hits.length ? null : classifyMissing({ ...row, unnamed: !named });
+
+    // Display names ride along ONLY on the rows somebody still has to decide about.
+    //
+    // The sheets are Square Enix material under the Materials Usage Licence, and the position this
+    // repository works to is that shipping derived FACTS — a row id, a level, a relation — is a
+    // materially different profile from shipping bulk display strings. Names and quest names on all
+    // 3,091 rows would be the second thing. Names on the ~500 rows being proposed for inclusion or
+    // left for a human to classify are the first: there is no way to review "should we ship
+    // Title#858" without one. A covered row needs no name, and neither does one the policy has
+    // already decided against.
+    const nameable = verdict !== null && verdict.classification !== 'excluded';
+
+    // Fields at their default are omitted rather than written out. There are 3,091 rows and the key
+    // names alone cost more than the values; a row with no gate quest has nothing to say about its
+    // gate, and saying it four times over is what turns a reviewable artefact into a megabyte
     // nobody opens.
     const out = {
       channel: row.channel,
       identityKind: row.identityKind,
       identityId: row.identityId,
       ...opt('identitySubrowId', row.identitySubrowId),
-      ...(row.name ? { name: row.name } : {}),
+      // `unnamed` rather than an empty `name`. Whether the game has a player-facing name for a row
+      // is a FACT the policy decides on, and it has to survive the name itself being left off — so
+      // it is stated, not inferred from a string being absent.
+      ...(named ? {} : { unnamed: true }),
+      ...(nameable && row.name ? { name: row.name } : {}),
       ...opt('questRowId', row.questRowId),
-      ...(row.questName ? { questName: row.questName } : {}),
+      ...(nameable && row.questName ? { questName: row.questName } : {}),
       ...(row.gateLive ? { gateLive: true } : {}),
       ...opt('level', row.level),
       ...(row.festival ? { festival: row.festival } : {}),
@@ -141,7 +173,7 @@ export function buildCoverage(enumerated, unlocks) {
       catalogue: hits.length ? 'covered' : 'missing',
     };
 
-    if (hits.length) {
+    if (verdict === null) {
       out.coveredBy = identityHits.length ? 'identity' : 'gate';
       out.coveredByEntries = hits;
       for (const i of hits) {
@@ -152,9 +184,8 @@ export function buildCoverage(enumerated, unlocks) {
         });
       }
     } else {
-      const { classification, reason } = classifyMissing(row);
-      out.classification = classification;
-      if (reason) out.reason = reason;
+      out.classification = verdict.classification;
+      if (verdict.reason) out.reason = verdict.reason;
     }
 
     const c = channels.get(row.channel) ?? {
@@ -162,7 +193,10 @@ export function buildCoverage(enumerated, unlocks) {
       recommended: 0, excluded: 0, undecided: 0, entries: new Set(),
     };
     c.gameTotal++;
-    if (out.questRowId !== null) c.withGateQuest++;
+    // `questRowId` is omitted rather than written as null, so this asks whether the key is there.
+    // `!== null` would count every row, which is exactly the wrong answer for `duty`: the game
+    // states the gate for 280 of its 857 rows and withholds it for the rest.
+    if ('questRowId' in out) c.withGateQuest++;
     if (hits.length) {
       c.shipped++;
       if (identityHits.length) c.byIdentity++;
@@ -195,11 +229,11 @@ export function buildCoverage(enumerated, unlocks) {
       record.channels = [...new Set(covers.map((c) => c.channel))].sort();
       record.rows = covers.length;
     } else {
+      // The rule's NAME, not its text. The text lives once, in data/coverage-policy.mjs, for the
+      // same reason the row reasons are keyed: 125 copies of a sentence is 125 lines of diff every
+      // time somebody improves the wording.
       const allowance = allowanceFor(e);
-      if (allowance) {
-        record.allowedBy = allowance.rule;
-        record.why = allowance.why;
-      }
+      if (allowance) record.allowedBy = allowance.rule;
     }
     return record;
   });
@@ -236,11 +270,14 @@ export function buildCoverage(enumerated, unlocks) {
     entriesUnaccountedFor: shipped.filter((s) => !s.enumerated && !s.allowedBy).length,
   };
 
-  // Only the reasons this diff actually cites, so the artefact carries no dead text and a reason
-  // that has stopped being used disappears from it.
+  // Only the reasons and rules this diff actually cites, so the artefact carries no dead text and
+  // one that has stopped being used disappears from it.
   const reasons = {};
   for (const key of [...new Set(rows.map((r) => r.reason).filter(Boolean))].sort()) {
     reasons[key] = reasonText(key) ?? null;
+  }
+  for (const key of [...new Set(shipped.map((s) => s.allowedBy).filter(Boolean))].sort()) {
+    reasons[`allowance:${key}`] = ALLOWANCE_RULES[key] ?? null;
   }
 
   return { channels: channelSummary, totals, rows, shipped, reasons };
