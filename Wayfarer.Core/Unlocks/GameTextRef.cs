@@ -6,7 +6,7 @@ namespace Wayfarer.Core.Unlocks;
 /// <para>The client ships its own explanations for why something is unavailable: <c>HowToPage</c>'s
 /// structured requirement checklists, per-quest and per-<c>CustomTalk</c> <c>_SYSTEM_</c> notices,
 /// <c>Achievement.Description</c>, and parameterised <c>Addon</c>/<c>LogMessage</c> templates. See
-/// <c>docs/superpowers/specs/2026-08-24-requirement-text-provenance.md</c> for the survey that found
+/// the requirement-text survey for what found
 /// them. Quoting a reference to one of those beats curating prose to describe the same condition: it
 /// is Square Enix's own wording, already localised into whatever language the player's own client
 /// runs in, and it cannot drift out of date with a patch the way a paraphrase can.</para>

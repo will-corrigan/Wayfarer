@@ -985,7 +985,7 @@ function applyMountRequirementOverrides(curated) {
  * promise wristlet directly.
  *
  * `conditionSource`, not a hand-written `label`, is what the player actually reads for this
- * requirement now — see docs/superpowers/specs/2026-08-24-requirement-text-provenance.md. That
+ * requirement now — see the requirement-text survey. That
  * report found the wiki's own "same Home World, party of two, both wearing a Promise Wristlet, in
  * East Shroud" prose is itself a transcription of Lodestone's requirements checklist, not an
  * editor's invention — but the client ships a *better* source for the same facts:

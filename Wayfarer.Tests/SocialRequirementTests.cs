@@ -15,7 +15,7 @@ namespace Wayfarer.Tests;
 /// other Available entry, for a couple who both play the game. It reports Available with the
 /// condition named alongside it, sourced from the game's own <c>HowToPage</c> checklist
 /// (<c>requires.conditionSource</c>) rather than curated prose, per
-/// <c>docs/superpowers/specs/2026-08-24-requirement-text-provenance.md</c>.</para>
+/// the requirement-text survey.</para>
 ///
 /// <para>Loads the real, generated <c>data/unlocks-by-level.json</c> (see
 /// <see cref="UnlockDatasetShapeTests"/>), not a hand-built fixture — so this fails if the
@@ -55,7 +55,7 @@ public class SocialRequirementTests
         // The curated label is a short, honestly-ours fallback now, not the source of truth — the
         // requirement's real detail lives in requires.conditionSource, quoting the game itself
         // (HowToPage#1861) rather than paraphrasing it. See
-        // docs/superpowers/specs/2026-08-24-requirement-text-provenance.md.
+        // the requirement-text survey.
         Assert.NotNull(def.Requires.ConditionSource);
         Assert.Equal("HowToPage", def.Requires.ConditionSource!.Sheet);
         Assert.Equal(1861u, def.Requires.ConditionSource.Row);

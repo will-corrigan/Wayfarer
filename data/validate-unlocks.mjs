@@ -71,7 +71,7 @@ const lists = ['mounts', 'minions', 'items', 'jobs', 'duties'];
 const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel', 'requiresAnotherPlayer', 'conditionSource']);
 
 // A reference into the game's own sheets — sheet name, row, column — rather than a copy of the
-// text living there. See docs/superpowers/specs/2026-08-24-requirement-text-provenance.md: the
+// text living there. See the requirement-text survey: the
 // client ships its own explanations for why something is unavailable, and quoting a pointer to
 // one of those beats curating prose that paraphrases it. Resolved at runtime, in the player's own
 // client language, by UnlockGateContext.ResolveGameText — this file never sees the resolved text.
