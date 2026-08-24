@@ -1184,12 +1184,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         var row = pageRow;
         pageRow = null;
-        RefreshButtonHint();
 
-        if (row is not null)
+        // The page can be closed while this window is on its way out — DismissJournalPage runs from
+        // OnFinalize — and the game's close is not instantaneous, so the callback can land after this
+        // window's tree has gone. Nothing below is worth touching a freed node for.
+        if (!IsOpen || row is null)
         {
-            FocusRow(row);
+            return;
         }
+
+        RefreshButtonHint();
+        FocusRow(row);
     }
 
     /// <summary>Puts the cursor back on the row the journal was opened from. The list is not rebuilt
@@ -1578,6 +1583,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // what makes it safe to run every tick. It catches a resolution or interface-scale change
         // under an open window, the case a one-shot clamp on open cannot.
         ClampIntoViewport();
+
+        // Same reasoning for the journal page: it is a separate addon, so it does not move when this
+        // window is dragged, and PlaceBeside writes nothing when the answer has not changed. This is
+        // also what catches the frame in which the page has just opened — Open() is not guaranteed to
+        // have made it open by the time the caller's next line runs.
+        if (journal.IsOpen)
+        {
+            journal.PlaceBeside(ScreenPosition, Size * UiScale());
+        }
     }
 
     /// <summary>The open tab's per-tick refresh.

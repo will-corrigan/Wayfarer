@@ -83,6 +83,10 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     private bool wantsFocus;
     private string giverLine = string.Empty;
 
+    /// <summary>Where the window was last put, so PlaceBeside can be called every tick without
+    /// writing a position every tick.</summary>
+    private Vector2 placedAt = new(float.NaN, float.NaN);
+
     /// <summary>What Back does — set by the hub, which owns "which row this page is for".</summary>
     public Action? OnBack { get; set; }
 
@@ -127,9 +131,21 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             return;
         }
 
-        SetWindowPosition(new Vector2(
+        var wanted = new Vector2(
             hostPosition.X + hostSize.X - GameMetrics.JournalFrame.BesideOverlapX,
-            hostPosition.Y - GameMetrics.JournalFrame.BesideOverlapY));
+            hostPosition.Y - GameMetrics.JournalFrame.BesideOverlapY);
+
+        // Idempotent, because the caller runs this every tick — which is how the page follows a
+        // window that is being dragged, and also how it catches the frame after Open() in which the
+        // addon has only just become open. Writing a position every frame regardless would be a
+        // window nothing else could move.
+        if (Vector2.DistanceSquared(wanted, placedAt) < 1f)
+        {
+            return;
+        }
+
+        placedAt = wanted;
+        SetWindowPosition(wanted);
     }
 
     /// <inheritdoc/>
@@ -177,6 +193,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     /// <inheritdoc/>
     protected override void OnFinalize(AtkUnitBase* addon)
     {
+        placedAt = new Vector2(float.NaN, float.NaN);
         frame = null;
         levelBadgeNode = null;
         levelNode = null;
