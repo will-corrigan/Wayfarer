@@ -24,13 +24,23 @@ jobs:
       # The unlock catalogue is GENERATED locally, by a developer with the game installed
       # (scripts/build-unlock-catalogue.mjs resolves names against the game's own sqpack), and
       # the result is committed. These runners have no game installation and never will, so CI
-      # validates the committed file and never regenerates it. Both validators read only what is
-      # in the repository. See data/README.md.
+      # validates the committed files and never regenerates them. Every validator reads only what
+      # is in the repository. See data/README.md.
       - name: Validate data files
         run: |
           node data/validate-unlocks.mjs
           node data/validate-catalogue-identity.mjs
           node data/validate-hunting-targets.mjs
+
+      # The completeness check. The catalogue's EXISTENCE set comes from one wiki guide, so
+      # anything the guide omits this pipeline never learns about — a whole trophy-mount quest was
+      # missing until another plugin's data revealed it. data/coverage.json is the game's own
+      # answer, recorded beside the catalogue at generation time; this step is what stops the two
+      # drifting apart. Its own step rather than a fourth line above, because what it fails on is
+      # a different thing: not "is this file well formed" but "does it still describe the catalogue
+      # sitting next to it".
+      - name: Validate catalogue completeness
+        run: node data/validate-coverage.mjs
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
