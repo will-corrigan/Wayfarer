@@ -15,7 +15,14 @@ namespace Wayfarer.Core.Ui;
 /// are allocated into it in priority order — what a locked entry needs first, prose last — and any
 /// block that does not fit is dropped whole rather than clipped in half. Blocks are then placed in
 /// reading order. Every rectangle this returns is inside <see cref="ContentBox"/>, and
-/// <see cref="ScreenRect.IsEmpty"/> marks the ones that were dropped.</para></summary>
+/// <see cref="ScreenRect.IsEmpty"/> marks the ones that were dropped.</para>
+///
+/// <para><b>The journal's vocabulary.</b> The blocks are the Journal's own: a level on its 40x40
+/// disc beside the title, a section glyph in the left gutter of each block — the open book over the
+/// description, the document over the requirements, the treasure chest over the reward — and a
+/// reward tray drawn at the width the game authors it. None of that changes the arithmetic; the
+/// glyphs live in a gutter the text was already indented past, and the reward block occupies the
+/// slot the requirements block leaves empty. See <see cref="GameMetrics.Journal"/>.</para></summary>
 public static class DetailPaneLayout
 {
     /// <summary>Most requirement bullets the pane will ever draw, including the "and N more" tail.
@@ -31,7 +38,12 @@ public static class DetailPaneLayout
 
     /// <summary>The pane's natural height: everything a fully populated entry needs, at the measured
     /// block heights. The window gives the pane this much when it can and less when it cannot, and
-    /// the layout copes with both.</summary>
+    /// the layout copes with both.
+    ///
+    /// <para>The reward block is deliberately absent from this sum. A locked entry shows what is in
+    /// the way and anything else shows what it gives you — never both — so the pane needs room for
+    /// the taller of the two, which is the requirements pair. Adding the reward would have taken
+    /// another 72 pixels off a list that already only shows five rows.</para></summary>
     public static float NaturalHeight =>
         GameMetrics.Window.RuleHeight
         + GameMetrics.Window.RuleGap
@@ -45,6 +57,11 @@ public static class DetailPaneLayout
         + GameMetrics.Window.BlockGap
         + GameMetrics.Control.ButtonHeight
         + GameMetrics.Window.BlockGap;
+
+    /// <summary>What the reward block costs when it is drawn: the journal's own glyph-and-heading
+    /// line, then the tray at the height the game authors it.</summary>
+    public static float RewardBlockHeight =>
+        GameMetrics.Detail.HeadingHeight + GameMetrics.Journal.TrayHeight;
 
     /// <summary>The rule across the pane's top edge — the same 4-pixel separator the game draws
     /// between blocks in Journal and the Duty Finder.</summary>
@@ -84,27 +101,38 @@ public static class DetailPaneLayout
 
     /// <summary>Lays the pane out. <paramref name="requirementLines"/> and
     /// <paramref name="bodyLines"/> are how many lines the caller actually has to draw, already
-    /// capped by <see cref="MaxRequirementLines"/> and <see cref="MaxBodyLines"/>.</summary>
+    /// capped by <see cref="MaxRequirementLines"/> and <see cref="MaxBodyLines"/>.
+    ///
+    /// <para><paramref name="hasLevel"/> is whether there is a level to put on the badge — hidden
+    /// rather than drawn empty when there is none, because the level-less entries are a real class
+    /// and not a gap. <paramref name="hasReward"/> is whether the entry knows what it grants; a
+    /// locked entry's requirements outrank it either way.</para></summary>
     public static DetailPaneBlocks Compose(
         float width,
         float height,
         bool hasStatusIcon,
+        bool hasLevel,
         int bodyLines,
         int requirementLines,
+        bool hasReward,
         bool hasFrom,
         bool hasProvenance)
     {
         var box = ContentBox(width, height);
-        var budget = Allocate(box.Height, bodyLines, requirementLines, hasFrom, hasProvenance);
-        return Place(box, width, height, hasStatusIcon, budget);
+        var budget = Allocate(box.Height, bodyLines, requirementLines, hasReward, hasFrom, hasProvenance);
+        return Place(box, width, height, hasStatusIcon, hasLevel, budget);
     }
 
     /// <summary>Decides what gets drawn, in priority order. A locked entry's requirements outrank its
     /// description: the description says what the thing is, the requirements say why you cannot have
     /// it, and only one of those is actionable. Prose is last because it is the only block whose
-    /// absence costs the player nothing they cannot get elsewhere.</summary>
+    /// absence costs the player nothing they cannot get elsewhere.
+    ///
+    /// <para>The reward takes the requirements' place rather than sitting beside them. When an entry
+    /// is locked, "what is in the way" outranks "what you get"; when it is not, there is nothing in
+    /// the way to say. One <c>if</c>, and the pane never has to hold both.</para></summary>
     private static Budget Allocate(
-        float available, int bodyLines, int requirementLines, bool hasFrom, bool hasProvenance)
+        float available, int bodyLines, int requirementLines, bool hasReward, bool hasFrom, bool hasProvenance)
     {
         var line = GameMetrics.Detail.HeadingHeight;
         var remaining = available;
@@ -121,56 +149,176 @@ public static class DetailPaneLayout
             remaining -= BlockHeight(requirements);
         }
 
+        var reward = !requirementsLabel && hasReward && Take(ref remaining, RewardBlockHeight);
+
         var from = hasFrom && Take(ref remaining, line);
         var body = Fit(remaining, Math.Clamp(bodyLines, 0, MaxBodyLines));
         remaining -= BlockHeight(body);
         var provenance = hasProvenance && Take(ref remaining, line);
 
-        return new Budget(title, status, body, requirementsLabel, requirements, from, provenance);
+        return new Budget(title, status, body, requirementsLabel, requirements, reward, from, provenance);
     }
 
     /// <summary>Places what <see cref="Allocate"/> granted, in reading order — which is not
     /// allocation order: the description reads under the status and above the requirements even
     /// though it is the first thing to be given up.</summary>
     private static DetailPaneBlocks Place(
-        ScreenRect box, float width, float height, bool hasStatusIcon, Budget budget)
+        ScreenRect box, float width, float height, bool hasStatusIcon, bool hasLevel, Budget budget)
     {
         var y = box.Y;
+        var header = Header(ref y, box, hasStatusIcon, hasLevel, budget);
+        var (badge, title, kind, statusIcon, status) = header;
+
+        var body = Advance(ref y, box, budget.Body > 0, BlockHeight(budget.Body));
+        var bodyGlyph = Glyph(box, body);
+        body = Indent(body, GameMetrics.Journal.GlyphTextLeft);
+
+        var requirementsLabel =
+            Advance(ref y, box, budget.RequirementsLabel, GameMetrics.Detail.HeadingHeight);
+        var requirementsGlyph = Glyph(box, requirementsLabel);
+        requirementsLabel = Indent(requirementsLabel, GameMetrics.Journal.GlyphTextLeft);
+        var requirements =
+            Indent(
+                Advance(ref y, box, budget.Requirements > 0, BlockHeight(budget.Requirements)),
+                GameMetrics.Row.TextLeft);
+
+        var rewardLabel = Advance(ref y, box, budget.Reward, GameMetrics.Detail.HeadingHeight);
+        var rewardGlyph = Glyph(box, rewardLabel);
+        rewardLabel = Indent(rewardLabel, GameMetrics.Journal.GlyphTextLeft);
+        var tray = RewardTray(ref y, box, budget.Reward);
+
+        var rewardIcon = RewardIcon(tray);
+
+        var from = Advance(ref y, box, budget.From, GameMetrics.Detail.HeadingHeight);
+        var provenance = Advance(ref y, box, budget.Provenance, GameMetrics.Detail.HeadingHeight);
+
+        return new DetailPaneBlocks(
+            Rule(width, height),
+            badge,
+            title,
+            kind,
+            statusIcon,
+            status,
+            bodyGlyph,
+            body,
+            requirementsGlyph,
+            requirementsLabel,
+            requirements,
+            rewardGlyph,
+            rewardLabel,
+            tray,
+            rewardIcon,
+            RewardName(tray, rewardIcon),
+            from,
+            provenance,
+            ActionRow(width, height),
+            budget.Body,
+            budget.Requirements);
+    }
+
+    /// <summary>The two lines at the top of the pane and the marks beside them: the level on its
+    /// disc, the title, the kind word pinned right, and the status marker with its sentence.
+    ///
+    /// <para>The badge spans both lines, exactly as JournalDetail's does beside its two-line title
+    /// (<c>#8</c> is 40 tall against a 50-tall title block). Both lines move right past it rather
+    /// than one of them being drawn over it.</para></summary>
+    private static HeaderBlocks Header(
+        ref float y, ScreenRect box, bool hasStatusIcon, bool hasLevel, Budget budget)
+    {
         var title = Advance(ref y, box, budget.Title, GameMetrics.Detail.TitleHeight);
+        var status = Advance(ref y, box, budget.Status, GameMetrics.Detail.HeadingHeight);
+
+        var badge = LevelBadge(box, title, status, hasLevel);
+        var badgeIndent = badge.IsEmpty ? 0f : GameMetrics.Journal.BadgeSize + GameMetrics.Window.RuleGap;
+        title = Indent(title, badgeIndent);
+        status = Indent(status, badgeIndent);
+
         var kind = Kind(box, title);
         title = Narrow(title, kind);
 
-        var status = Advance(ref y, box, budget.Status, GameMetrics.Detail.HeadingHeight);
         var statusIcon = StatusIcon(status, hasStatusIcon);
         var statusIndent = statusIcon.IsEmpty
             ? 0f
             : GameMetrics.Detail.HeadingIconSize + GameMetrics.Window.RuleGap;
         status = Indent(status, statusIndent);
 
-        var body = Advance(ref y, box, budget.Body > 0, BlockHeight(budget.Body));
-        var requirementsLabel =
-            Advance(ref y, box, budget.RequirementsLabel, GameMetrics.Detail.HeadingHeight);
-        var requirements =
-            Indent(
-                Advance(ref y, box, budget.Requirements > 0, BlockHeight(budget.Requirements)),
-                GameMetrics.Row.TextLeft);
-        var from = Advance(ref y, box, budget.From, GameMetrics.Detail.HeadingHeight);
-        var provenance = Advance(ref y, box, budget.Provenance, GameMetrics.Detail.HeadingHeight);
+        return new HeaderBlocks(badge, title, kind, statusIcon, status);
+    }
 
-        return new DetailPaneBlocks(
-            Rule(width, height),
-            title,
-            kind,
-            statusIcon,
-            status,
-            body,
-            requirementsLabel,
-            requirements,
-            from,
-            provenance,
-            ActionRow(width, height),
-            budget.Body,
-            budget.Requirements);
+    /// <summary>The level's black disc, centred over the title and status lines together. Dropped
+    /// whole when either line was dropped or the pane is too narrow to give up 40 pixels — a badge
+    /// hanging past the bottom of a squeezed pane is the exact class of defect this file exists to
+    /// make impossible.</summary>
+    private static ScreenRect LevelBadge(ScreenRect box, ScreenRect title, ScreenRect status, bool present)
+    {
+        var size = GameMetrics.Journal.BadgeSize;
+        if (!present || title.IsEmpty || status.IsEmpty || box.Width < size * 2f)
+        {
+            return default;
+        }
+
+        var span = status.Bottom - title.Y;
+        return span < size
+            ? default
+            : new ScreenRect(box.X, title.Y + ((span - size) / 2f), size, size);
+    }
+
+    /// <summary>A section glyph in the block's left gutter. The game draws these 24x24 at x=0 with
+    /// the heading two pixels under their right edge; the two-pixel tuck is the glyph art's own
+    /// transparent margin, not an overlap.</summary>
+    private static ScreenRect Glyph(ScreenRect box, ScreenRect block)
+    {
+        var size = GameMetrics.Journal.GlyphSize;
+        return block.IsEmpty || block.Y + size > box.Bottom || box.Width < size
+            ? default
+            : new ScreenRect(block.X, block.Y, size, size);
+    }
+
+    /// <summary>The reward tray, at the width the game authors it. The art is a plain image rather
+    /// than a nine-grid — the game never stretches it — so a pane too narrow to hold 376 gets a
+    /// narrower crop rather than a distorted panel.</summary>
+    private static ScreenRect RewardTray(ref float y, ScreenRect box, bool present)
+    {
+        var block = Advance(ref y, box, present, GameMetrics.Journal.TrayHeight);
+        if (block.IsEmpty)
+        {
+            return default;
+        }
+
+        var left = GameMetrics.Journal.GlyphTextLeft;
+        var width = Math.Min(GameMetrics.Journal.ColumnWidth, Math.Max(block.Width - left, 0f));
+        return width <= 0f ? default : block with { X = block.X + left, Width = width };
+    }
+
+    /// <summary>The reward's own icon, in the tray's first slot. Empty when the tray was dropped or
+    /// is too narrow to hold a slot — and empty is also what a reward with no icon gets, which is
+    /// why the name below is placed against the tray rather than against the icon.</summary>
+    private static ScreenRect RewardIcon(ScreenRect tray)
+    {
+        var inset = GameMetrics.Journal.TrayInset;
+        var size = GameMetrics.Journal.SlotIconSize;
+        return tray.IsEmpty || tray.Width < inset + size || tray.Height < size
+            ? default
+            : new ScreenRect(tray.X + inset, tray.Y + GameMetrics.Journal.SlotIconTop, size, size);
+    }
+
+    /// <summary>The reward said in words, beside its icon. Always drawn when the tray is: a
+    /// KamiToolKit tooltip fires on mouse events only, so an icon with no text is unreadable on a
+    /// controller — and half the reward kinds the game ships have no icon at all.</summary>
+    private static ScreenRect RewardName(ScreenRect tray, ScreenRect icon)
+    {
+        if (tray.IsEmpty)
+        {
+            return default;
+        }
+
+        var inset = GameMetrics.Journal.TrayInset;
+        var x = icon.IsEmpty ? tray.X + inset : icon.Right + GameMetrics.Window.BlockGap;
+        var width = Math.Max(tray.Right - inset - x, 0f);
+        var height = Math.Min(GameMetrics.Row.TextHeight, tray.Height);
+        return width <= 0f
+            ? default
+            : new ScreenRect(x, tray.Y + ((tray.Height - height) / 2f), width, height);
     }
 
     private static ScreenRect Kind(ScreenRect box, ScreenRect title)
@@ -253,12 +401,21 @@ public static class DetailPaneLayout
         return rect;
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Auto)]
+    private readonly record struct HeaderBlocks(
+        ScreenRect Badge,
+        ScreenRect Title,
+        ScreenRect Kind,
+        ScreenRect StatusIcon,
+        ScreenRect Status);
+
     private readonly record struct Budget(
         bool Title,
         bool Status,
         int Body,
         bool RequirementsLabel,
         int Requirements,
+        bool Reward,
         bool From,
         bool Provenance);
 }

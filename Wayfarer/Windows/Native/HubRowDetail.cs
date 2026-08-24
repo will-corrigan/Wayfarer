@@ -12,8 +12,30 @@ internal sealed class HubRowDetail
     /// <summary>The entry's name, in the game's panel-title treatment.</summary>
     public required string Title { get; init; }
 
-    /// <summary>Level and kind, in the game's own words — "Lv 30 · Side quest".</summary>
+    /// <summary>What kind of thing this is, in the game's own word — "Dungeon", "Side quest". The
+    /// level used to be part of this string and is now on the badge, where the Journal puts it.
+    /// </summary>
     public string Kind { get; init; } = string.Empty;
+
+    /// <summary>The number for the level badge, or empty when nothing states one. Empty hides the
+    /// disc rather than drawing an empty one: the level-less entries — the trophy mounts and the
+    /// unique-reward sections — are a real class, and a blank badge would read as a failure to load
+    /// rather than as "this has no level requirement".</summary>
+    public string Level { get; init; } = string.Empty;
+
+    /// <summary>What this entry actually grants, said in words. Empty when the game states no
+    /// reward object for it, which is the ordinary case for a system unlock.</summary>
+    public string RewardName { get; init; } = string.Empty;
+
+    /// <summary>The picture of that reward, or 0 when the game ships none — a title, an Aether
+    /// Current and a folklore book have no artwork anywhere. The tray and the name are drawn either
+    /// way, so 0 reads as "this is what you get" rather than as a slot that failed.</summary>
+    public uint RewardIconId { get; init; }
+
+    /// <summary>The size that icon is authored at. An image node's part rectangle has to match it
+    /// or the node samples past the edge of the texture — see <see cref="HubRewardIcons"/>.
+    /// </summary>
+    public System.Numerics.Vector2 RewardIconSize { get; init; }
 
     /// <summary>The state's shape, already validated. 0 draws no icon and leans on the sentence.</summary>
     public uint StatusIconId { get; init; }

@@ -201,6 +201,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Step Dance Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 101,
+        "name": "Step Dance"
+      },
       "quest": "Good for What Ales You",
       "questKind": "sidequest",
       "notes": null,
@@ -218,6 +223,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Ball Dance Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 103,
+        "name": "Ball Dance"
+      },
       "quest": "Help Me, Lord of the Dance",
       "questKind": "sidequest",
       "notes": null,
@@ -235,6 +245,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Harvest Dance Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 102,
+        "name": "Harvest Dance"
+      },
       "quest": "Saw That One Coming",
       "questKind": "sidequest",
       "notes": null,
@@ -320,6 +335,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sastasha Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 4,
+        "name": "Sastasha"
+      },
       "quest": "It's Probably Pirates",
       "questKind": "msq",
       "notes": null,
@@ -388,6 +408,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Airship Travel",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 52,
+        "name": "wind-up airship"
+      },
       "quest": "The Ul'dahn Envoy",
       "questKind": "msq",
       "notes": "Requires completing all of: The Gridanian Envoy, The Lominsan Envoy, The Ul'dahn Envoy (sequential; last main-chain quest used as completion marker).",
@@ -432,6 +457,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Coeurl Kitten (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 19,
+        "name": "coeurl kitten"
+      },
       "quest": "Curiosity Killed the Coeurl",
       "questKind": "sidequest",
       "notes": null,
@@ -449,6 +479,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Wolf Pup (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 35,
+        "name": "wolf pup"
+      },
       "quest": "Man's Best Fiend",
       "questKind": "sidequest",
       "notes": null,
@@ -483,6 +518,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Tam-Tara Deepcroft Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 2,
+        "name": "the Tam-Tara Deepcroft"
+      },
       "quest": "Fire in the Gloom",
       "questKind": "msq",
       "notes": null,
@@ -520,6 +560,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Copperbell Mines Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 3,
+        "name": "Copperbell Mines"
+      },
       "quest": "Into a Copper Hell",
       "questKind": "msq",
       "notes": null,
@@ -670,6 +715,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Chocobo Mount Access",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 1,
+        "name": "company chocobo"
+      },
       "quest": "My Little Chocobo",
       "questAnyOf": [
         66236,
@@ -711,6 +761,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Halatali Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 7,
+        "name": "Halatali"
+      },
       "quest": "Hallo Halatali",
       "questKind": "sidequest",
       "notes": null,
@@ -728,6 +783,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Bowl of Embers Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 56,
+        "name": "the Bowl of Embers"
+      },
       "quest": "Lord of the Inferno",
       "questKind": "msq",
       "notes": null,
@@ -745,6 +805,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Chigoe Larva (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 15,
+        "name": "chigoe larva"
+      },
       "quest": "Occupational Hazards",
       "questKind": "sidequest",
       "notes": null,
@@ -779,6 +844,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Thousand Maws of Toto-Rak Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1,
+        "name": "the Thousand Maws of Toto-Rak"
+      },
       "quest": "Into the Beast's Maw",
       "questKind": "msq",
       "notes": null,
@@ -813,6 +883,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Haukke Manor Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 6,
+        "name": "Haukke Manor"
+      },
       "quest": "Skeletons in Her Closet",
       "questKind": "msq",
       "notes": null,
@@ -925,6 +1000,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Brayflox's Longstop Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 8,
+        "name": "Brayflox's Longstop"
+      },
       "quest": "The Things We Do for Cheese",
       "questKind": "msq",
       "notes": null,
@@ -942,6 +1022,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Goobbue Sproutling (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 41,
+        "name": "goobbue sproutling"
+      },
       "quest": "It Was a Very Good Year",
       "questKind": "msq",
       "notes": null,
@@ -993,6 +1078,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Navel Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 57,
+        "name": "the Navel"
+      },
       "quest": "Lord of Crags",
       "questKind": "msq",
       "notes": null,
@@ -1010,6 +1100,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Sunken Temple of Qarn Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 9,
+        "name": "the Sunken Temple of Qarn"
+      },
       "quest": "Braving New Depths",
       "questKind": "sidequest",
       "notes": null,
@@ -1061,6 +1156,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Throw Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 85,
+        "name": "Throw"
+      },
       "quest": "Toss Fit Workout",
       "questKind": "sidequest",
       "notes": null,
@@ -1078,6 +1178,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Cutter's Cry Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 12,
+        "name": "Cutter's Cry"
+      },
       "quest": "Dishonor Before Death",
       "questKind": "sidequest",
       "notes": null,
@@ -1095,6 +1200,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Stone Vigil Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 11,
+        "name": "the Stone Vigil"
+      },
       "quest": "In Pursuit of the Past",
       "questKind": "msq",
       "notes": null,
@@ -1129,6 +1239,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Ixal Quests",
       "type": "minion",
+      "reward": {
+        "kind": "NotebookDivision",
+        "id": 1017,
+        "name": "Ixal Quests"
+      },
       "quest": "A Bad Bladder",
       "questKind": "sidequest",
       "notes": null,
@@ -1231,6 +1346,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dzemael Darkhold Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 13,
+        "name": "Dzemael Darkhold"
+      },
       "quest": "Shadows Uncast",
       "questAnyOf": [
         66515,
@@ -1257,6 +1377,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Howling Eye Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 58,
+        "name": "the Howling Eye"
+      },
       "quest": "Lady of the Vortex",
       "questKind": "msq",
       "notes": null,
@@ -1308,6 +1433,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Aurum Vale Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 5,
+        "name": "the Aurum Vale"
+      },
       "quest": "Going for Gold",
       "questKind": "sidequest",
       "notes": null,
@@ -1325,6 +1455,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Cactuar Cutting (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 33,
+        "name": "cactuar cutting"
+      },
       "quest": "Zombies Are People Too",
       "questKind": "sidequest",
       "notes": null,
@@ -1492,6 +1627,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Delivery Moogle Quests and Mini Mole minion: The Quests",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 45,
+        "name": "mini mole"
+      },
       "quest": "Thwack-a-Mole",
       "questKind": "other",
       "notes": "Requires completing all of: Of Errant Epistles, Thwack-a-Mole (sequential; last main-chain quest used as completion marker).",
@@ -1543,6 +1683,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Kirin (Mount)",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 47,
+        "name": "Kirin"
+      },
       "quest": "A Legend for a Legend",
       "questKind": "sidequest",
       "notes": null,
@@ -1597,6 +1742,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Castrum Meridianum Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 15,
+        "name": "Castrum Meridianum"
+      },
       "quest": "Rock the Castrum",
       "questKind": "msq",
       "notes": null,
@@ -1614,6 +1764,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Praetorium Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 16,
+        "name": "the Praetorium"
+      },
       "quest": "The Ultimate Weapon",
       "questKind": "msq",
       "notes": null,
@@ -1658,6 +1813,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Amdapor Keep Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 14,
+        "name": "Amdapor Keep"
+      },
       "quest": "Ghosts of Amdapor",
       "questKind": "other",
       "notes": null,
@@ -1675,6 +1835,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Wanderer's Palace Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 10,
+        "name": "the Wanderer's Palace"
+      },
       "quest": "Trauma Queen",
       "questKind": "sidequest",
       "notes": null,
@@ -1692,6 +1857,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Pharos Sirius Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 17,
+        "name": "Pharos Sirius"
+      },
       "quest": "Sirius Business",
       "questKind": "sidequest",
       "notes": null,
@@ -1709,6 +1879,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Copperbell Mines (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 18,
+        "name": "Copperbell Mines (Hard)"
+      },
       "quest": "Out of Sight, Out of Mine",
       "questKind": "sidequest",
       "notes": null,
@@ -1726,6 +1901,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Haukke Manor (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 19,
+        "name": "Haukke Manor (Hard)"
+      },
       "quest": "Maniac Manor",
       "questKind": "sidequest",
       "notes": null,
@@ -1743,6 +1923,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Bowl of Embers (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 59,
+        "name": "the Bowl of Embers (Hard)"
+      },
       "quest": "Ifrit Bleeds, We Can Kill It",
       "questKind": "other",
       "notes": null,
@@ -1760,6 +1945,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "A Relic Reborn: The Chimera Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 74,
+        "name": "A Relic Reborn: the Chimera"
+      },
       "quest": "A Relic Reborn",
       "questAnyOf": [
         66655,
@@ -1798,6 +1988,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "A Relic Reborn: The Hydra Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 75,
+        "name": "A Relic Reborn: the Hydra"
+      },
       "quest": "A Relic Reborn",
       "questAnyOf": [
         66655,
@@ -1836,6 +2031,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Thornmarch (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 66,
+        "name": "Thornmarch (Hard)"
+      },
       "quest": "You Have Selected Regicide",
       "questKind": "msq",
       "notes": null,
@@ -1853,6 +2053,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Whorleater (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 72,
+        "name": "the Whorleater (Hard)"
+      },
       "quest": "Lord of the Whorl",
       "questKind": "msq",
       "notes": null,
@@ -1870,6 +2075,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Battle on the Big Bridge Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 76,
+        "name": "Battle on the Big Bridge"
+      },
       "quest": "The Three Collectors",
       "questKind": "other",
       "notes": null,
@@ -1887,6 +2097,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Striking Tree (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 77,
+        "name": "the Striking Tree (Hard)"
+      },
       "quest": "Levin an Impression",
       "questKind": "msq",
       "notes": null,
@@ -1904,6 +2119,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Howling Eye (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 61,
+        "name": "the Howling Eye (Hard)"
+      },
       "quest": "In for Garuda Awakening",
       "questKind": "other",
       "notes": null,
@@ -1921,6 +2141,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Navel (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 60,
+        "name": "the Navel (Hard)"
+      },
       "quest": "In a Titan Spot",
       "questKind": "other",
       "notes": null,
@@ -1938,6 +2163,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Brayflox's Longstop (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 20,
+        "name": "Brayflox's Longstop (Hard)"
+      },
       "quest": "Curds and Slay",
       "questKind": "sidequest",
       "notes": null,
@@ -1955,6 +2185,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Halatali (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 21,
+        "name": "Halatali (Hard)"
+      },
       "quest": "This Time's for Fun",
       "questKind": "sidequest",
       "notes": null,
@@ -1972,6 +2207,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Lost City of Amdapor Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 22,
+        "name": "the Lost City of Amdapor"
+      },
       "quest": "One Night in Amdapor",
       "questKind": "sidequest",
       "notes": null,
@@ -1989,6 +2229,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Labyrinth of the Ancients Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 92,
+        "name": "the Labyrinth of the Ancients"
+      },
       "quest": "Labyrinth of the Ancients",
       "questKind": "sidequest",
       "notes": null,
@@ -2006,6 +2251,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Binding Coil of Bahamut Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 93,
+        "name": "the Binding Coil of Bahamut - Turn 1"
+      },
       "quest": "Primal Awakening",
       "questKind": "other",
       "notes": null,
@@ -2023,6 +2273,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Syrcus Tower Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 102,
+        "name": "Syrcus Tower"
+      },
       "quest": "Syrcus Tower",
       "questKind": "other",
       "notes": null,
@@ -2040,6 +2295,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Ultima's Bane Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 68,
+        "name": "the Minstrel's Ballad: Ultima's Bane"
+      },
       "quest": "The Ultimate Ballad",
       "questKind": "sidequest",
       "notes": null,
@@ -2057,6 +2317,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Howling Eye (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 65,
+        "name": "the Howling Eye (Extreme)"
+      },
       "quest": "Gale-force Warning",
       "questKind": "other",
       "notes": null,
@@ -2074,6 +2339,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Navel (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 64,
+        "name": "the Navel (Extreme)"
+      },
       "quest": "Quake Me Up Before You O'Ghomoro",
       "questKind": "other",
       "notes": null,
@@ -2091,6 +2361,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Bowl of Embers (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 63,
+        "name": "the Bowl of Embers (Extreme)"
+      },
       "quest": "Ifrit Ain't Broke",
       "questKind": "other",
       "notes": null,
@@ -2108,6 +2383,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hullbreaker Isle Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 23,
+        "name": "Hullbreaker Isle"
+      },
       "quest": "King of the Hull",
       "questKind": "sidequest",
       "notes": "Level disputed: Quest#67062 is also cited by Hullbreaker Isle (Hard) Dungeon Access at level 60, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
@@ -2125,6 +2405,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Tam-Tara Deepcroft (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 24,
+        "name": "the Tam-Tara Deepcroft (Hard)"
+      },
       "quest": "Corpse Groom",
       "questKind": "sidequest",
       "notes": null,
@@ -2142,6 +2427,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Stone Vigil (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 25,
+        "name": "the Stone Vigil (Hard)"
+      },
       "quest": "Blood for Stone",
       "questKind": "sidequest",
       "notes": null,
@@ -2183,6 +2473,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sastasha (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 28,
+        "name": "Sastasha (Hard)"
+      },
       "quest": "It's Definitely Pirates",
       "questKind": "other",
       "notes": null,
@@ -2200,6 +2495,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Sunken Temple of Qarn (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 26,
+        "name": "the Sunken Temple of Qarn (Hard)"
+      },
       "quest": "The Wrath of Qarn",
       "questKind": "other",
       "notes": null,
@@ -2217,6 +2517,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Snowcloak Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 27,
+        "name": "Snowcloak"
+      },
       "quest": "The Path of the Righteous",
       "questKind": "msq",
       "notes": null,
@@ -2254,6 +2559,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Second Coil of Bahamut Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 98,
+        "name": "the Second Coil of Bahamut - Turn 1"
+      },
       "quest": "Another Turn in the Coil",
       "questKind": "other",
       "notes": null,
@@ -2271,6 +2581,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Thornmarch (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 67,
+        "name": "Thornmarch (Extreme)"
+      },
       "quest": "The King Lives",
       "questKind": "sidequest",
       "notes": null,
@@ -2288,6 +2603,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Whorleater (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 73,
+        "name": "the Whorleater (Extreme)"
+      },
       "quest": "Whorl of a Time",
       "questKind": "sidequest",
       "notes": null,
@@ -2305,6 +2625,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Akh Afah Amphitheatre (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 79,
+        "name": "the Akh Afah Amphitheatre (Hard)"
+      },
       "quest": "The Instruments of Our Deliverance",
       "questKind": "msq",
       "notes": null,
@@ -2322,6 +2647,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Battle in the Big Keep Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 85,
+        "name": "Battle in the Big Keep"
+      },
       "quest": "Her Last Vow",
       "questKind": "other",
       "notes": null,
@@ -2359,6 +2689,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Chrysalis Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 84,
+        "name": "the Chrysalis"
+      },
       "quest": "An Uninvited Ascian",
       "questKind": "msq",
       "notes": null,
@@ -2376,6 +2711,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Steps of Faith Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 885,
+        "name": "the Steps of Faith"
+      },
       "quest": "An Allied Perspective",
       "questKind": "msq",
       "notes": null,
@@ -2393,6 +2733,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The World of Darkness Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 111,
+        "name": "the World of Darkness"
+      },
       "quest": "The World of Darkness",
       "questKind": "other",
       "notes": null,
@@ -2410,6 +2755,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Amdapor Keep (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 29,
+        "name": "Amdapor Keep (Hard)"
+      },
       "quest": "For Keep's Sake",
       "questKind": "other",
       "notes": null,
@@ -2427,6 +2777,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Wanderer's Palace (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 30,
+        "name": "the Wanderer's Palace (Hard)"
+      },
       "quest": "Not Easy Being Green",
       "questKind": "other",
       "notes": null,
@@ -2444,6 +2799,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Keeper of the Lake Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 32,
+        "name": "the Keeper of the Lake"
+      },
       "quest": "Best-laid Schemes",
       "questKind": "msq",
       "notes": null,
@@ -2461,6 +2821,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Urth's Fount Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 82,
+        "name": "Urth's Fount"
+      },
       "quest": "Fear and Odin in the Shroud",
       "questKind": "sidequest",
       "notes": null,
@@ -2478,6 +2843,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Striking Tree (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 78,
+        "name": "the Striking Tree (Extreme)"
+      },
       "quest": "Judgment Bolts and Lightning",
       "questKind": "sidequest",
       "notes": null,
@@ -2495,6 +2865,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Akh Afah Amphitheatre (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 80,
+        "name": "the Akh Afah Amphitheatre (Extreme)"
+      },
       "quest": "Drop Dead Shiva",
       "questKind": "sidequest",
       "notes": null,
@@ -2512,6 +2887,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Final Coil of Bahamut Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 107,
+        "name": "the Final Coil of Bahamut - Turn 1"
+      },
       "quest": "Fragments of Truth",
       "questKind": "other",
       "notes": null,
@@ -2529,6 +2909,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Second Coil of Bahamut (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 103,
+        "name": "the Second Coil of Bahamut (Savage) - Turn 1"
+      },
       "quest": "Sing Me Another Song",
       "questKind": "other",
       "notes": null,
@@ -2614,6 +2999,11 @@
       "levelSource": "game-data:Quest#67705",
       "unlock": "Sundrop Dance Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 120,
+        "name": "Sundrop Dance"
+      },
       "quest": "Sundrop the Beat",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Sundrop the Beat, Vanu Vanu Beast Tribe (sequential; last main-chain quest used as completion marker).",
@@ -2631,6 +3021,11 @@
       "levelSource": "game-data:Quest#67862",
       "unlock": "Moogle Dance Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 126,
+        "name": "Moogle Dance"
+      },
       "quest": "Piecing Together the Past",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Piecing Together the Past, Moogle Beast Tribe (sequential; last main-chain quest used as completion marker).",
@@ -2682,6 +3077,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dusk Vigil Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 36,
+        "name": "the Dusk Vigil"
+      },
       "quest": "For All the Nights to Come",
       "questKind": "sidequest",
       "notes": null,
@@ -2750,6 +3150,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sohm Al Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 37,
+        "name": "Sohm Al"
+      },
       "quest": "Mourn in Passing",
       "questKind": "msq",
       "notes": null,
@@ -2767,6 +3172,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Thok ast Thok (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 86,
+        "name": "Thok ast Thok (Hard)"
+      },
       "quest": "Lord of the Hive",
       "questKind": "msq",
       "notes": null,
@@ -2835,6 +3245,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Aery Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 39,
+        "name": "the Aery"
+      },
       "quest": "Into the Aery",
       "questKind": "msq",
       "notes": null,
@@ -2886,6 +3301,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Vault Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 34,
+        "name": "the Vault"
+      },
       "quest": "A Knight's Calling",
       "questKind": "msq",
       "notes": null,
@@ -2903,6 +3323,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Limitless Blue (Hard) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 88,
+        "name": "the Limitless Blue (Hard)"
+      },
       "quest": "Bolt, Chain, and Island",
       "questKind": "msq",
       "notes": null,
@@ -3005,6 +3430,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Great Gubal Library Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 31,
+        "name": "the Great Gubal Library"
+      },
       "quest": "Forbidden Knowledge",
       "questKind": "msq",
       "notes": null,
@@ -3022,6 +3452,11 @@
       "levelSource": "game-data:Quest#67921",
       "unlock": "Moonlift Dance Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 145,
+        "name": "Moonlift Dance"
+      },
       "quest": "Eternity, Loyalty, Honesty",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Eternity, Loyalty, Honesty, Heavensward Beast Tribe (sequential; last main-chain quest used as completion marker).",
@@ -3039,6 +3474,11 @@
       "levelSource": "game-data:Quest#67015",
       "unlock": "Haurchefant (Emote)",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 127,
+        "name": "Haurchefant"
+      },
       "quest": "The Burdens We Bear",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -3056,6 +3496,11 @@
       "levelSource": "game-data:Quest#67899",
       "unlock": "Spectacles Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 148,
+        "name": "Spectacles"
+      },
       "quest": "Letters from No One",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Letters from No One, Scholasticate (sequential; last main-chain quest used as completion marker).",
@@ -3124,6 +3569,11 @@
       "levelSource": "game-data:Quest#67649",
       "unlock": "Accompaniment Node (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 149,
+        "name": "accompaniment node"
+      },
       "quest": "Do It for Gilly",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -3141,6 +3591,11 @@
       "levelSource": "game-data:Quest#67908",
       "unlock": "Gigi (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 230,
+        "name": "Gigi"
+      },
       "quest": "If I Could Turn Back Time",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: If I Could Turn Back Time, Hildibrand (sequential; last main-chain quest used as completion marker).",
@@ -3158,6 +3613,11 @@
       "levelSource": "game-data:Quest#67934",
       "unlock": "Anima (Minion)",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 231,
+        "name": "anima"
+      },
       "quest": "Body and Soul",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Body and Soul, Anima (sequential; last main-chain quest used as completion marker).",
@@ -3192,6 +3652,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Aetherochemical Research Facility Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 38,
+        "name": "the Aetherochemical Research Facility"
+      },
       "quest": "Heavensward",
       "questKind": "msq",
       "notes": null,
@@ -3243,6 +3708,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Fractal Continuum Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 35,
+        "name": "the Fractal Continuum"
+      },
       "quest": "Do It for Gilly",
       "questKind": "sidequest",
       "notes": null,
@@ -3260,6 +3730,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Neverreap Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 33,
+        "name": "Neverreap"
+      },
       "quest": "Reap What You Sow",
       "questKind": "sidequest",
       "notes": null,
@@ -3277,6 +3752,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Singularity Reactor Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 90,
+        "name": "the Singularity Reactor"
+      },
       "quest": "Heavensward",
       "questKind": "msq",
       "notes": null,
@@ -3311,6 +3791,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Wondrous Tails Access",
       "type": "system",
+      "reward": {
+        "kind": "QuestRewardOther",
+        "id": 7,
+        "name": "Wondrous Tails"
+      },
       "quest": "Keeping Up with the Aliapohs",
       "questKind": "sidequest",
       "notes": null,
@@ -3348,6 +3833,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Aquapolis Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 179,
+        "name": "the Aquapolis"
+      },
       "quest": null,
       "questKind": "other",
       "notes": null,
@@ -3427,6 +3917,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Thok ast Thok (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 87,
+        "name": "Thok ast Thok (Extreme)"
+      },
       "quest": "Thok Around the Clock",
       "questKind": "sidequest",
       "notes": "Prerequisite: Gods of Eld.",
@@ -3444,6 +3939,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Limitless Blue (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 89,
+        "name": "the Limitless Blue (Extreme)"
+      },
       "quest": "The Diabolical Bismarck",
       "questKind": "sidequest",
       "notes": "Prerequisite: Gods of Eld.",
@@ -3461,6 +3961,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Saint Mocianne's Arboretum Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 41,
+        "name": "Saint Mocianne's Arboretum"
+      },
       "quest": "An Overgrown Ambition",
       "questKind": "sidequest",
       "notes": "Prerequisite: Heavensward.",
@@ -3478,6 +3983,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Pharos Sirius (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 40,
+        "name": "Pharos Sirius (Hard)"
+      },
       "quest": "Things Are Getting Sirius",
       "questKind": "sidequest",
       "notes": "Prerequisite: Heavensward.",
@@ -3495,6 +4005,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexander (Gordias) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 112,
+        "name": "Alexander - The Fist of the Father"
+      },
       "quest": "Disarmed",
       "questKind": "sidequest",
       "notes": "Prerequisite: Heavensward.",
@@ -3512,6 +4027,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Void Ark Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 120,
+        "name": "the Void Ark"
+      },
       "quest": "To Rule the Skies",
       "questKind": "sidequest",
       "notes": null,
@@ -3529,6 +4049,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Antitower Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 141,
+        "name": "the Antitower"
+      },
       "quest": "The Word of the Mother",
       "questKind": "msq",
       "notes": null,
@@ -3546,6 +4071,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Lost City of Amdapor (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 140,
+        "name": "the Lost City of Amdapor (Hard)"
+      },
       "quest": "One More Night in Amdapor",
       "questKind": "sidequest",
       "notes": "Prerequisite: Heavensward.",
@@ -3563,6 +4093,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Thordan's Reign Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 91,
+        "name": "the Minstrel's Ballad: Thordan's Reign"
+      },
       "quest": "Thordan's Reign",
       "questKind": "sidequest",
       "notes": null,
@@ -3580,6 +4115,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Containment Bay S1T7 Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 134,
+        "name": "Containment Bay S1T7"
+      },
       "quest": "When the Bough Wakes",
       "questKind": "other",
       "notes": "Prerequisite: Gods of Eld.",
@@ -3597,6 +4137,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexander (Gordias) (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 116,
+        "name": "Alexander - The Fist of the Father (Savage)"
+      },
       "quest": "A Song of Steam and Steel",
       "questKind": "sidequest",
       "notes": null,
@@ -3614,6 +4159,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexander (Midas) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 136,
+        "name": "Alexander - The Fist of the Son"
+      },
       "quest": "Rearmed",
       "questKind": "sidequest",
       "notes": "Prerequisite: Enigma.",
@@ -3631,6 +4181,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hullbreaker Isle (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 172,
+        "name": "Hullbreaker Isle (Hard)"
+      },
       "quest": "King of the Hull",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Storming the Hull, Heavensward, King of the Hull (sequential; last main-chain quest used as completion marker). Level disputed: Quest#67062 is also cited by Hullbreaker Isle Dungeon Access at level 50, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
@@ -3648,6 +4203,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sohr Khai Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 171,
+        "name": "Sohr Khai"
+      },
       "quest": "Winning Over the Wyrm",
       "questKind": "msq",
       "notes": null,
@@ -3665,6 +4225,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Containment Bay S1T7 (Extreme) Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 135,
+        "name": "Containment Bay S1T7 (Extreme)"
+      },
       "quest": "A Fiendish Likeness",
       "questKind": "other",
       "notes": null,
@@ -3682,6 +4247,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexander (Midas) (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 147,
+        "name": "Alexander - The Fist of the Son (Savage)"
+      },
       "quest": "A Refrain for the Undaunted",
       "questKind": "sidequest",
       "notes": null,
@@ -3699,6 +4269,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Weeping City of Mhach Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 168,
+        "name": "the Weeping City of Mhach"
+      },
       "quest": "The Weeping City",
       "questKind": "sidequest",
       "notes": null,
@@ -3716,6 +4291,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Xelphatol Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 182,
+        "name": "Xelphatol"
+      },
       "quest": "Shadows of the First",
       "questKind": "msq",
       "notes": null,
@@ -3733,6 +4313,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Great Gubal Library (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 196,
+        "name": "the Great Gubal Library (Hard)"
+      },
       "quest": "Let Me Gubal That for You",
       "questKind": "sidequest",
       "notes": null,
@@ -3750,6 +4335,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Final Steps of Faith Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 169,
+        "name": "the Final Steps of Faith"
+      },
       "quest": "An End to the Song",
       "questKind": "msq",
       "notes": null,
@@ -3767,6 +4357,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Nidhogg's Rage Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 170,
+        "name": "the Minstrel's Ballad: Nidhogg's Rage"
+      },
       "quest": "Nidhogg's Rage",
       "questKind": "sidequest",
       "notes": null,
@@ -3784,6 +4379,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Containment Bay P1T6 Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 183,
+        "name": "Containment Bay P1T6"
+      },
       "quest": "Balance unto All",
       "questKind": "other",
       "notes": null,
@@ -3801,6 +4401,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexander - The Creator Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 186,
+        "name": "Alexander - The Eyes of the Creator"
+      },
       "quest": "The Coeurl and the Colossus",
       "questKind": "other",
       "notes": "Prerequisite: A Gob in the Machine.",
@@ -3818,6 +4423,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Containment Bay P1T6 (Extreme) Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 184,
+        "name": "Containment Bay P1T6 (Extreme)"
+      },
       "quest": "A Deific Simulacrum",
       "questKind": "other",
       "notes": "Prerequisite: Balance unto All.",
@@ -3835,6 +4445,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Baelsar's Wall Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 219,
+        "name": "Baelsar's Wall"
+      },
       "quest": "Griffin, Griffin on the Wall",
       "questKind": "msq",
       "notes": null,
@@ -3852,6 +4467,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sohm Al (Hard) Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 221,
+        "name": "Sohm Al (Hard)"
+      },
       "quest": "The Fires of Sohm Al",
       "questKind": "sidequest",
       "notes": null,
@@ -3869,6 +4489,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexander - The Creator (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 190,
+        "name": "Alexander - The Eyes of the Creator (Savage)"
+      },
       "quest": "Who Lives, Who Dies, Who Retells Your Story",
       "questKind": "other",
       "notes": "Prerequisite: Of Endings and Beginnings.",
@@ -3886,6 +4511,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Dun Scaith Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 220,
+        "name": "Dun Scaith"
+      },
       "quest": "Where Shadows Reign",
       "questKind": "sidequest",
       "notes": null,
@@ -3903,6 +4533,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Containment Bay Z1T9 Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 223,
+        "name": "Containment Bay Z1T9"
+      },
       "quest": "The Last Pillar to Fall",
       "questKind": "other",
       "notes": null,
@@ -3920,6 +4555,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Containment Bay Z1T9 (Extreme) Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 224,
+        "name": "Containment Bay Z1T9 (Extreme)"
+      },
       "quest": "A Demonic Duplicate",
       "questKind": "other",
       "notes": "Prerequisite: The Last Pillar to Fall. Level disputed: Quest#67931 is also cited by Void Quests Access at level 80, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
@@ -4005,6 +4645,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Sirensong Sea Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 238,
+        "name": "the Sirensong Sea"
+      },
       "quest": "Not without Incident",
       "questKind": "msq",
       "notes": null,
@@ -4039,6 +4684,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Spearfishing Access",
       "type": "system",
+      "reward": {
+        "kind": "QuestRewardOther",
+        "id": 8,
+        "name": "Spearfishing"
+      },
       "quest": "A New Fishing Ex-spear-ience",
       "questKind": "sidequest",
       "notes": null,
@@ -4083,6 +4733,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Pool of Tribute Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 243,
+        "name": "the Pool of Tribute"
+      },
       "quest": "The Lord of the Revel",
       "questKind": "msq",
       "notes": null,
@@ -4100,6 +4755,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Shisui of the Violet Tides Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 235,
+        "name": "Shisui of the Violet Tides"
+      },
       "quest": "The Palace of Lost Souls",
       "questKind": "sidequest",
       "notes": null,
@@ -4219,6 +4879,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Bardam's Mettle Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 240,
+        "name": "Bardam's Mettle"
+      },
       "quest": "In the Footsteps of Bardam the Brave",
       "questKind": "msq",
       "notes": null,
@@ -4287,6 +4952,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Doma Castle Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 241,
+        "name": "Doma Castle"
+      },
       "quest": "The Die Is Cast",
       "questKind": "msq",
       "notes": null,
@@ -4304,6 +4974,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Emanation Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 263,
+        "name": "Emanation"
+      },
       "quest": "The Lady of Bliss",
       "questKind": "msq",
       "notes": null,
@@ -4372,6 +5047,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Castrum Abania Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 242,
+        "name": "Castrum Abania"
+      },
       "quest": "The Price of Freedom",
       "questKind": "msq",
       "notes": null,
@@ -4423,6 +5103,11 @@
       "levelSource": "game-data:Quest#68688",
       "unlock": "Hum Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 187,
+        "name": "Hum"
+      },
       "quest": "The Fire-bird Down Below",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: The Fire-bird Down Below, Four Lords (sequential; last main-chain quest used as completion marker).",
@@ -4440,6 +5125,11 @@
       "levelSource": "game-data:Quest#68704",
       "unlock": "Manderville Mambo Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 198,
+        "name": "Manderville Mambo"
+      },
       "quest": "Don't Do the Dewprism",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Don't Do the Dewprism, Hildibrand (sequential; last main-chain quest used as completion marker). Level disputed: Quest#68704 is also cited by Tataru's Grand Endeavor Access at level 90, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
@@ -4457,6 +5147,11 @@
       "levelSource": "game-data:Quest#68700",
       "unlock": "Gratuity Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 194,
+        "name": "Gratuity"
+      },
       "quest": "What a Wonder-full World",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: What a Wonder-full World, Stormblood Beast Tribe (sequential; last main-chain quest used as completion marker).",
@@ -4474,6 +5169,11 @@
       "levelSource": "game-data:Quest#68693",
       "unlock": "Wind-up Alpha Minion",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 304,
+        "name": "wind-up Alpha"
+      },
       "quest": "To Kweh under Distant Skies",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: To Kweh Under Distant Skies, Omega (sequential; last main-chain quest used as completion marker). Level disputed: Quest#68693 is also cited by Omega: Beyond the Rift Access at level 90, so at most one of these levels can be what that quest unlocks — treated as single-source until the pair is resolved.",
@@ -4525,6 +5225,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Ala Mhigo Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 247,
+        "name": "Ala Mhigo"
+      },
       "quest": "Stormblood",
       "questKind": "msq",
       "notes": null,
@@ -4542,6 +5247,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Royal Menagerie Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 239,
+        "name": "the Royal Menagerie"
+      },
       "quest": "Stormblood",
       "questKind": "msq",
       "notes": null,
@@ -4559,6 +5269,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Temple of the Fist Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 236,
+        "name": "the Temple of the Fist"
+      },
       "quest": "To Kill a Coeurl",
       "questKind": "sidequest",
       "notes": null,
@@ -4576,6 +5291,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Kugane Castle Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 262,
+        "name": "Kugane Castle"
+      },
       "quest": "King of the Castle",
       "questKind": "sidequest",
       "notes": null,
@@ -4627,6 +5347,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Forbidden Land, Eureka Anemos Access",
       "type": "zone",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 283,
+        "name": "the Forbidden Land, Eureka Anemos"
+      },
       "quest": "And We Shall Call It Eureka",
       "questKind": "sidequest",
       "notes": null,
@@ -4644,6 +5369,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Forbidden Land, Eureka Pagos Access",
       "type": "zone",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 581,
+        "name": "the Forbidden Land, Eureka Pagos"
+      },
       "quest": "And We Shall Call It Pagos",
       "questKind": "other",
       "notes": "Requires completing all of: Rodney, Kugane (sequential; last main-chain quest used as completion marker).",
@@ -4662,6 +5392,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Forbidden Land, Eureka Pyros Access",
       "type": "zone",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 598,
+        "name": "the Forbidden Land, Eureka Pyros"
+      },
       "quest": "And We Shall Call It Pyros",
       "questKind": "other",
       "notes": "Requires completing all of: Rodney, Kugane (sequential; last main-chain quest used as completion marker).",
@@ -4680,6 +5415,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Forbidden Land, Eureka Hydatos Access",
       "type": "zone",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 639,
+        "name": "the Forbidden Land, Eureka Hydatos"
+      },
       "quest": "And We Shall Call It Hydatos",
       "questKind": "other",
       "notes": "Requires completing all of: Rodney, Kugane (sequential; last main-chain quest used as completion marker).",
@@ -4718,6 +5458,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Lost Canals of Uznair Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 268,
+        "name": "the Lost Canals of Uznair"
+      },
       "quest": null,
       "questKind": "other",
       "notes": null,
@@ -4746,6 +5491,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Hidden Canals of Uznair Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 276,
+        "name": "the Hidden Canals of Uznair"
+      },
       "quest": null,
       "questKind": "other",
       "notes": null,
@@ -4774,6 +5524,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Shifting Altars of Uznair Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 586,
+        "name": "the Shifting Altars of Uznair"
+      },
       "quest": null,
       "questKind": "other",
       "notes": null,
@@ -4904,6 +5659,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Drowned City of Skalla Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 279,
+        "name": "the Drowned City of Skalla"
+      },
       "quest": "The Mad King's Trove",
       "questKind": "msq",
       "notes": null,
@@ -4921,6 +5681,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Royal City of Rabanastre Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 281,
+        "name": "the Royal City of Rabanastre"
+      },
       "quest": "A City Fallen",
       "questKind": "sidequest",
       "notes": null,
@@ -4938,6 +5703,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Emanation (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 264,
+        "name": "Emanation (Extreme)"
+      },
       "quest": "Songs in the Key of Kugane",
       "questKind": "other",
       "notes": "Prerequisite: Songs in the Key of Kugane.",
@@ -4955,6 +5725,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Pool of Tribute (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 244,
+        "name": "the Pool of Tribute (Extreme)"
+      },
       "quest": "Songs in the Key of Kugane",
       "questKind": "other",
       "notes": "Prerequisite: Songs in the Key of Kugane.",
@@ -4972,6 +5747,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Fractal Continuum (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 285,
+        "name": "the Fractal Continuum (Hard)"
+      },
       "quest": "An Unwanted Truth",
       "questKind": "sidequest",
       "notes": null,
@@ -4989,6 +5769,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hells' Lid Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 284,
+        "name": "Hells' Lid"
+      },
       "quest": "An Auspicious Encounter",
       "questKind": "sidequest",
       "notes": null,
@@ -5006,6 +5791,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Omega: Deltascape Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 252,
+        "name": "Deltascape V1.0"
+      },
       "quest": "Into the Deltascape",
       "questKind": "sidequest",
       "notes": null,
@@ -5023,6 +5813,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Great Hunt Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 474,
+        "name": "the Great Hunt"
+      },
       "quest": "The New King on the Block",
       "questKind": "sidequest",
       "notes": null,
@@ -5040,6 +5835,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Omega: Sigmascape Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 286,
+        "name": "Sigmascape V1.0"
+      },
       "quest": "No Slowing Down",
       "questKind": "sidequest",
       "notes": null,
@@ -5057,6 +5857,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Shinryu's Domain Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 278,
+        "name": "the Minstrel's Ballad: Shinryu's Domain"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Royal Menagerie.",
@@ -5085,6 +5890,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Jade Stoa Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 290,
+        "name": "the Jade Stoa"
+      },
       "quest": "An Auspicious Encounter",
       "questKind": "sidequest",
       "notes": null,
@@ -5102,6 +5912,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Swallow's Compass Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 536,
+        "name": "the Swallow's Compass"
+      },
       "quest": "Tortoise in Time",
       "questKind": "sidequest",
       "notes": null,
@@ -5136,6 +5951,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Ridorana Lighthouse Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 550,
+        "name": "the Ridorana Lighthouse"
+      },
       "quest": "Annihilation",
       "questKind": "sidequest",
       "notes": null,
@@ -5153,6 +5973,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Burn Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 585,
+        "name": "the Burn"
+      },
       "quest": "Feel the Burn",
       "questKind": "msq",
       "notes": null,
@@ -5170,6 +5995,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Saint Mocianne's Arboretum (Hard) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 584,
+        "name": "Saint Mocianne's Arboretum (Hard)"
+      },
       "quest": "Secret of the Ooze",
       "questKind": "sidequest",
       "notes": null,
@@ -5187,6 +6017,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Castrum Fluminis Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 537,
+        "name": "Castrum Fluminis"
+      },
       "quest": "The Primary Agreement",
       "questKind": "msq",
       "notes": null,
@@ -5204,6 +6039,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Jade Stoa (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 291,
+        "name": "the Jade Stoa (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Jade Stoa.",
@@ -5232,6 +6072,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sigmascape (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 289,
+        "name": "Sigmascape V4.0"
+      },
       "quest": "Test World of Ruin",
       "questKind": "sidequest",
       "notes": null,
@@ -5249,6 +6094,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Unending Coil of Bahamut (Ultimate) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 280,
+        "name": "the Unending Coil of Bahamut (Ultimate)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about Bahamut, Deltascape V4.0 (Savage) (sequential; last main-chain quest used as completion marker).",
@@ -5277,6 +6127,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Great Hunt (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 475,
+        "name": "the Great Hunt (Extreme)"
+      },
       "quest": "The Newer King on the Block",
       "questKind": "sidequest",
       "notes": null,
@@ -5294,6 +6149,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Tsukuyomi's Pain Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 538,
+        "name": "the Minstrel's Ballad: Tsukuyomi's Pain"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Castrum Fluminis.",
@@ -5322,6 +6182,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hells' Kier Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 596,
+        "name": "Hells' Kier"
+      },
       "quest": "The Fire-bird Down Below",
       "questKind": "sidequest",
       "notes": null,
@@ -5339,6 +6204,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Omega: Alphascape Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 587,
+        "name": "Alphascape V1.0"
+      },
       "quest": "In the Beginning, There Was Chaos",
       "questKind": "sidequest",
       "notes": null,
@@ -5356,6 +6226,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Ghimlyt Dark Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 611,
+        "name": "the Ghimlyt Dark"
+      },
       "quest": "The Face of War",
       "questKind": "msq",
       "notes": null,
@@ -5373,6 +6248,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hells' Kier (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 597,
+        "name": "Hells' Kier (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Hells' Kier.",
@@ -5418,6 +6298,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Weapon's Refrain (Ultimate) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 539,
+        "name": "the Weapon's Refrain (Ultimate)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about the Ultima Weapon, Sigmascape V4.0 (Savage) (sequential; last main-chain quest used as completion marker).",
@@ -5446,6 +6331,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Wreath of Snakes Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 637,
+        "name": "the Wreath of Snakes"
+      },
       "quest": "Surpassing the Samurai",
       "questKind": "sidequest",
       "notes": null,
@@ -5463,6 +6353,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Kugane Ohashi Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 595,
+        "name": "Kugane Ohashi"
+      },
       "quest": "The Past Is Never Past",
       "questKind": "sidequest",
       "notes": null,
@@ -5480,6 +6375,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Orbonne Monastery Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 636,
+        "name": "the Orbonne Monastery"
+      },
       "quest": "The City of Lost Angels",
       "questKind": "sidequest",
       "notes": null,
@@ -5497,6 +6397,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Wreath of Snakes (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 638,
+        "name": "the Wreath of Snakes (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Wreath of Snakes.",
@@ -5678,6 +6583,11 @@
       "levelSource": "game-data:Quest#69018",
       "unlock": "The Great Serpent of Ronka Minion",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 337,
+        "name": "the Great Serpent of Ronka"
+      },
       "quest": "Protectors of the Wood",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -5695,6 +6605,11 @@
       "levelSource": "game-data:Quest#69095",
       "unlock": "Lali-ho Emote",
       "type": "emote",
+      "reward": {
+        "kind": "Emote",
+        "id": 199,
+        "name": "Lali-ho"
+      },
       "quest": "Learning to Lali-ho",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -5712,6 +6627,11 @@
       "levelSource": "game-data:Quest#69427",
       "unlock": "Ehll Tou Mount",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 230,
+        "name": "Ehll Tou"
+      },
       "quest": "On Ehll Tou's Wings",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -5763,6 +6683,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Holminster Switch Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 676,
+        "name": "Holminster Switch"
+      },
       "quest": "The Lightwardens",
       "questKind": "msq",
       "notes": null,
@@ -5848,6 +6773,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Dohn Mheg Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 649,
+        "name": "Dohn Mheg"
+      },
       "quest": "The Key to the Castle",
       "questKind": "msq",
       "notes": null,
@@ -5865,6 +6795,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dancing Plague Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 657,
+        "name": "the Dancing Plague"
+      },
       "quest": "Acht-la Ormh Inn",
       "questKind": "msq",
       "notes": null,
@@ -5950,6 +6885,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Qitana Ravel Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 651,
+        "name": "the Qitana Ravel"
+      },
       "quest": "The Burden of Knowledge",
       "questKind": "msq",
       "notes": null,
@@ -6035,6 +6975,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Malikah's Well Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 656,
+        "name": "Malikah's Well"
+      },
       "quest": "A Fresh Start",
       "questKind": "msq",
       "notes": null,
@@ -6103,6 +7048,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Dwarf Quests",
       "type": "system",
+      "reward": {
+        "kind": "NotebookDivision",
+        "id": 1029,
+        "name": "Dwarf Quests"
+      },
       "quest": "It's Dwarfin' Time",
       "questKind": "sidequest",
       "notes": null,
@@ -6120,6 +7070,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Mt. Gulg Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 659,
+        "name": "Mt. Gulg"
+      },
       "quest": "Extinguishing the Last Light",
       "questKind": "msq",
       "notes": null,
@@ -6137,6 +7092,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Crown of the Immaculate Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 666,
+        "name": "the Crown of the Immaculate"
+      },
       "quest": "Extinguishing the Last Light",
       "questKind": "msq",
       "notes": null,
@@ -6364,6 +7324,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Amaurot Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 652,
+        "name": "Amaurot"
+      },
       "quest": "Shadowbringers",
       "questKind": "msq",
       "notes": null,
@@ -6381,6 +7346,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dying Gasp Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 687,
+        "name": "the Dying Gasp"
+      },
       "quest": "Shadowbringers",
       "questKind": "msq",
       "notes": null,
@@ -6398,6 +7368,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Twinning Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 655,
+        "name": "the Twinning"
+      },
       "quest": "By the Time You Hear This",
       "questKind": "sidequest",
       "notes": null,
@@ -6415,6 +7390,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Akadaemia Anyder (Duty) Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 661,
+        "name": "Akadaemia Anyder"
+      },
       "quest": "Akadaemia Anyder",
       "questKind": "sidequest",
       "notes": null,
@@ -6483,6 +7463,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Grand Cosmos Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 692,
+        "name": "the Grand Cosmos"
+      },
       "quest": "A Grand Adventure",
       "questKind": "msq",
       "notes": null,
@@ -6551,6 +7536,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Bozjan Southern Front Access",
       "type": "zone",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 735,
+        "name": "the Bozjan Southern Front"
+      },
       "quest": "Where Eagles Nest",
       "questKind": "sidequest",
       "notes": null,
@@ -6572,6 +7562,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Delubrum Reginae Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 760,
+        "name": "Delubrum Reginae"
+      },
       "quest": "Fit for a Queen",
       "questKind": "sidequest",
       "notes": null,
@@ -6589,6 +7584,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Delubrum Reginae (Savage) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 761,
+        "name": "Delubrum Reginae (Savage)"
+      },
       "quest": "A Seaside Story",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Delubrum Reginae, The Bozjan Southern Front, A Seaside Story (sequential; last main-chain quest used as completion marker).",
@@ -6606,6 +7606,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Zadnor Access",
       "type": "zone",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 778,
+        "name": "Zadnor"
+      },
       "quest": "A New Playing Field",
       "questKind": "sidequest",
       "notes": null,
@@ -6627,6 +7632,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dancing Plague (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 658,
+        "name": "the Dancing Plague (Extreme)"
+      },
       "quest": "Minstrel from Another Mother",
       "questKind": "other",
       "notes": "Prerequisite: Minstrel from Another Mother.",
@@ -6644,6 +7654,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Crown of the Immaculate (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 667,
+        "name": "the Crown of the Immaculate (Extreme)"
+      },
       "quest": "Minstrel from Another Mother",
       "questKind": "other",
       "notes": "Prerequisite: Minstrel from Another Mother.",
@@ -6661,6 +7676,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Copied Factory Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 700,
+        "name": "the Copied Factory"
+      },
       "quest": "On the Threshold",
       "questKind": "sidequest",
       "notes": null,
@@ -6678,6 +7698,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Anamnesis Anyder Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 714,
+        "name": "Anamnesis Anyder"
+      },
       "quest": "Beneath the Surface",
       "questKind": "msq",
       "notes": null,
@@ -6712,6 +7737,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Hades's Elegy Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 693,
+        "name": "the Minstrel's Ballad: Hades's Elegy"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Dying Gasp.",
@@ -6740,6 +7770,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Cinder Drift Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 717,
+        "name": "Cinder Drift"
+      },
       "quest": "Ruby Doomsday",
       "questKind": "sidequest",
       "notes": null,
@@ -6774,6 +7809,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Heroes' Gauntlet Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 737,
+        "name": "the Heroes' Gauntlet"
+      },
       "quest": "The Converging Light",
       "questKind": "msq",
       "notes": null,
@@ -6791,6 +7831,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Cinder Drift (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 718,
+        "name": "Cinder Drift (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Cinder Drift.",
@@ -6819,6 +7864,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Seat of Sacrifice Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 738,
+        "name": "the Seat of Sacrifice"
+      },
       "quest": "Hope's Confluence",
       "questKind": "msq",
       "notes": null,
@@ -6836,6 +7886,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Puppets' Bunker Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 736,
+        "name": "the Puppets' Bunker"
+      },
       "quest": "Everything You Know Is Wrong",
       "questKind": "sidequest",
       "notes": null,
@@ -6853,6 +7908,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Memoria Misera (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 725,
+        "name": "Memoria Misera (Extreme)"
+      },
       "quest": "The Bozja Incident",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Wandering Dramaturge, Gangos, The Bozja Incident (sequential; last main-chain quest used as completion marker).",
@@ -6870,6 +7930,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Matoya's Relict Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 746,
+        "name": "Matoya's Relict"
+      },
       "quest": "Like Master, Like Pupil",
       "questKind": "msq",
       "notes": null,
@@ -6887,6 +7952,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Paglth'an Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 777,
+        "name": "Paglth'an"
+      },
       "quest": "The Flames of War",
       "questKind": "msq",
       "notes": null,
@@ -6904,6 +7974,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Epic of Alexander (Ultimate) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 694,
+        "name": "the Epic of Alexander (Ultimate)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about Alexander, Eden's Gate: Sepulture (Savage) (sequential; last main-chain quest used as completion marker).",
@@ -6949,6 +8024,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Seat of Sacrifice (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 739,
+        "name": "the Seat of Sacrifice (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Seat of Sacrifice.",
@@ -6977,6 +8057,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Cloud Deck Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 781,
+        "name": "the Cloud Deck"
+      },
       "quest": "Duty in the Sky with Diamond",
       "questKind": "sidequest",
       "notes": null,
@@ -6994,6 +8079,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Eden's Promise Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 749,
+        "name": "Eden's Promise: Umbra"
+      },
       "quest": "Fear of the Dark",
       "questKind": "sidequest",
       "notes": null,
@@ -7011,6 +8101,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Castrum Marinum (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 763,
+        "name": "Castrum Marinum (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Castrum Marinum.",
@@ -7039,6 +8134,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Castrum Marinum Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 762,
+        "name": "Castrum Marinum"
+      },
       "quest": "Blood of Emerald",
       "questKind": "sidequest",
       "notes": null,
@@ -7056,6 +8156,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Tower at Paradigm's Breach Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 779,
+        "name": "the Tower at Paradigm's Breach"
+      },
       "quest": "Brave New World",
       "questKind": "sidequest",
       "notes": null,
@@ -7073,6 +8178,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Cloud Deck (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 782,
+        "name": "the Cloud Deck (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Cloud Deck.",
@@ -7305,6 +8415,11 @@
       "levelSource": "game-data:Quest#70253",
       "unlock": "Anden III Mount",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 311,
+        "name": "Anden III"
+      },
       "quest": "A Labor of Leaf",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -7407,6 +8522,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Tower of Zot Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 783,
+        "name": "the Tower of Zot"
+      },
       "quest": "In the Dark of the Tower",
       "questKind": "msq",
       "notes": null,
@@ -7492,6 +8612,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Tower of Babil Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 785,
+        "name": "the Tower of Babil"
+      },
       "quest": "Gateway of the Gods",
       "questKind": "msq",
       "notes": null,
@@ -7509,6 +8634,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dark Inside Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 802,
+        "name": "the Dark Inside"
+      },
       "quest": "The Martyr",
       "questKind": "msq",
       "notes": null,
@@ -7560,6 +8690,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Loporrit Quests",
       "type": "system",
+      "reward": {
+        "kind": "NotebookDivision",
+        "id": 1054,
+        "name": "Loporrit Quests"
+      },
       "quest": "Must Be Dreaming",
       "questKind": "sidequest",
       "notes": null,
@@ -7594,6 +8729,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Vanaspati Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 789,
+        "name": "Vanaspati"
+      },
       "quest": "Skies Aflame",
       "questKind": "msq",
       "notes": null,
@@ -7696,6 +8836,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Ktisis Hyperboreia Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 787,
+        "name": "Ktisis Hyperboreia"
+      },
       "quest": "Caging the Messenger",
       "questKind": "msq",
       "notes": null,
@@ -7781,6 +8926,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Aitiascope Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 786,
+        "name": "the Aitiascope"
+      },
       "quest": "Her Children, One and All",
       "questKind": "msq",
       "notes": null,
@@ -7798,6 +8948,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Mothercrystal Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 790,
+        "name": "the Mothercrystal"
+      },
       "quest": "Her Children, One and All",
       "questKind": "msq",
       "notes": null,
@@ -7815,6 +8970,11 @@
       "levelSource": "game-data:Quest#70010",
       "unlock": "Golden Dhyata minion",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 437,
+        "name": "Golden Dhyata"
+      },
       "quest": "The Meeting of Minds",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -7849,6 +9009,11 @@
       "levelSource": "game-data:Quest#70291",
       "unlock": "Wind-up PuPu minion",
       "type": "minion",
+      "reward": {
+        "kind": "Companion",
+        "id": 454,
+        "name": "wind-up PuPu"
+      },
       "quest": "Not from Around Here",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone. Requires completing all of: Not from Around Here, Hildibrand (sequential; last main-chain quest used as completion marker).",
@@ -7866,6 +9031,11 @@
       "levelSource": "game-data:Quest#70349",
       "unlock": "Wayfarer's Barding",
       "type": "system",
+      "reward": {
+        "kind": "BuddyEquip",
+        "id": 95,
+        "name": "Wayfarer's Barding"
+      },
       "quest": "More Precious than Gil",
       "questKind": "other",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -7883,6 +9053,11 @@
       "levelSource": "game-data:Quest#70349",
       "unlock": "Tataru's Bespoke Framer's Kit",
       "type": "system",
+      "reward": {
+        "kind": "Item",
+        "id": 41370,
+        "name": "Tataru's Bespoke Framer's Kit"
+      },
       "quest": "More Precious than Gil",
       "questKind": "other",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -7900,6 +9075,11 @@
       "levelSource": "game-data:Quest#70336",
       "unlock": "UFO Mount",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 290,
+        "name": "UFO"
+      },
       "quest": "Gentlemen at Heart",
       "questKind": "other",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -8093,6 +9273,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Dead Ends Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 792,
+        "name": "the Dead Ends"
+      },
       "quest": "Endwalker",
       "questKind": "msq",
       "notes": null,
@@ -8110,6 +9295,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Final Day Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 796,
+        "name": "the Final Day"
+      },
       "quest": "Endwalker",
       "questKind": "msq",
       "notes": null,
@@ -8127,6 +9317,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Stigma Dreamscape Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 784,
+        "name": "the Stigma Dreamscape"
+      },
       "quest": "Where No Loporrit Has Gone Before",
       "questKind": "sidequest",
       "notes": null,
@@ -8144,6 +9339,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Smileton Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 794,
+        "name": "Smileton"
+      },
       "quest": "Cutting the Cheese",
       "questKind": "sidequest",
       "notes": null,
@@ -8195,6 +9395,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Excitatron 6000 Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 819,
+        "name": "the Excitatron 6000"
+      },
       "quest": null,
       "questKind": "other",
       "notes": null,
@@ -8223,6 +9428,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Shifting Gymnasion Agonon Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 909,
+        "name": "the Shifting Gymnasion Agonon"
+      },
       "quest": null,
       "questKind": "other",
       "notes": null,
@@ -8268,6 +9478,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Zodiark's Fall Extreme Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 803,
+        "name": "the Minstrel's Ballad: Zodiark's Fall"
+      },
       "quest": "I Wandered Sharlayan as a Minstrel",
       "questKind": "other",
       "notes": "Prerequisite: I Wandered Sharlayan as a Minstrel.",
@@ -8285,6 +9500,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Hydaelyn's Call Extreme Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 791,
+        "name": "the Minstrel's Ballad: Hydaelyn's Call"
+      },
       "quest": "I Wandered Sharlayan as a Minstrel",
       "questKind": "other",
       "notes": "Prerequisite: I Wandered Sharlayan as a Minstrel.",
@@ -8421,6 +9641,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Aglaia Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 866,
+        "name": "Aglaia"
+      },
       "quest": "The Realm of the Gods",
       "questKind": "sidequest",
       "notes": null,
@@ -8438,6 +9663,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Endsinger's Aria Extreme Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 846,
+        "name": "the Minstrel's Ballad: Endsinger's Aria"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Final Day.",
@@ -8466,6 +9696,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Fell Court of Troia Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 869,
+        "name": "the Fell Court of Troia"
+      },
       "quest": "In Search of Azdaja",
       "questKind": "msq",
       "notes": null,
@@ -8483,6 +9718,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Sil'dihn Subterrane Variant Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 868,
+        "name": "the Sil'dihn Subterrane"
+      },
       "quest": "A Key to the Past",
       "questKind": "sidequest",
       "notes": null,
@@ -8500,6 +9740,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Asphodelos (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 800,
+        "name": "Asphodelos: The Fourth Circle"
+      },
       "quest": "Who Wards the Warders?",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Recount tales of Asphodelos, Who Wards the Warders? (sequential; last main-chain quest used as completion marker).",
@@ -8517,6 +9762,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Storm's Crown Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 870,
+        "name": "Storm's Crown"
+      },
       "quest": "The Wind Rises",
       "questKind": "msq",
       "notes": null,
@@ -8551,6 +9801,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Lapis Manalis Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 896,
+        "name": "Lapis Manalis"
+      },
       "quest": "King of the Mountain",
       "questKind": "msq",
       "notes": null,
@@ -8568,6 +9823,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Dragonsong's Reprise (Ultimate) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 788,
+        "name": "Dragonsong's Reprise (Ultimate)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about the Dragonsong War, Asphodelos: The Fourth Circle (Savage) (sequential; last main-chain quest used as completion marker).",
@@ -8596,6 +9856,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Storm's Crown (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 871,
+        "name": "Storm's Crown (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Storm's Crown.",
@@ -8624,6 +9889,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Mount Ordeals Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 886,
+        "name": "Mount Ordeals"
+      },
       "quest": "Desires Untold",
       "questKind": "msq",
       "notes": null,
@@ -8641,6 +9911,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Euphrosyne Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 911,
+        "name": "Euphrosyne"
+      },
       "quest": "Return to the Phantom Realm",
       "questKind": "sidequest",
       "notes": null,
@@ -8658,6 +9933,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Abyssos (Savage) Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 883,
+        "name": "Abyssos: The Eighth Circle"
+      },
       "quest": "One Final Wish",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Recount tales of Abyssos, One Final Wish (sequential; last main-chain quest used as completion marker).",
@@ -8675,6 +9955,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Sil'dihn Subterrane Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 878,
+        "name": "Another Sil'dihn Subterrane"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Sil'dihn Subterrane.",
@@ -8703,6 +9988,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Mount Ordeals (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 924,
+        "name": "Mount Ordeals (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Mount Ordeals.",
@@ -8731,6 +10021,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Aetherfont Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 822,
+        "name": "the Aetherfont"
+      },
       "quest": "Going Haam",
       "questKind": "msq",
       "notes": null,
@@ -8748,6 +10043,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Mount Rokkon Variant Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 945,
+        "name": "Mount Rokkon"
+      },
       "quest": "Mononoke Aware",
       "questKind": "sidequest",
       "notes": null,
@@ -8765,6 +10065,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Aloalo Island Variant Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 961,
+        "name": "Aloalo Island"
+      },
       "quest": "Stranger from Paradise",
       "questKind": "sidequest",
       "notes": null,
@@ -8782,6 +10087,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Lunar Subterrane Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 823,
+        "name": "the Lunar Subterrane"
+      },
       "quest": "Down in the Dark",
       "questKind": "msq",
       "notes": null,
@@ -8799,6 +10109,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Anabaseios Access",
       "type": "raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 936,
+        "name": "Anabaseios: The Ninth Circle"
+      },
       "quest": "Eater of Souls",
       "questKind": "sidequest",
       "notes": null,
@@ -8816,6 +10131,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Voidcast Dais Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 949,
+        "name": "the Voidcast Dais"
+      },
       "quest": "Abyssal Dark",
       "questKind": "msq",
       "notes": null,
@@ -8833,6 +10153,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Abyssal Fracture Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 964,
+        "name": "the Abyssal Fracture"
+      },
       "quest": "Down in the Dark",
       "questKind": "msq",
       "notes": null,
@@ -8850,6 +10175,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Sil'dihn Subterrane (Savage) Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 879,
+        "name": "Another Sil'dihn Subterrane (Savage)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Another Sil'dihn Subterrane.",
@@ -8878,6 +10208,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Omega Protocol (Ultimate) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 908,
+        "name": "the Omega Protocol (Ultimate)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about Omega, Abyssos: The Eighth Circle (Savage) (sequential; last main-chain quest used as completion marker).",
@@ -8906,6 +10241,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Voidcast Dais (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 950,
+        "name": "the Voidcast Dais (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Voidcast Dais.",
@@ -8934,6 +10274,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Thaleia Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 962,
+        "name": "Thaleia"
+      },
       "quest": "The Heart of the Myth",
       "questKind": "sidequest",
       "notes": null,
@@ -8985,6 +10330,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Mount Rokkon Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 946,
+        "name": "Another Mount Rokkon"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Mount Rokkon.",
@@ -9013,6 +10363,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Aloalo Island Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 979,
+        "name": "Another Aloalo Island"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Aloalo Island.",
@@ -9041,6 +10396,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Abyssal Fracture (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 965,
+        "name": "the Abyssal Fracture (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Abyssal Fracture.",
@@ -9069,6 +10429,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Mount Rokkon (Savage) Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 947,
+        "name": "Another Mount Rokkon (Savage)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Another Mount Rokkon.",
@@ -9097,6 +10462,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Aloalo Island (Savage) Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 980,
+        "name": "Another Aloalo Island (Savage)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: Another Aloalo Island.",
@@ -9295,6 +10665,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Merchant's Tale Variant Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1066,
+        "name": "The Merchant's Tale"
+      },
       "quest": "A Spellbinding Read",
       "questKind": "sidequest",
       "notes": null,
@@ -9329,6 +10704,11 @@
       "levelSource": "game-data:Quest#70709",
       "unlock": "The Cornservant",
       "type": "system",
+      "reward": {
+        "kind": "Companion",
+        "id": 516,
+        "name": "the Cornservant"
+      },
       "quest": "Tasteful Memories",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -9346,6 +10726,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Ihuykatumu Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 826,
+        "name": "Ihuykatumu"
+      },
       "quest": "For All Turali",
       "questKind": "msq",
       "notes": null,
@@ -9380,6 +10765,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Final Verse Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1065,
+        "name": "the Final Verse"
+      },
       "quest": "Pilgrim's Traverse",
       "questKind": "other",
       "notes": null,
@@ -9401,6 +10791,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Final Verse (Quantum) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1063,
+        "name": "the Final Verse (Quantum)"
+      },
       "quest": "A Branch and Their Sapling",
       "questKind": "sidequest",
       "notes": "Requires completing all of: Pilgrim's Traverse, A Branch and Their Sapling (sequential; last main-chain quest used as completion marker).",
@@ -9469,6 +10864,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Worqor Zormor Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 824,
+        "name": "Worqor Zormor"
+      },
       "quest": "The High Luminary",
       "questKind": "msq",
       "notes": null,
@@ -9486,6 +10886,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Worqor Lar Dor Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 832,
+        "name": "Worqor Lar Dor"
+      },
       "quest": "The Skyruin",
       "questKind": "msq",
       "notes": null,
@@ -9537,6 +10942,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Skydeep Cenote Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 829,
+        "name": "the Skydeep Cenote"
+      },
       "quest": "Road to the Golden City",
       "questKind": "msq",
       "notes": null,
@@ -9605,6 +11015,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Vanguard Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 831,
+        "name": "Vanguard"
+      },
       "quest": "All Aboard",
       "questKind": "msq",
       "notes": null,
@@ -9690,6 +11105,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Origenics Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 825,
+        "name": "Origenics"
+      },
       "quest": "The Resilient Son",
       "questKind": "msq",
       "notes": null,
@@ -9707,6 +11127,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Everkeep Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 995,
+        "name": "Everkeep"
+      },
       "quest": "The Resilient Son",
       "questKind": "msq",
       "notes": null,
@@ -9741,6 +11166,11 @@
       "levelSource": "game-data:Quest#70843",
       "unlock": "The Deathservant",
       "type": "system",
+      "reward": {
+        "kind": "Companion",
+        "id": 536,
+        "name": "the Deathservant"
+      },
       "quest": "When Death Comes to Dinner",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -9900,6 +11330,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Alexandria Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 827,
+        "name": "Alexandria"
+      },
       "quest": "Dawntrail",
       "questKind": "msq",
       "notes": null,
@@ -9917,6 +11352,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Interphos Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 984,
+        "name": "the Interphos"
+      },
       "quest": "Dawntrail",
       "questKind": "msq",
       "notes": null,
@@ -9934,6 +11374,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Strayborough Deadwalk Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 981,
+        "name": "The Strayborough Deadwalk"
+      },
       "quest": "Something Stray in the Neighborhood",
       "questKind": "sidequest",
       "notes": null,
@@ -9951,6 +11396,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Tender Valley Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 834,
+        "name": "Tender Valley"
+      },
       "quest": "It Belongs in a Museum",
       "questKind": "sidequest",
       "notes": null,
@@ -9985,6 +11435,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Everkeep (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 996,
+        "name": "Everkeep (Extreme)"
+      },
       "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
@@ -10002,6 +11457,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Worqor Lar Dor (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 833,
+        "name": "Worqor Lar Dor (Extreme)"
+      },
       "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
@@ -10036,6 +11496,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Yuweyawata Field Station Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1008,
+        "name": "Yuweyawata Field Station"
+      },
       "quest": "In Search of the Past",
       "questKind": "msq",
       "notes": null,
@@ -10053,6 +11518,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Jeuno: The First Walk Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1015,
+        "name": "Jeuno: The First Walk"
+      },
       "quest": "An Otherworldly Encounter",
       "questKind": "sidequest",
       "notes": null,
@@ -10155,6 +11625,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Sphene's Burden Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1017,
+        "name": "the Minstrel's Ballad: Sphene's Burden"
+      },
       "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
@@ -10172,6 +11647,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Cloud of Darkness (Chaotic) Raid Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1010,
+        "name": "the Cloud of Darkness (Chaotic)"
+      },
       "quest": "How the West Was Sung",
       "questKind": "other",
       "notes": "Prerequisite: How the West Was Sung.",
@@ -10189,6 +11669,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Underkeep Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1027,
+        "name": "the Underkeep"
+      },
       "quest": "Descent to the Foundation",
       "questKind": "msq",
       "notes": null,
@@ -10223,6 +11708,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Recollection Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1030,
+        "name": "Recollection"
+      },
       "quest": "Descent to the Foundation",
       "questKind": "msq",
       "notes": null,
@@ -10240,6 +11730,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Meso Terminal Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1028,
+        "name": "the Meso Terminal"
+      },
       "quest": "A Terminal Invitation",
       "questKind": "msq",
       "notes": null,
@@ -10257,6 +11752,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Futures Rewritten (Ultimate) Access",
       "type": "system",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1006,
+        "name": "Futures Rewritten (Ultimate)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Requires completing all of: Talk about the Flood of Light, AAC Light-heavyweight M4 (Savage) (sequential; last main-chain quest used as completion marker).",
@@ -10285,6 +11785,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Recollection (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1031,
+        "name": "Recollection (Extreme)"
+      },
       "quest": "Descent to the Foundation",
       "questKind": "other",
       "notes": "Prerequisite: Descent to the Foundation.",
@@ -10302,6 +11807,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "San d'Oria: The Second Walk Access",
       "type": "alliance-raid",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1058,
+        "name": "San d'Oria: The Second Walk"
+      },
       "quest": "Dreams of Paradise",
       "questKind": "sidequest",
       "notes": null,
@@ -10319,6 +11829,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Ageless Necropolis Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1061,
+        "name": "the Ageless Necropolis"
+      },
       "quest": "A Terminal Invitation",
       "questKind": "msq",
       "notes": null,
@@ -10336,6 +11851,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Windward Wilds Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1043,
+        "name": "the Windward Wilds"
+      },
       "quest": "The White Wanderer",
       "questKind": "sidequest",
       "notes": null,
@@ -10370,6 +11890,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Minstrel's Ballad: Necron's Embrace Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1062,
+        "name": "the Minstrel's Ballad: Necron's Embrace"
+      },
       "quest": "A Terminal Invitation",
       "questKind": "other",
       "notes": "Prerequisite: A Terminal Invitation.",
@@ -10387,6 +11912,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Windward Wilds (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1044,
+        "name": "the Windward Wilds (Extreme)"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Windward Wilds.",
@@ -10415,6 +11945,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hell on Rails Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1076,
+        "name": "Hell on Rails"
+      },
       "quest": "Where We Call Home",
       "questKind": "msq",
       "notes": null,
@@ -10449,6 +11984,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Hell on Rails (Extreme) Trial Access",
       "type": "trial",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1077,
+        "name": "Hell on Rails (Extreme)"
+      },
       "quest": "Where We Call Home",
       "questKind": "other",
       "notes": "Prerequisite: Where We Call Home.",
@@ -10483,6 +12023,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "The Merchant's Tale (Advanced) Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1084,
+        "name": "The Merchant's Tale (Advanced)"
+      },
       "quest": "Abridged Too Far",
       "questKind": "sidequest",
       "notes": null,
@@ -10500,6 +12045,11 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Another Merchant's Tale Criterion Dungeon Access",
       "type": "dungeon",
+      "reward": {
+        "kind": "ContentFinderCondition",
+        "id": 1079,
+        "name": "Another Merchant's Tale"
+      },
       "quest": null,
       "questKind": "other",
       "notes": "Prerequisite: The Merchant's Tale (Advanced).",
@@ -10527,6 +12077,11 @@
       "category": "Heavensward Unique Quest Rewards",
       "unlock": "Firebird (Mount)",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 105,
+        "name": "Firebird"
+      },
       "quest": "Fiery Wings, Fiery Hearts",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -10585,6 +12140,11 @@
       "category": "Stormblood Unique Quest Rewards",
       "unlock": "Kamuy of the Nine Tails (Mount)",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 181,
+        "name": "Kamuy of the Nine Tails"
+      },
       "quest": "A Lone Wolf No More",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -10643,6 +12203,11 @@
       "category": "Shadowbringers Unique Quest Rewards",
       "unlock": "Landerwaffe (Mount)",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 245,
+        "name": "Landerwaffe"
+      },
       "quest": "The Dragon Made",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -10701,6 +12266,11 @@
       "category": "Endwalker Unique Quest Rewards",
       "unlock": "Apocryphal Bahamut (Mount)",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 328,
+        "name": "apocryphal Bahamut"
+      },
       "quest": "Wings of Hope",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",
@@ -10759,6 +12329,11 @@
       "category": "Dawntrail Unique Quest Rewards",
       "unlock": "Wings of Legacy (Mount)",
       "type": "mount",
+      "reward": {
+        "kind": "Mount",
+        "id": 420,
+        "name": "wings of legacy"
+      },
       "quest": "The Wing Spirit Cometh",
       "questKind": "sidequest",
       "notes": "Unique quest reward from this expansion's leveling range; not tied to a single level milestone.",

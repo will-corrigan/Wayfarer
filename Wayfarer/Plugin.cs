@@ -109,7 +109,7 @@ public sealed class Plugin : IDalamudPlugin
         // Built here, before the window that reads it: the readout, its ImGui fallback, the info-bar
         // entry and the window's Quests tab all compose their presentation from this one feed.
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
-        hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, inputMode, textureProvider, log);
+        hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, textureProvider, dataManager);
 
         var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
@@ -331,10 +331,22 @@ public sealed class Plugin : IDalamudPlugin
         IClientState clientState,
         IFramework framework,
         Configuration config,
-        InputModeService inputMode,
         ITextureProvider textures,
-        IPluginLog log) =>
-        new(unlocks, hunting, feed, modules, objects, clientState, framework, config, settings, inputMode, new HubStatusIcons(textures, log), log)
+        IDataManager dataManager) =>
+        new(
+            unlocks,
+            hunting,
+            feed,
+            modules,
+            objects,
+            clientState,
+            framework,
+            config,
+            settings,
+            inputMode,
+            new HubStatusIcons(textures, log),
+            new HubRewardIcons(dataManager, log),
+            log)
         {
             InternalName = "WayfarerHubNative",
             Title = "Wayfarer",

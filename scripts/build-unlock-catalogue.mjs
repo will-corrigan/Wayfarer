@@ -45,6 +45,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { ALL as REWARD_KINDS, drawsAnIcon } from '../data/reward-kinds.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATASET = path.join(REPO, 'data', 'unlocks-by-level.json');
@@ -413,6 +414,34 @@ function resolveNames(names, sqpack, questRowIds = []) {
   return JSON.parse(fs.readFileSync(resPath, 'utf8'));
 }
 
+/** Asks the resolver what each entry actually GRANTS — the sheet row behind the prose in `unlock`.
+ *
+ * A second round trip rather than another field on the first, because the join needs the facts the
+ * first call is what produces: the Quest rows an entry is finally bound to, and the duty its label
+ * link resolved to. The rules that pick one reward out of a quest's several live in
+ * tools/Wayfarer.CatalogueGen/RewardIndex.cs, next to the sheets they read — this script
+ * deliberately owns none of that reasoning. */
+function resolveRewards(joins, sqpack) {
+  fs.mkdirSync(OUT, { recursive: true });
+  const reqPath = path.join(OUT, 'rewards-request.json');
+  const resPath = path.join(OUT, 'rewards-response.json');
+  fs.writeFileSync(reqPath, JSON.stringify({ sqpack, joins }, null, 1));
+
+  const run = spawnSync(
+    'dotnet',
+    ['run', '--project', TOOL, '-c', 'Debug', '--', 'rewards', reqPath, resPath],
+    { stdio: ['ignore', 'inherit', 'inherit'], encoding: 'utf8' },
+  );
+  if (run.status !== 0) {
+    throw new Error(
+      `tools/Wayfarer.CatalogueGen rewards exited ${run.status}. Generation needs a local game ` +
+        'installation; pass --sqpack or set WAYFARER_SQPACK. CI validates the committed dataset ' +
+        'instead — see data/README.md.',
+    );
+  }
+  return JSON.parse(fs.readFileSync(resPath, 'utf8')).rewards ?? {};
+}
+
 /** Every link on the requirement side of a row, plus the ones the colon split could not place.
  * Links on the LABEL side name the thing being unlocked, not the thing that unlocks it, so they
  * can never establish a gate. */
@@ -683,9 +712,13 @@ function infoboxQuestNumber(record) {
 
 // --------------------------------------------------------------------------- emit
 
+// `reward` sits beside `unlock` and `type` because it is the same statement in a form a machine
+// can use: those two say what the thing is called and which list it lands in, and this says which
+// row in which sheet it actually is. `quest`/`questAnyOf` are the other half of the entry — how
+// you get it — and stay together after it.
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
-  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
+  'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ];
 
 // The guide types each row with an icon, and that icon is a statement by the source about what
@@ -1083,6 +1116,8 @@ async function main() {
     alternativeSets: [],
     gates: [],
     levelless: [],
+    rewards: [],
+    entriesWithoutAReward: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
     mountRequirementOverrides,
     newTrophyMountEntries,
@@ -1189,7 +1224,13 @@ async function main() {
   const shipping = proposals.filter((p) => !p.row?.unreleased);
 
   // ------------------------------------------------------------------ build the entries
-  const unlocks = shipping.map(({ entry, row, questRows, basis, fromGuide }) => {
+  //
+  // One join request per entry, filled in as each entry is built and sent in a single batch once
+  // they all are — see resolveRewards. The `ref` is the entry's position in `shipping`, which is
+  // the only handle on a catalogue entry guaranteed unique (two entries can share a name).
+  const rewardJoins = [];
+
+  const unlocks = shipping.map(({ entry, row, questRows, basis, fromGuide }, entryIndex) => {
     const curatedExtras = entry.sources.filter((s) => s !== GUIDE_SOURCE && !s.startsWith('game-data:Quest#'));
 
     // Gates that are not quests. Only reached when nothing bound a Quest row: a quest completion
@@ -1198,6 +1239,11 @@ async function main() {
     // and the difference between "status unknown" and "requires clearing Sigmascape V4.0
     // (Savage)" is the whole value of reading it.
     const labelDuties = row && !questRows.length ? dutyRows(labelLinks(row), resolved) : [];
+    // The same label-side duties, read whether or not a Quest row was bound. They are the entry's
+    // IDENTITY — "[[The Aery]] Dungeon Access" is that duty however it was gated — which is what
+    // the reward join needs; `labelDuties` above stays restricted to the no-quest case because it
+    // feeds `sources`, and widening it there would rewrite provenance for 500 entries.
+    const identityDuties = row ? dutyRows(labelLinks(row), resolved) : [];
     const gateDuties = row && !questRows.length ? dutyRows(requirementLinks(row), resolved) : [];
     const gateItems = row && !questRows.length ? itemRowsFromRequirement(row, resolved, mapChestTypes) : [];
     // A duty the entry is ABOUT is its identity, not its gate: "[[The Aquapolis]] Access" names
@@ -1358,8 +1404,64 @@ async function main() {
         });
       }
     }
+
+    // Everything the reward join is allowed to reason from. `out.type` rather than `entry.type`
+    // because the guide's row icon may just have corrected it, and a duty typed `mount` would send
+    // the join looking in the wrong sheet.
+    rewardJoins.push({
+      ref: String(entryIndex),
+      unlock: out.unlock,
+      type: out.type,
+      questRowIds: [...questRows],
+      duties: identityDuties.map((d) => ({ rowId: d.cfcId, name: d.name })),
+    });
     return out;
   });
+
+  // ------------------------------------------------------------------ what each entry grants
+  //
+  // The reward is a GENERATED field: it is the row id behind the entry's own name, and the sheets
+  // are the only thing that can state it. An entry the game names no reward for keeps none — most
+  // `system` entries open a feature the game has no row for at all, and that is an answer rather
+  // than a gap (see data/README.md).
+  const rewards = resolveRewards(rewardJoins, sqpack);
+  unlocks.forEach((e, i) => {
+    const r = rewards[String(i)];
+    if (!r) {
+      delete e.reward;
+      return;
+    }
+
+    // A kind nothing downstream knows is worse than no reward at all: the validator would reject
+    // it in CI and the plugin would have no arm for it. Fail here, where the sheet walk that
+    // produced it can be corrected, rather than committing it.
+    if (!REWARD_KINDS.includes(r.kind)) {
+      throw new Error(
+        `${e.unlock}: the reward join produced kind '${r.kind}', which is not in data/reward-kinds.mjs. ` +
+          'Add it there and to Wayfarer.Core/Unlocks/UnlockReward.cs, with an icon decision, or stop emitting it.',
+      );
+    }
+
+    // The spec's rule, enforced where it can be: a kind the catalogue says draws an icon whose row
+    // has none is a data bug, and it is caught at generation rather than shipping as a blank
+    // square. The id itself is not written into the file — icon ids move between patches, so the
+    // plugin looks them up live — this only asks whether one exists at all.
+    if (drawsAnIcon(r.kind) && !r.iconId) {
+      throw new Error(
+        `${e.unlock}: reward ${r.kind}#${r.id} ("${r.name}") is an icon-bearing kind but that row has no icon. ` +
+          'Either the join picked the wrong row, or the kind belongs in WITHOUT_ICON in data/reward-kinds.mjs.',
+      );
+    }
+
+    e.reward = { kind: r.kind, id: r.id, name: r.name };
+    report.rewards.push({
+      unlock: e.unlock, level: e.level ?? null, type: e.type,
+      kind: r.kind, id: r.id, name: r.name, how: r.how, via: r.via, iconId: r.iconId,
+    });
+  });
+  for (const e of unlocks) {
+    if (!e.reward) report.entriesWithoutAReward.push({ unlock: e.unlock, level: e.level ?? null, type: e.type });
+  }
 
   // ------------------------------------------------------------------ order
   //
@@ -1442,6 +1544,13 @@ async function main() {
     entriesWithAQuestAnyOfSet: unlocks.filter((e) => (e.questAnyOf?.length ?? 0) > 0).length,
     entriesGatedOnADutyClear: unlocks.filter((e) => (e.requires?.duties?.length ?? 0) > 0).length,
     entriesGatedOnAnItem: unlocks.filter((e) => (e.requires?.items?.length ?? 0) > 0).length,
+    entriesWithAReward: unlocks.filter((e) => e.reward).length,
+    entriesWithoutAReward: report.entriesWithoutAReward.length,
+    entriesWhoseRewardHasAnIcon: unlocks.filter((e) => e.reward && drawsAnIcon(e.reward.kind)).length,
+    rewardKinds: report.rewards.reduce((a, r) => ({ ...a, [r.kind]: (a[r.kind] ?? 0) + 1 }), {}),
+    rewardJoinRules: report.rewards.reduce((a, r) => ({ ...a, [r.how]: (a[r.how] ?? 0) + 1 }), {}),
+    entriesWithoutARewardByType: report.entriesWithoutAReward.reduce(
+      (a, e) => ({ ...a, [e.type]: (a[e.type] ?? 0) + 1 }), {}),
     entriesDroppedAsUnreleased: report.droppedEntries.length,
     entriesRetypedByTheGuideIcon: report.retypedEntries.length,
     confidence: unlocks.reduce((a, e) => ({ ...a, [e.confidence]: (a[e.confidence] ?? 0) + 1 }), {}),
@@ -1470,6 +1579,10 @@ async function main() {
   for (const d of report.droppedEntries) console.log(`dropped as unreleased: ${d.unlock} (${d.page})`);
   for (const t of report.retypedEntries) console.log(`retyped by the guide's row icon: ${t.unlock} ${t.from} -> ${t.to} (${t.icon})`);
   console.log(`entries with no grounded level, categorised instead: ${report.levelless.length} ${JSON.stringify(report.counts.levellessCategories)}`);
+  console.log(`entries with a reward: ${report.counts.entriesWithAReward} of ${unlocks.length} (${report.counts.entriesWhoseRewardHasAnIcon} of those draw an icon)`);
+  console.log(`  by kind:      ${JSON.stringify(report.counts.rewardKinds)}`);
+  console.log(`  by join rule: ${JSON.stringify(report.counts.rewardJoinRules)}`);
+  console.log(`entries with no reward the game states: ${report.counts.entriesWithoutAReward} ${JSON.stringify(report.counts.entriesWithoutARewardByType)}`);
   console.log('');
   console.log(identical
     ? 'REPRODUCES the committed dataset byte for byte.'

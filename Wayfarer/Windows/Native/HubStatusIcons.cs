@@ -31,6 +31,12 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
     /// when it cannot. The three blocks this plugin draws from were measured against the live
     /// install: the 60640 padlock composites are 24x24, the 63xxx Hunting Log creature portraits are
     /// 48x48, and the 71000 markers are 32x32.</para></summary>
+    /// <para><b>Why the reward row does not come through here.</b> A reward's icon cannot be sized
+    /// by its id: the sheets' icon blocks interleave. Ornament art starts at 786 and runs to 8057,
+    /// straight through the mount block; BeastTribe's 36x36 crests at 65016 sit inside the item
+    /// range. What a reward icon <i>can</i> be sized by is the sheet it came from, which the caller
+    /// already knows — see <see cref="HubRewardIcons"/>, which returns the authored size with the
+    /// id.</para>
     public static Vector2 SourceSize(uint iconId) => iconId switch
     {
         >= 60000 and < 61000 => new Vector2(24f, 24f),

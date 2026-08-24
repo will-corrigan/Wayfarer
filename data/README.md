@@ -70,6 +70,44 @@ can read. Those entries keep `requires.unverifiable` *and* cite their rows — t
 correct, and it is the difference between "status unknown" and "requires clearing Sigmascape V4.0
 (Savage)".
 
+## What an entry grants — `reward`
+
+`unlock` is prose. It is what a guide calls the thing, and the guide calls the same mount "Firebird
+(Mount)" and the same duty "The Aery Dungeon Access". Neither string is a row in any sheet, so
+nothing could be drawn from it: the picture of a mount lives on `Mount.Icon`. `reward` is the pair a
+lookup can start from —
+
+```json
+"reward": { "kind": "ContentFinderCondition", "id": 155, "name": "the Aery" }
+```
+
+`kind` names the sheet that owns the identity and is one of the closed set in
+`data/reward-kinds.mjs`; `id` is the row; `name` is that row's own player-facing name, kept so the
+reward can always be said in words. The name is not decoration — KamiToolKit registers tooltips on
+mouse events only, so an icon with no text beside it is unreadable on a controller.
+
+**The field is generated**, by `tools/Wayfarer.CatalogueGen`'s `rewards` verb, from the game's own
+reward channels: `Quest.Reward` → `Item.ItemAction` for mounts, minions, orchestrion rolls, bardings
+and the rest, `Quest.EmoteReward` / `ClassJobUnlock` / `OtherReward` / `InstanceContentUnlock`
+directly, and the feature tables that name their own unlock quest. Three rules pick which of a
+quest's several rewards an entry is about, strongest first: the entry's own name matching one the
+game says that quest grants; the ContentFinderCondition its label link already resolved to; or a
+single reward of the kind the entry's `type` names. **There is no fourth rule** — anything weaker is
+a guess of the kind that once bound seven entries to the wrong quest.
+
+**Absent is a real answer, not a gap.** 316 of the 587 entries carry one. The 271 that do not are
+overwhelmingly `system` (223) and `zone` (14): the Aesthetician, retainer ventures, the gemstone
+traders and the housing districts open features the game keeps no row for anywhere. The rest are
+entries whose *label shape* names something the sheets do not — "Deltascape (Savage) Access" against
+per-floor duty rows, "Kobold Quests" against a minion, "Mount speed increased in Mor Dhona" against
+a mount sheet it has nothing to do with. Guessing at those is the error; leaving the field off is
+the fact.
+
+**No icon id is stored.** Icon ids are renumbered between patches and a committed number that has
+moved draws a band of nothing with no way to notice, so the plugin resolves them live from the
+identity. What generation does check is that one *exists*: a kind listed in `WITH_ICON` whose row has
+no icon fails the generator on the spot, where the sheet walk that produced it can be corrected.
+
 ## Where the generator reaches into curated fields
 
 It owns identity and provenance and leaves prose alone, with three narrow exceptions. The first
@@ -104,6 +142,7 @@ The generator owns the entry's **identity and provenance**. It preserves everyth
 | `sources` | `requires` (curated script-only requirements) |
 | `confidence` | `type`, except the one correction above |
 | `level`, `levelSource`, `category` | |
+| `reward` | |
 | `requires.duties`, `requires.items` where the guide states one | |
 
 The committed dataset is therefore also the **curation store**. Editing prose in it is expected;
@@ -175,8 +214,9 @@ dev-plugin folder, on top of whatever is being tested in-game.
 ## What CI enforces
 
 `validate-unlocks.mjs` — the schema: every field's type, the closed set of types, priorities,
-confidences and requirement kinds, and that an unknown field is an error rather than a value the
-plugin silently ignores.
+confidences, requirement kinds and reward kinds, and that an unknown field is an error rather than a
+value the plugin silently ignores. It cannot check that a `reward.id` exists or has an icon — those
+need sqpack and CI has no game — so the generator checks both at the moment it writes the field.
 
 `validate-catalogue-identity.mjs` — the properties that make the file trustworthy and its diffs
 readable:

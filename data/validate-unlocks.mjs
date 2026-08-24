@@ -1,3 +1,5 @@
+import { ALL as REWARD_KINDS } from './reward-kinds.mjs';
+
 const d = (await import('./unlocks-by-level.json', { with: { type: 'json' } })).default;
 const prios = new Set(['essential', 'nice', 'optional']);
 const confidences = new Set(['verified', 'single-source', 'unverified']);
@@ -93,9 +95,34 @@ const checkRequires = (where, r) => {
 };
 
 const entryKeys = new Set([
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
-  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
+  'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ]);
+
+// What the entry actually grants, as a sheet identity. The whole value of the field is that it is
+// a ROW rather than prose, so all three parts have to be sound: a kind nothing can draw, an id of
+// zero, or a name of nothing each turn the field back into the string it exists to replace.
+//
+// What is NOT checked here: whether the row exists, or whether it has an icon. Both need sqpack
+// and CI has no game. The generator checks them at the moment it writes the field — see the
+// icon-bearing rule in scripts/build-unlock-catalogue.mjs — which is the only place that can.
+const rewardKeys = new Set(['kind', 'id', 'name']);
+
+const checkReward = (where, r) => {
+  if (typeof r !== 'object' || r === null || Array.isArray(r)) {
+    err(`${where}: 'reward' must be an object`);
+    return;
+  }
+  checkKeys(`${where} reward`, r, rewardKeys);
+  if (!REWARD_KINDS.includes(r.kind))
+    err(`${where}: reward kind '${r.kind}' is not one of data/reward-kinds.mjs' kinds`);
+  if (!Number.isInteger(r.id) || r.id <= 0) err(`${where}: reward needs a positive row id`);
+
+  // A reward with no name cannot be said out loud, and saying it is the point: KamiToolKit
+  // registers tooltips on mouse events only, so an icon is not a substitute on a controller.
+  if (typeof r.name !== 'string' || r.name.trim().length === 0)
+    err(`${where}: reward needs a name — an icon on its own is unreadable on a pad`);
+};
 
 // A set of quest rows any ONE of which completes this unlock — the Grand Company, starting-city
 // and relic-weapon variants. Written as row ids rather than a name because that is the whole
@@ -178,6 +205,10 @@ for (const [i, e] of d.unlocks.entries()) {
     err(`${where}: 'verified' needs at least two independent sources`);
 
   if ('requires' in e) checkRequires(where, e.requires);
+
+  // Absent is a real answer: most `system` entries open a feature the game keeps no row for, and
+  // presenting that as a gap would be a lie about the game rather than about the catalogue.
+  if ('reward' in e) checkReward(where, e.reward);
   checkQuestAnyOf(where, e);
 
   // No entry may be silently identity-less. Every one has to say what it is gated on — a quest, a
@@ -226,7 +257,9 @@ for (const [row, idx] of byQuestRow) {
 }
 
 const counts = d.unlocks.reduce((a, e) => ({ ...a, [e.confidence]: (a[e.confidence] ?? 0) + 1 }), {});
+const rewarded = d.unlocks.filter((e) => e.reward).length;
 console.log(errors
   ? `FAILED: ${errors} errors`
-  : `OK: ${d.unlocks.length} entries valid (${JSON.stringify(counts)})`);
+  : `OK: ${d.unlocks.length} entries valid (${JSON.stringify(counts)}); `
+    + `${rewarded} carry a reward identity, ${d.unlocks.length - rewarded} have none the game states`);
 process.exit(errors ? 1 : 0);

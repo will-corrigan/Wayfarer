@@ -46,6 +46,18 @@ public sealed class UnlockDefinition
     /// they had. Empty for the ordinary case of one quest, one unlock.</para></summary>
     public List<uint> QuestAnyOf { get; set; } = [];
 
+    /// <summary>The sheet identity this entry actually grants, or <c>null</c> when the game has no
+    /// row for it.
+    ///
+    /// <para>The catalogue used to know only what an unlock is <i>called</i>, and a name cannot be
+    /// drawn: the picture of a mount lives on <c>Mount.Icon</c>, and "Firebird (Mount)" is a
+    /// sentence in a guide rather than a row in a sheet. This is the pair a lookup can start from —
+    /// see <see cref="UnlockReward"/>.</para>
+    ///
+    /// <para>Null for the many <c>system</c> entries that open a feature the game keeps no row for.
+    /// That is an answer, not a gap, and nothing downstream may present it as one.</para></summary>
+    public UnlockReward? Reward { get; set; }
+
     public string? Notes { get; set; }
 
     public string? Description { get; set; }

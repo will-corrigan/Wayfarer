@@ -112,8 +112,10 @@ public class LayoutContainmentTests
             width: 460f,
             height: 158f,
             hasStatusIcon: true,
+            hasLevel: true,
             bodyLines: DetailPaneLayout.MaxBodyLines,
             requirementLines: DetailPaneLayout.MaxRequirementLines,
+            hasReward: true,
             hasFrom: true,
             hasProvenance: true);
 
@@ -130,8 +132,10 @@ public class LayoutContainmentTests
                 width: 460f,
                 height: height,
                 hasStatusIcon: true,
+                hasLevel: true,
                 bodyLines: DetailPaneLayout.MaxBodyLines,
                 requirementLines: DetailPaneLayout.MaxRequirementLines,
+                hasReward: true,
                 hasFrom: true,
                 hasProvenance: true);
 
@@ -151,8 +155,10 @@ public class LayoutContainmentTests
             width: 460f,
             height: DetailPaneLayout.NaturalHeight,
             hasStatusIcon: true,
+            hasLevel: true,
             bodyLines: DetailPaneLayout.MaxBodyLines,
             requirementLines: DetailPaneLayout.MaxRequirementLines,
+            hasReward: true,
             hasFrom: true,
             hasProvenance: true);
 
@@ -170,8 +176,10 @@ public class LayoutContainmentTests
                 width: 460f,
                 height: DetailPaneLayout.NaturalHeight,
                 hasStatusIcon: true,
+                hasLevel: true,
                 bodyLines: DetailPaneLayout.MaxBodyLines,
                 requirementLines: DetailPaneLayout.MaxRequirementLines,
+                hasReward: true,
                 hasFrom: true,
                 hasProvenance: true)
             .Blocks
@@ -195,32 +203,50 @@ public class LayoutContainmentTests
         }
     }
 
+    /// <summary>The level badge and the reward tray are swept as their own dimensions rather than
+    /// pinned on, because both are pieces of ART with a fixed size — a 40-pixel disc and a 52-pixel
+    /// tray — inside a box that can be smaller than either. A block that is 40 tall in a pane with
+    /// 30 left is exactly the failure this file exists to make impossible, and it cannot be an
+    /// optional argument nothing ever passes false to.</summary>
     private static void AssertPaneContained(float width, float height)
     {
         foreach (var bodyLines in new[] { 0, 1, DetailPaneLayout.MaxBodyLines })
         {
             foreach (var requirements in new[] { 0, 1, DetailPaneLayout.MaxRequirementLines })
             {
-                var box = DetailPaneLayout.ContentBox(width, height);
-                var blocks = DetailPaneLayout.Compose(
-                    width,
-                    height,
-                    hasStatusIcon: true,
-                    bodyLines,
-                    requirements,
-                    hasFrom: true,
-                    hasProvenance: true);
-
-                foreach (var block in blocks.Blocks)
+                foreach (var hasLevel in new[] { true, false })
                 {
-                    Assert.True(
-                        block.ContainedBy(box),
-                        $"w={width} h={height} body={bodyLines} req={requirements}: {block} escapes {box}");
+                    foreach (var hasReward in new[] { true, false })
+                    {
+                        AssertOneComposition(width, height, bodyLines, requirements, hasLevel, hasReward);
+                    }
                 }
-
-                var pane = new ScreenRect(0f, 0f, width, height);
-                Assert.True(blocks.Rule.ContainedBy(pane), $"the rule escapes the pane at {width}x{height}");
             }
         }
+    }
+
+    private static void AssertOneComposition(
+        float width, float height, int bodyLines, int requirements, bool hasLevel, bool hasReward)
+    {
+        var box = DetailPaneLayout.ContentBox(width, height);
+        var blocks = DetailPaneLayout.Compose(
+            width,
+            height,
+            hasStatusIcon: true,
+            hasLevel,
+            bodyLines,
+            requirements,
+            hasReward,
+            hasFrom: true,
+            hasProvenance: true);
+
+        var where = $"w={width} h={height} body={bodyLines} req={requirements} level={hasLevel} reward={hasReward}";
+        foreach (var block in blocks.Blocks)
+        {
+            Assert.True(block.ContainedBy(box), $"{where}: {block} escapes {box}");
+        }
+
+        var pane = new ScreenRect(0f, 0f, width, height);
+        Assert.True(blocks.Rule.ContainedBy(pane), $"the rule escapes the pane at {width}x{height}");
     }
 }
