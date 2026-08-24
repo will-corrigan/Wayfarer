@@ -56,7 +56,7 @@ internal sealed class JournalSectionNode : SectionStackNode
         // own transparent margin rather than an overlap — JournalCanvas does the same.
         headingRow.ItemSpacing =
             GameMetrics.Journal.GlyphTextLeft - GameMetrics.Journal.GlyphSize;
-        headingRow.AddNode([glyphNode, label]);
+        JournalNodes.AddOnce(headingRow, glyphNode, label);
 
         bodyRow = new HorizontalListNode
         {
@@ -66,7 +66,7 @@ internal sealed class JournalSectionNode : SectionStackNode
             FitToContentHeight = true,
         };
 
-        AddNode([headingRow, bodyRow]);
+        JournalNodes.AddOnce(this, headingRow, bodyRow);
     }
 
     /// <summary>The row the section's body goes in, already indented to the game's own section inset.

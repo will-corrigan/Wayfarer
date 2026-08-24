@@ -174,17 +174,54 @@ internal static class JournalNodes
         node.TextureSize = actual.X > 0f && actual.Y > 0f ? actual : authored;
     }
 
+    /// <summary>Hands a set of nodes to a layout container, once each and never twice.
+    ///
+    /// <para><b>This is a guard against a hang, not a tidiness measure.</b> Attaching the same node
+    /// to the same container twice makes the game's own sibling chain circular:
+    /// <c>NodeLinker.EmplaceAsLastChild</c> walks to the end of the chain and links the incoming
+    /// node onto it, so a node that is already <i>in</i> that chain is linked to itself or to the
+    /// node in front of it. The next attach then walks that chain looking for its end, and there is
+    /// no longer an end — the walk never returns, on the game's own main thread, with no exception
+    /// and no crash dump. The game simply stops.</para>
+    ///
+    /// <para>So every container on the journal's surfaces is filled through here rather than through
+    /// <c>AddNode</c> directly, and a node that is already in the container is skipped.</para>
+    /// </summary>
+    public static void AddOnce(LayoutListNode list, params NodeBase?[] nodes)
+    {
+        // Cast: NodeBase converts implicitly to a raw node pointer, which makes the unqualified
+        // overload ambiguous.
+        ArgumentNullException.ThrowIfNull((object?)list, nameof(list));
+        ArgumentNullException.ThrowIfNull(nodes);
+
+        foreach (var node in nodes)
+        {
+            if (node is null || list.Nodes.Contains(node))
+            {
+                continue;
+            }
+
+            list.AddNode(node);
+        }
+    }
+
     /// <summary>Attaches a fresh node to its parent, or leaves it detached when there is none.
     ///
     /// <para>A null parent is not an oversight — it is how a node destined for a layout container is
     /// built. <c>LayoutListNode.AddNode</c> attaches what it is given, so a node that has already
-    /// been attached to the same container would be linked into the tree twice.</para></summary>
+    /// been attached to the same container would be linked into the tree twice, and the second link
+    /// is what makes the sibling chain circular — see <see cref="AddOnce"/> for what that costs.
+    /// A layout container is therefore refused outright here: the container is the one that
+    /// attaches its own children, and this is the choke point that makes it impossible to do it
+    /// twice however the call site is written.</para></summary>
     private static void Attach(NodeBase node, NodeBase? parent)
     {
-        if (parent is not null)
+        if (parent is null or LayoutListNode)
         {
-            node.AttachNode(parent);
+            return;
         }
+
+        node.AttachNode(parent);
     }
 
     private static TextNode Body(uint size, Vector4 color, TextFlags flags) => new()

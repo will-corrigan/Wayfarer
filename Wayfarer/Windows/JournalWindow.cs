@@ -380,17 +380,19 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         // state it is in, the picture, what it gives you, what it is, what is still in the way, then
         // who hands it over and the caveat, and the foot. The game's own page reads in that order and
         // so does the player's screenshot.
-        page.AddNode(BuildHeader());
-        page.AddNode(titleRuleRow = BuildRuleRow());
-        page.AddNode(BuildStatusRow());
-        page.AddNode(BuildBannerRow());
-        page.AddNode(rewardSection = BuildRewardSection());
-        page.AddNode(descriptionSection = BuildDescriptionSection());
-        page.AddNode(requirementsSection = BuildRequirementsSection());
-        page.AddNode(giverNode = BuildGiver());
-        page.AddNode(provenanceNode = BuildProvenance());
-        page.AddNode(footerRuleRow = BuildRuleRow());
-        page.AddNode(BuildFootRow());
+        JournalNodes.AddOnce(
+            page,
+            BuildHeader(),
+            titleRuleRow = BuildRuleRow(),
+            BuildStatusRow(),
+            BuildBannerRow(),
+            rewardSection = BuildRewardSection(),
+            descriptionSection = BuildDescriptionSection(),
+            requirementsSection = BuildRequirementsSection(),
+            giverNode = BuildGiver(),
+            provenanceNode = BuildProvenance(),
+            footerRuleRow = BuildRuleRow(),
+            BuildFootRow());
     }
 
     /// <summary>The title band: the level on its disc, the entry's name, and the kind word pinned
@@ -411,21 +413,25 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             FitToContentHeight = true,
         };
 
+        // Built detached — the row attaches its own children. See JournalNodes.AddOnce for what
+        // attaching one of them here as well would cost.
         levelBadgeNode = JournalNodes.Art(
-            header, log, GameMetrics.JournalArt.LevelBadge, GameMetrics.Journal.BadgeSize);
+            null, log, GameMetrics.JournalArt.LevelBadge, GameMetrics.Journal.BadgeSize);
 
         // The number and its disc are one object: the game centres the numeral on the plate
-        // (JournalDetail #9 over #10), so the text is a child of the art and moves with it.
+        // (JournalDetail #9 over #10), so the text is a child of the art and moves with it. The
+        // badge is not a layout container, so this is a plain attach and the only one this node
+        // ever gets.
         levelNode = JournalNodes.Level(levelBadgeNode);
         levelNode.Position = Vector2.Zero;
         levelNode.Size = new Vector2(GameMetrics.Journal.BadgeSize, GameMetrics.Journal.BadgeSize);
 
-        titleNode = JournalNodes.Title(header);
-        kindNode = JournalNodes.Kind(header);
+        titleNode = JournalNodes.Title(null);
+        kindNode = JournalNodes.Kind(null);
         kindNode.Width = GameMetrics.Journal.KindWidth;
         kindNode.Height = GameMetrics.Detail.HeadingHeight;
 
-        header.AddNode([levelBadgeNode, titleNode, kindNode]);
+        JournalNodes.AddOnce(header, levelBadgeNode, titleNode, kindNode);
         return header;
     }
 
@@ -445,14 +451,14 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         };
 
         var rule = JournalNodes.Art(
-            row,
+            null,
             log,
             GameMetrics.JournalArt.Divider,
             GameMetrics.JournalArt.DividerWidth,
             GameMetrics.JournalArt.DividerHeight);
         rule.IsVisible = true;
 
-        row.AddNode(rule);
+        JournalNodes.AddOnce(row, rule);
         return row;
     }
 
@@ -467,11 +473,11 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         };
 
         statusIconNode = JournalNodes.Marker(
-            statusRow, new Vector2(GameMetrics.Detail.HeadingIconSize, GameMetrics.Detail.HeadingIconSize));
+            null, new Vector2(GameMetrics.Detail.HeadingIconSize, GameMetrics.Detail.HeadingIconSize));
         statusNode = JournalNodes.Line(
-            statusRow, GameMetrics.Type.BodySize, GameColors.JournalPage.Body, TextFlags.Ellipsis);
+            null, GameMetrics.Type.BodySize, GameColors.JournalPage.Body, TextFlags.Ellipsis);
 
-        statusRow.AddNode([statusIconNode, statusNode]);
+        JournalNodes.AddOnce(statusRow, statusIconNode, statusNode);
         return statusRow;
     }
 
@@ -486,9 +492,9 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         };
 
         bannerNode = JournalNodes.Marker(
-            bannerRow, new Vector2(GameMetrics.Journal.BannerWidth, GameMetrics.Journal.BannerHeight));
+            null, new Vector2(GameMetrics.Journal.BannerWidth, GameMetrics.Journal.BannerHeight));
 
-        bannerRow.AddNode(bannerNode);
+        JournalNodes.AddOnce(bannerRow, bannerNode);
         return bannerRow;
     }
 
@@ -504,7 +510,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
         var trayRow = section.BodyRow();
         rewardTrayNode = JournalNodes.Art(
-            trayRow,
+            null,
             log,
             GameMetrics.JournalArt.TrayOneRow,
             GameMetrics.Journal.ColumnWidth,
@@ -525,7 +531,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         rewardNameNode.Position = new Vector2(nameRect.X, nameRect.Y);
         rewardNameNode.Size = new Vector2(nameRect.Width, nameRect.Height);
 
-        trayRow.AddNode(rewardTrayNode);
+        JournalNodes.AddOnce(trayRow, rewardTrayNode);
         return section;
     }
 
@@ -534,8 +540,8 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         var section = new JournalSectionNode(
             log, GameMetrics.JournalArt.GlyphDescription, words.Description);
         var row = section.BodyRow();
-        descriptionNode = JournalNodes.Paragraph(row, JournalWindowLayout.MaxDescriptionLines);
-        row.AddNode(descriptionNode);
+        descriptionNode = JournalNodes.Paragraph(null, JournalWindowLayout.MaxDescriptionLines);
+        JournalNodes.AddOnce(row, descriptionNode);
         return section;
     }
 
@@ -544,8 +550,8 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         var section = new JournalSectionNode(
             log, GameMetrics.JournalArt.GlyphDocument, words.Requirements);
         var row = section.BodyRow();
-        requirementsNode = JournalNodes.Paragraph(row, JournalWindowLayout.MaxRequirementLines);
-        row.AddNode(requirementsNode);
+        requirementsNode = JournalNodes.Paragraph(null, JournalWindowLayout.MaxRequirementLines);
+        JournalNodes.AddOnce(row, requirementsNode);
         return section;
     }
 
@@ -583,7 +589,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             String = "Back",
             OnClick = () => OnBack?.Invoke(),
         };
-        actionRow.AddNode(backButton);
+        JournalNodes.AddOnce(actionRow, backButton);
 
         actionButtons = new TextButtonNode[MaxActions];
         for (var i = 0; i < MaxActions; i++)
@@ -594,11 +600,11 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
                 Height = GameMetrics.Control.ButtonHeight,
                 IsVisible = false,
             };
-            actionRow.AddNode(actionButtons[i]);
+            JournalNodes.AddOnce(actionRow, actionButtons[i]);
         }
 
         bossNode = Boss();
-        footRow.AddNode([actionRow, bossNode]);
+        JournalNodes.AddOnce(footRow, actionRow, bossNode);
         return footRow;
     }
 
