@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
 
@@ -30,8 +31,14 @@ namespace Wayfarer.Windows.Native;
 /// partially clipped is, per <see cref="LayoutListNode.ClipListContents"/>'s own remark,
 /// un-interactable. A readout whose teleport line cannot be clicked is a worse failure than a line
 /// that draws a few pixels long.</para></summary>
+[SuppressMessage("Performance", "CA1852:Seal internal types", Justification = OpenOnPurpose)]
 internal class SectionStackNode : VerticalListNode
 {
+    /// <summary>Why this type is not sealed: it is the base a surface derives its own kind of section
+    /// from, which is the whole reason it is not coupled to any one of them.</summary>
+    private const string OpenOnPurpose =
+        "Open on purpose: the base a surface derives its own kind of section from.";
+
     public SectionStackNode()
     {
         FitContents = true;
