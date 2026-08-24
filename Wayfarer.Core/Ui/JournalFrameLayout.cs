@@ -19,13 +19,23 @@ namespace Wayfarer.Core.Ui;
 public static class JournalFrameLayout
 {
     /// <summary>Every piece of the border for a frame of <paramref name="height"/>, in the frame's
-    /// own space. Shorter than <see cref="GameMetrics.JournalFrame.MinHeight"/> returns the pieces
-    /// with the rails empty rather than refusing: a resize is not atomic and a layout pass can run
-    /// against a height that is still on its way somewhere.</summary>
+    /// own space.
+    ///
+    /// <para>Below <see cref="GameMetrics.JournalFrame.MinHeight"/> every destination comes back
+    /// empty — the border cannot close in less than its own fixed top and foot, and half a border is
+    /// worse than none. The window clamps its height above that, so this arm exists for the frames a
+    /// resize passes through on its way somewhere rather than for anything a player sees. The count,
+    /// the flip flags and the source rectangles are still reported, so the shape of the assembly can
+    /// be asserted without a height.</para></summary>
     public static IReadOnlyList<JournalFramePiece> Pieces(float height)
     {
         var h = Math.Max(height, 0f);
-        var railHeight = Math.Max(h - GameMetrics.JournalFrame.MinHeight, 0f);
+        if (h < GameMetrics.JournalFrame.MinHeight)
+        {
+            return [.. Pieces(GameMetrics.JournalFrame.MinHeight).Select(piece => piece with { Destination = default })];
+        }
+
+        var railHeight = h - GameMetrics.JournalFrame.MinHeight;
 
         // The bottom band is anchored to the foot rather than flowed down from the top, which is
         // what makes the rails — and only the rails — absorb the height.

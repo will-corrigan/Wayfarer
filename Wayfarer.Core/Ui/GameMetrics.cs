@@ -375,6 +375,15 @@ public static class GameMetrics
         /// treasure chest over Reward.</summary>
         public const float GlyphSize = 24f;
 
+        /// <summary>A canvas section's heading band.
+        ///
+        /// <para>The glyph's height, not the text's. JournalCanvas puts a 24x24 disc at the
+        /// section's left edge (<c>#6</c>/<c>#10</c>/<c>#19</c>/<c>#28</c>) beside a 22-tall heading,
+        /// and the game then leaves 44 pixels before the section's body. A band sized to the text
+        /// instead — <see cref="Detail.HeadingHeight"/>, 20 — leaves four pixels of that disc hanging
+        /// over whatever is drawn under it, which at the reward section is the tray.</para></summary>
+        public const float SectionHeadingHeight = GlyphSize;
+
         /// <summary>Where a section's heading text starts, past its glyph. JournalCanvas
         /// <c>#7</c>/<c>#11</c>/<c>#20</c>/<c>#29</c> are all at x=22 — two pixels under the glyph's
         /// right edge, because the glyph art carries its own transparent margin.</summary>
