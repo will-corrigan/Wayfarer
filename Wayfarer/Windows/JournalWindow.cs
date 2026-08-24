@@ -154,16 +154,15 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         }
 
         var scale = UiScale();
-        var wanted = new Vector2(
-            hostPosition.X + hostSize.X - (GameMetrics.JournalFrame.BesideOverlapX * scale),
-            hostPosition.Y - (GameMetrics.JournalFrame.BesideOverlapY * scale));
+        var wanted = JournalPlacement.Beside(
+            hostPosition, hostSize, Size * scale, (Vector2)AtkStage.Instance()->ScreenSize, scale);
 
-        if (Vector2.DistanceSquared(Clamp(wanted, scale), placedAt) < 1f)
+        if (Vector2.DistanceSquared(wanted, placedAt) < 1f)
         {
             return;
         }
 
-        placedAt = Clamp(wanted, scale);
+        placedAt = wanted;
         SetWindowPosition(placedAt);
     }
 
@@ -716,22 +715,6 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         pageClip!.Size = new Vector2(
             JournalWindowLayout.ContentWidth,
             Math.Max(height - JournalWindowLayout.ContentTop, 0f));
-    }
-
-    /// <summary>Keeps the page inside the viewport. A window whose top-left is off screen cannot be
-    /// dragged back — this one has no title bar to drag — so the clamp is not a nicety.</summary>
-    private Vector2 Clamp(Vector2 wanted, float scale)
-    {
-        var screen = (Vector2)AtkStage.Instance()->ScreenSize;
-        if (screen.X <= 0f || screen.Y <= 0f)
-        {
-            return wanted;
-        }
-
-        var onScreen = Size * scale;
-        return new Vector2(
-            Math.Clamp(wanted.X, 0f, Math.Max(screen.X - onScreen.X, 0f)),
-            Math.Clamp(wanted.Y, 0f, Math.Max(screen.Y - onScreen.Y, 0f)));
     }
 
     private void ApplyActions(IReadOnlyList<HubDetailAction> actions)
