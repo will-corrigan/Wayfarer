@@ -399,14 +399,23 @@ public static class ReadoutBodyLayout
             GameMetrics.Banner.PlateHeight * factor);
     }
 
+    /// <summary>The arrow, centred in the medallion's own column so that it and the marks below it
+    /// share one left edge — but never allowed to reach the words it belongs to.
+    ///
+    /// <para><b>Why the second rule exists.</b> Centring alone is only safe up to the arrow's own
+    /// authored size: the gutter is 32 wide and the words start 28 past its left edge, so an arrow
+    /// larger than 24 grows straight into the objective line. The player's arrow-size setting goes to
+    /// double, so at anything above the default the arrow was drawn over the sentence it was pointing
+    /// for. Past that size the arrow grows leftward into the margin instead, which is empty. The two
+    /// rules agree exactly at the default size and at every size below it, so this is a no-op for the
+    /// arrow the readout actually ships with.</para></summary>
     private static ScreenRect Arrow(float centre, float factor, float arrowScale)
     {
         var size = GameMetrics.Hud.IconSize * factor * Math.Clamp(arrowScale, 0.5f, 2f);
-        return new ScreenRect(
-            GutterLeft(factor) + ((GutterWidth(factor) - size) / 2f),
-            centre - (size / 2f),
-            size,
-            size);
+        var centred = GutterLeft(factor) + ((GutterWidth(factor) - size) / 2f);
+        var clear = SubLineLeft(factor) - size;
+
+        return new ScreenRect(Math.Max(Math.Min(centred, clear), 0f), centre - (size / 2f), size, size);
     }
 
     /// <summary>The pieces of the line block, filled in as the sections are walked. A mutable holder
