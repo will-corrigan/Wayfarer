@@ -187,7 +187,7 @@ public static class DetailPaneLayout
         rewardLabel = Indent(rewardLabel, GameMetrics.Journal.GlyphTextLeft);
         var tray = RewardTray(ref y, box, budget.Reward);
 
-        var rewardIcon = RewardIcon(tray);
+        var rewardIcon = JournalTrayLayout.Icon(tray);
 
         var from = Advance(ref y, box, budget.From, GameMetrics.Detail.HeadingHeight);
         var provenance = Advance(ref y, box, budget.Provenance, GameMetrics.Detail.HeadingHeight);
@@ -208,7 +208,7 @@ public static class DetailPaneLayout
             rewardLabel,
             tray,
             rewardIcon,
-            RewardName(tray, rewardIcon),
+            JournalTrayLayout.Name(tray, rewardIcon),
             from,
             provenance,
             ActionRow(width, height),
@@ -274,52 +274,13 @@ public static class DetailPaneLayout
             : new ScreenRect(block.X, block.Y, size, size);
     }
 
-    /// <summary>The reward tray, at the width the game authors it. The art is a plain image rather
-    /// than a nine-grid — the game never stretches it — so a pane too narrow to hold 376 gets a
-    /// narrower crop rather than a distorted panel.</summary>
-    private static ScreenRect RewardTray(ref float y, ScreenRect box, bool present)
-    {
-        var block = Advance(ref y, box, present, GameMetrics.Journal.TrayHeight);
-        if (block.IsEmpty)
-        {
-            return default;
-        }
-
-        var left = GameMetrics.Journal.GlyphTextLeft;
-        var width = Math.Min(GameMetrics.Journal.ColumnWidth, Math.Max(block.Width - left, 0f));
-        return width <= 0f ? default : block with { X = block.X + left, Width = width };
-    }
-
-    /// <summary>The reward's own icon, in the tray's first slot. Empty when the tray was dropped or
-    /// is too narrow to hold a slot — and empty is also what a reward with no icon gets, which is
-    /// why the name below is placed against the tray rather than against the icon.</summary>
-    private static ScreenRect RewardIcon(ScreenRect tray)
-    {
-        var inset = GameMetrics.Journal.TrayInset;
-        var size = GameMetrics.Journal.SlotIconSize;
-        return tray.IsEmpty || tray.Width < inset + size || tray.Height < size
-            ? default
-            : new ScreenRect(tray.X + inset, tray.Y + GameMetrics.Journal.SlotIconTop, size, size);
-    }
-
-    /// <summary>The reward said in words, beside its icon. Always drawn when the tray is: a
-    /// KamiToolKit tooltip fires on mouse events only, so an icon with no text is unreadable on a
-    /// controller — and half the reward kinds the game ships have no icon at all.</summary>
-    private static ScreenRect RewardName(ScreenRect tray, ScreenRect icon)
-    {
-        if (tray.IsEmpty)
-        {
-            return default;
-        }
-
-        var inset = GameMetrics.Journal.TrayInset;
-        var x = icon.IsEmpty ? tray.X + inset : icon.Right + GameMetrics.Window.BlockGap;
-        var width = Math.Max(tray.Right - inset - x, 0f);
-        var height = Math.Min(GameMetrics.Row.TextHeight, tray.Height);
-        return width <= 0f
-            ? default
-            : new ScreenRect(x, tray.Y + ((tray.Height - height) / 2f), width, height);
-    }
+    /// <summary>The reward tray, indented past the glyph gutter. The tray's own arithmetic is
+    /// <see cref="JournalTrayLayout"/>'s, shared with the journal page — it is the same object at a
+    /// different scale, not a second one.</summary>
+    private static ScreenRect RewardTray(ref float y, ScreenRect box, bool present) =>
+        JournalTrayLayout.Tray(
+            Advance(ref y, box, present, GameMetrics.Journal.TrayHeight),
+            GameMetrics.Journal.GlyphTextLeft);
 
     private static ScreenRect Kind(ScreenRect box, ScreenRect title)
     {

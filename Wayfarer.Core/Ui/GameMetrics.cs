@@ -322,6 +322,54 @@ public static class GameMetrics
         /// 496-wide page.</summary>
         public const float ColumnWidth = 376f;
 
+        /// <summary>The inset from a canvas section's left edge to the art inside it. JournalCanvas
+        /// <c>#4</c> (the banner) and <c>#31</c> (the reward tray) are both at x=18, with the
+        /// section's 24x24 glyph at x=0 and its heading at x=22.</summary>
+        public const float SectionInset = 18f;
+
+        /// <summary>A canvas section's own width. JournalCanvas <c>#2</c> (the banner section) and
+        /// <c>#26</c> (the reward section) are both 394 — the authored 376 column plus the inset in
+        /// front of it.</summary>
+        public const float SectionWidth = ColumnWidth + SectionInset;
+
+        /// <summary>The banner. JournalDetail <c>#45</c> and JournalCanvas <c>#4</c> are both
+        /// 376x120, and so is every piece of art the game puts in that slot: measured against the
+        /// live install, all 2,519 non-zero <c>Quest.Icon</c> rows and all 773 non-zero
+        /// <c>ContentFinderCondition.Image</c> rows are exactly 376x120, with no file missing.
+        /// </summary>
+        public const float BannerWidth = ColumnWidth;
+
+        /// <inheritdoc cref="BannerWidth"/>
+        public const float BannerHeight = 120f;
+
+        /// <summary>The page title's own block. JournalDetail <c>#38</c> is 340x50 — two Axis-18
+        /// lines at leading 20, which is twice <see cref="Detail.TitleHeight"/>.</summary>
+        public const float PageTitleHeight = Detail.TitleHeight * 2f;
+
+        /// <summary>The caption beside the page title.
+        ///
+        /// <para>One JournalDetail button wide (<c>#50</c>–<c>#52</c> are 120), which is the only
+        /// horizontal module that page has. The strip's caption column is
+        /// <see cref="Detail.KindWidth"/> — 64, from ContentsFinder <c>1024 #3</c>, measured in a
+        /// 462-wide list — and at Axis 12 that ellipsises "Alliance Raid". A 730-wide page does not
+        /// have to.</para></summary>
+        public const float KindWidth = Control.ButtonWidthMedium;
+
+        /// <summary>The footnote line under the page's body. JournalCanvas <c>#54</c> is 368x22,
+        /// Axis 12 at line spacing 12, centred — the register the game reserves for a caveat.
+        /// </summary>
+        public const float FootnoteHeight = 22f;
+
+        /// <summary>Narrowest the page's second column may be before the page gives up on two
+        /// columns and stacks everything into one.
+        ///
+        /// <para>Derived rather than measured, and said so: the game's own journal is one fixed
+        /// width and never has to answer this. Half the authored column is the threshold because a
+        /// text column narrower than that beside a 376-wide one reads as a gutter rather than as a
+        /// column, and stacking is the honest fallback — the same "drop it whole rather than draw it
+        /// wrong" rule the rest of the layout follows.</para></summary>
+        public const float MinTextColumn = ColumnWidth / 2f;
+
         /// <summary>A section glyph. JournalCanvas <c>#6</c>/<c>#10</c>/<c>#19</c>/<c>#28</c> are all
         /// 24x24 at x=0 — the open book over Description, the document over Requirements, the
         /// treasure chest over Reward.</summary>
@@ -368,6 +416,10 @@ public static class GameMetrics
         /// <summary>The document-with-lines disc. Part list 6 part 6; the game puts it over
         /// Information, Requirements and Summary.</summary>
         public static readonly (float U, float V) GlyphDocument = (24f, 0f);
+
+        /// <summary>The person silhouette. Part 17, and the obvious glyph for a line that names a
+        /// quest giver — which is what the journal's own Information section holds.</summary>
+        public static readonly (float U, float V) GlyphPerson = (144f, 0f);
 
         /// <summary>The treasure chest. Part 7, and the game's own marker for Reward.</summary>
         public static readonly (float U, float V) GlyphReward = (48f, 0f);
