@@ -346,6 +346,7 @@ public sealed class Plugin : IDalamudPlugin
             inputMode,
             new HubStatusIcons(textures, log),
             new HubRewardIcons(dataManager, log),
+            new HubJournalFacts(dataManager, log),
             log)
         {
             InternalName = "WayfarerHubNative",

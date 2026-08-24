@@ -36,8 +36,17 @@ internal sealed class HubListRow
     public Vector4? LabelColor { get; init; }
 
     /// <summary>Invoked on mouse click and on controller confirm alike. Null on headings and
-    /// notes, which are still focusable (the game's own lists behave the same way) but inert.</summary>
+    /// notes, which are still focusable (the game's own lists behave the same way) but inert.
+    ///
+    /// <para>Not reached on a row that <see cref="OpensPage"/>: activating those opens the journal
+    /// page and the action moves onto it, which is the game's own contract — the Journal's list
+    /// selects, its page acts.</para></summary>
     public Action? Activate { get; init; }
+
+    /// <summary>Whether activating this row opens the journal page for it instead of acting on it.
+    /// True on the unlock entries, which have a page; false on headings, notes and the rows of tabs
+    /// that do not.</summary>
+    public bool OpensPage { get; init; }
 
     /// <summary>What the detail pane should say about this row. Null on a row there is nothing to
     /// say about, which clears the pane back to its key.</summary>

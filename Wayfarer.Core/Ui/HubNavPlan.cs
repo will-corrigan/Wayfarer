@@ -16,6 +16,7 @@ namespace Wayfarer.Core.Ui;
 ///   41..     list rows, four indices apart (KamiToolKit reserves four slots per row)
 ///   40 + 4n + 1  the downward scroll sentinel, immediately after the last pooled row
 ///   170..179 the detail pane's action buttons
+///   180..189 the journal page's own controls — Back, then the entry's actions
 /// </code>
 ///
 /// <para><b>Why the list pool is clamped.</b> A region <i>after</i> the list was impossible to
@@ -74,6 +75,25 @@ public static class HubNavPlan
     /// ten leaves room to be wrong about that without another re-plan.</summary>
     public const int DetailPaneCapacity = 10;
 
+    /// <summary>First index of the journal page's own controls.
+    ///
+    /// <para><b>Why a block of its own rather than the list's.</b> The page replaces the list in the
+    /// same rectangle, so the list's <c>40..161</c> is dormant while the page is open and reusing it
+    /// looks free. It is not: the two are numbered by the same renumbering pass, and for the frame
+    /// in which one is being hidden and the other shown they would both be in the graph at the same
+    /// indices — which is the collision <see cref="NavGraphPlanner.Fits"/> exists to prevent, and
+    /// which does not fail loudly, it teleports the cursor.</para></summary>
+    public const int JournalPage = 180;
+
+    /// <summary>Indices reserved for the journal page. Back plus three actions is four; ten leaves
+    /// room to be wrong about that without another re-plan.</summary>
+    public const int JournalPageCapacity = 10;
+
+    /// <summary>The page's Back button — the first index of the block, and the one every other page
+    /// control's "up" points at, so a d-pad can always leave in one press whatever it is on.
+    /// </summary>
+    public static int JournalPageBack => JournalPage;
+
     /// <summary>Highest index the tab bar occupies.</summary>
     public static int TabBarLast => TabBar + TabCount - 1;
 
@@ -88,7 +108,11 @@ public static class HubNavPlan
     /// <summary>Confirms the plan is internally consistent: nothing sits on the reserved 0 index,
     /// the three regions do not overlap, and a full-size list still fits under the 255 ceiling.
     /// Returns the reason it does not hold, or <see langword="null"/> when it does.</summary>
-    public static string? Validate()
+    public static string? Validate() => ValidateControls() ?? ValidateListAndAbove();
+
+    /// <summary>The regions above the list: the tab bar, the Following strip and the active tab's
+    /// controls.</summary>
+    private static string? ValidateControls()
     {
         // Read through locals so the compiler treats these as real comparisons rather than
         // folding the constants and calling the guards unreachable — the point of this method is
@@ -122,11 +146,16 @@ public static class HubNavPlan
             return $"The tab bar ends at {tabBarLast}, which collides with the control region at {region}.";
         }
 
-        if (regionEnd > list)
-        {
-            return $"The control region ({region}..{regionEnd - 1}) collides with the list block at {list}.";
-        }
+        return regionEnd > list
+            ? $"The control region ({region}..{regionEnd - 1}) collides with the list block at {list}."
+            : null;
+    }
 
+    /// <summary>The list block and the two regions numbered above it — the detail pane and the
+    /// journal page.</summary>
+    private static string? ValidateListAndAbove()
+    {
+        var list = List;
         if (!NavListBlock.Fits(List, MaxListPoolSize))
         {
             return $"A list of {MaxListPoolSize} rows starting at {list} exceeds the {NavGraphPlanner.MaxIndex} index ceiling.";
@@ -140,8 +169,15 @@ public static class HubNavPlan
         }
 
         var paneEnd = DetailPane + DetailPaneCapacity - 1;
-        return paneEnd <= NavGraphPlanner.MaxIndex
+        var page = JournalPage;
+        if (paneEnd >= page)
+        {
+            return $"The detail pane ({pane}..{paneEnd}) collides with the journal page at {page}.";
+        }
+
+        var pageEnd = JournalPage + JournalPageCapacity - 1;
+        return pageEnd <= NavGraphPlanner.MaxIndex
             ? null
-            : $"The detail pane ({pane}..{paneEnd}) exceeds the {NavGraphPlanner.MaxIndex} index ceiling.";
+            : $"The journal page ({page}..{pageEnd}) exceeds the {NavGraphPlanner.MaxIndex} index ceiling.";
     }
 }

@@ -90,6 +90,36 @@ public class HubNavPlanTests
         Assert.True(ceiling <= NavGraphPlanner.MaxIndex);
     }
 
+    /// <summary>The journal page's block. It replaces the list in the same rectangle, so reusing the
+    /// list's indices looks free — and would put two regions on the same numbers for the frame in
+    /// which one is hidden and the other shown, which teleports the cursor rather than failing.
+    /// </summary>
+    [Fact]
+    public void The_journal_page_has_indices_of_its_own_above_the_detail_pane()
+    {
+        Assert.True(
+            HubNavPlan.DetailPane + HubNavPlan.DetailPaneCapacity <= HubNavPlan.JournalPage,
+            "the detail pane's reservation runs into the journal page's");
+
+        Assert.True(HubNavPlan.ListLast < HubNavPlan.JournalPage);
+
+        // Back plus three actions, in one row that chains left and right.
+        var buttons = Enumerable.Repeat(4, 1).ToList();
+        var ceiling = HubNavPlan.JournalPage + HubNavPlan.JournalPageCapacity - 1;
+
+        Assert.True(NavGraphPlanner.Fits(buttons, HubNavPlan.JournalPage, ceiling));
+        Assert.True(ceiling <= NavGraphPlanner.MaxIndex);
+    }
+
+    /// <summary>Back is the block's first index, which is what makes "up leaves the page" wirable:
+    /// the walker gives a whole row one <c>NavUp</c>, so pointing it at the block's own start puts
+    /// the way out one press from every control on the page.</summary>
+    [Fact]
+    public void Back_is_the_first_index_of_the_journal_pages_block()
+    {
+        Assert.Equal(HubNavPlan.JournalPage, HubNavPlan.JournalPageBack);
+    }
+
     /// <summary>A pooled row count large enough to be useful is still available after the clamp:
     /// thirty 44px rows is more list than the window can ever show at once, so the clamp costs
     /// nothing real. If the row height ever grows past this, the clamp starts truncating the list

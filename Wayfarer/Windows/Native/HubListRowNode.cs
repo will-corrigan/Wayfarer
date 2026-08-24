@@ -93,6 +93,15 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     /// to the player, and the number is the game's, not ours.</para></summary>
     public static float ItemHeight => GameMetrics.Row.EntryHeight;
 
+    /// <summary>Puts the game's cursor back on this row — what the journal page does when it closes,
+    /// so a player returns to the entry they opened rather than to the top of the tab.
+    ///
+    /// <para>The row's own focus target is the zero-size component <c>ListItemWithFocusNav</c>
+    /// smuggles in; the text nodes it is built from cannot hold focus. Exposed here because that
+    /// node is <c>protected</c>, and the alternative — putting the cursor on the tab's action button
+    /// instead — would lose the player's place in a list of several hundred rows.</para></summary>
+    public void TakeFocus() => NavFocusNode.SetFocus();
+
     /// <inheritdoc/>
     public override void Update()
     {

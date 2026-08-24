@@ -39,7 +39,21 @@ internal static class ControllerGlyphs
     /// <param name="reverseConfirmCancel">The player's own PadReverseConfirmCancel setting, which
     /// swaps which physical button confirms. This is a genuinely separate concern from which glyph
     /// is drawn, and is the only reason that setting still needs reading at all.</param>
-    public static ReadOnlySeString WindowHint(bool reverseConfirmCancel)
+    public static ReadOnlySeString WindowHint(bool reverseConfirmCancel) =>
+        Hint(reverseConfirmCancel, "Back");
+
+    /// <summary>The hint while a journal page is open.
+    ///
+    /// <b>"Close", not "Back".</b> Cancel is handled by the game and shuts the whole addon; there is
+    /// no hook that could make it mean "back to the list" instead. On a page whose own Back button
+    /// is on screen and one press away, a hint saying "Back" would name the wrong control — and the
+    /// player would find out by losing the window. The button is the way back to the list; this line
+    /// says what the pad's own button really does.</summary>
+    /// <param name="reverseConfirmCancel">The player's own PadReverseConfirmCancel setting.</param>
+    public static ReadOnlySeString JournalPageHint(bool reverseConfirmCancel) =>
+        Hint(reverseConfirmCancel, "Close");
+
+    private static ReadOnlySeString Hint(bool reverseConfirmCancel, string cancelVerb)
     {
         var confirm = reverseConfirmCancel ? East : South;
         var cancel = reverseConfirmCancel ? South : East;
@@ -47,7 +61,7 @@ internal static class ControllerGlyphs
         var builder = new SeStringBuilder();
         builder.AddIcon(BitmapFontIcon.ControllerDPadAll).AddText(" Move   ");
         builder.AddIcon(confirm).AddText(" Select   ");
-        builder.AddIcon(cancel).AddText(" Back");
+        builder.AddIcon(cancel).AddText($" {cancelVerb}");
         return new ReadOnlySeString(builder.Build().Encode());
     }
 }
