@@ -159,10 +159,12 @@ public class JournalWindowLayoutTests
     [Fact]
     public void Requirements_outrank_the_description_and_the_banner_when_room_runs_out()
     {
-        // 300 is short enough that the ladder has to give something up. What it gives up is the
-        // picture and the prose, in that order, and never the reason the entry is locked.
+        // 420 is short enough that the ladder has to give something up but tall enough to still hold
+        // the block that matters. What it gives up is the picture, and never the reason the entry is
+        // locked — which is allocated first and therefore survives every squeeze the requirements
+        // block itself fits in.
         var blocks = JournalWindowLayout.Compose(
-            height: 300f,
+            height: 420f,
             hasLevel: true,
             hasStatusIcon: true,
             hasBanner: true,

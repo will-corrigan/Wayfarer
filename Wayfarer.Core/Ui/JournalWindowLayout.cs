@@ -147,6 +147,21 @@ public static class JournalWindowLayout
     /// </summary>
     public static float BlockHeight(int lines) => DetailPaneLayout.BlockHeight(lines);
 
+    /// <summary>The largest whole number of Axis-14 lines that fits in <paramref name="available"/>,
+    /// as a height. Zero when not even one does.</summary>
+    public static float WholeLines(float available)
+    {
+        for (var lines = (int)(available / GameMetrics.Type.BodyLine) + 1; lines >= 1; lines--)
+        {
+            if (BlockHeight(lines) <= available)
+            {
+                return BlockHeight(lines);
+            }
+        }
+
+        return 0f;
+    }
+
     /// <summary>How much room a wrapping text block may be given, so the caller can fit its string
     /// to a measured height before the layout runs. Deliberately generous — the layout below is what
     /// actually decides, and it never grants more than is left.</summary>
@@ -172,21 +187,27 @@ public static class JournalWindowLayout
         var (giver, provenance, flow) = Foot(box, hasGiver, hasProvenance);
         var (badge, title, kind) = Header(height, hasLevel);
 
+        // Allocated in priority order and placed in reading order, which are not the same order.
+        //
+        // Priority: the state line always, then what is in the way, then what you get, then what it
+        // is, and the banner last — so a short window loses the picture before it loses a word about
+        // why the entry is locked. Reading: the state, the picture, the reward, the prose, and the
+        // requirements at the foot, which is the order the game's own page puts them in and the order
+        // the player asked for.
+        var budget = Allocate(flow.Height, hasBanner, hasReward, requirementsHeight, descriptionHeight);
+
         var y = flow.Y;
-        var status = Advance(ref y, flow, true, BlockHeight(MaxStatusLines));
+        var status = Advance(ref y, flow, budget.Status, BlockHeight(MaxStatusLines));
         var statusIcon = StatusIcon(status, hasStatusIcon);
         var statusText = Indent(
             status,
             statusIcon.IsEmpty ? 0f : GameMetrics.Detail.HeadingIconSize + GameMetrics.Window.RuleGap);
 
-        // In allocation order, not reading order: the banner is placed last so that a short window
-        // loses the picture rather than a word, but it is drawn at the top of the flow. The cursor
-        // therefore reserves its band up front and the sections below start under it.
-        var bannerBand = Reserve(ref y, flow, hasBanner, GameMetrics.Journal.BannerHeight + GameMetrics.Window.BlockGap);
-
-        var requirements = Section(ref y, flow, requirementsHeight);
-        var reward = Reward(ref y, flow, hasReward);
-        var description = Section(ref y, flow, descriptionHeight);
+        var bannerBand = Advance(
+            ref y, flow, budget.Banner, GameMetrics.Journal.BannerHeight + GameMetrics.Window.BlockGap);
+        var reward = Reward(ref y, flow, budget.Reward);
+        var description = Section(ref y, flow, budget.Description);
+        var requirements = Section(ref y, flow, budget.Requirements);
 
         return new JournalWindowBlocks(
             badge,
@@ -212,6 +233,57 @@ public static class JournalWindowLayout
             FooterRule(height),
             ActionRow(height),
             Boss(height));
+    }
+
+    /// <summary>Decides what is drawn at all, out of one budget, in priority order — and how much of
+    /// the two wrapping blocks survives. Whole lines only: granting the sliver that happens to be
+    /// left is worse than granting nothing, because the player cannot tell the text was cut.
+    /// </summary>
+    private static Budget Allocate(
+        float available, bool hasBanner, bool hasReward, float requirementsWanted, float descriptionWanted)
+    {
+        var left = available;
+        var status = Take(ref left, BlockHeight(MaxStatusLines));
+        var requirements = Body(ref left, requirementsWanted);
+        var reward = hasReward
+            && Take(ref left, GameMetrics.Journal.SectionHeadingHeight + GameMetrics.Journal.TrayHeight);
+        var description = Body(ref left, descriptionWanted);
+        var banner = hasBanner
+            && Take(ref left, GameMetrics.Journal.BannerHeight + GameMetrics.Window.BlockGap);
+
+        return new Budget(status, banner, reward, requirements, description);
+    }
+
+    /// <summary>One heading-and-body section's share of the budget: the heading first, then as many
+    /// whole lines of body as are left. A heading with nothing under it is refused, so the heading's
+    /// own height is returned to the budget when the body does not fit.</summary>
+    private static float Body(ref float left, float wanted)
+    {
+        if (wanted <= 0f || !Take(ref left, GameMetrics.Journal.SectionHeadingHeight))
+        {
+            return 0f;
+        }
+
+        var granted = WholeLines(Math.Min(wanted, left));
+        if (granted <= 0f)
+        {
+            left += GameMetrics.Journal.SectionHeadingHeight;
+            return 0f;
+        }
+
+        left -= granted;
+        return granted;
+    }
+
+    private static bool Take(ref float left, float height)
+    {
+        if (height > left)
+        {
+            return false;
+        }
+
+        left -= height;
+        return true;
     }
 
     /// <summary>The two blocks anchored to the foot of the content box, and what is left over for
@@ -290,9 +362,9 @@ public static class JournalWindowLayout
             return default;
         }
 
-        var body = Indent(
-            Advance(ref y, column, true, Math.Min(bodyHeight, Math.Max(column.Bottom - y, 0f))),
-            GameMetrics.Journal.SectionInset);
+        // Already a whole number of lines, and already known to fit: Allocate decided that. This
+        // only places it.
+        var body = Indent(Advance(ref y, column, true, bodyHeight), GameMetrics.Journal.SectionInset);
 
         // A heading with no line under it is refused whole: a section that says only its own name is
         // worse than no section.
@@ -379,11 +451,6 @@ public static class JournalWindowLayout
             ? rect
             : new ScreenRect(rect.X + by, rect.Y, Math.Max(rect.Width - by, 0f), rect.Height);
 
-    /// <summary>Reserves a band at the cursor and moves past it, returning the band. Used for the
-    /// banner, whose place in the flow is decided here and whose art is placed inside it.</summary>
-    private static ScreenRect Reserve(ref float y, ScreenRect column, bool present, float height) =>
-        Advance(ref y, column, present, height);
-
     private static ScreenRect Advance(ref float y, ScreenRect column, bool present, float height)
     {
         if (!present || height <= 0f || column.Width <= 0f || y + height > column.Bottom)
@@ -395,4 +462,14 @@ public static class JournalWindowLayout
         y += height;
         return rect;
     }
+
+    /// <summary>What Allocate granted, in the order it was decided. Separate from where any of it
+    /// goes: what survives is a priority question and where it is drawn is a reading question, and
+    /// the two orders are deliberately different.</summary>
+    private readonly record struct Budget(
+        bool Status,
+        bool Banner,
+        bool Reward,
+        float Requirements,
+        float Description);
 }
