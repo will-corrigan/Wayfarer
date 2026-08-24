@@ -46,9 +46,13 @@ internal static class JournalNodes
 
         if (size == Vector2.Zero)
         {
+            // Attached all the same, and permanently invisible: a piece that is left out still takes
+            // its place in whatever container was expecting it, rather than leaving the caller
+            // holding a node the tree has never seen.
             log.Warning(
                 $"Wayfarer journal: a piece of the journal's page art was asked for at {width}x{height}, which is "
                 + "not a size the game can draw, so it is left out. Nothing else is affected.");
+            Attach(node, parent);
             return node;
         }
 
