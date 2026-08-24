@@ -162,23 +162,50 @@ export const DUTY_CONTENT_TYPES = {
   },
 };
 
-/** Reasons layer 2 produces. Named so the artefact, the validator and the report all say the same
- * words, and so a reader can count them. */
+/** Reasons layer 2 produces, keyed. Reasons are cited by KEY on each row of data/coverage.json
+ * rather than written out 1,637 times: a reader gets the twenty distinct reasons once, at the top
+ * of the artefact, and rewording one is a one-line diff instead of a thousand-line one. */
 export const ROW_REASONS = {
-  deadGate:
+  'row:dead-gate':
     'the gate quest names a row that is absent from the live sheet — unreleased or removed content',
-  unnameable:
+  'row:unnameable':
     'the identity has no player-facing name in any sheet, so there is nothing a checklist could '
     + 'display',
-  seasonal:
+  'row:seasonal':
     'the gate quest belongs to a seasonal event (Quest.Festival is set), so it is real but not '
     + 'obtainable today; showing it as available in a level checklist would be a lie. Ships only '
     + 'behind a seasonal status the gate calculator can map to "not right now"',
-  retiredDuty: 'retired: not in the duty finder and the game names no unlock quest',
-  npcMatchPrerequisite:
+  'duty:retired': 'retired: not in the duty finder and the game names no unlock quest',
+  'triple-triad-card:npc-match-prerequisite':
     'TripleTriadCardResident.Quest names the NPC-match prerequisite, not a quest that awards the '
     + 'card; only the cards that arrive through an ItemAction are genuine quest rewards',
 };
+
+/** Every reason key any classification can cite, with its text. The artefact carries the subset it
+ * uses, and data/validate-coverage.mjs checks that every key a row cites is defined here — so a
+ * reason cannot be invented on a row, and a row cannot cite one that no longer exists. */
+export function reasonText(key) {
+  if (key in ROW_REASONS) return ROW_REASONS[key];
+
+  const [kind, ...rest] = key.split(':');
+  const name = rest.join(':');
+  if (kind === 'channel') return CHANNELS[name]?.reason ?? null;
+  if (kind === 'granularity') return CHANNELS[name]?.granularity ?? null;
+  if (kind === 'duty-kind') {
+    const why = DUTY_CONTENT_TYPES.excluded[name];
+    return why ? `duty kind the catalogue does not list (ContentType '${name || '(none)'}'): ${why}` : null;
+  }
+  if (kind === 'duty-granularity') return DUTY_CONTENT_TYPES.undecided[name] ?? null;
+  if (kind === 'unclassified-channel') {
+    return `channel '${name}' is not in data/coverage-policy.mjs — new content, or a join that has `
+      + 'moved. Classify it there.';
+  }
+  if (kind === 'unclassified-duty-kind') {
+    return `duty ContentType '${name}' is in neither the listed, excluded nor undecided set in `
+      + 'data/coverage-policy.mjs — new content. Classify it there.';
+  }
+  return null;
+}
 
 /** Why one enumerated row the catalogue does not cover is not covered.
  *
@@ -186,36 +213,36 @@ export const ROW_REASONS = {
  * through everything is a real, live, named, non-seasonal unlock of a kind the catalogue lists —
  * which is the definition of a gap, so it is recommended.
  *
- * @param {object} row one entry of coverage.json's `game.unlocks`
- * @returns {{ classification: 'recommended'|'excluded'|'undecided', reason: string }}
+ * @param {object} row one entry of coverage.json's `unlocks`
+ * @returns {{ classification: 'recommended'|'excluded'|'undecided', reason: string }} `reason` is a
+ *   key into `reasonText`, empty for a recommendation (which needs no excuse).
  */
 export function classifyMissing(row) {
   const channel = CHANNELS[row.channel];
+
+  // A channel the enumeration produced and the policy has never seen. Not swallowed: it is new
+  // content or a renamed sheet, and somebody has to look at it.
   if (!channel) {
-    // A channel the enumeration produced and the policy has never seen. Not an error to be
-    // swallowed: it is new content or a renamed sheet, and somebody has to look at it.
-    return {
-      classification: 'undecided',
-      reason: `channel '${row.channel}' is not in data/coverage-policy.mjs — new content, or a `
-        + 'join that has moved. Classify it there.',
-    };
+    return { classification: 'undecided', reason: `unclassified-channel:${row.channel}` };
   }
 
   // ---- layer 1: does the catalogue list this kind of thing at all, and at what grain
-  if (!channel.ship) return { classification: 'excluded', reason: channel.reason };
-  if (channel.granularity) return { classification: 'excluded', reason: channel.granularity };
+  if (!channel.ship) return { classification: 'excluded', reason: `channel:${row.channel}` };
+  if (channel.granularity) {
+    return { classification: 'excluded', reason: `granularity:${row.channel}` };
+  }
 
   // ---- layer 2: facts about this row, none of them written down anywhere
   if (row.questRowId !== null && row.questRowId !== undefined && !row.gateLive) {
-    return { classification: 'excluded', reason: ROW_REASONS.deadGate };
+    return { classification: 'excluded', reason: 'row:dead-gate' };
   }
-  if (!row.name) return { classification: 'excluded', reason: ROW_REASONS.unnameable };
-  if (row.festival) return { classification: 'excluded', reason: ROW_REASONS.seasonal };
+  if (!row.name) return { classification: 'excluded', reason: 'row:unnameable' };
+  if (row.festival) return { classification: 'excluded', reason: 'row:seasonal' };
 
   // ---- per-channel refinements
   if (row.channel === 'duty') return classifyDuty(row);
   if (row.channel === 'triple-triad-card' && row.via === 'TripleTriadCardResident.Quest') {
-    return { classification: 'excluded', reason: ROW_REASONS.npcMatchPrerequisite };
+    return { classification: 'excluded', reason: 'triple-triad-card:npc-match-prerequisite' };
   }
 
   return { classification: 'recommended', reason: '' };
@@ -224,14 +251,10 @@ export function classifyMissing(row) {
 function classifyDuty(row) {
   const type = row.contentType ?? '';
   if (type in DUTY_CONTENT_TYPES.excluded) {
-    return {
-      classification: 'excluded',
-      reason: `duty kind the catalogue does not list (ContentType '${type || '(none)'}'): `
-        + DUTY_CONTENT_TYPES.excluded[type],
-    };
+    return { classification: 'excluded', reason: `duty-kind:${type}` };
   }
   if (type in DUTY_CONTENT_TYPES.undecided) {
-    return { classification: 'undecided', reason: DUTY_CONTENT_TYPES.undecided[type] };
+    return { classification: 'undecided', reason: `duty-granularity:${type}` };
   }
 
   // A duty that is neither in the finder nor gated on a quest the game names is not reachable and
@@ -239,15 +262,11 @@ function classifyDuty(row) {
   // reported under its kind, because that is the more useful of the two true statements.
   const gated = row.questRowId !== null && row.questRowId !== undefined;
   if (!gated && row.inDutyFinder === false) {
-    return { classification: 'excluded', reason: ROW_REASONS.retiredDuty };
+    return { classification: 'excluded', reason: 'duty:retired' };
   }
 
   if (!DUTY_CONTENT_TYPES.listed.includes(type)) {
-    return {
-      classification: 'undecided',
-      reason: `duty ContentType '${type}' is in neither the listed, excluded nor undecided set in `
-        + 'data/coverage-policy.mjs — new content. Classify it there.',
-    };
+    return { classification: 'undecided', reason: `unclassified-duty-kind:${type}` };
   }
 
   return { classification: 'recommended', reason: '' };

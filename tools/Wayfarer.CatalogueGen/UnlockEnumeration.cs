@@ -668,7 +668,9 @@ internal static class UnlockEnumeration
             }
         }
 
-        foreach (var row in game.GetSubrowExcelSheet<EmjCostume>())
+        var costumes = game.GetSubrowExcelSheet<EmjCostume>()
+            ?? throw new InvalidOperationException("no EmjCostume sheet");
+        foreach (var row in costumes)
         {
             foreach (var sub in row)
             {

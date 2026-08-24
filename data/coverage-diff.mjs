@@ -28,10 +28,67 @@
 // keyed on prose that matched no row, and 23 duties looked like orphans only because
 // "The Minstrel's Ballad: Zodiark's Fall Extreme Trial Access" is not what any sheet calls that
 // duty.
-import { CHANNELS, allowanceFor, classifyMissing, questRowsOf } from './coverage-policy.mjs';
+import crypto from 'node:crypto';
+import {
+  CHANNELS, allowanceFor, classifyMissing, identityProjection, questRowsOf, reasonText,
+} from './coverage-policy.mjs';
+
+/** The order data/coverage.json's own keys are written in. Part of the canonical form. */
+const DOC_KEYS = [
+  'generated', 'purpose', 'policy', 'catalogue', 'game', 'totals', 'channels', 'reasons',
+  'shipped', 'unlocks',
+];
+
+/** What the coverage artefact says the catalogue it was generated beside looked like.
+ *
+ * Over the identity projection, not the file: hashing the file would make every prose edit a CI
+ * failure that only a developer with the game installed could clear, and a check nobody can keep
+ * green is a check that gets deleted. Drop an entry, change what it unlocks, or rebind it to
+ * another quest and this moves. Fix a typo in a description and it does not. */
+export function catalogueFingerprint(unlocks) {
+  const projection = JSON.stringify(identityProjection(unlocks));
+  return `sha256:${crypto.createHash('sha256').update(projection).digest('hex')}`;
+}
+
+/** The artefact's canonical text form.
+ *
+ * The two long arrays get ONE LINE PER ROW. That is not a formatting preference: a regeneration
+ * after a patch should read as "these four rows appeared", and 3,091 rows pretty-printed nine
+ * lines deep is a diff nobody reviews. Everything else is 2-space indented, as the catalogue is.
+ * The generator writes this and data/validate-coverage.mjs re-derives it, so a hand edit shows up
+ * as a formatting failure instead of surviving until the next regeneration reverts it. */
+export function canonicaliseCoverage(doc) {
+  const head = {};
+  for (const k of DOC_KEYS) if (k in doc && k !== 'shipped' && k !== 'unlocks') head[k] = doc[k];
+
+  // Everything but the closing brace, with a comma added to the last property so the two arrays
+  // can be appended after it.
+  const lines = JSON.stringify(head, null, 2).split('\n').slice(0, -1);
+  lines[lines.length - 1] += ',';
+
+  const body = [
+    ...lines,
+    ...oneLineArray('shipped', doc.shipped, true),
+    ...oneLineArray('unlocks', doc.unlocks, false),
+    '}',
+  ];
+  return `${body.join('\n')}\n`;
+
+  function oneLineArray(name, rows, comma) {
+    const tail = comma ? ',' : '';
+    if (!rows.length) return [`  "${name}": []${tail}`];
+    const out = [`  "${name}": [`];
+    rows.forEach((r, i) => out.push(`    ${JSON.stringify(r)}${i === rows.length - 1 ? '' : ','}`));
+    out.push(`  ]${tail}`);
+    return out;
+  }
+}
 
 const identityKey = (kind, id, subrow) =>
   subrow === null || subrow === undefined ? `${kind}#${id}` : `${kind}#${id}.${subrow}`;
+
+/** A field, or nothing at all when it has no value. */
+const opt = (key, value) => (value === null || value === undefined ? {} : { [key]: value });
 
 /**
  * @param {Array} enumerated rows from tools/Wayfarer.CatalogueGen's `enumerate` verb, or the
@@ -63,22 +120,24 @@ export function buildCoverage(enumerated, unlocks) {
     const gateHits = row.questRowId ? byQuest.get(row.questRowId) ?? [] : [];
     const hits = [...new Set([...identityHits, ...gateHits])].sort((a, b) => a - b);
 
+    // Fields at their default are omitted rather than written out. There are 3,091 rows and the
+    // key names alone cost more than the values; a row with no gate quest has nothing to say about
+    // its gate, and saying it four times over is what turns a reviewable artefact into a megabyte
+    // nobody opens.
     const out = {
       channel: row.channel,
       identityKind: row.identityKind,
       identityId: row.identityId,
-      ...(row.identitySubrowId === null || row.identitySubrowId === undefined
-        ? {} : { identitySubrowId: row.identitySubrowId }),
-      name: row.name,
-      questRowId: row.questRowId ?? null,
-      questName: row.questName ?? '',
-      gateLive: row.gateLive ?? false,
-      level: row.level ?? null,
-      festival: row.festival ?? 0,
+      ...opt('identitySubrowId', row.identitySubrowId),
+      ...(row.name ? { name: row.name } : {}),
+      ...opt('questRowId', row.questRowId),
+      ...(row.questName ? { questName: row.questName } : {}),
+      ...(row.gateLive ? { gateLive: true } : {}),
+      ...opt('level', row.level),
+      ...(row.festival ? { festival: row.festival } : {}),
       via: row.via,
       ...(row.contentType ? { contentType: row.contentType } : {}),
-      ...(row.inDutyFinder === null || row.inDutyFinder === undefined
-        ? {} : { inDutyFinder: row.inDutyFinder }),
+      ...opt('inDutyFinder', row.inDutyFinder),
       catalogue: hits.length ? 'covered' : 'missing',
     };
 
@@ -177,5 +236,12 @@ export function buildCoverage(enumerated, unlocks) {
     entriesUnaccountedFor: shipped.filter((s) => !s.enumerated && !s.allowedBy).length,
   };
 
-  return { channels: channelSummary, totals, rows, shipped };
+  // Only the reasons this diff actually cites, so the artefact carries no dead text and a reason
+  // that has stopped being used disappears from it.
+  const reasons = {};
+  for (const key of [...new Set(rows.map((r) => r.reason).filter(Boolean))].sort()) {
+    reasons[key] = reasonText(key) ?? null;
+  }
+
+  return { channels: channelSummary, totals, rows, shipped, reasons };
 }
