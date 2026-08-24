@@ -344,25 +344,43 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <para>Its own box rather than the text node's: the text node is as wide as the room the line
     /// was given, including the slot reserved for the switcher, and a hover region that reached
     /// under the switcher would put a tooltip over a control that is not the name. This is exactly
-    /// as wide as the words drew.</para></summary>
+    /// as wide as the words drew.</para>
+    ///
+    /// <para><b>Its click and the plate's now agree.</b> Since <see cref="bannerHitBox"/> took over
+    /// opening the Journal for the whole parchment, this narrower box over the name does the exact
+    /// same click when it has one — it is above the plate in hit-test order, so it still catches the
+    /// pointer first, but there is no longer a different answer underneath it to disagree with. What
+    /// this box is still for on its own is the tooltip: revealing a name the plate cut short.</para>
+    /// </summary>
     private readonly ResNode? subjectHitBox;
 
-    /// <summary>The whole plate as a click target for the plugin's settings, or null in a host that
-    /// takes no mouse.
+    /// <summary>The whole plate as a click target for the Journal, at whatever is being followed —
+    /// bounded to the parchment itself, not the readout's full width — or null in a host that takes
+    /// no mouse.
     ///
-    /// <para><b>Why the plate and not only the cog.</b> The player asked for it in as many words:
-    /// the banner is the plugin's face, and a face is a thing you click. It is also the largest,
-    /// easiest target on the readout, which matters at a television's distance far more than a
-    /// thirteen-pixel cog does.</para>
+    /// <para><b>Why the plate and not only the words of the name.</b> Reported live: the plate used
+    /// to open Settings, which was the large, obvious target doing the incidental thing, while the
+    /// Journal — the useful thing — was a strip the width of the name's own text. This is the fix:
+    /// the parchment is the readout's face and the obvious click on it should be the obvious action,
+    /// which is "go look at the thing I am following", not the plugin's own settings.</para>
     ///
-    /// <para><b>What it deliberately does not swallow.</b> It is attached before the switcher and
-    /// before the words of the name, so both of those sit above it in hit-test order and keep their
-    /// own meanings: the caret still drops the follow list and the name still opens the Journal. Only
-    /// the parchment either side of them opens settings.</para>
+    /// <para><b>Settings moved off the plate entirely.</b> It was never anywhere else, but with the
+    /// plate now claimed by the Journal it would be a second control fighting the same parchment for
+    /// the same click. The cog beside the header pill is the only settings affordance left on the
+    /// readout — see <see cref="cogNode"/> — and it was never removed, so there was nothing to
+    /// restore.</para>
+    ///
+    /// <para><b>What it deliberately does not swallow.</b> Sized to stop short of the switcher's cap
+    /// on the right — see <see cref="LayoutBannerHitBox"/> — and attached before the switcher and
+    /// before the words of the name, so both of those still sit above it in hit-test order: the caret
+    /// still drops the follow list, and the words of the name still carry their own, narrower click
+    /// (see <see cref="subjectHitBox"/>) for the truncated-name tooltip that lives with them. Hitting
+    /// either region opens the same Journal entry, so which one caught the click never matters.</para>
     ///
     /// <para>Mouse only, like the cog and the switcher, and for the same reason — the controller's
-    /// host is click-through by construction. A pad reaches settings from the window, the info-bar
-    /// entry, the plugin list and <c>/wayfarer settings</c>.</para></summary>
+    /// host is click-through by construction. A pad reaches the Journal, settings and the follow list
+    /// through the window's own tabs, the game's own right-click menu and <c>/wayfarer settings</c>,
+    /// none of which need a pointer.</para></summary>
     private readonly ResNode? bannerHitBox;
 
     /// <summary>Whether this host was given somewhere to send a click on the quest name. False on
@@ -446,7 +464,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         stripNode = BuildStrip();
         stripTextNode = BuildStripText();
         crestNode = BuildCrest();
-        bannerHitBox = onSettingsClicked is null ? null : BuildHitBox(onSettingsClicked, bannerSection);
+
+        // The parchment's own click target: the obvious, large thing on the readout opens the
+        // Journal at whatever is being followed — see the field's own note for why settings moved
+        // off the plate entirely and lives on the cog alone.
+        bannerHitBox = onQuestNameClicked is null ? null : BuildHitBox(onQuestNameClicked, bannerSection);
         headlineNode = BuildHeadline();
 
         arrowWordsNode = BuildArrowWords();
@@ -1101,8 +1123,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     }
 
     /// <summary>Draws the banner: the plate at the readout's full width, the header pill over its top
-    /// edge, the pill's words, the emblem pinned to the plate's left end, and the whole plate as a
-    /// click target for settings.
+    /// edge, the pill's words, the emblem pinned to the plate's left end, and the parchment itself as
+    /// a click target for the Journal.
     ///
     /// <para>Every position here is <see cref="GameMetrics.Banner"/> multiplied by the frame's scale
     /// factor and nothing else — the banner's arrangement does not depend on its content, which is
@@ -1174,10 +1196,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         crestNode.IsVisible = true;
     }
 
-    /// <summary>The whole plate as a click target for settings — the plate AND the emblem's margin
-    /// beside it. The mark is the most obviously "this is the plugin" thing on the readout, so it would
-    /// be strange for it to be the one part of the banner that is not the plugin's own button.
-    /// </summary>
+    /// <summary>The parchment itself as a click target for the Journal — the plate's own bounds and
+    /// nothing either side of it, so the target reads as "this piece of parchment", not "anywhere
+    /// near the banner".
+    ///
+    /// <para><b>Bounded to the plate, not the readout's full width.</b> It used to reach from the
+    /// readout's left edge — the plate AND the emblem's margin beside it — which was fine while it
+    /// only ever competed with the switcher's cap. Matching <see cref="plateNode"/>'s own left edge
+    /// and trimming the same cap width off the right, the way <see cref="LayoutSwitcher"/> sizes its
+    /// own box, is what makes the two provably disjoint rather than merely stacked in hit-test
+    /// order.</para></summary>
     private void LayoutBannerHitBox(float factor, float width, float top)
     {
         if (bannerHitBox is null)
@@ -1185,8 +1213,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return;
         }
 
-        bannerHitBox.Size = new Vector2(width, GameMetrics.Banner.PlateHeight * factor);
-        bannerHitBox.Position = new Vector2(0f, top + (GameMetrics.Banner.PlateTop * factor));
+        var plateLeft = GameMetrics.Banner.PlateLeft * factor;
+        var cap = GameMetrics.Banner.PlateInsetX * factor;
+        var plateWidth = Math.Max(width - plateLeft, factor);
+
+        bannerHitBox.Size = new Vector2(Math.Max(plateWidth - cap, factor), GameMetrics.Banner.PlateHeight * factor);
+        bannerHitBox.Position = new Vector2(plateLeft, top + (GameMetrics.Banner.PlateTop * factor));
         bannerHitBox.IsVisible = true;
     }
 

@@ -252,6 +252,36 @@ public class ScenarioBannerTests
     }
 
     [Fact]
+    public void The_parchment_click_target_tiles_the_plate_with_the_switchers_cap_and_nothing_else()
+    {
+        // Reported: the whole plate opened Settings, the largest and most obvious target on the
+        // readout doing the incidental thing, while the useful one — the Journal — was a strip the
+        // width of the quest name's own text. The fix makes the parchment itself the Journal's
+        // target, bounded to the plate's own left edge (not the readout's, which used to let it eat
+        // the crest's margin too) and stopping exactly where the switcher's cap begins, the way
+        // ReadoutBodyNode.LayoutBannerHitBox and LayoutSwitcher size their boxes.
+        const float width = GameMetrics.Banner.Width;
+        var plateLeft = GameMetrics.Banner.PlateLeft;
+        var cap = GameMetrics.Banner.PlateInsetX;
+        var plateRight = plateLeft + (width - plateLeft);
+
+        var parchmentLeft = plateLeft;
+        var parchmentRight = plateLeft + ((width - plateLeft) - cap);
+        var switcherLeft = width - cap;
+        var switcherRight = width;
+
+        Assert.Equal(plateLeft, parchmentLeft);
+        Assert.True(
+            Math.Abs(switcherLeft - parchmentRight) < 0.001f,
+            "the parchment target leaves a gap or overlaps the switcher's cap");
+        Assert.True(
+            Math.Abs(plateRight - switcherRight) < 0.001f,
+            "the switcher's cap does not reach the plate's own right edge");
+        Assert.True(parchmentLeft >= plateLeft, "the parchment target reaches back into the crest's margin");
+        Assert.True(switcherRight <= plateRight, "the switcher's cap reaches past the plate");
+    }
+
+    [Fact]
     public void The_readout_is_not_wider_than_the_games_own_banner()
     {
         // The plate is drawn at the part's native width, so the nine-slice is the identity and the
