@@ -1666,11 +1666,6 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Mount speed increased in northern Thanalan, Mist, the Lavender Beds, and the Goblet, after",
       "type": "mount",
-      "reward": {
-        "kind": "Mount",
-        "id": 6,
-        "name": "magitek armor"
-      },
       "quest": "The Ultimate Weapon",
       "questKind": "msq",
       "notes": null,

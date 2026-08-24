@@ -113,8 +113,9 @@ internal sealed class RewardIndex
     /// game says its quest grants is the strongest evidence available — two independent statements
     /// agreeing. A label link the resolver already turned into a ContentFinderCondition row is the
     /// next: "[[The Aery]] Dungeon Access" <i>is</i> that duty whatever the guide calls it. Last,
-    /// an entry the catalogue types as a mount whose quest grants exactly one mount can only be
-    /// about that mount. Anything weaker than these is a guess of the kind that bound seven entries
+    /// an entry the catalogue types as a mount, whose quest grants exactly one mount, and whose name
+    /// shares a word with that mount, can only be about it — see <see cref="SharesAWord"/> for why
+    /// all three clauses are needed. Anything weaker is a guess of the kind that bound seven entries
     /// to the wrong quest, so it returns null and the entry ships with no reward.</para></summary>
     public Match? Resolve(RewardJoin join)
     {
@@ -155,7 +156,10 @@ internal sealed class RewardIndex
 
         if (KindForCatalogueType(join.Type) is { } kind)
         {
-            var ofKind = pool.Where(c => string.Equals(c.Kind, kind, StringComparison.Ordinal)).ToList();
+            var ofKind = pool
+                .Where(c => string.Equals(c.Kind, kind, StringComparison.Ordinal))
+                .Where(c => SharesAWord(join.Unlock, c.Name))
+                .ToList();
             if (ofKind.Count == 1)
             {
                 return new Match(ofKind[0], "type-match");
@@ -163,6 +167,34 @@ internal sealed class RewardIndex
         }
 
         return null;
+    }
+
+    /// <summary>Whether an entry and a reward are talking about the same thing at all — the guard on
+    /// the type rule, and the reason that rule is not a guess.
+    ///
+    /// <para>Without it the rule reads a <c>type</c> the catalogue derived from the first word of the
+    /// entry's own name, which is a known-bad source: "Mount speed increased in northern Thanalan,
+    /// Mist, the Lavender Beds, and the Goblet" is typed <c>mount</c> and its quest happens to hand
+    /// out magitek armor, so the pool has exactly one Mount in it and the entry would have claimed to
+    /// unlock a mount it has nothing to do with. Requiring one shared word rejects that and keeps the
+    /// cases the rule exists for — "Chocobo Mount Access" and "company chocobo" share <i>chocobo</i>,
+    /// "Airship Travel" and "wind-up airship" share <i>airship</i>.</para>
+    ///
+    /// <para>Words of one or two letters are ignored: "of", "the" and "a" are shared by everything
+    /// and would make the guard vacuous.</para></summary>
+    private static bool SharesAWord(string unlock, string rewardName)
+    {
+        var entryWords = Words(unlock);
+        return Words(rewardName).Any(w => entryWords.Contains(w));
+
+        static HashSet<string> Words(string text) =>
+        [
+            .. text
+                .Split((char[])[' ', '\t', '-', ':', ',', '.', '(', ')', '\'', '"', '/'],
+                    StringSplitOptions.RemoveEmptyEntries)
+                .Select(w => w.ToLowerInvariant())
+                .Where(w => w.Length > 2),
+        ];
     }
 
     /// <summary>The catalogue's own type words, where one of them narrows the pool to a single

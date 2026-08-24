@@ -87,7 +87,7 @@ public class UnlockRewardTests
         var all = Load();
         var rewarded = all.Count(d => d.Reward is not null);
 
-        // 316 of 587 at the time this was measured, against the design's estimate of ~320.
+        // 315 of 587 at the time this was measured, against the design's estimate of ~320.
         Assert.True(rewarded >= 300, $"only {rewarded} of {all.Count} entries carry a reward identity");
 
         var drawable = all.Count(d => d.Reward is { } r && UnlockRewardKinds.DrawsAnIcon(r.Kind));
