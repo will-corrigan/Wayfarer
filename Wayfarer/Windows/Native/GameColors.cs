@@ -1,5 +1,6 @@
 using System.Numerics;
 using KamiToolKit.Classes;
+using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Windows.Native;
 
@@ -82,39 +83,29 @@ internal static class GameColors
     /// near-white giver line on cream, which the player photographed and could not read. Never white
     /// on parchment.</para>
     ///
-    /// <para><b>What these values are, honestly.</b> Literals, not <c>UIColor</c> rows, and not read
-    /// out of <c>JournalDetail</c>'s own text nodes — the game's <c>ui/uld/JournalDetail.uld</c> is
-    /// not present on the machine this was written on, so its authored text colours could not be
-    /// extracted, and inventing a row id would look like evidence while being a guess. What <i>is</i>
-    /// measured is the contrast: each value below is stated against the cream parchment mean recorded
-    /// on <see cref="BannerHeadline"/> — (200, 195, 174) — and every one of them clears the 4.5:1 a
-    /// body size needs. The roles and their relative weight are the game's: near-black body text on
-    /// cream, with a muted grey-brown for the section headings and the line at the foot.</para>
+    /// <para><b>The values live in Core.</b> They are literals rather than <c>UIColor</c> rows — see
+    /// <see cref="JournalPalette"/> for what that admits and why — and being literals is exactly what
+    /// lets them be checked without a client attached, which is what <c>JournalPaletteTests</c> does.
+    /// This class is the seam: everything else Wayfarer draws asks the game for its colour, so the
+    /// four that cannot are reached through the same door as the rest.</para>
     ///
     /// <para><b>The one exception is not here.</b> The level badge's numeral stays light —
-    /// <see cref="GameColors.Heading"/> over <see cref="GameColors.HeadingEdge"/>, exactly as
-    /// JournalDetail <c>#9</c> — because the badge is the game's own black disc
-    /// (<c>Journal_Detail.tex</c> (420,124)) and not parchment. There is deliberately no value for it
-    /// below: it is not a parchment role.</para></summary>
+    /// <see cref="Heading"/> over <see cref="HeadingEdge"/>, exactly as JournalDetail <c>#9</c> —
+    /// because the badge is the game's own black disc (<c>Journal_Detail.tex</c> (420,124)) and not
+    /// parchment. There is deliberately no value for it below: it is not a parchment role.</para>
+    /// </summary>
     public static class JournalPage
     {
-        /// <summary>The entry's name. #251D14, a very dark warm brown — 9.4:1 on the parchment. Dark
-        /// enough to read as the page's heading without the bronze outline the HUD titles wear: an
-        /// outline under dark letters on paper reads as a printing fault.</summary>
-        public static Vector4 Title { get; } = new(0.145f, 0.114f, 0.078f, 1f);
+        /// <inheritdoc cref="JournalPalette.Title"/>
+        public static Vector4 Title => JournalPalette.Title;
 
-        /// <summary>The prose. #2B2318, 8.8:1 — a shade off the title so the two read as a hierarchy
-        /// rather than as one weight.</summary>
-        public static Vector4 Body { get; } = new(0.169f, 0.137f, 0.094f, 1f);
+        /// <inheritdoc cref="JournalPalette.Body"/>
+        public static Vector4 Body => JournalPalette.Body;
 
-        /// <summary>A section heading — Reward, Description, Requirements. #4A4234, a muted
-        /// grey-brown at 5.6:1: quieter than the prose it introduces, which is the relationship the
-        /// game's own page has, and still comfortably legible.</summary>
-        public static Vector4 Heading { get; } = new(0.290f, 0.259f, 0.204f, 1f);
+        /// <inheritdoc cref="JournalPalette.Heading"/>
+        public static Vector4 Heading => JournalPalette.Heading;
 
-        /// <summary>The lines that are <i>about</i> the entry rather than part of it: the kind
-        /// caption, the giver at the foot, the confidence footnote. #544B3D, 4.8:1 — the quietest
-        /// thing on the page that is still text and not decoration.</summary>
-        public static Vector4 Meta { get; } = new(0.329f, 0.294f, 0.239f, 1f);
+        /// <inheritdoc cref="JournalPalette.Meta"/>
+        public static Vector4 Meta => JournalPalette.Meta;
     }
 }
