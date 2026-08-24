@@ -203,6 +203,50 @@ public class LayoutContainmentTests
         }
     }
 
+    /// <summary>The journal window's turn at the same proof.
+    ///
+    /// <para><see cref="JournalWindowLayoutTests"/> sweeps that window in detail; this is the entry in
+    /// <i>this</i> file, which is the one a future change to the shared metrics will run. It carries
+    /// the case the field report actually showed: the entry whose gate names thirty jobs, whose
+    /// requirement sentence wraps to five lines of Axis 14, flowed into a window at its authored
+    /// height alongside everything else a full entry has.</para></summary>
+    [Fact]
+    public void Every_journal_window_block_stays_inside_its_content_box()
+    {
+        foreach (var height in new[]
+                 {
+                     GameMetrics.JournalFrame.MinHeight,
+                     420f,
+                     GameMetrics.JournalFrame.AuthoredHeight,
+                     JournalWindowLayout.NaturalHeight,
+                 })
+        {
+            var box = JournalWindowLayout.ContentBox(height);
+            var blocks = JournalWindowLayout.Compose(
+                height,
+                hasLevel: true,
+                hasStatusIcon: true,
+                hasBanner: true,
+                hasReward: true,
+                requirementsHeight: JournalWindowLayout.BlockHeight(30),
+                descriptionHeight: JournalWindowLayout.BlockHeight(JournalWindowLayout.MaxDescriptionLines),
+                hasGiver: true,
+                hasProvenance: true);
+
+            foreach (var block in blocks.Blocks)
+            {
+                Assert.True(block.ContainedBy(box), $"h={height}: {block} escapes {box}");
+            }
+
+            foreach (var block in blocks.All)
+            {
+                Assert.True(
+                    block.ContainedBy(JournalFrameLayout.Inner(height)),
+                    $"h={height}: {block} escapes the gilt frame");
+            }
+        }
+    }
+
     /// <summary>The level badge and the reward tray are swept as their own dimensions rather than
     /// pinned on, because both are pieces of ART with a fixed size — a 40-pixel disc and a 52-pixel
     /// tray — inside a box that can be smaller than either. A block that is 40 tall in a pane with
