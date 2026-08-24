@@ -437,6 +437,15 @@ public static class GameMetrics
         /// <inheritdoc cref="ParchmentPartSize"/>
         public const float ParchmentSideOffset = 24f;
 
+        /// <summary>The journal's own section divider — the rule the page draws under its title and
+        /// above its buttons. JournalDetail <c>#39</c> and <c>#48</c> both draw part list 9 part 0,
+        /// <c>Journal_Detail.tex</c> (0,24) 392x4, at 382 wide. A plain image, not a nine-grid: the
+        /// game never stretches it.</summary>
+        public const float DividerWidth = 392f;
+
+        /// <inheritdoc cref="DividerWidth"/>
+        public const float DividerHeight = 4f;
+
         /// <summary>The document-with-lines disc. Part list 6 part 6; the game puts it over
         /// Information, Requirements and Summary.</summary>
         public static readonly (float U, float V) GlyphDocument = (24f, 0f);
@@ -460,6 +469,9 @@ public static class GameMetrics
 
         /// <inheritdoc cref="ParchmentPartSize"/>
         public static readonly (float U, float V) Parchment = (376f, 28f);
+
+        /// <inheritdoc cref="DividerWidth"/>
+        public static readonly (float U, float V) Divider = (0f, 24f);
     }
 
     /// <summary>The Journal's ornate gilt border, node for node.
@@ -536,10 +548,32 @@ public static class GameMetrics
         /// at y=568, which is 80 above the frame's 648.</summary>
         public const float FooterRuleBottomInset = 80f;
 
-        /// <summary>The small round button the game parks beside its button row. JournalDetail
-        /// <c>#53</c> is a 28x28 <c>Button</c> at (414,582) — the chat-log icon in the player's
-        /// screenshot.</summary>
-        public const float IconButtonSize = 28f;
+        /// <summary>How far the page overlaps the list window it opens beside.
+        ///
+        /// <para><c>Journal.uld</c>'s node <c>#9</c> — the empty <c>Res</c> that reserves the detail
+        /// page's rectangle — is at (450,-40) in a root whose list panel (<c>#39</c>) is 462 wide. So
+        /// the page starts twelve pixels <i>inside</i> the list's right edge and forty above its top:
+        /// a deliberate overlap, which is what lets the border's ornament cross the seam instead of
+        /// leaving a gap between two windows.</para></summary>
+        public const float BesideOverlapX = 12f;
+
+        /// <inheritdoc cref="BesideOverlapX"/>
+        public const float BesideOverlapY = 40f;
+
+        /// <summary>The gold rivet at the foot of the page, beside the button row.
+        ///
+        /// <para>Part list 10's part 7 — <c>Journal_Frame.tex</c> (200,152) 40x40, a small round
+        /// boss. It is the one piece of the border sheet <c>JournalDetail</c> never places, and the
+        /// extracted texture shows it plainly: a gold ring with a dark centre, authored to sit at the
+        /// end of a run. It goes where the game puts its own 28x28 button (<c>#53</c>, at (414,582) —
+        /// the chat-log icon in the player's screenshot), because that is the slot the layout leaves
+        /// and because an ornament is the honest thing to put there: the button's job on the game's
+        /// page has no counterpart on ours, and inventing one would be a control nobody asked
+        /// for.</para></summary>
+        public const float BossSize = 40f;
+
+        /// <inheritdoc cref="BossSize"/>
+        public static readonly (float U, float V) Boss = (200f, 152f);
 
         /// <summary>The page's content column, and where the frame's own numbers put it.
         ///

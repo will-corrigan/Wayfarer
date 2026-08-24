@@ -42,17 +42,11 @@ internal static class ControllerGlyphs
     public static ReadOnlySeString WindowHint(bool reverseConfirmCancel) =>
         Hint(reverseConfirmCancel, "Back");
 
-    /// <summary>The hint while a journal page is open.
-    ///
-    /// <b>"Close", not "Back".</b> Cancel is handled by the game and shuts the whole addon; there is
-    /// no hook that could make it mean "back to the list" instead. On a page whose own Back button
-    /// is on screen and one press away, a hint saying "Back" would name the wrong control — and the
-    /// player would find out by losing the window. The button is the way back to the list; this line
-    /// says what the pad's own button really does.</summary>
-    /// <param name="reverseConfirmCancel">The player's own PadReverseConfirmCancel setting.</param>
-    public static ReadOnlySeString JournalPageHint(bool reverseConfirmCancel) =>
-        Hint(reverseConfirmCancel, "Close");
-
+    // There used to be a second hint here — "Close" rather than "Back" — for while the journal page
+    // was open, because the page was drawn inside the hub window and Cancel shuts the addon that has
+    // focus, which was the whole window. The page is its own addon now, so Cancel closes the page and
+    // "Back" is true on both surfaces; a wording that only existed to warn about that arrangement went
+    // with the arrangement.
     private static ReadOnlySeString Hint(bool reverseConfirmCancel, string cancelVerb)
     {
         var confirm = reverseConfirmCancel ? East : South;

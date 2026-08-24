@@ -82,20 +82,21 @@ public static class JournalWindowLayout
             : new ScreenRect(column.X, y, column.Width, GameMetrics.Window.RuleHeight);
     }
 
-    /// <summary>The button row along the bottom edge, less the square button at its right end.
+    /// <summary>The button row along the bottom edge, less the gold rivet at its right end.
     /// </summary>
     public static ScreenRect ActionRow(float height)
     {
         var column = Column(height);
         var y = height - GameMetrics.JournalFrame.ButtonBottomInset - GameMetrics.Control.ButtonHeight;
-        var width = column.Width - GameMetrics.JournalFrame.IconButtonSize - GameMetrics.Control.ButtonGap;
+        var width = column.Width - GameMetrics.JournalFrame.BossSize - GameMetrics.Control.ButtonGap;
         return column.IsEmpty || y < GameMetrics.JournalFrame.BodyTop || width <= 0f
             ? default
             : new ScreenRect(column.X, y, width, GameMetrics.Control.ButtonHeight);
     }
 
-    /// <summary>The square button beside the row — JournalDetail <c>#53</c>'s slot.</summary>
-    public static ScreenRect IconButton(float height)
+    /// <summary>The gold rivet beside the row — JournalDetail <c>#53</c>'s slot, worn as ornament
+    /// rather than as a control. See <see cref="GameMetrics.JournalFrame.BossSize"/>.</summary>
+    public static ScreenRect Boss(float height)
     {
         var row = ActionRow(height);
         if (row.IsEmpty)
@@ -103,7 +104,7 @@ public static class JournalWindowLayout
             return default;
         }
 
-        var size = GameMetrics.JournalFrame.IconButtonSize;
+        var size = GameMetrics.JournalFrame.BossSize;
         var column = Column(height);
         return new ScreenRect(
             column.Right - size,
@@ -210,7 +211,7 @@ public static class JournalWindowLayout
             provenance,
             FooterRule(height),
             ActionRow(height),
-            IconButton(height));
+            Boss(height));
     }
 
     /// <summary>The two blocks anchored to the foot of the content box, and what is left over for

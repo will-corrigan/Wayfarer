@@ -3,6 +3,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KamiToolKit;
+using KamiToolKit.Nodes;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Guidance;
 using Wayfarer.Guidance.Coordinators;
@@ -347,6 +348,7 @@ public sealed class Plugin : IDalamudPlugin
             new HubStatusIcons(textures, log),
             new HubRewardIcons(dataManager, log),
             new HubJournalFacts(dataManager, log),
+            BuildJournal(dataManager, framework),
             log)
         {
             InternalName = "WayfarerHubNative",
@@ -357,6 +359,33 @@ public sealed class Plugin : IDalamudPlugin
             // read "Wayfarer Wayfarer" — its own guidance is to drop the subtitle when the window's
             // title is already the plugin's name, and here it is.
             Subtitle = string.Empty,
+        };
+
+    /// <summary>The journal page's own window — the second half of the game's own Journal, which is
+    /// a plain list beside an ornate parchment page rather than one rectangle.
+    ///
+    /// <para>Chromeless: the window node is supplied already invisible, so the frame, the title bar
+    /// and the draggable header are all allocated and none of them drawn. That is deliberate and it
+    /// is what <c>JournalDetail</c> itself does — the page's chrome <i>is</i> its parchment and its
+    /// gilt border, and a standard window frame around that would be a frame inside a frame. The
+    /// same trick, for the same reason, as the readout's clickable host.</para>
+    ///
+    /// <para>Handed to the hub window, which owns its lifetime: it is opened, moved, and closed
+    /// entirely in response to what is happening in that window's list.</para></summary>
+    private JournalWindow BuildJournal(IDataManager dataManager, IFramework framework) =>
+        new(new JournalWords(dataManager, log), framework, log)
+        {
+            InternalName = "WayfarerJournal",
+            Title = "Wayfarer",
+            Subtitle = string.Empty,
+            CreateWindowNode = () => new WindowNode { NodeId = 2, IsVisible = false },
+            EnableContextMenu = false,
+            RememberClosePosition = false,
+
+            // The page is positioned by the hub window, exactly as the game's own detail page is
+            // positioned by its list — so it must not be clamped away from the deliberate overlap
+            // that lets the border's ornament cross the seam between the two.
+            OpenInBounds = false,
         };
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.

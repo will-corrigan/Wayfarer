@@ -4,7 +4,7 @@ namespace Wayfarer.Core.Ui;
 
 /// <summary>Where every part of the journal window goes, inside the gilt frame. An empty rectangle
 /// means the block did not fit and must not be drawn — the same contract as
-/// <see cref="DetailPaneBlocks"/> and <see cref="JournalPageBlocks"/>.</summary>
+/// <see cref="DetailPaneBlocks"/>.</summary>
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct JournalWindowBlocks(
 
@@ -49,9 +49,10 @@ public readonly record struct JournalWindowBlocks(
     /// <summary>The row of text buttons along the bottom edge — JournalDetail <c>#49</c>.</summary>
     ScreenRect Actions,
 
-    /// <summary>The small square button beside them — JournalDetail <c>#53</c>, the 28x28 the
-    /// player's screenshot shows as a chat icon.</summary>
-    ScreenRect IconButton)
+    /// <summary>The gold rivet beside them, in the slot JournalDetail gives its own 28x28 button
+    /// (<c>#53</c>) — ornament rather than a control, because that button's job has no counterpart
+    /// here.</summary>
+    ScreenRect Boss)
 {
     /// <summary>Every block that has to stay inside the page's content box: the flowed sections and
     /// the two blocks anchored to its foot. The header band, the rules and the button row are
@@ -79,7 +80,7 @@ public readonly record struct JournalWindowBlocks(
         DescriptionGlyph, DescriptionLabel, Description,
         RequirementsGlyph, RequirementsLabel, Requirements,
         Giver, Provenance,
-        FooterRule, Actions, IconButton,
+        FooterRule, Actions, Boss,
     ];
 
     /// <summary>Everything except the reward tray, for the proof that nothing overlaps anything
@@ -99,6 +100,6 @@ public readonly record struct JournalWindowBlocks(
         DescriptionGlyph, DescriptionLabel, Description,
         RequirementsGlyph, RequirementsLabel, Requirements,
         Giver, Provenance,
-        FooterRule, Actions, IconButton,
+        FooterRule, Actions, Boss,
     ];
 }

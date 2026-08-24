@@ -115,6 +115,23 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private readonly HubStatusIcons statusIcons;
     private readonly HubRewardIcons rewardIcons;
     private readonly HubJournalFacts journalFacts;
+
+    /// <summary>The journal page, which is its own window rather than a node in this one.
+    ///
+    /// <para><b>Why it is a second addon.</b> The game's own Journal is two: a plain list on the left
+    /// and an ornate parchment page on the right, and <c>Journal.uld</c>'s empty <c>Res</c> node
+    /// <c>#9</c> reserves the page's rectangle outright. Drawing the page in here instead meant it had
+    /// to fit whatever width this window had been dragged to — so it could not wear the gilt border,
+    /// which is authored for one width and one only — and it meant hiding the list to make room, so
+    /// the game's own "the cursor moves, the page updates" contract was impossible. Both go away with
+    /// a window of its own, and a third thing goes with them: Cancel on a pad closes the addon that
+    /// has focus, which is now the page rather than everything.</para>
+    ///
+    /// <para>Owned here rather than by the plugin because its whole lifetime is "a row of this list
+    /// is being read": this window opens it, closes it, positions it, and disposes it.</para>
+    /// </summary>
+    private readonly JournalWindow journal;
+
     private readonly IPluginLog log;
 
     private readonly FilterState filter = new();
@@ -156,11 +173,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private TabBarNode? hubTabs;
     private ListNode<HubListRow, HubListRowNode>? list;
     private HubDetailPaneNode? detailPane;
-    private HubJournalPageNode? journalPage;
 
-    /// <summary>The row whose journal page is open, or null when the list is showing. One field is
-    /// the whole of "which surface is on screen": the page replaces the list in the same rectangle,
-    /// so there is never a question of both.</summary>
+    /// <summary>The row the journal window is currently showing, or null when it is closed. Kept so
+    /// the cursor can be put back on that row when the window goes away, by whatever route it went.
+    /// </summary>
     private HubListRow? pageRow;
 
     /// <summary>The row the pane is currently describing, by reference. A held d-pad fires the
@@ -191,7 +207,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private CheckboxNode? firstSettingControl;
     private TextNode? buttonHintNode;
     private bool lastReverseConfirmCancel;
-    private bool lastHintWasPage;
     private string lastTeleportLabel = string.Empty;
 
     public NativeHubWindow(
@@ -208,8 +223,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         HubStatusIcons statusIcons,
         HubRewardIcons rewardIcons,
         HubJournalFacts journalFacts,
+        JournalWindow journal,
         IPluginLog log)
     {
+        this.journal = journal;
         this.statusIcons = statusIcons;
         this.rewardIcons = rewardIcons;
         this.journalFacts = journalFacts;
@@ -231,12 +248,26 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ContentPadding = new Vector2(GameMetrics.Window.InsetLeft, GameMetrics.Window.BlockGap);
 
         settings.OnWindowPositionChanged += ApplyPositionPreset;
+
+        journal.OnBack = journal.Close;
+        journal.OnClosed = OnJournalClosed;
     }
 
-    /// <summary>Whether the journal page has taken the list's place in the window. One field is the
-    /// whole of "which surface is on screen": the page occupies the list's rectangle, so there is
-    /// never a question of both.</summary>
+    /// <summary>Whether the journal window is open on one of this list's rows.</summary>
     private bool IsPageOpen => pageRow is not null;
+
+    /// <summary>Where this window actually is on screen, in screen pixels — which is the space the
+    /// journal window has to be positioned in, because a second addon's own position is set in the
+    /// same space. <see cref="NativeAddon.Size"/> is in addon units and has to be scaled to
+    /// match.</summary>
+    private Vector2 ScreenPosition =>
+        InternalAddon is null ? Vector2.Zero : new Vector2(InternalAddon->X, InternalAddon->Y);
+
+    /// <summary>Whether the cursor should be moved for the player. Both halves matter: the setting is
+    /// the player's own opt-out, and the mode is what says a pad is actually in their hands.
+    /// </summary>
+    private bool TakesFocus =>
+        config.InputMode.CursorNavigation && inputMode.Mode == Core.Input.InputMode.Controller;
 
     /// <inheritdoc/>
     public override void Dispose()
@@ -246,6 +277,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // leave nothing subscribed to IFramework the moment it returns, regardless of that timing.
         framework.Update -= OnFrameworkUpdate;
         settings.OnWindowPositionChanged -= ApplyPositionPreset;
+
+        // The journal page's window is this window's to own, so it is this window's to take down —
+        // and before base.Dispose(), because its callbacks point back in here.
+        journal.OnBack = null;
+        journal.OnClosed = null;
+        journal.Dispose();
 
         // Dalamud unloads plugins on a thread-pool thread (game exit); base.Dispose() calls
         // Close(), which asserts the main thread and throws otherwise. Marshal onto the framework
@@ -413,7 +450,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         BuildButtonHint(contentStart, contentSize);
         BuildSharedList();
         BuildDetailPane();
-        BuildJournalPage();
         BuildChecklistControls();
         BuildHuntingControls();
         BuildQuestControls();
@@ -435,6 +471,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     protected override unsafe void OnFinalize(AtkUnitBase* addon)
     {
         framework.Update -= OnFrameworkUpdate;
+
+        // The journal page goes with the list it was opened from. The game does the same: its detail
+        // addon is closed by its list, not independently, and a parchment page left floating over the
+        // world with nothing behind it would be the plainest possible bug.
+        DismissJournalPage();
 
         // One line for the whole close, not one per node: whatever breaks a node's dispose breaks
         // every sibling's too, and this window owns hundreds of them.
@@ -797,7 +838,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         hubTabs = null;
         list = null;
         detailPane = null;
-        journalPage = null;
         pageRow = null;
         hoveredRow = null;
         checklistControls = null;
@@ -863,11 +903,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     /// <summary>Keeps the hint line saying what the buttons actually do.
     ///
-    /// <para>The page needs its own wording. Cancel closes the whole addon — that is the game's
-    /// behaviour for every window and there is no hook to intercept it — so on the page, where
-    /// "Back" would be read as "back to the list", the hint has to say <i>Close</i> and let the Back
-    /// button on screen be the way back. A hint that promised otherwise would be the worst kind of
-    /// wrong: the player would press it once and lose the window.</para></summary>
+    /// <para>One wording, where there used to be two. The journal page was drawn inside this window,
+    /// so Cancel on a pad closed the whole thing and the hint had to say <i>Close</i> while the page
+    /// was up — otherwise the player would press it once and lose the window. The page is its own
+    /// addon now, and Cancel closes whichever of the two has focus, so "Back" is true on both
+    /// surfaces and the special case is gone with the thing that needed it.</para></summary>
     private void RefreshButtonHint()
     {
         if (buttonHintNode is null)
@@ -876,18 +916,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         buttonHintNode.IsVisible = inputMode.Mode == Core.Input.InputMode.Controller;
-
-        var page = IsPageOpen;
-        if (inputMode.ReverseConfirmCancel == lastReverseConfirmCancel && page == lastHintWasPage)
+        if (inputMode.ReverseConfirmCancel == lastReverseConfirmCancel)
         {
             return;
         }
 
         lastReverseConfirmCancel = inputMode.ReverseConfirmCancel;
-        lastHintWasPage = page;
-        buttonHintNode.String = page
-            ? ControllerGlyphs.JournalPageHint(lastReverseConfirmCancel)
-            : ControllerGlyphs.WindowHint(lastReverseConfirmCancel);
+        buttonHintNode.String = ControllerGlyphs.WindowHint(lastReverseConfirmCancel);
     }
 
     // ----- Shared virtual list --------------------------------------------------------------
@@ -1028,16 +1063,27 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// rebuild rather than a closure each.</summary>
     private void PublishDetail(HubListRow row)
     {
-        // Not drawn on this tab, so not composed either: the Unlocks tab spends its pixels on the
-        // list and its detail on the page, and building SeStrings for a hidden pane once per d-pad
-        // step is exactly the allocation storm the reference guard below exists to prevent.
-        if (detailPane is not { IsVisible: true } || ReferenceEquals(row, hoveredRow))
+        if (ReferenceEquals(row, hoveredRow))
         {
             return;
         }
 
+        // The journal window follows the cursor whether or not the strip is drawn — that is the
+        // game's own contract for its two-window journal, and it is the whole reason the page is a
+        // second addon rather than a node in here.
+        FollowJournal(row);
+
+        // Not drawn on this tab, so not composed either: a tab that spends its pixels on the list
+        // has no strip to fill, and building SeStrings for a hidden pane once per d-pad step is
+        // exactly the allocation storm the reference guard above exists to prevent.
+        if (detailPane is not { IsVisible: true })
+        {
+            hoveredRow = row;
+            return;
+        }
+
         hoveredRow = row;
-        detailPane?.Show(row.Pane);
+        detailPane.Show(row.Pane);
 
         // The set of buttons on the pane changes with the row, and the indices are absolute — a
         // button that appeared without being numbered is a button a controller cannot reach.
@@ -1082,120 +1128,77 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
     }
 
-    /// <summary>The journal page, built once and hidden until a row is opened. Built alongside the
-    /// list rather than on demand because <see cref="NativeAddon"/> deallocates its whole tree on
-    /// close, so "on demand" would mean building a page while the player is looking at where it is
-    /// about to appear.</summary>
-    private void BuildJournalPage()
-    {
-        journalPage = new HubJournalPageNode(log)
-        {
-            Position = tabContentStart,
-            Size = tabContentSize,
-            IsVisible = false,
-            OnBack = CloseJournalPage,
-        };
-        AddOwnedNode(journalPage);
-    }
-
-    /// <summary>Confirm on a row. An unlock entry opens its journal page; everything else — a
-    /// heading, a hunting target, a quest — acts, as it always did.
+    /// <summary>Confirm on a row. An unlock entry opens the journal window beside this one;
+    /// everything else — a heading, a hunting target, a quest — acts, as it always did.
     ///
-    /// <para>This is the game's own contract, and it is the reason the page exists: the Journal's
-    /// list <i>selects</i> and its page <i>acts</i>. Putting the action on the row meant the strip
-    /// under the list had to carry every button, and the strip cost the list 291 pixels to do
-    /// it.</para></summary>
+    /// <para>This is the game's own contract: the Journal's list <i>selects</i> and its page
+    /// <i>acts</i>.</para></summary>
     private void OnRowClicked(HubListRow? row)
     {
         list?.ClearSelection();
 
         if (row is { OpensPage: true, Pane: { } detail })
         {
-            OpenJournalPage(row, detail);
+            OpenJournal(row, detail);
             return;
         }
 
         row?.Activate?.Invoke();
     }
 
-    private void OpenJournalPage(HubListRow row, HubRowDetail detail)
+    /// <summary>Opens the journal window on one row, beside this one.
+    ///
+    /// <para>The focus is only taken on a controller, and that is the difference between the two
+    /// input modes on this surface: a pad has nowhere else to be, so the cursor is moved into the
+    /// page and Cancel brings it back; a mouse player has just clicked a row and is still holding the
+    /// mouse, so taking their focus would be taking it from under them.</para></summary>
+    private void OpenJournal(HubListRow row, HubRowDetail detail)
     {
-        if (journalPage is null)
+        pageRow = row;
+        journal.Show(detail, TakesFocus);
+        journal.PlaceBeside(ScreenPosition, Size * UiScale());
+        RefreshButtonHint();
+    }
+
+    /// <summary>Keeps the open journal window on whatever the cursor is now over — the game's own
+    /// contract, and the thing that was impossible while the page lived inside this window and had to
+    /// hide the list to be seen.
+    ///
+    /// <para>Focus is deliberately <i>not</i> taken here: the player is moving the cursor in the
+    /// list, and moving it into the page under them would strand them.</para></summary>
+    private void FollowJournal(HubListRow row)
+    {
+        if (!journal.IsOpen || row.Pane is not { } detail || !row.OpensPage)
         {
             return;
         }
 
         pageRow = row;
-        journalPage.Show(detail);
-        ApplyPageState();
+        journal.Show(detail, takeFocus: false);
     }
 
-    /// <summary>Back to the list. Mouse and controller alike: the Back button is a real button that
-    /// takes a click and takes a confirm, and it is index <see cref="HubNavPlan.JournalPage"/>, which
-    /// is where "up" from every other control on the page leads.</summary>
-    private void CloseJournalPage()
+    /// <summary>The journal window has gone away — by its own Back button, by Cancel on a pad, or by
+    /// the game's close-all. Whichever it was, the cursor belongs back on the row it was opened
+    /// from.</summary>
+    private void OnJournalClosed()
     {
-        if (pageRow is not { } row)
-        {
-            return;
-        }
-
+        var row = pageRow;
         pageRow = null;
-        ApplyPageState();
-        FocusRow(row);
-    }
+        RefreshButtonHint();
 
-    /// <summary>Swaps the window between the list side and the page, and renumbers the cursor graph
-    /// for whichever is now on screen. One method for both directions so the two halves cannot
-    /// disagree about what "the page is open" means.</summary>
-    private void ApplyPageState()
-    {
-        var open = pageRow is not null;
-
-        SetBucketVisible(TabNodes(currentTab), !open);
-        if (list is not null)
+        if (row is not null)
         {
-            list.IsVisible = !open;
-        }
-
-        if (journalPage is not null)
-        {
-            journalPage.IsVisible = open;
-        }
-
-        PositionTabContent();
-        ApplyNavigation(TabControls(currentTab));
-
-        if (open)
-        {
-            FocusPage();
-        }
-
-        if (InternalAddon is not null)
-        {
-            InternalAddon->UpdateCollisionNodeList(false);
+            FocusRow(row);
         }
     }
 
-    /// <summary>Puts the cursor on Back when the page opens. Back rather than the first action,
-    /// deliberately: the cursor lands on the way out, so a reflex confirm returns to the list rather
-    /// than firing a navigation change nobody asked for.</summary>
-    private void FocusPage()
-    {
-        if (config.InputMode.CursorNavigation && inputMode.Mode == Core.Input.InputMode.Controller)
-        {
-            journalPage?.Back.SetFocus();
-        }
-    }
-
-    /// <summary>Puts the cursor back on the row the page was opened from. The list is not rebuilt
-    /// while the page is open, so the row is still in the same recycled node — and when it is not
+    /// <summary>Puts the cursor back on the row the journal was opened from. The list is not rebuilt
+    /// while the journal is open, so the row is still in the same recycled node — and when it is not
     /// (a background refresh moved it), the tab's own anchor is the fallback rather than a cursor
     /// left nowhere.</summary>
     private void FocusRow(HubListRow row)
     {
-        if (list is null || !config.InputMode.CursorNavigation
-            || inputMode.Mode != Core.Input.InputMode.Controller)
+        if (list is null || !TakesFocus)
         {
             return;
         }
@@ -1212,9 +1215,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         FocusTabAnchor(currentTab);
     }
 
-    /// <summary>Drops the page without the ceremony of closing it, for callers that are about to
-    /// re-lay out and renumber anyway — a tab switch, or a rebuild that is about to replace the very
-    /// row the page was built from.</summary>
+    /// <summary>Shuts the journal window without waiting for it to say so, for callers that are about
+    /// to re-lay out and renumber anyway — a tab switch, or a rebuild that is about to replace the
+    /// very row the page was built from.</summary>
     private void DismissJournalPage()
     {
         if (pageRow is null)
@@ -1223,17 +1226,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         pageRow = null;
-        if (journalPage is not null)
+        if (journal.IsOpen)
         {
-            journalPage.IsVisible = false;
+            journal.Close();
         }
-
-        if (list is not null)
-        {
-            list.IsVisible = true;
-        }
-
-        SetBucketVisible(TabNodes(currentTab), true);
     }
 
     private List<NodeBase> TabNodes(HubTab tab) => tab switch
@@ -1289,10 +1285,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             buttonHintNode.Size = new Vector2(tabContentSize.X, ButtonHintHeight);
         }
 
-        if (journalPage is not null)
+        // The journal page is a separate addon now, so a resize of this window moves it rather than
+        // re-laying it out: it keeps its own fixed width and its own height whatever happens here.
+        if (journal.IsOpen)
         {
-            journalPage.Position = tabContentStart;
-            journalPage.Size = tabContentSize;
+            journal.PlaceBeside(ScreenPosition, Size * UiScale());
         }
 
         var controlsHeight = ControlsHeight(currentTab);
@@ -1428,17 +1425,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ClampIntoViewport();
     }
 
+    /// <summary>What the open tab actually needs, so the window can shrink to it.
+    ///
+    /// <para>This used to open with an arm that floored the height at what a full journal entry
+    /// needed, because the page was drawn in here and the list had to hand over its rectangle to
+    /// make room. That is what the list gave up for the page, and it is what the page moving into a
+    /// window of its own gives back: the list asks for exactly the room its own rows want, and
+    /// opening an entry no longer changes the shape of this window at all.</para></summary>
     private float TabBodyHeight()
     {
-        // The page is not allowed to shrink the window under itself: it is opened over a list the
-        // player is going to come back to, and a window that jumps smaller on open and bigger on
-        // close is the "reflows under the cursor" defect in a different costume. It keeps whatever
-        // the list had, floored at what a full entry needs.
-        if (IsPageOpen)
-        {
-            return Math.Max(tabContentSize.Y, JournalPageLayout.NaturalHeight);
-        }
-
         return currentTab switch
         {
             HubTab.Settings => settingsArea?.ContentNode.Height ?? tabContentSize.Y,
@@ -1684,12 +1679,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         ApplyStripNavigation();
 
-        if (IsPageOpen)
-        {
-            ApplyJournalPageNavigation();
-            return;
-        }
-
         if (hubTabs is not null)
         {
             hubTabs.NavDown = HubNavPlan.Region;
@@ -1747,44 +1736,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         if (hubTabs is not null)
         {
             hubTabs.NavUp = end > HubNavPlan.Strip ? HubNavPlan.Strip : NavGraphPlanner.NoNavigation;
-        }
-    }
-
-    /// <summary>Numbers the journal page's controls while it is open, and points the tab bar's
-    /// "down" at them.
-    ///
-    /// <para>The tab's controls and the list are hidden, so the walker skips them and their indices
-    /// go unused for as long as the page is up — which is exactly why the page has a block of its
-    /// own rather than borrowing the list's. Back is the block's first index, and the walker gives a
-    /// whole horizontal row one <c>NavUp</c>: pointing that at the block's own start means "up"
-    /// leaves the page from anywhere on it in one press, and the row's left/right wrap puts Back one
-    /// press away from either end as well.</para></summary>
-    private void ApplyJournalPageNavigation()
-    {
-        if (journalPage is not { IsVisible: true })
-        {
-            return;
-        }
-
-        var end = NavigationWalker.Apply(
-            journalPage.ActionRow,
-            HubNavPlan.JournalPage,
-            HubNavPlan.JournalPageBack,
-            HubNavPlan.TabBar,
-            HubNavPlan.JournalPage + HubNavPlan.JournalPageCapacity - 1);
-
-        if (hubTabs is not null)
-        {
-            hubTabs.NavDown = end > HubNavPlan.JournalPage
-                ? HubNavPlan.JournalPage
-                : NavGraphPlanner.NoNavigation;
-        }
-
-        if (config.QuestHelper.LogDiagnostics)
-        {
-            log.Verbose(
-                $"Wayfarer nav [{currentTab}]: journal page {HubNavPlan.JournalPage}..{Math.Max(end - 1, HubNavPlan.JournalPage)}, "
-                + "list and controls hidden.");
         }
     }
 
@@ -2207,6 +2158,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             BannerIconId = journalFacts.Banner(u),
             StatusIconId = statusIcons.For(u.Status),
             StatusSentence = UnlockStatusDisplay.Sentence(u),
+            StatusWord = UnlockStatusDisplay.Word(u.Status),
             Body = UnlockRowText.Description(u),
             Requirements = MissingFor(u),
             From = FromLine(u),

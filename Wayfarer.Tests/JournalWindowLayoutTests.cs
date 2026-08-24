@@ -100,7 +100,7 @@ public class JournalWindowLayoutTests
         foreach (var blocks in Compositions(height))
         {
             var row = blocks.Actions;
-            var icon = blocks.IconButton;
+            var icon = blocks.Boss;
 
             foreach (var block in blocks.Blocks.Where(block => !block.IsEmpty))
             {
@@ -129,7 +129,7 @@ public class JournalWindowLayoutTests
     public void The_button_row_and_the_icon_button_never_touch()
     {
         var height = GameMetrics.JournalFrame.AuthoredHeight;
-        Assert.False(JournalWindowLayout.ActionRow(height).Overlaps(JournalWindowLayout.IconButton(height)));
+        Assert.False(JournalWindowLayout.ActionRow(height).Overlaps(JournalWindowLayout.Boss(height)));
     }
 
     [Fact]

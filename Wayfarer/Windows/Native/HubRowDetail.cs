@@ -51,6 +51,13 @@ internal sealed class HubRowDetail
     /// that the icons failed.</summary>
     public string StatusSentence { get; init; } = string.Empty;
 
+    /// <summary>The one word for the state, with nothing about why. The journal window uses it in
+    /// place of <see cref="StatusSentence"/> whenever it is also drawing a requirements block, so
+    /// the reason an entry is locked reaches the screen exactly once — see
+    /// <see cref="Wayfarer.Core.Ui.JournalRequirementText"/> for the defect that rule exists to make
+    /// impossible.</summary>
+    public string StatusWord { get; init; } = string.Empty;
+
     /// <summary>The catalogue's own description — the paragraph the window has always had and
     /// never shown.</summary>
     public string Body { get; init; } = string.Empty;
