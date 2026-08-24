@@ -34,20 +34,48 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (args.Length != 3 || args[0] is not ("resolve" or "rewards"))
+        if (args.Length != 3 || args[0] is not ("resolve" or "rewards" or "enumerate"))
         {
-            Console.Error.WriteLine("usage: Wayfarer.CatalogueGen <resolve|rewards> <request.json> <response.json>");
+            Console.Error.WriteLine(
+                "usage: Wayfarer.CatalogueGen <resolve|rewards|enumerate> <request.json> <response.json>");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("  resolve  request  { \"sqpack\": \"<path>\", \"names\": [ ... ] }");
-            Console.Error.WriteLine("           response { \"names\": { \"<raw name>\": { \"key\": ..., \"quest\": ... } } }");
-            Console.Error.WriteLine("  rewards  request  { \"sqpack\": \"<path>\", \"joins\": [ { \"ref\", \"unlock\", \"type\", \"questRowIds\", \"duties\" } ] }");
-            Console.Error.WriteLine("           response { \"rewards\": { \"<ref>\": { \"kind\", \"id\", \"name\", \"how\", \"via\" } } }");
+            Console.Error.WriteLine("  resolve    request  { \"sqpack\": \"<path>\", \"names\": [ ... ] }");
+            Console.Error.WriteLine("             response { \"names\": { \"<raw name>\": { \"key\": ..., \"quest\": ... } } }");
+            Console.Error.WriteLine("  rewards    request  { \"sqpack\": \"<path>\", \"joins\": [ { \"ref\", \"unlock\", \"type\", \"questRowIds\", \"duties\" } ] }");
+            Console.Error.WriteLine("             response { \"rewards\": { \"<ref>\": { \"kind\", \"id\", \"name\", \"how\", \"via\" } } }");
+            Console.Error.WriteLine("  enumerate  request  { \"sqpack\": \"<path>\" }");
+            Console.Error.WriteLine("             response { \"channelCounts\": { ... }, \"unlocks\": [ { \"channel\", \"identityKind\", \"identityId\", ... } ] }");
             return 2;
         }
 
-        return string.Equals(args[0], "rewards", StringComparison.Ordinal)
-            ? Rewards(args[1], args[2])
-            : Resolve(args[1], args[2]);
+        return args[0] switch
+        {
+            "rewards" => Rewards(args[1], args[2]),
+            "enumerate" => Enumerate(args[1], args[2]),
+            _ => Resolve(args[1], args[2]),
+        };
+    }
+
+    /// <summary>Everything the GAME says is unlockable, with no wiki input — see
+    /// <see cref="UnlockEnumeration"/>. A verb of its own because it answers a different question
+    /// from the other two: they resolve things the guide already named, and this one proposes
+    /// things nothing has named yet.</summary>
+    private static int Enumerate(string requestPath, string responsePath)
+    {
+        var request = JsonSerializer.Deserialize<EnumerateRequest>(File.ReadAllText(requestPath), ReadOptions)
+            ?? throw new InvalidOperationException($"could not read a request from {requestPath}");
+
+        if (OpenGame(request.Sqpack) is not { } game)
+        {
+            return 3;
+        }
+
+        var response = EnumerateResponse.From(request.Sqpack, game);
+        File.WriteAllText(responsePath, JsonSerializer.Serialize(response, WriteOptions));
+        Console.Error.WriteLine(
+            $"enumerated {response.Unlocks.Count} rows across {response.ChannelCounts.Count} channels -> {responsePath}");
+        Console.Error.WriteLine(response.Summary());
+        return 0;
     }
 
     /// <summary>What each entry actually grants — see <see cref="RewardIndex"/>. A verb of its own
@@ -137,6 +165,11 @@ internal static class Program
         Console.Error.WriteLine($"resolved {names.Count} names -> {responsePath}");
         return 0;
     }
+}
+
+internal sealed class EnumerateRequest
+{
+    public string Sqpack { get; init; } = string.Empty;
 }
 
 internal sealed class RewardRequest
