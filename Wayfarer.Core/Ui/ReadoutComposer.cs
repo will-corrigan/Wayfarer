@@ -174,7 +174,7 @@ public static class ReadoutComposer
         {
             // The arrow already points at the entry shard in this case, so say so rather than
             // leaving the player wondering why it points away from the objective.
-            lines.Add(new ReadoutLine($"To the {state.AethernetEntryName} aetheryte", ReadoutEmphasis.Secondary));
+            lines.Add(new ReadoutLine(EntryShard(state.AethernetEntryName), ReadoutEmphasis.Secondary));
             lines.Add(new ReadoutLine($"Aethernet to {exit}", ReadoutEmphasis.Secondary));
         }
 
@@ -191,7 +191,7 @@ public static class ReadoutComposer
             AddDistance(lines, inputs);
             if (state.AethernetExitName is { Length: > 0 } exit)
             {
-                lines.Add(new ReadoutLine($"To the {state.AethernetEntryName} aetheryte", ReadoutEmphasis.Secondary));
+                lines.Add(new ReadoutLine(EntryShard(state.AethernetEntryName), ReadoutEmphasis.Secondary));
                 lines.Add(new ReadoutLine($"Aethernet to {exit}{Remaining(state)}", ReadoutEmphasis.Secondary));
             }
             else
@@ -202,7 +202,10 @@ public static class ReadoutComposer
 
         AddTeleportAdvice(lines, inputs, hasEntrance);
 
-        if (state.ZoneName is { Length: > 0 } zone)
+        // One place name, said once — see AlreadySaid. The bare zone line's whole content IS the
+        // place name, so once any line above has said it there is nothing left for this line to
+        // add; every other line carries something the name alone does not.
+        if (state.ZoneName is { Length: > 0 } zone && !AlreadySaid(lines, zone))
         {
             lines.Add(new ReadoutLine(zone, ReadoutEmphasis.Muted));
         }
@@ -219,6 +222,14 @@ public static class ReadoutComposer
         {
             if (!hasEntrance && state.Reason is { Length: > 0 } reason)
             {
+                // "In Fortemps Manor — find the entrance" sitting directly under a step that reads
+                // "Enter Fortemps Manor." says the place name twice. What gets dropped is the clause
+                // that names it, never the instruction — see AlreadySaid.
+                if (state.ZoneName is { Length: > 0 } zone && AlreadySaid(lines, zone))
+                {
+                    reason = OtherZoneResolution.WithoutZoneName(reason, zone);
+                }
+
                 lines.Add(new ReadoutLine(reason, ReadoutEmphasis.Secondary));
             }
 
@@ -357,6 +368,38 @@ public static class ReadoutComposer
             first = false;
             shown++;
         }
+    }
+
+    /// <summary>"To the Brume aetheryte", but "To The Forgotten Knight aetheryte" — the game's shard
+    /// names carry their own article where they have one, so adding a second produces "To the The
+    /// Forgotten Knight aetheryte". Two of Ishgard's five Pillars shards and two of Foundation's
+    /// three are named this way, so the reported route hits it immediately.</summary>
+    private static string EntryShard(string? name) =>
+        name is not null && name.StartsWith("The ", StringComparison.OrdinalIgnoreCase)
+            ? $"To {name} aetheryte"
+            : $"To the {name} aetheryte";
+
+    /// <summary>Whether a place name has already appeared in the lines composed so far.
+    ///
+    /// <para>This enforces the readout's fourth invariant — <b>nothing appears twice</b> — for place
+    /// names, which is where it was being broken: an interior objective produced the zone's name in
+    /// the step line, again in the interior-entrance message, and a third time as the bare zone
+    /// line. The rule is that a place is named ONCE, at its first and most informative occurrence,
+    /// and every later line that would only repeat it either drops the clause that names it or drops
+    /// entirely. Matching is case-insensitive and by containment, because the repetitions are
+    /// inflected ("Enter Fortemps Manor." / "In Fortemps Manor — …") rather than
+    /// identical.</para></summary>
+    private static bool AlreadySaid(List<ReadoutLine> lines, string place)
+    {
+        foreach (var line in lines)
+        {
+            if (line.Text.Contains(place, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // "Aethernet to X, then 40 yalms" — the walk after the shard hop or door crossing.

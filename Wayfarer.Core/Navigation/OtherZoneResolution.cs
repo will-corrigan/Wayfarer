@@ -31,6 +31,16 @@ public static class OtherZoneResolution
     public static string InteriorMessage(string? zoneName) =>
         $"In {zoneName ?? "another zone"} — find the entrance";
 
+    /// <summary>The same guidance with the place name left out, for when the readout has already
+    /// said it on a line above (<c>ReadoutComposer.AlreadySaid</c>). Kept beside the message it
+    /// shortens so the two forms cannot drift apart. Any other <see cref="NavigationState.Reason"/>
+    /// — from a duty, a missing location, or anywhere else — is returned untouched: this rewrites
+    /// only the one sentence it owns.</summary>
+    public static string WithoutZoneName(string message, string? zoneName) =>
+        string.Equals(message, InteriorMessage(zoneName), StringComparison.Ordinal)
+            ? "Find the entrance"
+            : message;
+
     /// <summary>Picks the outcome: a real routed candidate always wins; failing that, a
     /// caller-supplied marker fallback wins (it's still an exact position, better than
     /// nothing even without a known route); only when neither exists does this resolve

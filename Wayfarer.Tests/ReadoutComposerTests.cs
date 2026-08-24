@@ -461,6 +461,133 @@ public class ReadoutComposerTests
         Assert.Single(content.Lines, line => line.Subject);
     }
 
+    /// <summary>Reported live: following "Heroes of the Hour" with its objective inside Fortemps
+    /// Manor, the readout said "Fortemps Manor" three times over — in the step line, in the
+    /// interior-entrance message, and again as the zone line. A place name is said ONCE.</summary>
+    [Fact]
+    public void A_place_name_already_said_is_not_said_again()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Enter Fortemps Manor.",
+            ZoneName = "Fortemps Manor",
+            Reason = OtherZoneResolution.InteriorMessage("Fortemps Manor"),
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        var said = content.Lines.Count(
+            line => line.Text.Contains("Fortemps Manor", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, said);
+
+        // The instruction survives; only the clause that repeats the name is dropped.
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Find the entrance", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "Fortemps Manor", StringComparison.Ordinal));
+    }
+
+    /// <summary>The same rule on the routed shape: with a shard hop to the manor's door, the zone
+    /// line is redundant beside a step that already names the place.</summary>
+    [Fact]
+    public void The_zone_line_is_dropped_when_the_step_already_named_the_zone()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Enter Fortemps Manor.",
+            ZoneName = "Fortemps Manor",
+            EntranceX = 45f,
+            EntranceZ = 1f,
+            AethernetEntryName = "The Forgotten Knight",
+            AethernetExitName = "The Last Vigil",
+            RemainingYalms = 42f,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "Fortemps Manor", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.Contains("Aethernet to The Last Vigil", StringComparison.Ordinal));
+    }
+
+    /// <summary>Shard names carry their own article where they have one, so the readout must not add
+    /// a second: the reported route boards The Forgotten Knight, which read "To the The Forgotten
+    /// Knight aetheryte".</summary>
+    [Theory]
+    [InlineData("The Forgotten Knight", "To The Forgotten Knight aetheryte")]
+    [InlineData("The Last Vigil", "To The Last Vigil aetheryte")]
+    [InlineData("The Brume", "To The Brume aetheryte")]
+    [InlineData("Skysteel Manufactory", "To the Skysteel Manufactory aetheryte")]
+    [InlineData("Hawkers' Alley", "To the Hawkers' Alley aetheryte")]
+    public void The_entry_shard_line_does_not_double_the_article(string entry, string expected)
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            EntranceX = 45f,
+            EntranceZ = 1f,
+            AethernetEntryName = entry,
+            AethernetExitName = "The Last Vigil",
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, expected, StringComparison.Ordinal));
+    }
+
+    /// <summary>A zone the readout has NOT already named still gets its line — the rule removes
+    /// repetition, not information. Here the step names a person and the route is a teleport, so
+    /// nothing above has said where the objective is.</summary>
+    [Fact]
+    public void The_zone_line_stays_when_nothing_above_has_named_it()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Speak with Lucia.",
+            ZoneName = "Foundation",
+            AetheryteName = "Foundation",
+            AetheryteId = 70,
+            AetheryteUnlocked = true,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(content.Lines, line => line.Text.Contains("Teleport to Foundation", StringComparison.Ordinal));
+
+        // Said by the teleport line already — so the bare zone line beneath it is dropped.
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "Foundation", StringComparison.Ordinal));
+    }
+
+    /// <summary>And when genuinely nothing above names the zone, the zone line is the only thing
+    /// telling the player where they are being sent, so it must survive.</summary>
+    [Fact]
+    public void The_zone_line_is_the_last_word_on_where_the_objective_is()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Speak with Lucia.",
+            ZoneName = "The Pillars",
+            EntranceName = "Gates of Judgement",
+            EntranceX = 5f,
+            EntranceZ = 6f,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "The Pillars", StringComparison.Ordinal));
+    }
+
     private static NavigationState Engaged(string sourceLabel) => new()
     {
         Mode = NavigationState.Modes.SameZone,
