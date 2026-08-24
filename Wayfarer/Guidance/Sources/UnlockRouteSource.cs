@@ -63,12 +63,15 @@ internal sealed unsafe class UnlockRouteSource(IGuidanceArbiter arbiter) : IGuid
         }
 
         var progress = showProgress ? new ObjectiveProgress(plan.Index, plan.Total, null) : null;
+
+        // The QUEST's name in the bar and what it unlocks underneath, never the other way round —
+        // see UnlockRoutePlan.Headline and .Detail for why that is a rule rather than a preference.
         var objective = new GuidanceObjective(
             new ObjectiveKey(SourceId, leg.QuestRowId.ToString(CultureInfo.InvariantCulture)),
             new ObjectiveDestination.WorldPoint(leg.Territory, leg.MapId, leg.X, leg.Y, leg.Z),
             new ObjectiveCopy(
-                UnlockRoutePlan.Headline(leg.UnlockName),
-                UnlockRoutePlan.Detail(leg.QuestName, leg.GiverName),
+                UnlockRoutePlan.Headline(leg.QuestName),
+                UnlockRoutePlan.Detail(leg.UnlockName, leg.GiverName),
                 UnlockRoutePlan.SourceLabel,
                 UnlockRoutePlan.SourceName),
             progress,

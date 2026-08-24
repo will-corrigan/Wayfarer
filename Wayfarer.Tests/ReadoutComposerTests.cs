@@ -78,7 +78,7 @@ public class ReadoutComposerTests
     {
         var content = ReadoutComposer.Compose(new ReadoutInputs
         {
-            State = Engaged("Unlock route") with { QuestName = "Unlocks: Chocobo racing" },
+            State = Engaged("Unlock route") with { QuestName = "The Ties That Bind" },
             HuntingSummary = "Ornery Karakul 2/3",
             HuntingIsPrimary = false,
         });

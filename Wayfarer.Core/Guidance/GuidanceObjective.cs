@@ -17,10 +17,13 @@ public readonly record struct ObjectiveKey(string SourceId, string Value)
 }
 
 /// <summary>The player-facing words for an objective, owned by the source that produced it.</summary>
-/// <param name="Headline">Quest name, "Pick up: A Self-improving Man from Mahenne", "Ornery
-/// Karakul".</param>
-/// <param name="Detail">"Speak to Momodi", "Unlocks: Glamours". Null when the headline says it
-/// all.</param>
+/// <param name="Headline">A name the GAME itself would print, never a label of ours: the quest's
+/// name, the monster's name. It goes in the readout's bar, which is the game's own Main Scenario
+/// Guide plate, and a player reads whatever sits on that plate as a game element — see
+/// <see cref="UnlockRoutePlan.Headline"/>, which is where this rule was broken and put back.</param>
+/// <param name="Detail">Our own words about the headline, and the only place they belong: "Speak to
+/// Momodi", "Speak with Claribel to unlock Ceremony of Eternal Bonding". Null when the headline says
+/// it all.</param>
 /// <param name="SourceLabel">The MODE indicator: "Main Scenario", "Unlock route", "Hunting Log ·
 /// Gladiator". Required whenever the objective is <see cref="GuidanceEngagement.Engaged"/> — the
 /// readout IS the mode indicator, so an engaged objective with no label would leave the player in

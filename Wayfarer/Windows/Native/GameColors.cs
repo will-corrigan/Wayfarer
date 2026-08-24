@@ -54,16 +54,6 @@ internal static class GameColors
     /// Paired with <see cref="BannerHeadline"/>, and unverified for the same reason.</summary>
     public static Vector4 BannerHeadlineEdge { get; } = new(0.925f, 0.906f, 0.831f, 1f);
 
-    /// <summary>What the game's own drop-down arrow is multiplied by to sit on the plate.
-    ///
-    /// <para>The art at <c>ui/uld/DropDownA.tex (44,0) 12x12</c> is a near-white triangle —
-    /// extracted and looked at — which is right on the grey field the game draws it over and
-    /// invisible on cream parchment. Multiplying rather than replacing keeps the glyph's own shading
-    /// and anti-aliasing, and the product lands in the same brown family as
-    /// <see cref="BannerHeadline"/>, so the switcher reads as part of the headline rather than as a
-    /// mark left on it.</para></summary>
-    public static Vector3 BannerControlTint { get; } = new(0.22f, 0.17f, 0.11f);
-
     /// <summary>Reserved for genuinely bad states only. Never the sole signal for one.</summary>
     public static Vector4 Bad => Get(17, new Vector4(0.863f, 0f, 0f, 1f));
 

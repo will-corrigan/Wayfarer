@@ -42,10 +42,21 @@ namespace Wayfarer.Windows.Native;
 /// scrolling and its dismissal are all the game's; see <see cref="FollowSwitcherMenu"/> for what
 /// that fixed and what it costs.
 ///
-/// <b>Scale.</b> The game renders a normal addon at the player's interface scale, while the body
-/// multiplies that scale in by hand (it was written for an overlay, which is de-scaled to raw
-/// pixels). Applying the same de-scaling here is what keeps the two hosts identical instead of
-/// double-scaled.</summary>
+/// <b>Scale — and this host now does nothing whatsoever about it.</b> The game renders a normal
+/// addon at the player's interface scale, which is exactly what is wanted: the addon that draws the
+/// game's own Main Scenario Guide is rendered the same way, so a banner built from the same ULD
+/// units cannot come out a different size from it. This used to force
+/// <c>SetScale(1 / GetGlobalUIScale())</c> and have the body multiply every dimension back up by
+/// <c>GetGlobalUIScale()</c>, on the belief that the two cancelled. They do not — the toolkit's own
+/// addon-config code reads a user scale back as <c>InternalAddon-&gt;Scale / GetGlobalUIScale()</c>,
+/// so a normally-scaled addon's raw <c>Scale</c> IS <c>GetGlobalUIScale()</c>, and forcing
+/// <c>1/g</c> rendered the readout at <c>1/g</c> against the game's own <c>g</c>. Identical only at
+/// exactly 100% interface size, and visibly larger below it. That was "it is still bigger than the
+/// game's banner".
+///
+/// The one consequence to keep in mind: <see cref="ReadoutBodyNode.Layout"/> returns a size in
+/// addon UNITS here, while <see cref="ReadoutPlacement"/> works in screen PIXELS, so
+/// <see cref="Render"/> converts between them.</summary>
 internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
     ReadoutPlacement placement,
@@ -126,6 +137,10 @@ internal sealed unsafe class ClickableReadoutAddon(
         // every time would be the loudest thing about a readout that is meant to be furniture.
         addon->DisableShowHideSoundEffects = true;
 
+        // hostIsHudScaled: this is an ordinary addon, so the game already renders it at the player's
+        // interface size — exactly as it renders the addon that draws the game's own Main Scenario
+        // Guide. The body therefore lays out in plain ULD units and must not scale them itself. See
+        // ReadoutBodyNode.hostIsHudScaled for the arithmetic that was wrong before.
         body = new ReadoutBodyNode(
             log,
             textures,
@@ -134,7 +149,8 @@ internal sealed unsafe class ClickableReadoutAddon(
             onMoved: delta => placement.MoveTo(lastPosition + delta),
             onSettingsClicked: onSettingsClicked,
             onFollowClicked: OpenFollowMenu,
-            onQuestNameClicked: onQuestNameClicked)
+            onQuestNameClicked: onQuestNameClicked,
+            hostIsHudScaled: true)
         {
             Position = Vector2.Zero,
         };
@@ -208,8 +224,6 @@ internal sealed unsafe class ClickableReadoutAddon(
 
     private void Render()
     {
-        ApplyRawPixelScale();
-
         if (provider() is not { } frame || frame.Content.IsEmpty)
         {
             body!.HideAll();
@@ -217,8 +231,9 @@ internal sealed unsafe class ClickableReadoutAddon(
             return;
         }
 
+        // In ADDON UNITS — the same units the game's own banner is authored in, because this addon
+        // is left at the scale the game gives it. See ReadoutBodyNode.hostIsHudScaled.
         var size = body!.Layout(frame);
-        var position = placement.Resolve(size);
 
         // Only when it actually changed: SetWindowSize writes through to the game's own sizing path,
         // and rebuilding the collision list every frame for an unchanged rectangle is pure waste.
@@ -233,6 +248,11 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
 
         RefreshCollision();
+
+        // Placement is screen pixels — the safe area, the minimap's rectangle and the clamp are all
+        // measured in them — so the addon's extent has to be converted out of units first, or a
+        // readout at any interface size but 100% would be clamped against a box the wrong size.
+        var position = placement.Resolve(size * AtkUnitBase.GetGlobalUIScale());
 
         // Remembered because a drag is reported as an offset from wherever the host currently is,
         // and the body has no way to ask the addon where that was.
@@ -253,18 +273,5 @@ internal sealed unsafe class ClickableReadoutAddon(
 
         lastClickTargets = live;
         InternalAddon->UpdateCollisionNodeList(false);
-    }
-
-    /// <summary>Undoes the interface scale the game applies to a normal addon, so one addon unit is
-    /// one screen pixel — the frame of reference <see cref="ReadoutBodyNode"/> and
-    /// <see cref="ReadoutPlacement"/> are both written in. Re-applied when it drifts, because the
-    /// game rewrites the scale on a resolution or interface-size change.</summary>
-    private void ApplyRawPixelScale()
-    {
-        var target = 1.0f / Math.Max(AtkUnitBase.GetGlobalUIScale(), 0.1f);
-        if (Math.Abs(InternalAddon->Scale - target) > 0.001f)
-        {
-            InternalAddon->SetScale(target, true);
-        }
     }
 }

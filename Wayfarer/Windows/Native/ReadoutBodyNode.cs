@@ -116,37 +116,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rather than against the readout: it is a mark on that line, not a button on a panel.</summary>
     private const float BaseCog = 13f;
 
-    /// <summary>The game's own drop-down sheet, and the part of it that is the little collapse
-    /// arrow the game draws on the right of every drop-down's label.
-    ///
-    /// <para>Deliberately the game's art rather than a generated mark. "It should feel more native
-    /// than the little toggle thing" is about recognition, not about pixels: a player has already
-    /// learnt that this exact arrow beside a word means "that word is a choice, and there is a list
-    /// behind it". Drawing a shape that merely resembles it teaches them nothing they already know.
-    /// These are the same three numbers KamiToolKit's own <c>DropDownNode</c> uses for its
-    /// <c>CollapseArrowNode</c>, read from the same sheet.</para>
-    ///
-    /// <para><b>Why not the whole drop-down component.</b> A <c>DropDownNode</c> would bring its
-    /// <c>DropDownA</c> nine-grid box with it, and a bordered grey field is precisely the panel this
-    /// readout does not have — what the player likes about it is that it looks like the game's own
-    /// quest tracker. The arrow alone is the part of that idiom that survives without
-    /// chrome.</para></summary>
-    private const string DropDownTexture = "ui/uld/DropDownA.tex";
-
-    /// <inheritdoc cref="DropDownTexture"/>
-    private const float BaseSwitcher = 12f;
-
-    /// <summary>The rotation that draws this arrow pointing down — the pose
-    /// <c>DropDownNode</c>'s own timeline rotates <i>to</i> when its list opens (frame 60 of its
-    /// <c>CollapseArrowNode</c> timeline is unrotated; the closed pose is a further 270° from
-    /// there), taken rather than the closed pose because down is what "there is a list beneath
-    /// this" actually looks like — the closed pose is the same glyph lying on its side, which read
-    /// as a play button rather than a drop-down once it was next to a quest name instead of inside
-    /// a settings pill. This node always draws it in this one pose — the popup it toggles is a
-    /// sibling in the clickable host, not something this node animates open — so there is no second
-    /// rotation to switch to.</summary>
-    private const float DropDownOpenRotation = 0f;
-
     /// <summary>How visible the cog is when the pointer is not on it.
     ///
     /// <para><b>Why it is not simply hidden.</b> Revealing it on hover would be better — the player
@@ -174,12 +143,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int BannerTarget = 16;
 
-    /// <summary>What is said when the switcher has no art. Losing it costs the shortcut and nothing
-    /// else, which is what this says rather than making it sound fatal.</summary>
-    private const string SwitcherUnavailable =
-        "Wayfarer readout: the game's drop-down arrow could not be read, so the readout has no switcher beside "
-        + "the quest name. What is being followed is still chosen from the window's Following tab and from the "
-        + "game's own right-click menu.";
+    /// <summary>What the pointer is told the plate's own chevron does. The mark is the game's and is
+    /// baked into the parchment, so a tooltip is the only thing that can say what WE have made it
+    /// mean.</summary>
+    private const string SwitcherTooltip = "Choose what to follow";
 
     /// <summary>What is said when the banner's art cannot be read. Losing it costs the frame and
     /// nothing else — every word the readout was going to say is still said, in the colours it used
@@ -196,6 +163,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     private readonly IPluginLog log;
     private readonly ITextureProvider textures;
+
+    /// <summary>Whether the host already renders this node tree at the player's interface scale, the
+    /// way the game renders its own addons — in which case the layout below is in plain ULD units and
+    /// must NOT be multiplied by the HUD scale a second time.
+    ///
+    /// <para><b>This is the fix for "it is still visibly larger than the game's banner".</b> Both
+    /// hosts used to force <c>addon-&gt;SetScale(1 / GetGlobalUIScale())</c> and then multiply every
+    /// dimension by <c>GetGlobalUIScale()</c> to compensate. That is only self-cancelling if the raw
+    /// <c>AtkUnitBase.Scale</c> is a factor applied ON TOP of the HUD scale — and it is not. The
+    /// toolkit's own addon-config code settles it: it reads a user-facing scale back as
+    /// <c>InternalAddon-&gt;Scale / AtkUnitBase.GetGlobalUIScale()</c>, so a normal addon sitting at
+    /// the player's interface size has a raw <c>Scale</c> of exactly <c>GetGlobalUIScale()</c>.
+    /// Forcing <c>1/g</c> therefore rendered the readout at <c>1/g</c> where the game's own banner
+    /// renders at <c>g</c> — identical only when <c>g</c> is exactly 1, and visibly wrong at every
+    /// other interface size. On this player's 5120x1440 display it is not 1.</para>
+    ///
+    /// <para><b>The clickable host now does nothing at all about scale</b>, which is the only
+    /// arrangement that is provably right without knowing <c>g</c>: it is an ordinary addon holding
+    /// ordinary ULD-unit nodes, exactly like the addon that draws the game's own banner, so the two
+    /// cannot disagree. The overlay host is different because the toolkit forces the de-scale on
+    /// every overlay addon and will not be talked out of it — see <see cref="GuidanceOverlayNode"/>,
+    /// which therefore keeps the old compensation.</para></summary>
+    private readonly bool hostIsHudScaled;
 
     /// <summary>Whether the per-change readout diagnostics should be written. Off by default —
     /// see <see cref="QuestHelperConfig.LogDiagnostics"/> for why.</summary>
@@ -263,31 +253,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// affordance that does nothing is worse than none.</summary>
     private readonly ImGuiImageNode? cogNode;
 
-    /// <summary>The "choose what to follow" switcher — the game's own drop-down arrow, sitting
-    /// immediately to the right of the line that names what is being followed. Null in a host that
-    /// cannot be clicked.
+    /// <summary>The "choose what to follow" switcher: <b>an invisible click target over the chevron
+    /// the plate's own art already carries</b>, at the plate's right end. Null in a host that cannot
+    /// be clicked.
     ///
-    /// <para><b>Why it is beside the name and not beside the cog.</b> It used to share the heading
-    /// row with the cog, which put the control that changes the quest next to the control that
-    /// opens settings and nowhere near the quest. Attached to the name it reads as one sentence —
-    /// this is the quest, here is how you change it — which is what a drop-down has always been.
-    /// The cog stays on the heading: it is about the plugin, not about what the plugin is
-    /// following.</para>
+    /// <para><b>Why there is no art of our own here any more.</b> There were two carets on the bar at
+    /// once — ours, a tinted crop of <c>DropDownA.tex</c> parked after the name, and the plate's own,
+    /// baked into the parchment at source x=279-288 and impossible to remove without slicing through
+    /// it (see <see cref="GameMetrics.Banner.PlateInsetX"/>). Two marks for one control is worse than
+    /// either alone, and only one of them can be got rid of. So the game's own chevron wins: it is in
+    /// the art, in the same place at every width, it already means "there is more behind this" on the
+    /// game's own banner, and it cannot be mistinted or misaligned because we do not draw it.</para>
     ///
-    /// <para>One thing it is still not: a menu hanging off the cog. The cog opens settings and this
-    /// opens a list, and hiding a second meaning behind one mark is how the info bar's right-click
-    /// ended up being described as unintuitive. It also draws no list of its own — <i>this</i> node
-    /// still owns exactly one objective, which is the rule that keeps it glanceable and
-    /// click-through-able on the overlay. What clicking it does is not this node's business at all:
-    /// the clickable host asks the game to open its own context menu (<see cref="FollowSwitcherMenu"/>),
-    /// so the objective the overlay draws and the list the switcher drops are two node trees that
-    /// happen to sit next to each other rather than one that would have to be different on the two
-    /// hosts.</para>
+    /// <para>That also takes with it the one unverified colour on the readout — our caret was
+    /// near-white art multiplied into a brown to survive the parchment, which nobody had seen.</para>
+    ///
+    /// <para><b>What it costs:</b> no hover highlight, because there is no node of ours to light up.
+    /// The hand cursor and a tooltip (<see cref="SwitcherTooltip"/>) are what say it is a control —
+    /// which is the same pair the readout already relies on for the teleport line.</para>
     ///
     /// <para>Mouse only, for the same reason as the cog. A controller reaches the same list through
     /// the window's Following tab and through the Wayfarer entry in the game's own right-click
     /// menu, both of which take no cursor.</para></summary>
-    private readonly SimpleImageNode? switcherNode;
+    private readonly ResNode? switcherHitBox;
 
     /// <summary>An invisible box over the words of the subject line, or null in a host that takes no
     /// mouse. It carries the full name as the game's own tooltip when the drawn name has been cut
@@ -329,8 +317,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     private bool cogFailed;
     private bool crestLoaded;
     private bool crestFailed;
-    private bool switcherFailed;
-    private bool warnedSwitcherOnce;
     private bool bannerFailed;
     private bool warnedBannerOnce;
 
@@ -364,12 +350,14 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Action<Vector2>? onMoved = null,
         Action? onSettingsClicked = null,
         Action? onFollowClicked = null,
-        Action? onQuestNameClicked = null)
+        Action? onQuestNameClicked = null,
+        bool hostIsHudScaled = false)
     {
         this.log = log;
         this.textures = textures;
         this.diagnosticsEnabled = diagnosticsEnabled ?? (static () => false);
         this.onMoved = onMoved;
+        this.hostIsHudScaled = hostIsHudScaled;
 
         // FIRST, and the order matters: a node attached later is drawn over the ones before it, so
         // the banner's own chrome has to be laid down before anything that sits on it.
@@ -398,12 +386,17 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         teleportHitBox = onTeleportClicked is null ? null : BuildHitBox(onTeleportClicked);
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
 
-        // Both hang off the subject line and both need a pointer, so they live and die together:
-        // a host with no switcher is a host with nothing to hover, and drawing a tooltip region on
-        // the click-through overlay would be a collision rectangle nobody asked for.
+        // Over the chevron the plate's own art carries, at its right end. No art of ours: see the
+        // field's own note for why there is now exactly one caret on the bar and it is the game's.
         if (onFollowClicked is not null)
         {
-            switcherNode = BuildSwitcher(onFollowClicked);
+            switcherHitBox = BuildHitBox(onFollowClicked);
+            switcherHitBox.TextTooltip = SwitcherTooltip;
+        }
+
+        // Last, so the words of the name sit above the plate's own click target in hit-test order.
+        if (onFollowClicked is not null || onQuestNameClicked is not null)
+        {
             subjectHitBox = new ResNode { IsVisible = false };
 
             // Registered once, offered per frame. The cursor is what says whether the click is on
@@ -461,7 +454,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// stronger statement.</para></summary>
     public Vector2 Layout(ReadoutFrame frame)
     {
-        var factor = AtkUnitBase.GetGlobalUIScale() * Math.Clamp(frame.Scale, 0.5f, 3f);
+        // See hostIsHudScaled. On a host the game already scales, this is the player's own text-size
+        // preference and nothing else, and every number below is a plain ULD unit — the same unit the
+        // game's own banner is authored in.
+        var hud = hostIsHudScaled ? 1f : AtkUnitBase.GetGlobalUIScale();
+        var factor = hud * Math.Clamp(frame.Scale, 0.5f, 3f);
         var width = BaseWidth * factor;
         var arrowSize = BaseArrow * factor * Math.Clamp(frame.ArrowScale, 0.5f, 2f);
 
@@ -473,7 +470,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         LayoutArrow(frame, drawable, arrowSize, factor, arrowCentre);
         LayoutElevation(frame, arrowSize);
         LayoutCog(factor, width, top);
-        LayoutSwitcher(factor, width, subject);
+        LayoutSwitcher(factor, width, top);
         LayoutSubjectHitBox(
             subject,
             subjectContent?.Text,
@@ -487,7 +484,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             ClickTargets |= CogTarget;
         }
 
-        if (switcherNode is { IsVisible: true })
+        if (switcherHitBox is { IsVisible: true })
         {
             ClickTargets |= SwitcherTarget;
         }
@@ -554,9 +551,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             cogNode.IsVisible = false;
         }
 
-        if (switcherNode is not null)
+        if (switcherHitBox is not null)
         {
-            switcherNode.IsVisible = false;
+            switcherHitBox.IsVisible = false;
         }
 
         if (subjectHitBox is not null)
@@ -793,60 +790,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         cog.ShowClickableCursor = true;
         cog.AttachNode(this);
         return cog;
-    }
-
-    /// <summary>The switcher: an image node and a click event, nothing more. What the click does is
-    /// the clickable host's business (see <see cref="ClickableReadoutAddon.ToggleFollowSwitcher"/>)
-    /// — toggling a dropdown built from the same list the window's Following tab shows, the main
-    /// scenario, each accepted quest, an unlock route, a hunt. This node draws none of that: the
-    /// readout still owns exactly one objective and never carries choices itself, which is what
-    /// keeps it glanceable and is why the click-through host can exist at all.
-    ///
-    /// <para>The texture is read straight out of the game's own drop-down sheet — see
-    /// <see cref="DropDownTexture"/> — rather than generated, so the mark beside the quest name is
-    /// the same mark the game puts beside every other choice the player has ever made. It is loaded
-    /// once here rather than per frame; <c>LoadTexture</c> is the toolkit's own idiom for a sheet
-    /// part and resolves the player's UI theme with it.</para>
-    ///
-    /// <para>Same collision treatment as the cog, and for the same reason: <c>MouseClick</c> is the
-    /// only one of these events that adds <c>HasCollision</c>, so the rectangle that swallows a
-    /// world click is exactly the arrow and nothing more.</para></summary>
-    private SimpleImageNode BuildSwitcher(Action onFollowClicked)
-    {
-        var switcher = new SimpleImageNode
-        {
-            Size = new Vector2(BaseSwitcher, BaseSwitcher),
-            IsVisible = false,
-            Alpha = CogIdleAlpha,
-            WrapMode = WrapMode.Stretch,
-            Rotation = DropDownOpenRotation,
-            OriginX = BaseSwitcher / 2f,
-            OriginY = BaseSwitcher / 2f,
-
-            // The one thing that had to change when the name moved onto parchment: the game's arrow
-            // is near-white, which is right on the grey field the game draws it over and invisible on
-            // cream. See GameColors.BannerControlTint.
-            MultiplyColor = GameColors.BannerControlTint,
-        };
-
-        try
-        {
-            switcher.LoadTexture(DropDownTexture);
-            switcher.TextureCoordinates = new Vector2(44f, 0f);
-            switcher.TextureSize = new Vector2(BaseSwitcher, BaseSwitcher);
-        }
-        catch (Exception ex)
-        {
-            switcherFailed = true;
-            log.Error(ex, SwitcherUnavailable);
-        }
-
-        switcher.AddEvent(AtkEventType.MouseClick, onFollowClicked);
-        switcher.AddEvent(AtkEventType.MouseOver, () => switcher.Alpha = 1f);
-        switcher.AddEvent(AtkEventType.MouseOut, () => switcher.Alpha = CogIdleAlpha);
-        switcher.ShowClickableCursor = true;
-        switcher.AttachNode(this);
-        return switcher;
     }
 
     private void BuildLinePool()
@@ -1115,18 +1058,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return height + (BaseGap * factor);
     }
 
-    /// <summary>The room the switcher will want beside the subject line, or nothing at all when
-    /// there is no switcher to draw.
-    ///
-    /// <para>Taken off the subject line before it is laid out rather than after: text measured
-    /// against the full width would run under the arrow, and reserving the slot up front is also
-    /// what makes the line truncate in the right place rather than a control's width too
-    /// late.</para></summary>
-    private float SwitcherSlot(float factor) =>
-        switcherNode is not null && SwitcherDrawable()
-            ? Math.Max(BaseSwitcher * factor, 9f) + (BaseGap * factor * 2f)
-            : 0f;
-
     /// <summary>Hands the header pill its words, but only when they have actually changed. Assigning
     /// <c>String</c> builds a SeString and re-runs the engine's text flow, and this is a per-frame
     /// path; what is being tracked changes when the player changes it and not otherwise.</summary>
@@ -1248,7 +1179,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             width - subLineLeft - (GameMetrics.Banner.HeadlineRight * factor), factor);
 
         var y = top + (GameMetrics.Banner.Height * factor);
-        var reserved = SwitcherSlot(factor);
         var arrowWanted = arrowDrawable && frame.ArrowRadians is not null;
 
         for (var i = 0; i < count; i++)
@@ -1256,7 +1186,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             var line = frame.Content.Lines[i];
             markerNodes[i].IsVisible = false;
 
-            if (TryLayoutOnTheBanner(i, line, factor, top, headlineLeft, headlineWidth - reserved, ref subject))
+            if (TryLayoutOnTheBanner(i, line, factor, top, headlineLeft, headlineWidth, ref subject))
             {
                 subjectContent ??= line.Subject ? line : null;
                 continue;
@@ -1384,42 +1314,42 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         elevationNode.IsVisible = true;
     }
 
-    /// <summary>Parks the switcher immediately to the right of the words that name what is being
-    /// followed — on the plate, beside the headline.
+    /// <summary>Parks the switcher's click target over the chevron the plate's own art carries, at
+    /// the plate's right end.
     ///
-    /// <para>Measured from where the text actually ends, and clamped to the room the line was given
-    /// — which is the same room the line was truncated into, so a name that ran out of space gets
-    /// the arrow right after its ellipsis rather than off the end of the plate.</para>
+    /// <para>The whole right cap rather than the nine drawn pixels of the chevron itself: the mark is
+    /// at source x=279-288 of a 300-wide part, the cap it sits in is the last 24, and a target the
+    /// size of the glyph would be a nine-pixel button on a television. The cap starts past where the
+    /// headline's text box ends (<c>300 - 26 = 274</c> against the cap's 276), so it never covers a
+    /// letter.</para>
     ///
-    /// <para>Nothing here knows where the list it opens goes: it is the game's own context menu now,
-    /// which opens at the cursor and is the game's to place — see
+    /// <para>Fixed to the plate, not measured off the name — unlike the old floating caret, which
+    /// slid along behind the words and ended up sitting right next to the plate's own chevron, which
+    /// is how there came to be two. Nothing here knows where the list it opens goes either: that is
+    /// the game's own context menu, opened at the cursor — see
     /// <see cref="FollowSwitcherMenu"/>.</para></summary>
-    private void LayoutSwitcher(float factor, float width, SubjectLine? subject)
+    private void LayoutSwitcher(float factor, float width, float top)
     {
-        if (switcherNode is null)
+        if (switcherHitBox is null)
         {
             return;
         }
 
-        if (subject is not { } line || !SwitcherDrawable())
+        // Only while the plate is actually drawn: the chevron is part of the plate's art, so with no
+        // plate there is no mark to click and an invisible hit box would be a hand cursor over
+        // nothing.
+        if (!BannerDrawable())
         {
-            switcherNode.IsVisible = false;
+            switcherHitBox.IsVisible = false;
             return;
         }
 
-        var left = GameMetrics.Banner.HeadlineLeft * factor;
-        var lineWidth = Math.Max(width - left - (GameMetrics.Banner.HeadlineRight * factor), factor);
-        var size = Math.Max(BaseSwitcher * factor, 9f);
-        var gap = BaseGap * factor;
-        var x = left + Math.Min(line.TextWidth, lineWidth - size - gap) + gap;
-
-        switcherNode.Size = new Vector2(size, size);
-        switcherNode.OriginX = size / 2f;
-        switcherNode.OriginY = size / 2f;
-        switcherNode.Position = new Vector2(
-            Math.Clamp(x, left, Math.Max(left + lineWidth - size, left)),
-            line.Top + OpticalCentreOffset(line.FontSize, size));
-        switcherNode.IsVisible = true;
+        var cap = GameMetrics.Banner.PlateInsetX * factor;
+        switcherHitBox.Size = new Vector2(cap, GameMetrics.Banner.PlateHeight * factor);
+        switcherHitBox.Position = new Vector2(
+            Math.Max(width - cap, 0f),
+            top + (GameMetrics.Banner.PlateTop * factor));
+        switcherHitBox.IsVisible = true;
     }
 
     /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are
@@ -1497,36 +1427,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             log.Error(ex, "Wayfarer readout: the above/below mark could not be generated. The distance line still says which it is in words.");
             return false;
         }
-    }
-
-    /// <summary>Whether the switcher has a texture to draw. Unlike the generated marks this one is
-    /// read out of the game's own sheet, so it can be merely <i>late</i> rather than broken — the
-    /// resource system answers with nothing until the sheet is resident. Asking every frame is
-    /// therefore right, and costs a pointer read.</summary>
-    private bool SwitcherDrawable()
-    {
-        if (switcherFailed || switcherNode is null)
-        {
-            return false;
-        }
-
-        if (switcherNode.ActualTextureSize != Vector2.Zero)
-        {
-            return true;
-        }
-
-        // Said once, and only to somebody who asked for diagnostics — the same policy this file
-        // already applies to the arrow. A sheet that is merely not resident yet becomes resident a
-        // frame or two later, and a warning that retracts itself is worse in a log than no warning.
-        // A hard failure is not this path: LoadTexture throwing is caught where it is called, and
-        // that one is an error whether or not anybody is watching.
-        if (!warnedSwitcherOnce && diagnosticsEnabled())
-        {
-            warnedSwitcherOnce = true;
-            log.Debug(SwitcherUnavailable);
-        }
-
-        return false;
     }
 
     private float LayoutRule(int index, ReadoutLine line, float factor, float left, float width, float y)

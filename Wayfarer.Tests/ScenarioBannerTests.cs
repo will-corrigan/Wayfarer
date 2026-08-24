@@ -71,7 +71,7 @@ public class ScenarioBannerTests
         var objective = new GuidanceObjective(
             new ObjectiveKey("unlocks", "1234"),
             new ObjectiveDestination.WorldPoint(129u, 1u, 10f, 0f, 20f),
-            new ObjectiveCopy("Unlocks: Glamours", null, UnlockRoutePlan.SourceLabel, UnlockRoutePlan.SourceName));
+            new ObjectiveCopy("The Ties That Bind", null, UnlockRoutePlan.SourceLabel, UnlockRoutePlan.SourceName));
 
         var state = GuidanceProjection.Build(
             objective, GuidanceEngagement.Engaged, new RouteResult.SameZone(10f, 0f, 20f, 40f));
@@ -176,6 +176,79 @@ public class ScenarioBannerTests
         // more likely to truncate than the main scenario's own names already are.
         Assert.Equal(250f, GameMetrics.Banner.HeadlineWidth);
         Assert.Equal(GameMetrics.Banner.PlateLeft + GameMetrics.Banner.PlateTextInset, GameMetrics.Banner.HeadlineLeft);
+    }
+
+    [Fact]
+    public void The_bar_carries_the_quests_own_name_and_never_a_label_of_ours()
+    {
+        // Reported off a screenshot: the bar read "Unlocks: Ceremony of Eternal..." — cut short —
+        // while the real quest name sat in a subordinate line underneath it. Exactly backwards. The
+        // bar is the game's plate and only ever carries a string the game itself would print.
+        Assert.Equal("The Ties That Bind", UnlockRoutePlan.Headline("The Ties That Bind"));
+        Assert.DoesNotContain(":", UnlockRoutePlan.Headline("The Ties That Bind"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void What_an_unlock_gives_and_who_gives_it_go_under_the_bar_not_on_it()
+    {
+        var detail = UnlockRoutePlan.Detail("Ceremony of Eternal Bonding", "Claribel");
+
+        Assert.Contains("Claribel", detail, StringComparison.Ordinal);
+        Assert.Contains("Ceremony of Eternal Bonding", detail, StringComparison.Ordinal);
+
+        // No data-model prefixes: "Unlocks:" and "Pick up:" are both labels about how we store this,
+        // not anything the game would write.
+        Assert.DoesNotContain("Unlocks:", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pick up:", detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unlock_with_no_known_giver_still_says_what_it_gives()
+    {
+        Assert.Equal(
+            "Unlocks Ceremony of Eternal Bonding",
+            UnlockRoutePlan.Detail("Ceremony of Eternal Bonding", null));
+    }
+
+    [Fact]
+    public void The_whole_unlock_objective_puts_the_quest_on_the_plate()
+    {
+        // End to end through the projection, because what was wrong was the CALL SITE rather than
+        // either method: the source used to hand Headline the unlock's name and Detail the quest's.
+        var objective = new GuidanceObjective(
+            new ObjectiveKey("unlocks", "1234"),
+            new ObjectiveDestination.WorldPoint(129u, 1u, 10f, 0f, 20f),
+            new ObjectiveCopy(
+                UnlockRoutePlan.Headline("The Ties That Bind"),
+                UnlockRoutePlan.Detail("Ceremony of Eternal Bonding", "Claribel"),
+                UnlockRoutePlan.SourceLabel,
+                UnlockRoutePlan.SourceName));
+
+        var state = GuidanceProjection.Build(
+            objective, GuidanceEngagement.Engaged, new RouteResult.SameZone(10f, 0f, 20f, 40f));
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Equal("The Ties That Bind", Assert.Single(content.Lines, l => l.Subject).Text);
+        Assert.Contains(
+            content.Lines,
+            l => !l.Subject && l.Text.Contains("Ceremony of Eternal Bonding", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void There_is_exactly_one_caret_on_the_bar_and_it_is_the_plates_own()
+    {
+        // Reported: two carets after the headline. Ours was a tinted DropDownA crop that slid along
+        // behind the name; the other is baked into the plate's art at source x=279-288 and cannot be
+        // removed without slicing through it. Ours went. What is asserted here is that the switcher's
+        // click region is the plate's right CAP — where that chevron lives — and that it never
+        // reaches back over the headline's words.
+        var capLeft = GameMetrics.Banner.PlateWidth - GameMetrics.Banner.PlateInsetX;
+        var capRight = GameMetrics.Banner.PlateWidth;
+        var headlineEnd = GameMetrics.Banner.PlateTextInset + GameMetrics.Banner.HeadlineWidth;
+
+        Assert.True(capLeft <= 279f, "the right cap does not reach the chevron the art draws");
+        Assert.True(capRight >= 288f, "the right cap ends before the chevron does");
+        Assert.True(headlineEnd <= capLeft, "the switcher's click region overlaps the headline's own text");
     }
 
     [Fact]
