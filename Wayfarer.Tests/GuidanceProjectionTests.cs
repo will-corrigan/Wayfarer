@@ -54,6 +54,46 @@ public class GuidanceProjectionTests
         Assert.Null(state.TargetRadiusYalms);
     }
 
+    // --- End-to-end wiring for the REAL measured fixtures — see SearchAreaRadiusTests for the
+    // predicate itself and the full provenance of these numbers.
+    // 203 = "Heroes of the Hour" (67782), "talk to Aymeric to complete the quest" — the step that
+    //       fooled the original revert into concluding radius did not work; genuinely an area.
+    // 406, 102 = "The Full Report, Warts and All" (69901), frog search step, its two locations.
+    // 50 = "Leap into the Unknown" (70602) — the one row where Level.Radius and Level.Type
+    //      disagree; resolved in favour of radius.
+    [Theory]
+    [InlineData(203f)]
+    [InlineData(406f)]
+    [InlineData(102f)]
+    [InlineData(50f)]
+    public void SameZoneRoute_WithARealAreaRadius_CarriesTargetRadiusYalms(float radius)
+    {
+        var objective = Objective("quest", "196", new ObjectiveDestination.WorldPoint(129, 129, 1f, 2f, 3f));
+
+        var state = GuidanceProjection.Build(
+            objective, GuidanceEngagement.Ambient, new RouteResult.SameZone(1f, 2f, 3f, 66f, Radius: radius));
+
+        Assert.Equal(radius, state.TargetRadiusYalms);
+    }
+
+    // 1 = "The Hazy Professor" (65780), "Search for the students near Camp Drybone." — wording says
+    //     search, location is exact: the trap fixture for a text-based heuristic, and proof this
+    //     classifier does not use one.
+    // 2 = "Heroes of the Hour" (67782), "Enter Fortemps Manor." — a small Type-51 "pop range" (a
+    //     doorway), not a search area.
+    [Theory]
+    [InlineData(1f)]
+    [InlineData(2f)]
+    public void SameZoneRoute_WithARealPointRadius_LeavesTargetRadiusYalmsNull(float radius)
+    {
+        var objective = Objective("quest", "196", new ObjectiveDestination.WorldPoint(129, 129, 1f, 2f, 3f));
+
+        var state = GuidanceProjection.Build(
+            objective, GuidanceEngagement.Ambient, new RouteResult.SameZone(1f, 2f, 3f, 66f, Radius: radius));
+
+        Assert.Null(state.TargetRadiusYalms);
+    }
+
     [Fact]
     public void SameZoneRoute_ViaAethernet_CarriesEntryAndExitShards()
     {

@@ -33,10 +33,11 @@ public enum MarkerMatch
 
 /// <summary>One live quest marker's position and the map/territory it belongs to, in
 /// that map's own coordinate space.</summary>
-/// <param name="Radius">The game's own search-area radius for this marker, in yalms, or 0 for an
-/// ordinary point objective. Carried verbatim from <c>MapMarkerData.Radius</c> — see
-/// <see cref="Guidance.Sources.QuestObjectiveSource"/> — so a "search this area" quest step (drawn
-/// as a circle on the map) can be told apart from a precise waypoint everywhere downstream.</param>
+/// <param name="Radius">The game's own marker radius, in yalms, carried verbatim from
+/// <c>MapMarkerData.Radius</c> — see <see cref="Guidance.Sources.QuestObjectiveSource"/>. Every
+/// marker has SOME radius; whether that radius means "this is a search-area circle, not a precise
+/// waypoint" is decided by <see cref="SearchAreaRadius.IsArea"/>, not by comparing it to zero — see
+/// that type for the measured threshold and why.</param>
 public sealed record MarkerPoint(float X, float Y, float Z, uint TerritoryId, uint MapId, float Radius = 0f);
 
 /// <summary>Picks which of the game's live quest markers the readout should point at, and how it
@@ -49,8 +50,8 @@ public static class MarkerSelection
     /// always wins over a closer territory-only marker — exactness is a hard
     /// precedence, not something distance can override, because only an exact match is
     /// safe to arrow straight at. Within a tier, a precise point marker (<see
-    /// cref="MarkerPoint.Radius"/> zero or absent) always wins over a search-area
-    /// marker: a point is unambiguous evidence of exactly where the objective is, while
+    /// cref="MarkerPoint.Radius"/> below <see cref="SearchAreaRadius.ThresholdYalms"/>) always wins
+    /// over a search-area marker: a point is unambiguous evidence of exactly where the objective is, while
     /// an area marker's own position is only ever the CENTRE of a circle the true
     /// objective could be anywhere inside — treating it as equally precise just because
     /// it happens to sit closer would be exactly the kind of confident, misleading
@@ -119,8 +120,8 @@ public static class MarkerSelection
             return true;
         }
 
-        var candidateIsArea = candidate.Radius > 0f;
-        var currentIsArea = current.Radius > 0f;
+        var candidateIsArea = SearchAreaRadius.IsArea(candidate.Radius);
+        var currentIsArea = SearchAreaRadius.IsArea(current.Radius);
         return candidateIsArea != currentIsArea ? currentIsArea : candidateDist < currentDist;
     }
 }

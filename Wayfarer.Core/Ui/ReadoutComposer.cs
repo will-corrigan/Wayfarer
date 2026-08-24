@@ -235,10 +235,12 @@ public static class ReadoutComposer
         // A search-area objective (AreaHint.Outside here — Inside returns before this is ever
         // called) is never "arrived at" and never gets the plain distance line: the arrow points at
         // a circle's centre, not the thing itself, so the readout says so plainly rather than
-        // implying the precision a point objective actually has. Zero/absent radius — the entire
-        // rest of this method — is completely unchanged, which is what keeps a point objective's
-        // output byte-identical to before this feature existed.
-        if (inputs.State.TargetRadiusYalms is { } radius && radius > 0f)
+        // implying the precision a point objective actually has. Absent radius — the entire rest of
+        // this method — is completely unchanged, which is what keeps a point objective's output
+        // byte-identical to before this feature existed. TargetRadiusYalms is already gated to
+        // SearchAreaRadius.IsArea by GuidanceProjection, so this re-check is defensive, not load
+        // bearing — but it keeps this method correct on its own terms rather than trusting a caller.
+        if (inputs.State.TargetRadiusYalms is { } radius && SearchAreaRadius.IsArea(radius))
         {
             var areaText = $"Search the area · {NavMath.FormatDistance(distance)}";
             if (Elevation.Words(inputs.Elevation) is { Length: > 0 } areaElevation)
