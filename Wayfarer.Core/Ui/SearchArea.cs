@@ -34,7 +34,11 @@ public static class SearchArea
     /// before this feature existed.</para></summary>
     /// <param name="distanceYalms">Straight-line distance from the player to the circle's centre, or
     /// null when there is no target to measure against.</param>
-    /// <param name="radiusYalms">The objective's search-area radius in yalms, or null/0 for a point.</param>
+    /// <param name="radiusYalms">The objective's search-area radius in yalms, or null for a point.
+    /// Callers are expected to have already decided this IS an area (see
+    /// <see cref="Navigation.SearchAreaRadius.IsArea"/> — <see cref="Guidance.GuidanceProjection"/>
+    /// nulls out anything below that threshold before it reaches here); the non-positive guard
+    /// below is defensive, not the primary gate.</param>
     /// <param name="previous">What was shown last frame, which is what supplies the hysteresis.</param>
     public static SearchAreaHint Classify(
         float? distanceYalms, float? radiusYalms, SearchAreaHint previous = SearchAreaHint.Outside)

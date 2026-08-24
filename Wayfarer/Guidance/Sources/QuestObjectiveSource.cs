@@ -177,12 +177,13 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
             {
                 var md = mi.MarkerData[i];
 
-                // md.Radius: the game's own "search this area" circle radius, in yalms — 0 for an
-                // ordinary point objective. Verified against the installed FFXIVClientStructs.dll
-                // (MapMarkerData, field offset 0x28, float). Dropping it here is the exact defect
-                // that sent a player an arrow with a precise-looking distance to the CENTRE of a
-                // search-area step instead of telling them it was an area to search — see
-                // MarkerPoint.Radius and everything downstream of it.
+                // md.Radius: the game's own live marker radius, in yalms. Verified against the
+                // installed FFXIVClientStructs.dll (MapMarkerData, field offset 0x28, float) — the
+                // same field name and type as the static Level sheet's Radius column used to
+                // measure SearchAreaRadius.ThresholdYalms, so that threshold applies here unchanged.
+                // Dropping this field entirely is the exact defect that sent a player an arrow with
+                // a precise-looking distance to the CENTRE of a search-area step instead of telling
+                // them it was an area to search — see MarkerPoint.Radius and everything downstream.
                 markers.Add(new(md.Position.X, md.Position.Y, md.Position.Z, md.TerritoryTypeId, md.MapId, md.Radius));
             }
         }
@@ -236,8 +237,11 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
                         continue;
                     }
 
+                    // level.Radius: this branch only runs when the game has no live marker at all,
+                    // so this IS the primary read here, not a proxy for one — the same field
+                    // SearchAreaRadius.ThresholdYalms was measured against.
                     return new ObjectiveDestination.WorldPoint(
-                        level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z);
+                        level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, Radius: level.Radius);
                 }
 
                 break;

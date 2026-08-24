@@ -59,7 +59,7 @@ public static class GuidanceProjection
                 DistanceYalms = s.DistanceYalms,
                 AethernetEntryName = s.AethernetEntryName,
                 AethernetExitName = s.AethernetExitName,
-                TargetRadiusYalms = s.Radius > 0f ? s.Radius : null,
+                TargetRadiusYalms = SearchAreaRadius.IsArea(s.Radius) ? s.Radius : null,
             },
             RouteResult.OtherZone o => identity with
             {
