@@ -70,6 +70,33 @@ public class JournalRequirementTextTests
         Assert.Null(JournalRequirementText.NotMetLead(null, gatedByQuest: true));
     }
 
+    /// <summary>The lead sentence is not bulleted, because it is not one of the things you need — it
+    /// is the sentence over them. And it costs a line out of the same budget, so a block with room for
+    /// three lines shows the sentence and two bullets rather than the sentence and three.</summary>
+    [Fact]
+    public void The_not_met_sentence_leads_the_bullets_without_becoming_one()
+    {
+        var text = DetailText.Led(
+            "This quest is not yet available.",
+            ["Level 58 (you are 43)", "Clear Into the Aery"],
+            budget: 3,
+            out var drawn);
+
+        Assert.Equal(3, drawn);
+        Assert.Equal(
+            "This quest is not yet available.\n• Level 58 (you are 43)\n• Clear Into the Aery",
+            text);
+    }
+
+    [Fact]
+    public void A_one_line_budget_shows_the_sentence_and_nothing_else()
+    {
+        var text = DetailText.Led("This quest is not yet available.", ["Level 58"], budget: 1, out var drawn);
+
+        Assert.Equal(1, drawn);
+        Assert.Equal("This quest is not yet available.", text);
+    }
+
     /// <summary>The reason the heading is a reference rather than a literal — the same argument
     /// <see cref="GameTextRef"/> makes for requirement prose, and the reason
     /// <c>JournalWords</c> reads <c>Addon</c> at runtime instead of shipping English.</summary>

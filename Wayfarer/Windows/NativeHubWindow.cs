@@ -2175,6 +2175,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             StatusWord = UnlockStatusDisplay.Word(u.Status),
             Body = UnlockRowText.Description(u),
             Requirements = MissingFor(u),
+            GatedByQuest = u.Status == UnlockStatus.QuestLocked,
             From = FromLine(u),
             Coordinates = journalFacts.Coordinates(u),
             QuestName = u.Def.Quest ?? string.Empty,

@@ -66,6 +66,14 @@ internal sealed class HubRowDetail
     /// Empty when nothing is in the way.</summary>
     public IReadOnlyList<string> Requirements { get; init; } = [];
 
+    /// <summary>Whether the thing standing in the way is a <b>quest</b>. That is the one case where
+    /// the game has its own sentence for this — <c>Addon</c> row 479, "This quest is not yet
+    /// available.", which is the string <c>AddonJournalDetail</c>'s own requirements label is
+    /// authored with — so it is the one case where we can lead the block with Square Enix's words
+    /// instead of ours. Over a duty's or a mount's requirements the same sentence would be the game's
+    /// words applied to something they are not about.</summary>
+    public bool GatedByQuest { get; init; }
+
     /// <summary>Who gives it and where — the giver's name, the zone, the map coordinates. Kept out
     /// of the row's title because it is <i>where you go</i>, not <i>what it is</i>.</summary>
     public string From { get; init; } = string.Empty;

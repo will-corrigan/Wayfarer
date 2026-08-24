@@ -283,30 +283,37 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             GameMetrics.JournalArt.DividerHeight);
     }
 
-    /// <summary>Sets a bulleted list into a node and shortens it until it measures inside
+    /// <summary>Sets the requirements block — the game's own "not yet available" sentence when there
+    /// is one, then the unmet requirements as bullets — and shortens it until it measures inside
     /// <paramref name="allowance"/>, returning the height it ended up at.</summary>
-    private static float FitBullets(TextNode node, IReadOnlyList<string> lines, float allowance)
+    private static float FitBullets(
+        TextNode node, string? lead, IReadOnlyList<string> lines, float allowance)
     {
-        if (lines.Count == 0 || allowance <= 0f)
+        var wanted = lines.Count + (lead is null ? 0 : 1);
+        if (wanted == 0 || allowance <= 0f)
         {
             node.String = string.Empty;
             return 0f;
         }
 
-        for (var budget = Math.Min(lines.Count, JournalWindowLayout.MaxRequirementLines); budget >= 1; budget--)
+        for (var budget = Math.Min(wanted, JournalWindowLayout.MaxRequirementLines); budget >= 1; budget--)
         {
-            var text = DetailText.Bullets(lines, budget, out _);
-            var measured = Measure(node, text, allowance);
+            var measured = Measure(node, Compose(lead, lines, budget), allowance);
             if (measured <= allowance)
             {
                 return measured;
             }
         }
 
-        // Nothing fits even one wrapped bullet. One ellipsised line is the honest floor: it says
-        // there is a requirement and that it did not fit, rather than running off the page.
-        return Truncate(node, DetailText.Bullets(lines, 1, out _), allowance);
+        // Nothing fits even one wrapped line. One ellipsised line is the honest floor: it says there
+        // is a requirement and that it did not fit, rather than running off the page.
+        return Truncate(node, Compose(lead, lines, 1), allowance);
     }
+
+    private static string Compose(string? lead, IReadOnlyList<string> lines, int budget) =>
+        lead is null
+            ? DetailText.Bullets(lines, budget, out _)
+            : DetailText.Led(lead, lines, budget, out _);
 
     /// <summary>The same for a paragraph, shortened a sentence at a time from the end.</summary>
     private static float Fit(TextNode node, string text, float allowance)
@@ -557,11 +564,12 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         ApplyIcon(rewardIconNode!, detail.RewardIconId, detail.RewardIconSize);
         rewardNameNode!.String = detail.RewardName;
 
-        // The requirements are written before the state line, because whether there are any is what
+        // The requirements are assembled before the state line, because whether there are any is what
         // decides what the state line is allowed to say. See JournalRequirementText.
         var requirements = detail.Requirements;
+        var lead = RequirementsLead(detail);
         statusNode!.String = JournalRequirementText.StatusLine(
-            detail.StatusWord, detail.StatusSentence, requirements.Count > 0);
+            detail.StatusWord, detail.StatusSentence, requirements.Count > 0 || lead is not null);
 
         descriptionNode!.String = detail.Body;
         giverLine = GiverLine(detail);
@@ -570,9 +578,20 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
         ApplyActions(detail.Actions);
         Resize();
-        Layout(requirements);
+        Layout(lead, requirements);
         ApplyNavigation();
     }
+
+    /// <summary>The requirements block's lines, led by the game's own sentence for this shape of gate
+    /// when there is one.
+    ///
+    /// <para><c>Addon</c> row 479 — "This quest is not yet available." — is the string
+    /// <c>AddonJournalDetail</c>'s own <c>RequirementsNotMetLabelTextNode</c> (<c>#33</c>) is authored
+    /// with, so leading with it is the game's own idiom in the game's own words, already localised.
+    /// It is offered only for a quest gate: see <see cref="HubRowDetail.GatedByQuest"/>.</para>
+    /// </summary>
+    private string? RequirementsLead(HubRowDetail detail) =>
+        JournalRequirementText.NotMetLead(words.NotAvailable, detail.GatedByQuest);
 
     /// <summary>Asks the game for the height a fully populated entry wants, clamped to the border's
     /// own minimum and to the viewport. The width is never negotiated.</summary>
@@ -598,7 +617,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     /// rectangles the text really occupies. Without the second pass a block that had to give up two
     /// lines would leave a two-line hole and the block under it would sit in the wrong place — which
     /// is the visible half of the same defect as drawing text on top of text.</para></summary>
-    private void Layout(IReadOnlyList<string> requirements)
+    private void Layout(string? lead, IReadOnlyList<string> requirements)
     {
         var height = frame!.Height;
         var hasReward = entry!.RewardName.Length > 0;
@@ -609,7 +628,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         var descriptionAllowance = JournalWindowLayout.TextAllowance(
             height, JournalWindowLayout.MaxDescriptionLines);
 
-        var requirementHeight = FitBullets(requirementsNode!, requirements, requirementAllowance);
+        var requirementHeight = FitBullets(requirementsNode!, lead, requirements, requirementAllowance);
         var descriptionHeight = Fit(descriptionNode!, entry.Body, descriptionAllowance);
 
         var blocks = JournalWindowLayout.Compose(
@@ -625,7 +644,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
         // Second pass: whatever the ladder granted is the real budget, so re-fit against it and
         // compose once more. Cheap — two measures and one more pass of arithmetic.
-        requirementHeight = FitBullets(requirementsNode!, requirements, blocks.Requirements.Height);
+        requirementHeight = FitBullets(requirementsNode!, lead, requirements, blocks.Requirements.Height);
         descriptionHeight = Fit(descriptionNode!, entry.Body, blocks.Description.Height);
         blocks = JournalWindowLayout.Compose(
             height,
