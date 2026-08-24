@@ -262,6 +262,7 @@ public class ApiContractTests
     [Theory]
     [InlineData(UnlockStatus.CollectionLocked, "CollectionLocked")]
     [InlineData(UnlockStatus.RequirementsUnknown, "RequirementsUnknown")]
+    [InlineData(UnlockStatus.PartnerRequired, "PartnerRequired")]
     public void GetUnlocks_CarriesTheNewStatuses_AsPlainStrings(UnlockStatus status, string wireValue)
     {
         Assert.Equal(wireValue, status.ToString());

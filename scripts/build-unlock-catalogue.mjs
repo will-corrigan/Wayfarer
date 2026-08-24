@@ -966,6 +966,86 @@ function applyMountRequirementOverrides(curated) {
   return applied;
 }
 
+/** Corrections that mark a curated entry's requirement as involving a second player, keyed by the
+ * Quest row id the entry is bound to — same shape and same reason for existing as
+ * {@link MOUNT_REQUIREMENT_OVERRIDES}: the fact is real, the Quest sheet does not (and structurally
+ * cannot) encode it, and it survives the "clear `unverifiable` once a quest resolves" step in the
+ * build loop below because `requiresAnotherPlayer` is not `unverifiable` — it is not a gap in this
+ * plugin's reading of the sheet, it is a fact that lives on someone else's computer.
+ *
+ * Triggered by a live report: the checklist sent a player to "Ceremony of Eternal Bonding" as
+ * something to go and get, when the game's own accept message says it needs a partner. Verified
+ * three ways, all required to agree before this was accepted: live game data (Lumina over sqpack
+ * — Quest#67114 "The Ties That Bind" has `PreviousQuest=66045` "The Scions of the Seventh Dawn",
+ * confirming that half is already a checkable PreviousQuest gate, and `ItemCatalyst`/
+ * `ItemCountCatalyst` are `[0,0,0]` — the sheet records NO item requirement on this row, so the
+ * wristlet is not a readable gate we were ignoring); consolegameswiki's prose prerequisites for
+ * both "The Ties That Bind" and "Ceremony of Eternal Bonding" (partner, same Home World, party of
+ * two, both in East Shroud, both wearing Promise Wristlets — a real-money Mog Station item);
+ * and the game's own on-screen accept message, which the reporting player photographed, naming
+ * "The Scions of the Seventh Dawn" and a promise wristlet directly. */
+const SOCIAL_REQUIREMENT_OVERRIDES = new Map([
+  [67114, { // The Ties That Bind -> Ceremony of Eternal Bonding
+    reason: 'The catalogue had no requires block at all, so the calculator fell through to '
+      + 'Available for any player who had completed "The Scions of the Seventh Dawn" — the one '
+      + "prerequisite the Quest sheet does carry. The ceremony itself needs a second, physically "
+      + 'present player (same Home World, party of two, both in East Shroud, both wearing a '
+      + 'Promise Wristlet bought from the Mog Station), which is not a fact about this character '
+      + "and never will be readable from this client. requiresAnotherPlayer is distinct from "
+      + "unverifiable on purpose: the requirement is not unknown, it is known and permanently "
+      + 'outside anything an API on this machine can check. In passing: the previous curated '
+      + '`notes` on this entry named a second prerequisite quest, "Sanctum Acolyte", that does not '
+      + "exist in the game's Quest sheet under that name — dropped rather than carried forward "
+      + 'unverified.',
+    label: 'same Home World, party of two, both wearing a Promise Wristlet, in East Shroud',
+    // The catalogue's previous description claimed an NPC/no-partner option exists. It does not:
+    // consolegameswiki is explicit that the ceremony requires two players throughout, with no
+    // alternative described anywhere on the page. Corrected alongside the gate fix rather than
+    // left standing next to a "needs a partner" status it directly contradicted. Deliberately
+    // does not use the word this replaces, so a future search for the old, wrong claim finds
+    // nothing to find.
+    description: 'Unlocks in-game weddings — the Ceremony of Eternal Bonding lets two players hold '
+      + 'a formal wedding ceremony with exclusive attire and rewards. Always needs a partner, '
+      + 'present with you, at the same time; there is no way to do it by yourself.',
+    // Deliberately does not restate the incorrect quest name this replaces — see `reason` above
+    // for the record of what was wrong and why.
+    notes: "\"The Ties That Bind\" (Quest#67114) only unlocks the ability to arrange a ceremony; "
+      + "its own PreviousQuest prerequisite, \"The Scions of the Seventh Dawn\" (Quest#66045), is "
+      + 'already checked by the ordinary quest-prerequisite gate. Performing the Ceremony of '
+      + 'Eternal Bonding itself additionally needs a partner physically present with you — not '
+      + 'something this or any plugin can verify.',
+    sources: [
+      'consolegameswiki:The_Ties_That_Bind',
+      'consolegameswiki:Ceremony_of_Eternal_Bonding',
+      'player-report:eternal-bonding-ceremony-accept-message',
+    ],
+  }],
+]);
+
+/** Applies {@link SOCIAL_REQUIREMENT_OVERRIDES} to whichever curated entry cites the matching
+ * Quest row, the same way {@link applyMountRequirementOverrides} does. Sets `requires` and
+ * `notes` before the build loop runs so both flow through the ordinary pipeline (the notes'
+ * "level disputed" scrub, the requires-stripping step) exactly as if they had always been
+ * curated that way, and appends the override's source tags onto whatever the entry already
+ * cites, deduplicated by `buildSources`. */
+function applySocialRequirementOverrides(curated) {
+  const applied = [];
+  for (const entry of curated) {
+    const source = (entry.sources ?? []).find((s) => s.startsWith('game-data:Quest#'));
+    if (!source) continue;
+    const questRowId = Number(source.slice('game-data:Quest#'.length));
+    const override = SOCIAL_REQUIREMENT_OVERRIDES.get(questRowId);
+    if (!override) continue;
+
+    entry.requires = { ...entry.requires, label: override.label, requiresAnotherPlayer: true };
+    entry.notes = override.notes;
+    if (override.description) entry.description = override.description;
+    entry.sources = [...new Set([...(entry.sources ?? []), ...override.sources])];
+    applied.push({ unlock: entry.unlock, questRowId, reason: override.reason });
+  }
+  return applied;
+}
+
 /** A trophy-mount quest the catalogue does not contain an entry for at all. Unlike
  * {@link MOUNT_REQUIREMENT_OVERRIDES}, which corrects an existing curated entry, this seeds one —
  * so it needs everything a curated entry normally carries, plus the Quest row id up front so the
@@ -1033,8 +1113,10 @@ async function main() {
   const committed = JSON.parse(fs.readFileSync(DATASET, 'utf8'));
   const curated = committed.unlocks;
   const mountRequirementOverrides = applyMountRequirementOverrides(curated);
+  const socialRequirementOverrides = applySocialRequirementOverrides(curated);
   const newTrophyMountEntries = applyNewTrophyMountEntries(curated);
   for (const o of mountRequirementOverrides) console.log(`mount requirement override: ${o.unlock} (Quest#${o.questRowId})`);
+  for (const o of socialRequirementOverrides) console.log(`social requirement override: ${o.unlock} (Quest#${o.questRowId})`);
   for (const n of newTrophyMountEntries) console.log(`new trophy-mount entry: ${n.unlock} (Quest#${n.questRowId})`);
 
   const titles = discoverGuidePages();
@@ -1120,6 +1202,7 @@ async function main() {
     entriesWithoutAReward: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
     mountRequirementOverrides,
+    socialRequirementOverrides,
     newTrophyMountEntries,
   };
 
@@ -1551,6 +1634,7 @@ async function main() {
     rewardJoinRules: report.rewards.reduce((a, r) => ({ ...a, [r.how]: (a[r.how] ?? 0) + 1 }), {}),
     entriesWithoutARewardByType: report.entriesWithoutAReward.reduce(
       (a, e) => ({ ...a, [e.type]: (a[e.type] ?? 0) + 1 }), {}),
+    entriesGatedOnAnotherPlayer: unlocks.filter((e) => e.requires?.requiresAnotherPlayer === true).length,
     entriesDroppedAsUnreleased: report.droppedEntries.length,
     entriesRetypedByTheGuideIcon: report.retypedEntries.length,
     confidence: unlocks.reduce((a, e) => ({ ...a, [e.confidence]: (a[e.confidence] ?? 0) + 1 }), {}),

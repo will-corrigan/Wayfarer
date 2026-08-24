@@ -68,7 +68,7 @@ const checkCollectible = (where, kind, c) => {
 // found" is not the same fact as "no gate exists" — quest row 67086 has every gate column empty
 // and still needs seven Extreme-trial mounts.
 const lists = ['mounts', 'minions', 'items', 'jobs', 'duties'];
-const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel']);
+const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel', 'requiresAnotherPlayer']);
 
 const checkRequires = (where, r) => {
   if (typeof r !== 'object' || r === null || Array.isArray(r)) { err(`${where}: 'requires' must be an object`); return; }
@@ -87,11 +87,21 @@ const checkRequires = (where, r) => {
   if ('minLevel' in r && (!Number.isInteger(r.minLevel) || r.minLevel < 1 || r.minLevel > MAX_LEVEL))
     err(`${where}: requires.minLevel out of range`);
   if ('unverifiable' in r && typeof r.unverifiable !== 'boolean') err(`${where}: requires.unverifiable must be a boolean`);
+  // A social requirement — a partner, a ceremony — is a different fact from 'unverifiable': it is
+  // not that this plugin lacks a reader for it, it is that no reader could ever exist, because
+  // the missing state lives on another player's client. The two are never both true of the same
+  // requirement (one says "we don't know yet", the other says "this can never be known here"),
+  // so a 'requires' block that sets both is a mistake, not a stronger claim.
+  if ('requiresAnotherPlayer' in r && typeof r.requiresAnotherPlayer !== 'boolean')
+    err(`${where}: requires.requiresAnotherPlayer must be a boolean`);
+  if (r.requiresAnotherPlayer === true && r.unverifiable === true)
+    err(`${where}: requires.requiresAnotherPlayer and requires.unverifiable are mutually exclusive`);
   if ('label' in r && (typeof r.label !== 'string' || r.label.length < 4)) err(`${where}: requires.label too short`);
 
   const hasConcrete = lists.some((k) => (r[k]?.length ?? 0) > 0) || 'minLevel' in r;
-  if (!hasConcrete && !r.unverifiable) err(`${where}: 'requires' has neither a concrete requirement nor unverifiable:true`);
-  if (!hasConcrete && !r.label) err(`${where}: an unverifiable 'requires' must say what is missing, in 'label'`);
+  const hasEnforcement = hasConcrete || r.unverifiable === true || r.requiresAnotherPlayer === true;
+  if (!hasEnforcement) err(`${where}: 'requires' has neither a concrete requirement, unverifiable:true, nor requiresAnotherPlayer:true`);
+  if (!hasConcrete && !r.label) err(`${where}: an unverifiable or partner-gated 'requires' must say what is missing, in 'label'`);
 };
 
 const entryKeys = new Set([
@@ -216,6 +226,7 @@ for (const [i, e] of d.unlocks.entries()) {
   const identified = e.quest !== null
     || (e.questAnyOf?.length ?? 0) > 0
     || e.requires?.unverifiable === true
+    || e.requires?.requiresAnotherPlayer === true
     || lists.some((k) => (e.requires?.[k]?.length ?? 0) > 0)
     || 'minLevel' in (e.requires ?? {});
   if (!identified) err(`${where}: has no identity at all — no quest, no questAnyOf, no requires`);
@@ -224,8 +235,8 @@ for (const [i, e] of d.unlocks.entries()) {
   // all. Without an explicit unverifiable marker the calculator would fall through to Available
   // and tell the player to go and get something they cannot get.
   const unbacked = (e.quest === null && (e.questAnyOf?.length ?? 0) === 0) || e.confidence === 'unverified';
-  if (unbacked && e.requires?.unverifiable !== true)
-    err(`${where}: nothing backs this entry, so it needs requires.unverifiable:true`);
+  if (unbacked && e.requires?.unverifiable !== true && e.requires?.requiresAnotherPlayer !== true)
+    err(`${where}: nothing backs this entry, so it needs requires.unverifiable:true (or requiresAnotherPlayer:true)`);
   if (e.requires?.unverifiable === true && e.confidence !== 'unverified')
     err(`${where}: an unverifiable requirement cannot be better than 'unverified' confidence`);
 }

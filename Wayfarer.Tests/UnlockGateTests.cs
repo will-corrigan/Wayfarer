@@ -1,3 +1,4 @@
+using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
@@ -105,6 +106,86 @@ public class UnlockGateTests
         Assert.NotEqual(UnlockStatus.Available, u.Status);
         Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
         Assert.Contains("talking to an NPC about Lakshmi", u.LockReason, StringComparison.Ordinal);
+    }
+
+    /// <summary>The red-proof fixture: a player who has done everything this plugin CAN check —
+    /// the prerequisite quest, the level, no other gate in the way — must still not be told the
+    /// ceremony is Available, because the plugin has no way to know whether a partner is present.
+    /// This must fail before <see cref="UnlockRequirement.RequiresAnotherPlayer"/> exists (the
+    /// entry would fall through every check to Available) and pass after.</summary>
+    [Fact]
+    public void EternalBonding_EverythingCheckableMet_IsStillNotAvailable()
+    {
+        var u = EternalBonding();
+        var all = new List<ResolvedUnlock> { u };
+
+        // Every gate ahead of the curated requirement is satisfied: no lockout, level met, the
+        // prerequisite quest ("The Scions of the Seventh Dawn") complete.
+        UnlockStatusCalculator.Compute(
+            all,
+            Gates.Ctx(playerLevel: 90, isQuestComplete: id => id == 66045));
+
+        Assert.NotEqual(UnlockStatus.Available, u.Status);
+        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
+        Assert.Contains("partner", UnlockStatusDisplay.Sentence(u), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EternalBonding_PrerequisiteQuestIncomplete_IsQuestLocked_BeforeThePartnerGateIsEvenReached()
+    {
+        var u = EternalBonding();
+        u.PrereqRowIds = [66045];
+        u.PrereqNames = ["The Scions of the Seventh Dawn"];
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.QuestLocked, u.Status);
+        Assert.Contains("The Scions of the Seventh Dawn", u.LockReason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_IsPartnerRequired_NeverAvailable_AndDistinctFromUnverifiable()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.NotEqual(UnlockStatus.Available, u.Status);
+        Assert.NotEqual(UnlockStatus.RequirementsUnknown, u.Status);
+        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
+        Assert.Equal("a partner", u.LockReason);
+    }
+
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_WithNoLabel_HasAPlainFallbackReason()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement { RequiresAnotherPlayer = true };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
+        Assert.Equal("needs a second player", u.LockReason);
+    }
+
+    /// <summary>A partner requirement takes precedence over the generic Unverifiable fallback
+    /// when (mistakenly, or by a future data change) both are set — see the same rule enforced
+    /// at build time by data/validate-unlocks.mjs, which rejects the combination outright. The
+    /// calculator's own precedence is a second line of defence.</summary>
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_TakesPrecedenceOverUnverifiable()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true, Unverifiable = true };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
     }
 
     [Fact]
@@ -366,6 +447,21 @@ public class UnlockGateTests
 
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, isMinionUnlocked: id => id == 42));
         Assert.Equal(UnlockStatus.Available, u.Status);
+    }
+
+    // Quest #67114 "The Ties That Bind", exactly as the sheet ships it: PreviousQuest points at
+    // "The Scions of the Seventh Dawn" (66045), which the ordinary prereq gate already checks —
+    // and still needs a second, physically present player to actually hold the ceremony, which
+    // no sheet column or client API records.
+    private static ResolvedUnlock EternalBonding()
+    {
+        var u = Make("Ceremony of Eternal Bonding", 67114, 50);
+        u.Def.Requires = new UnlockRequirement
+        {
+            Label = "same Home World, party of two, both wearing a Promise Wristlet, in East Shroud",
+            RequiresAnotherPlayer = true,
+        };
+        return u;
     }
 
     private static ResolvedUnlock Firebird()

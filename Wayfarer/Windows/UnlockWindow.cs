@@ -161,10 +161,11 @@ internal sealed class UnlockWindow(
             UnlockStatus.BeastTribeLocked => 6,
             UnlockStatus.MountLocked => 7,
             UnlockStatus.CollectionLocked => 8,
-            UnlockStatus.RequirementsUnknown => 9,
-            UnlockStatus.UnknownGate => 10,
-            UnlockStatus.LockedOut => 11,
-            _ => 12,
+            UnlockStatus.PartnerRequired => 9,
+            UnlockStatus.RequirementsUnknown => 10,
+            UnlockStatus.UnknownGate => 11,
+            UnlockStatus.LockedOut => 12,
+            _ => 13,
         }).ThenBy(u => u.QuestLevel);
 
     /// <summary>One-line explanation for each status tag icon ("[grab]"/"[accepted]"/"[locked]"/
@@ -179,7 +180,30 @@ internal sealed class UnlockWindow(
         UnlockStatus.CollectionLocked => "Needs a set of collectibles. Hover for the list.",
         UnlockStatus.RequirementsUnknown => "Requirements unknown. Treat as not available.",
         UnlockStatus.UnknownGate => "Requirements unknown. Treat as not available.",
+        UnlockStatus.PartnerRequired => "Needs another player. Not something you can do alone.",
         _ => "Locked.",
+    };
+
+    /// <summary>The row's status tag and its colour. Split out of <see cref="DrawRow"/> so that
+    /// method stays under the analyzer's line budget — the tag/colour pairing itself is pure and
+    /// easy to reason about on its own.</summary>
+    private static (string Icon, Vector4 Color) RowTag(UnlockStatus status) => status switch
+    {
+        UnlockStatus.Done => ("[done]", new Vector4(0.5f, 0.8f, 0.5f, 1f)),
+        UnlockStatus.Accepted => ("[accepted]", new Vector4(0.6f, 0.8f, 1f, 1f)),
+        UnlockStatus.Available => ("[grab]", new Vector4(1f, 0.82f, 0.25f, 1f)),
+        UnlockStatus.LockedOut => ("[gone]", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
+
+        // Both "we don't know" states share the existing unknown-gate amber; the tag text is
+        // what separates them, so no new colour has to be learned.
+        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
+        UnlockStatus.CollectionLocked => ("[collect]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
+
+        // Its own tag rather than sharing "[?]" with the unknown-gate states: those are things
+        // this plugin might learn to check later, this is a fact about another person that no
+        // version of it ever will.
+        UnlockStatus.PartnerRequired => ("[partner]", new Vector4(0.6f, 0.55f, 0.8f, 1f)),
+        _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
     };
 
     private void DrawFilterBar()
@@ -293,19 +317,7 @@ internal sealed class UnlockWindow(
 
     private void DrawRow(ResolvedUnlock u)
     {
-        var (icon, color) = u.Status switch
-        {
-            UnlockStatus.Done => ("[done]", new Vector4(0.5f, 0.8f, 0.5f, 1f)),
-            UnlockStatus.Accepted => ("[accepted]", new Vector4(0.6f, 0.8f, 1f, 1f)),
-            UnlockStatus.Available => ("[grab]", new Vector4(1f, 0.82f, 0.25f, 1f)),
-            UnlockStatus.LockedOut => ("[gone]", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
-
-            // Both "we don't know" states share the existing unknown-gate amber; the tag text is
-            // what separates them, so no new colour has to be learned.
-            UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
-            UnlockStatus.CollectionLocked => ("[collect]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
-            _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
-        };
+        var (icon, color) = RowTag(u.Status);
         var greyed = u.Status is not (UnlockStatus.Available or UnlockStatus.Accepted);
         if (greyed)
         {

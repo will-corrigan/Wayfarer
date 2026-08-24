@@ -320,15 +320,35 @@ public static class UnlockStatusCalculator
             return true;
         }
 
+        return UncheckableRequirementBlocking(req, out reason, out status);
+    }
+
+    /// <summary>Everything left once level, job, duty and collectible checks all pass: the two
+    /// "there is nothing further to check, and that is not the same as clear" fallbacks.
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/> is checked first and given its own
+    /// status, ahead of the generic <see cref="UnlockRequirement.Unverifiable"/> catch-all — a
+    /// partner requirement is not "we don't know": every earlier check may well pass (the quest
+    /// is done, the level is met, the wristlet is even in the bags), and the entry must still
+    /// never read as Available, because the one thing left is a second person's presence this
+    /// plugin cannot see and never will.</summary>
+    private static bool UncheckableRequirementBlocking(UnlockRequirement req, out string? reason, out UnlockStatus status)
+    {
+        if (req.RequiresAnotherPlayer)
+        {
+            status = UnlockStatus.PartnerRequired;
+            reason = req.Label is { Length: > 0 } partnerLabel ? partnerLabel : "needs a second player";
+            return true;
+        }
+
         if (!req.Unverifiable)
         {
+            reason = null;
+            status = UnlockStatus.CollectionLocked;
             return false;
         }
 
         status = UnlockStatus.RequirementsUnknown;
-        reason = req.Label is { Length: > 0 } label
-            ? label
-            : "has a requirement Wayfarer cannot read";
+        reason = req.Label is { Length: > 0 } label ? label : "has a requirement Wayfarer cannot read";
         return true;
     }
 

@@ -641,10 +641,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             UnlockStatus.BeastTribeLocked => 6,
             UnlockStatus.MountLocked => 7,
             UnlockStatus.CollectionLocked => 8,
-            UnlockStatus.RequirementsUnknown => 9,
-            UnlockStatus.UnknownGate => 10,
-            UnlockStatus.LockedOut => 11,
-            _ => 12,
+            UnlockStatus.PartnerRequired => 9,
+            UnlockStatus.RequirementsUnknown => 10,
+            UnlockStatus.UnknownGate => 11,
+            UnlockStatus.LockedOut => 12,
+            _ => 13,
         }).ThenBy(u => u.QuestLevel);
 
     /// <summary>Line two of a hunting row: where the thing is. The zone alone for an overworld

@@ -1527,14 +1527,21 @@
       "type": "system",
       "quest": "The Ties That Bind",
       "questKind": "other",
-      "notes": "Requires completing all of: The Ties that Bind, Sanctum Acolyte (sequential; last main-chain quest used as completion marker).",
-      "description": "Unlocks in-game weddings — the Ceremony of Eternal Bonding lets you and another player (or an NPC, solo) hold a formal wedding ceremony with exclusive attire and rewards.",
+      "notes": "\"The Ties That Bind\" (Quest#67114) only unlocks the ability to arrange a ceremony; its own PreviousQuest prerequisite, \"The Scions of the Seventh Dawn\" (Quest#66045), is already checked by the ordinary quest-prerequisite gate. Performing the Ceremony of Eternal Bonding itself additionally needs a partner physically present with you — not something this or any plugin can verify.",
+      "description": "Unlocks in-game weddings — the Ceremony of Eternal Bonding lets two players hold a formal wedding ceremony with exclusive attire and rewards. Always needs a partner, present with you, at the same time; there is no way to do it by yourself.",
       "priority": "nice",
       "cosmetic": false,
+      "requires": {
+        "label": "same Home World, party of two, both wearing a Promise Wristlet, in East Shroud",
+        "requiresAnotherPlayer": true
+      },
       "confidence": "verified",
       "sources": [
         "gamerescape:progression-guide",
-        "game-data:Quest#67114"
+        "game-data:Quest#67114",
+        "consolegameswiki:The_Ties_That_Bind",
+        "consolegameswiki:Ceremony_of_Eternal_Bonding",
+        "player-report:eternal-bonding-ceremony-accept-message"
       ]
     },
     {
