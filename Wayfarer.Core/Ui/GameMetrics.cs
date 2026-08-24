@@ -829,6 +829,17 @@ public static class GameMetrics
         /// are at x=44 against a headline text at x=63.</summary>
         public const float MarkerHang = 19f;
 
+        /// <summary>The transparent margin on the right of the medallion's art, proved by the game's
+        /// own coordinates: the icon block is at x=44 and is 32 wide, so it ends at x=76 — four pixels
+        /// past the sub-line text that starts at x=72. The game would not draw its own "!" over its
+        /// own words, so those four pixels are authored emptiness inside the block.
+        ///
+        /// <para>It exists as a number because the geometry proofs need it. "The gutter never reaches
+        /// the words" is only true of the ink, and the block is what has coordinates — so the proof
+        /// compares the block less this margin, rather than being weakened to a vague
+        /// tolerance.</para></summary>
+        public const float MarkerArtMargin = MarkerSize - MarkerHang - SubLineIndent;
+
         /// <summary>Where a subordinate line's words start, measured from the banner's left
         /// edge.</summary>
         public const float SubLineLeft = HeadlineLeft + SubLineIndent;
@@ -847,5 +858,9 @@ public static class GameMetrics
 
         /// <inheritdoc cref="SubLineSize"/>
         public const uint SubLineLeading = Hud.MetaLeading;
+
+        /// <summary>The settings cog's side. Sized against the heading it sits beside rather than
+        /// against the readout: it is a mark on the pill's line, not a button on a panel.</summary>
+        public const float CogSize = 13f;
     }
 }

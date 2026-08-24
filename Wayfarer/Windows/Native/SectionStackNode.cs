@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
 
@@ -19,12 +20,25 @@ namespace Wayfarer.Windows.Native;
 /// short — is cut off at the stack's edge instead of being drawn over its neighbour. A wrong
 /// measurement can cost a visible line; it can no longer cost a legible page.</para>
 ///
-/// <para><b>Reusable on purpose.</b> The readout (<see cref="ReadoutBodyNode"/>) places every one of
-/// its lines by hand and carries the last manual y-accumulation left in the plugin. It is the
-/// highest-value place for this node to go next, and it is deliberately not coupled to the journal so
-/// that conversion is a use rather than a rewrite.</para></summary>
+/// <para><b>Reusable on purpose, and reused.</b> It is deliberately not coupled to the journal, so
+/// the readout (<see cref="ReadoutBodyNode"/>) — which used to place every one of its lines by hand
+/// and carried the last manual y-accumulation in the plugin — could adopt it as a use rather than a
+/// rewrite. Both surfaces now flow, and there is one definition of what flowing means.</para>
+///
+/// <para><b>Clipping is a default, not a rule.</b> The readout turns it off, because two of the
+/// things it draws overhang the row they belong to on purpose — the game's own "!" medallion is 32
+/// tall in a 26-tall row, and the crest rises above the plate — and because a hit box that is
+/// partially clipped is, per <see cref="LayoutListNode.ClipListContents"/>'s own remark,
+/// un-interactable. A readout whose teleport line cannot be clicked is a worse failure than a line
+/// that draws a few pixels long.</para></summary>
+[SuppressMessage("Performance", "CA1852:Seal internal types", Justification = OpenOnPurpose)]
 internal class SectionStackNode : VerticalListNode
 {
+    /// <summary>Why this type is not sealed: it is the base a surface derives its own kind of section
+    /// from, which is the whole reason it is not coupled to any one of them.</summary>
+    private const string OpenOnPurpose =
+        "Open on purpose: the base a surface derives its own kind of section from.";
+
     public SectionStackNode()
     {
         FitContents = true;
