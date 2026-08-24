@@ -492,6 +492,23 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return Math.Min(wanted, HubNavPlan.MaxListPoolSize * perRow);
     }
 
+    /// <summary>How much of a tab the detail strip takes — and none of the Unlocks tab.
+    ///
+    /// <para><b>Why the strip is gone from that one tab.</b> It exists to answer "what is the cursor
+    /// on", and on the Unlocks tab the journal page now answers that in full: the banner, the reward,
+    /// the requirements, where to go and what to do about it, all at once instead of one of them at a
+    /// time. Keeping both would mean paying 291 pixels — six of the game's own rows — for a summary
+    /// of a page that is one press away. 291 over the 49 an entry row occupies is a hair under six
+    /// more rows, at every window size and every HUD scale, on the tab whose whole complaint was
+    /// that you could not see what was in it.</para>
+    ///
+    /// <para>The Hunting Log and Following tabs keep it, because they have no page: their rows are a
+    /// target and a quest, not an entry with an anatomy, and building two more pages to justify
+    /// removing a strip that works would be the tail wagging the dog. The strip is unchanged — it is
+    /// the same component, with the same tests, drawn on two tabs instead of three.</para></summary>
+    private static float DetailPaneHeight(HubTab tab) =>
+        tab == HubTab.Checklist ? 0f : HubDetailPaneNode.PaneHeight;
+
     private static float ControlsHeight(HubTab tab) => tab switch
     {
         HubTab.Checklist => ChecklistControlsHeight,
@@ -982,7 +999,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// rebuild rather than a closure each.</summary>
     private void PublishDetail(HubListRow row)
     {
-        if (ReferenceEquals(row, hoveredRow))
+        // Not drawn on this tab, so not composed either: the Unlocks tab spends its pixels on the
+        // list and its detail on the page, and building SeStrings for a hidden pane once per d-pad
+        // step is exactly the allocation storm the reference guard below exists to prevent.
+        if (detailPane is not { IsVisible: true } || ReferenceEquals(row, hoveredRow))
         {
             return;
         }
@@ -1322,13 +1342,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
+        var paneHeight = DetailPaneHeight(currentTab);
         if (detailPane is not null)
         {
-            detailPane.IsVisible = list.IsVisible && !IsPageOpen;
+            detailPane.IsVisible = list.IsVisible && !IsPageOpen && paneHeight > 0f;
             detailPane.Position = new Vector2(
                 tabContentStart.X,
-                tabContentStart.Y + tabContentSize.Y - HubDetailPaneNode.PaneHeight);
-            detailPane.Size = new Vector2(tabContentSize.X, HubDetailPaneNode.PaneHeight);
+                tabContentStart.Y + tabContentSize.Y - paneHeight);
+            detailPane.Size = new Vector2(tabContentSize.X, paneHeight);
         }
 
         if (!list.IsVisible)
@@ -1339,7 +1360,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // The list keeps a fixed viewport and scrolls what does not fit — it is the one thing in
         // here that must never grow the window, because "the window grew instead of scrolling"
         // is precisely what put it off the edge of the screen.
-        var available = tabContentSize.Y - controlsHeight - HubDetailPaneNode.PaneHeight;
+        var available = tabContentSize.Y - controlsHeight - paneHeight;
         list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
         list.Size = new Vector2(tabContentSize.X, ClampListHeight(Math.Max(available, RowHeight)));
     }
@@ -1392,7 +1413,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return currentTab switch
         {
             HubTab.Settings => settingsArea?.ContentNode.Height ?? tabContentSize.Y,
-            _ => ControlsHeight(currentTab) + ListHeightForRows() + HubDetailPaneNode.PaneHeight,
+            _ => ControlsHeight(currentTab) + ListHeightForRows() + DetailPaneHeight(currentTab),
         };
     }
 
