@@ -332,15 +332,16 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         frame = new JournalFrameNode(log) { Position = Vector2.Zero };
         AddNode(frame);
 
-        // The clip box. Everything below is inside it, so a page taller than the window it is in — a
-        // viewport too short for the content — is cut off at the border's inside edge rather than
-        // drawn across the gilt frame. Nothing about the layout depends on this; it is the guard for
-        // the day something does.
+        // The window-level clip. A page taller than the window it is in — a viewport too short for the
+        // content — is cut off at the window's own foot rather than drawn across the gilt frame's
+        // bottom band. Nothing about the layout depends on this; it is the guard for the day something
+        // does. The flag set is ScrollingNode's, which is the toolkit's own proven clipping container:
+        // a clip node that does not also emit events swallows the mouse for everything inside it.
         pageClip = new ResNode
         {
             Position = new Vector2(JournalWindowLayout.ContentLeft, JournalWindowLayout.ContentTop),
             Size = new Vector2(JournalWindowLayout.ContentWidth, JournalWindowLayout.ContentWidth),
-            NodeFlags = NodeFlags.Visible | NodeFlags.Clip,
+            NodeFlags = NodeFlags.Visible | NodeFlags.Enabled | NodeFlags.Clip | NodeFlags.EmitsEvents,
         };
         pageClip.AttachNode(frame);
 
@@ -350,6 +351,13 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             Width = JournalWindowLayout.ContentWidth,
             ItemSpacing = JournalWindowLayout.Spacing,
         };
+
+        // The one stack that does NOT clip its own contents, and the reason is the button row. This
+        // stack's height is exactly the sum of its children, so its last child's bottom edge is its
+        // own bottom edge — and a node the toolkit considers partially clipped is a node the player
+        // cannot click. The window-level clip above is the containment guarantee; the per-section
+        // clips below it are the anti-overlap one, and neither of them has a control inside it.
+        page.ClipListContents = false;
         page.AttachNode(pageClip);
 
         // Reading order, and this list is the only statement of it: the entry's name, the rule, what
@@ -702,8 +710,12 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         frame!.Size = new Vector2(GameMetrics.JournalFrame.Width, height);
         frame.Layout();
 
-        var box = JournalWindowLayout.ContentBox(height);
-        pageClip!.Size = new Vector2(box.Width, box.Height);
+        // To the window's own foot rather than to the content box's, so the button row — which ends at
+        // the content box's exact bottom edge — is comfortably inside the clip. A control on a clip
+        // boundary is a control the toolkit will not let the player press.
+        pageClip!.Size = new Vector2(
+            JournalWindowLayout.ContentWidth,
+            Math.Max(height - JournalWindowLayout.ContentTop, 0f));
     }
 
     /// <summary>Keeps the page inside the viewport. A window whose top-left is off screen cannot be
