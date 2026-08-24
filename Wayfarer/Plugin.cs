@@ -347,7 +347,7 @@ public sealed class Plugin : IDalamudPlugin
             inputMode,
             new HubStatusIcons(textures, log),
             new HubRewardIcons(dataManager, log),
-            new HubJournalFacts(dataManager, log),
+            new HubJournalFacts(dataManager, textures, log),
             BuildJournal(dataManager, framework),
             log)
         {

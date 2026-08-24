@@ -93,6 +93,15 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     private HubRowDetail? entry;
     private bool wantsFocus;
 
+    /// <summary>Set when a step of this window's work threw. Once it is set the window does nothing
+    /// at all for the rest of the session — it does not build, fill, move or resize — and the list
+    /// beside it carries on. See <see cref="Step"/>.</summary>
+    private bool disabled;
+
+    /// <summary>Whether the current opening has reached its first draw, so the breadcrumb for it is
+    /// left once per open rather than once per frame.</summary>
+    private bool drawn;
+
     /// <summary>Where the window was last put, so PlaceBeside can be called every tick without
     /// writing a position every tick.</summary>
     private Vector2 placedAt = new(float.NaN, float.NaN);
@@ -112,18 +121,27 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     {
         ArgumentNullException.ThrowIfNull(detail);
 
+        if (disabled)
+        {
+            return;
+        }
+
         entry = detail;
         wantsFocus = takeFocus;
 
         if (!IsOpen)
         {
             // The tree is rebuilt on every open — NativeAddon deallocates it on close — so the fill
-            // happens in OnSetup instead, from the entry just stored.
+            // happens in OnSetup instead, from the entry just stored. The breadcrumb is the last
+            // thing said before the game is handed a window to build, and it is unconditional: a
+            // failure past this point has to leave a line in the log saying which entry it was on.
+            log.Information($"Wayfarer journal: opening the page on '{detail.Title}'.");
+            drawn = false;
             Open();
             return;
         }
 
-        Fill();
+        Step("filling the page", Fill);
         if (takeFocus)
         {
             FocusFirstControl();
@@ -148,22 +166,28 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     /// after <c>Open()</c> in which the addon is not open yet.</para></summary>
     public void PlaceBeside(Vector2 hostPosition, Vector2 hostSize)
     {
-        if (!IsOpen)
+        if (disabled || !IsOpen)
         {
             return;
         }
 
-        var scale = UiScale();
-        var wanted = JournalPlacement.Beside(
-            hostPosition, hostSize, Size * scale, (Vector2)AtkStage.Instance()->ScreenSize, scale);
-
-        if (Vector2.DistanceSquared(wanted, placedAt) < 1f)
+        Step("following the list", () =>
         {
-            return;
-        }
+            var scale = UiScale();
+            var wanted = JournalPlacement.Beside(
+                hostPosition, hostSize, Size * scale, (Vector2)AtkStage.Instance()->ScreenSize, scale);
 
-        placedAt = wanted;
-        SetWindowPosition(placedAt);
+            // A position the game cannot be given is not written at all. This runs every tick, so it
+            // is the one place a bad number would be handed over sixty times a second.
+            if (!float.IsFinite(wanted.X) || !float.IsFinite(wanted.Y)
+                || Vector2.DistanceSquared(wanted, placedAt) < 1f)
+            {
+                return;
+            }
+
+            placedAt = wanted;
+            SetWindowPosition(placedAt);
+        });
     }
 
     /// <inheritdoc/>
@@ -193,13 +217,35 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     /// <inheritdoc/>
     protected override void OnSetup(AtkUnitBase* addon, Span<AtkValue> values)
     {
-        Build();
-        Fill();
+        if (disabled)
+        {
+            return;
+        }
+
+        Step("building the page", Build);
+        Step("filling the page", Fill);
 
         if (wantsFocus)
         {
             FocusFirstControl();
         }
+    }
+
+    /// <summary>The page's first frame on screen. One line, once per opening, and unconditional:
+    /// this is the breadcrumb that separates "the page was built and drawn" from "the page was built
+    /// and the game never got as far as drawing it", which is the difference nobody could tell from
+    /// the log the first time this window took the game down.</summary>
+    protected override void OnDraw(AtkUnitBase* addon)
+    {
+        if (drawn || disabled)
+        {
+            return;
+        }
+
+        drawn = true;
+        log.Information(
+            $"Wayfarer journal: the page drew its first frame at {Size.X}x{Size.Y}"
+            + (frame is null or { IsComplete: true } ? "." : ", with part of its border missing."));
     }
 
     /// <summary>Called as the game takes the addon away, by whatever route. This is where Cancel on
@@ -261,18 +307,6 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             : $"{detail.From} {detail.Coordinates}";
     }
 
-    private static void ApplyIcon(IconImageNode node, uint iconId, Vector2 authored)
-    {
-        if (iconId == 0)
-        {
-            node.IsVisible = false;
-            return;
-        }
-
-        node.IsVisible = true;
-        JournalNodes.ApplyIcon(node, iconId, authored);
-    }
-
     /// <summary>A single-line label sized to the room it is in — the state line, the giver, the
     /// footnote. Its height is a constant because a one-line node's height is not a question:
     /// <see cref="TextFlags.Ellipsis"/> makes it one line whatever the string is.</summary>
@@ -326,6 +360,49 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         Height = GameMetrics.Journal.FootnoteHeight,
     };
 
+    /// <summary>Runs one step of this window's work, and turns the window off for the rest of the
+    /// session if it throws.
+    ///
+    /// <para><b>Why off rather than on with a hole in it.</b> Every step here writes into the game's
+    /// own node tree. A step that threw part-way has left that tree in a state nobody described, and
+    /// the honest thing to do with a half-built native tree is stop touching it — a page that will
+    /// not open is a nuisance, a page that keeps writing into a tree it corrupted is the failure
+    /// this window has already caused once. The list beside it is a separate addon and carries on
+    /// regardless, so nothing else on screen is lost.</para>
+    ///
+    /// <para>One line, naming the step. The step names are the same words the breadcrumbs use, so a
+    /// log that ends without one says which step was still running.</para></summary>
+    private void Step(string what, Action work)
+    {
+        if (disabled)
+        {
+            return;
+        }
+
+        try
+        {
+            work();
+        }
+        catch (Exception ex)
+        {
+            disabled = true;
+
+            var why =
+                $"Wayfarer journal: {what} failed, so the journal page is switched off for this session. The list "
+                + "and everything else in Wayfarer carry on; reload the plugin to try the page again.";
+            log.Error(ex, why);
+
+            try
+            {
+                Close();
+            }
+            catch (Exception closeFailed)
+            {
+                log.Warning(closeFailed, "Wayfarer journal: the page could not be closed after it was switched off.");
+            }
+        }
+    }
+
     /// <summary>The requirements block as one string: the game's own "not yet available" sentence when
     /// there is one, then the unmet requirements as bullets.
     ///
@@ -345,6 +422,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
     private void Build()
     {
+        log.Information("Wayfarer journal: building the page — the frame first.");
         frame = new JournalFrameNode(log) { Position = Vector2.Zero };
         AddNode(frame);
 
@@ -376,6 +454,11 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         page.ClipListContents = false;
         page.AttachNode(pageClip);
 
+        // The breadcrumb before the blocks, because attaching them is the step that used to take the
+        // game down: a log that stops between this line and the one after it says the tree is where
+        // it died.
+        log.Information("Wayfarer journal: the frame is up, attaching the page's blocks.");
+
         // Reading order, and this list is the only statement of it: the entry's name, the rule, what
         // state it is in, the picture, what it gives you, what it is, what is still in the way, then
         // who hands it over and the caveat, and the foot. The game's own page reads in that order and
@@ -393,6 +476,8 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             provenanceNode = BuildProvenance(),
             footerRuleRow = BuildRuleRow(),
             BuildFootRow());
+
+        log.Information("Wayfarer journal: the page's tree is built.");
     }
 
     /// <summary>The title band: the level on its disc, the entry's name, and the kind word pinned
@@ -613,16 +698,20 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     {
         var node = new SimpleImageNode
         {
-            Size = new Vector2(GameMetrics.JournalFrame.BossSize, GameMetrics.JournalFrame.BossSize),
+            Size = JournalNodes.Drawable(
+                new Vector2(GameMetrics.JournalFrame.BossSize, GameMetrics.JournalFrame.BossSize)),
             WrapMode = WrapMode.Tile,
         };
 
         try
         {
             node.LoadTexture(GameMetrics.JournalFrame.Texture);
-            node.TextureCoordinates = new Vector2(
-                GameMetrics.JournalFrame.Boss.U, GameMetrics.JournalFrame.Boss.V);
-            node.TextureSize = node.Size;
+            node.IsVisible = JournalNodes.Crop(
+                node,
+                log,
+                GameMetrics.JournalFrame.Texture,
+                new Vector2(GameMetrics.JournalFrame.Boss.U, GameMetrics.JournalFrame.Boss.V),
+                node.Size);
         }
         catch (Exception ex)
         {
@@ -651,11 +740,15 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         SetLine(kindNode!, detail.Kind, GameMetrics.Journal.KindWidth, GameMetrics.Detail.HeadingHeight);
         SetBadge(detail.Level);
 
-        ApplyIcon(bannerNode!, detail.BannerIconId, HubJournalFacts.SourceSize);
-        bannerRow!.IsVisible = detail.BannerIconId != 0;
+        // The row follows the node rather than the id: an id the installed game has no art for
+        // leaves the slot empty, and an empty slot must take its whole row with it rather than
+        // reserve 120 pixels of parchment for a picture that is not there.
+        JournalNodes.ApplyIcon(bannerNode!, detail.BannerIconId, HubJournalFacts.SourceSize);
+        bannerRow!.IsVisible = bannerNode!.IsVisible;
 
-        ApplyIcon(statusIconNode!, detail.StatusIconId, new Vector2(GameMetrics.Detail.HeadingIconSize));
-        ApplyIcon(rewardIconNode!, detail.RewardIconId, detail.RewardIconSize);
+        JournalNodes.ApplyIcon(
+            statusIconNode!, detail.StatusIconId, new Vector2(GameMetrics.Detail.HeadingIconSize));
+        JournalNodes.ApplyIcon(rewardIconNode!, detail.RewardIconId, detail.RewardIconSize);
         rewardNameNode!.String = detail.RewardName;
         rewardSection!.IsVisible = detail.RewardName.Length > 0;
 
@@ -687,6 +780,11 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
         ApplyActions(detail.Actions);
 
+        // The last breadcrumb before the three calls that write into the game rather than into this
+        // plugin's own objects — the layout pass, the resize, and the cursor graph. Between them
+        // they are every remaining way this window can reach native state.
+        log.Information("Wayfarer journal: the page is filled, laying it out.");
+
         page.RecalculateLayout();
         Resize(page.Height);
         ApplyNavigation();
@@ -710,10 +808,19 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     ///
     /// <para>This is the other half of the flow container, and the half the player asked about: there
     /// is no fixed content box for the page to leave a gap at the bottom of. The foot is the last
-    /// thing in the stack, so it sits under the last thing on the page.</para></summary>
+    /// thing in the stack, so it sits under the last thing on the page.</para>
+    ///
+    /// <para>The height that comes out of here is the one number on this surface that is computed
+    /// rather than authored, so it is the one that can be wrong. A measurement that came back as not
+    /// a number would otherwise be handed to the game's own <c>SetSize</c>, which takes it as an
+    /// unsigned sixteen-bit field — so it is floored at the shortest frame the border can close at
+    /// before anything is written.</para></summary>
     private void Resize(float contentHeight)
     {
-        var wanted = JournalWindowLayout.WindowHeight(contentHeight);
+        var wanted = float.IsFinite(contentHeight)
+            ? JournalWindowLayout.WindowHeight(contentHeight)
+            : GameMetrics.JournalFrame.MinHeight;
+
         var viewport = AtkStage.Instance()->ScreenSize.Height;
         var scale = InternalAddon is null || InternalAddon->Scale <= 0f ? 1f : InternalAddon->Scale;
         var cap = viewport <= 0 ? wanted : viewport / scale;
@@ -723,8 +830,17 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             GameMetrics.JournalFrame.MinHeight,
             Math.Max(cap, GameMetrics.JournalFrame.MinHeight));
 
-        SetWindowSize(new Vector2(GameMetrics.JournalFrame.Width, height));
-        frame!.Size = new Vector2(GameMetrics.JournalFrame.Width, height);
+        var size = JournalNodes.Drawable(new Vector2(GameMetrics.JournalFrame.Width, height));
+        if (size == Vector2.Zero)
+        {
+            log.Warning(
+                $"Wayfarer journal: the page came out {GameMetrics.JournalFrame.Width}x{height}, which is not a "
+                + "size the game can be given, so the window was left at the size it had.");
+            return;
+        }
+
+        SetWindowSize(size);
+        frame!.Size = size;
         frame.Layout();
 
         // To the window's own foot rather than to the content box's, so the button row — which ends at

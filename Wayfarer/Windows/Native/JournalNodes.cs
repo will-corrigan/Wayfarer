@@ -18,6 +18,12 @@ namespace Wayfarer.Windows.Native;
 /// </summary>
 internal static class JournalNodes
 {
+    /// <summary>The largest extent any node on this surface may be given. Every size the game is
+    /// handed lands in an unsigned 16-bit field; this is that field's own ceiling, and a number past
+    /// it means the arithmetic that produced it has gone wrong rather than that the player wants a
+    /// node that big.</summary>
+    private const float MaxNodeExtent = 65535f;
+
     /// <summary>A crop of the Journal's own page art — a section glyph, the level disc, the reward
     /// tray. All of them live in <c>ui/uld/Journal_Detail.tex</c>, and the part rectangle has to be
     /// the authored one or the node samples past the edge of the texture and draws a band of
@@ -25,20 +31,31 @@ internal static class JournalNodes
     ///
     /// <para>The load is guarded: a texture a patch has moved must cost a glyph, not the whole
     /// surface. A failed node stays invisible and the text it decorates is drawn regardless — the
-    /// glyphs are the journal's accent, never its content.</para></summary>
+    /// glyphs are the journal's accent, never its content.</para>
+    ///
+    /// <para>So is the crop. <see cref="Crop"/> refuses a rectangle the loaded sheet does not
+    /// actually contain rather than handing it to the game, and a node asked for at a size the game
+    /// cannot draw is never given one.</para></summary>
     public static SimpleImageNode Art(
         NodeBase? parent, IPluginLog log, (float U, float V) at, float width, float height = 0f)
     {
         ArgumentNullException.ThrowIfNull(log);
 
-        var size = new Vector2(width, height > 0f ? height : width);
+        var size = Drawable(new Vector2(width, height > 0f ? height : width));
         var node = new SimpleImageNode { Size = size, WrapMode = WrapMode.Stretch, IsVisible = false };
+
+        if (size == Vector2.Zero)
+        {
+            log.Warning(
+                $"Wayfarer journal: a piece of the journal's page art was asked for at {width}x{height}, which is "
+                + "not a size the game can draw, so it is left out. Nothing else is affected.");
+            return node;
+        }
 
         try
         {
             node.LoadTexture(GameMetrics.JournalArt.Texture);
-            node.TextureCoordinates = new Vector2(at.U, at.V);
-            node.TextureSize = size;
+            Crop(node, log, GameMetrics.JournalArt.Texture, new Vector2(at.U, at.V), size);
         }
         catch (Exception ex)
         {
@@ -50,6 +67,70 @@ internal static class JournalNodes
         Attach(node, parent);
         return node;
     }
+
+    /// <summary>Sets an image node's part rectangle, having first checked the loaded sheet actually
+    /// holds it.
+    ///
+    /// <para>This is the same discipline the status icons already have — "does this exist in this
+    /// patch?" asked before the answer is handed to the game rather than after. A sheet a patch has
+    /// shrunk or renumbered otherwise leaves a node sampling outside the texture it was cropped
+    /// from, and the piece is left out entirely instead. The node keeps whatever visibility it had;
+    /// this only ever takes a crop away.</para>
+    ///
+    /// <para>The bounds check is deliberately one-sided. A texture the game reports at a scaled
+    /// resolution reads as "no objection" — the crop is applied and the worst case is the band of
+    /// nothing it always was. Only a sheet that is definitely too small for the rectangle, or that
+    /// did not load at all, costs the piece.</para>
+    ///
+    /// <para>Returns whether the crop was applied, which the caller keeps: a piece refused once must
+    /// stay refused through every later resize, not be shown again by the next relayout.</para>
+    /// </summary>
+    public static bool Crop(
+        SimpleImageNode node, IPluginLog log, string texture, Vector2 at, Vector2 size)
+    {
+        ArgumentNullException.ThrowIfNull((object?)node, nameof(node));
+
+        if (!Croppable(log, texture, node.TexturePath, node.ActualTextureSize, at, size))
+        {
+            node.IsVisible = false;
+            return false;
+        }
+
+        node.TextureCoordinates = at;
+        node.TextureSize = size;
+        return true;
+    }
+
+    /// <inheritdoc cref="Crop(SimpleImageNode, IPluginLog, string, Vector2, Vector2)"/>
+    /// <remarks>A nine-grid cannot report the size of the sheet it loaded, so the bounds arm is not
+    /// available here and the check is "did the texture load at all".</remarks>
+    public static bool Crop(
+        SimpleNineGridNode node, IPluginLog log, string texture, Vector2 at, Vector2 size)
+    {
+        ArgumentNullException.ThrowIfNull((object?)node, nameof(node));
+
+        if (!Croppable(log, texture, node.TexturePath, Vector2.Zero, at, size))
+        {
+            node.IsVisible = false;
+            return false;
+        }
+
+        node.TextureCoordinates = at;
+        node.TextureSize = size;
+        return true;
+    }
+
+    /// <summary>A size the game can be given, or <see cref="Vector2.Zero"/> for one it cannot.
+    ///
+    /// <para>Every size on this surface ends up in an unsigned 16-bit field, so a negative one wraps
+    /// to something enormous and a non-finite one is undefined outright. Refusing here is what makes
+    /// "the number was wrong" cost a missing piece rather than the game.</para></summary>
+    public static Vector2 Drawable(Vector2 size) =>
+        float.IsFinite(size.X) && float.IsFinite(size.Y)
+        && size.X > 0f && size.Y > 0f
+        && size.X <= MaxNodeExtent && size.Y <= MaxNodeExtent
+            ? size
+            : Vector2.Zero;
 
     /// <summary>A line of body text, attached and ready to be placed.</summary>
     public static TextNode Line(NodeBase? parent, uint size, Vector4 color, TextFlags flags)
@@ -148,17 +229,24 @@ internal static class JournalNodes
         return node;
     }
 
-    /// <summary>A square of runtime-chosen icon art — the status marker, a reward's own picture, the
-    /// banner. Hidden until something fills it, and sized by the caller because those three slots
-    /// are three different sizes.</summary>
+    /// <summary>A rectangle of runtime-chosen icon art — the status marker, a reward's own picture,
+    /// the banner. Hidden until something fills it, and sized by the caller because those three
+    /// slots are three different sizes and only one of them is square.
+    ///
+    /// <para>A size the game cannot draw produces a node that is permanently invisible rather than a
+    /// node with a bad size in it: see <see cref="Drawable"/>.</para></summary>
     public static IconImageNode Marker(NodeBase? parent, Vector2 size)
     {
         var node = new IconImageNode
         {
-            Size = size,
+            // Zero when the size was refused, which is the state ApplyIcon reads as "this slot has
+            // no room, so it has no picture either". A node of no size draws nothing and takes no
+            // room in the stack above it, which is exactly what a slot nobody can size should do.
+            Size = Drawable(size),
             FitTexture = true,
             IsVisible = false,
         };
+
         Attach(node, parent);
         return node;
     }
@@ -166,12 +254,36 @@ internal static class JournalNodes
     /// <summary>Sets a runtime icon and its part rectangle. The rectangle has to match the size the
     /// art is authored at, or the node samples past the edge of the texture and draws a band of
     /// nothing; the loaded texture answers when it can and the caller's measured size is the seed
-    /// for when it cannot.</summary>
+    /// for when it cannot.
+    ///
+    /// <para>Both the id and the rectangle are checked before either reaches the game. An id of zero
+    /// is "there is no art for this", and a part rectangle that is not a size the game can sample —
+    /// including the one an unresolvable icon leaves behind — hides the node instead of being
+    /// handed over.</para></summary>
     public static void ApplyIcon(IconImageNode node, uint iconId, Vector2 authored)
     {
+        ArgumentNullException.ThrowIfNull((object?)node, nameof(node));
+
+        if (iconId == 0 || Drawable(node.Size) == Vector2.Zero)
+        {
+            node.IsVisible = false;
+            return;
+        }
+
         node.IconId = iconId;
+
         var actual = node.ActualTextureSize;
-        node.TextureSize = actual.X > 0f && actual.Y > 0f ? actual : authored;
+        var wanted = Drawable(actual) != Vector2.Zero ? actual : Drawable(authored);
+        if (wanted == Vector2.Zero)
+        {
+            // No usable rectangle from either the loaded texture or the caller. Drawing the slot
+            // would mean sampling a region nobody has vouched for, so there is no slot.
+            node.IsVisible = false;
+            return;
+        }
+
+        node.TextureSize = wanted;
+        node.IsVisible = true;
     }
 
     /// <summary>Hands a set of nodes to a layout container, once each and never twice.
@@ -203,6 +315,43 @@ internal static class JournalNodes
 
             list.AddNode(node);
         }
+    }
+
+    /// <summary>Whether a part rectangle may be handed to the game: the numbers have to be ones it
+    /// can sample, the texture has to have actually loaded, and — when the sheet can say how big it
+    /// is — the rectangle has to be inside it.</summary>
+    private static bool Croppable(
+        IPluginLog log, string texture, string loadedPath, Vector2 sheet, Vector2 at, Vector2 size)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+
+        if (Drawable(size) == Vector2.Zero || !float.IsFinite(at.X) || !float.IsFinite(at.Y)
+            || at.X < 0f || at.Y < 0f)
+        {
+            log.Warning(
+                $"Wayfarer journal: a crop of {texture} at ({at.X},{at.Y}) sized {size.X}x{size.Y} is not a "
+                + "rectangle the game can sample, so that piece is left out. Nothing else is affected.");
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(loadedPath))
+        {
+            log.Warning(
+                $"Wayfarer journal: {texture} did not resolve in this game version, so the piece cropped from it "
+                + $"at ({at.X},{at.Y}) is left out. Nothing else is affected.");
+            return false;
+        }
+
+        if (sheet.X > 0f && sheet.Y > 0f && (at.X + size.X > sheet.X || at.Y + size.Y > sheet.Y))
+        {
+            log.Warning(
+                $"Wayfarer journal: {texture} is {sheet.X}x{sheet.Y} in this game version, which does not hold the "
+                + $"crop at ({at.X},{at.Y}) sized {size.X}x{size.Y}, so that piece is left out. Nothing else is "
+                + "affected.");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>Attaches a fresh node to its parent, or leaves it detached when there is none.

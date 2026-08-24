@@ -30,6 +30,11 @@ namespace Wayfarer.Windows.Native;
 /// the loop safe to give up on.</para></summary>
 internal sealed class MeasuredTextNode : TextNode
 {
+    /// <summary>The widest a block may be asked for. The game stores a node's width in an unsigned
+    /// sixteen-bit field, and a number past that ceiling means the arithmetic that produced it has
+    /// gone wrong rather than that a column really is that wide.</summary>
+    private const float MaxWidth = 65535f;
+
     /// <summary>How tall the block may grow before its text is shortened. Zero means unbounded.
     /// </summary>
     public float MaxHeight { get; set; }
@@ -39,9 +44,16 @@ internal sealed class MeasuredTextNode : TextNode
     /// leaving a hole where it used to be.</summary>
     public void Set(string text, float width)
     {
-        Width = width;
+        // Assigned only once it is known to be a width the game can be given: it lands in an
+        // unsigned sixteen-bit field, so a negative or non-finite one does not mean "narrow", it
+        // means something enormous and arbitrary.
+        var usable = float.IsFinite(width) && width > 0f && width <= MaxWidth;
+        if (usable)
+        {
+            Width = width;
+        }
 
-        if (string.IsNullOrEmpty(text) || width <= 0f)
+        if (string.IsNullOrEmpty(text) || !usable)
         {
             String = string.Empty;
             Height = 0f;
@@ -85,11 +97,16 @@ internal sealed class MeasuredTextNode : TextNode
         // Tall enough that the node never clips its own measurement: GetTextDrawSize reports what
         // the string would draw as, and a node shorter than that has been observed to report the
         // clipped figure instead.
-        Height = MaxHeight > 0f ? MaxHeight : JournalWindowLayout.BlockHeight(1);
+        Height = MaxHeight is > 0f and <= MaxWidth ? MaxHeight : JournalWindowLayout.BlockHeight(1);
         String = text;
 
+        // The measurement is the game's own, and it is the one number on this node nobody here
+        // wrote. A figure that is not a usable height falls back to one line, which is a height the
+        // stack above can always place.
         var drawn = GetTextDrawSize(considerScale: false).Y;
-        return drawn > 0f ? drawn : JournalWindowLayout.BlockHeight(1);
+        return float.IsFinite(drawn) && drawn > 0f && drawn <= MaxWidth
+            ? drawn
+            : JournalWindowLayout.BlockHeight(1);
     }
 
     /// <summary>The last resort: drop the wrap, keep one line, let the node ellipsise it.</summary>

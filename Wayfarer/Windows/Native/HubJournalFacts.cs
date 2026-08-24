@@ -1,4 +1,5 @@
 using System.Globalization;
+using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
 using Wayfarer.Core.Navigation;
@@ -25,9 +26,11 @@ namespace Wayfarer.Windows.Native;
 ///
 /// <para>Resolved once per entry per session, misses included: an entry with no banner is looked at
 /// as often as one with, and a sheet walk per hover is a sheet walk per d-pad step.</para></summary>
-internal sealed class HubJournalFacts(IDataManager data, IPluginLog log)
+internal sealed class HubJournalFacts(IDataManager data, ITextureProvider textures, IPluginLog log)
 {
     private readonly Dictionary<uint, uint> banners = [];
+
+    private bool loggedMissingBanner;
 
     /// <summary>The size the banner art is authored at, which is what an image node's part rectangle
     /// has to be or it samples past the edge of the texture and draws a band of nothing.
@@ -54,6 +57,7 @@ internal sealed class HubJournalFacts(IDataManager data, IPluginLog log)
         try
         {
             icon = Duty(unlock) is var duty and not 0 ? duty : Quest(unlock);
+            icon = Drawable(icon) ? icon : 0u;
         }
         catch (Exception ex)
         {
@@ -97,6 +101,50 @@ internal sealed class HubJournalFacts(IDataManager data, IPluginLog log)
             log.Warning(ex, $"Wayfarer hub: no map coordinates for '{unlock.Def.Unlock}'.");
             return string.Empty;
         }
+    }
+
+    /// <summary>Whether the game that is actually installed has art at this id.
+    ///
+    /// <para>The same guard the status icons have, and for the same reason: an id read off a sheet
+    /// is a claim about this patch, and a claim that has stopped being true must cost the picture
+    /// and nothing else. The page is laid out so a missing banner drops the block whole, so a miss
+    /// here is a page without a picture rather than a node cropping a texture that is not
+    /// there.</para>
+    ///
+    /// <para>Never throws, and never asked twice: <see cref="Banner"/> caches the answer, misses
+    /// included.</para></summary>
+    private bool Drawable(uint iconId)
+    {
+        if (iconId == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (textures.TryGetFromGameIcon(new GameIconLookup(iconId), out var texture)
+                && texture.TryGetWrap(out _, out _))
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Warning(ex, $"Wayfarer hub: banner {iconId} could not be checked, so it will not be drawn.");
+            return false;
+        }
+
+        if (!loggedMissingBanner)
+        {
+            // Once per session. Every entry that carries a moved id would otherwise say the same
+            // thing, and the first line already carries the whole story.
+            loggedMissingBanner = true;
+            log.Warning(
+                $"Wayfarer journal: banner {iconId} does not resolve in this game version, so the entries it "
+                + "belongs to are drawn without their picture. Nothing else is affected.");
+        }
+
+        return false;
     }
 
     /// <summary>The duty's own banner. <c>ContentFinderCondition.Image</c> — not <c>Icon</c>, which
