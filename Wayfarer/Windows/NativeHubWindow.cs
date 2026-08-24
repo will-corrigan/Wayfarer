@@ -273,6 +273,25 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ApplyPositionPreset(config.Hub.Position);
     }
 
+    /// <summary>Called by a module's <c>Disable()</c> when its own tab (<paramref name="ownedTab"/>)
+    /// might be the one on screen. Disabling a module must never destroy the surface the player is
+    /// currently interacting with, so this only ever moves the cursor off a tab that has just gone
+    /// stale — it never closes the hub. If <paramref name="ownedTab"/> is not the tab currently
+    /// showing (the overwhelmingly common case: the only control that reaches this is the Settings
+    /// tab's own checkbox, so the player is on Settings, not on the tab being disabled), this is a
+    /// no-op and the hub is left exactly as the player left it. Settings is always a safe landing
+    /// spot: unlike the module tabs it has no live service data to go stale, and it is where every
+    /// reachable caller of this method already is.</summary>
+    internal void LeaveTabIfActive(HubTab ownedTab)
+    {
+        if (!IsOpen || currentTab != ownedTab)
+        {
+            return;
+        }
+
+        SelectTab(HubTab.Settings);
+    }
+
     /// <summary>The one list of everything Wayfarer can be told to follow — this tab's own rows and
     /// the readout's switcher dropdown both build from this and nothing else, so the two surfaces
     /// can never disagree about what the choices are or what picking one does. Always the same four
@@ -1224,6 +1243,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         currentTab = tab;
         hubTabs?.SelectTab(TabLabel(tab));
+
+        // The virtual list — and the detail pane, which mirrors its visibility below in
+        // PositionListAndPane — is shared across every list-backed tab and lives outside the
+        // per-tab buckets SetBucketVisible walks. Settings has no list of its own to hide it with,
+        // so without this the list stays visible (and clickable) under the Settings tab's controls
+        // forever after the first time any list tab is shown.
+        if (list is not null)
+        {
+            list.IsVisible = tab != HubTab.Settings;
+        }
 
         SetBucketVisible(checklistNodes, tab == HubTab.Checklist);
         SetBucketVisible(huntingNodes, tab == HubTab.Hunting);

@@ -79,7 +79,12 @@ internal sealed class HuntingLogModule(
     {
         Enabled = false;
         windows.RemoveWindow(Window);
-        CloseNativeWindow();
+
+        // Vacates the Hunting tab if it happens to be the one on screen; never closes the hub
+        // outright. The only reachable caller of Disable() is the Settings tab's own checkbox, so
+        // in practice the player is always on Settings — not Hunting — when this runs, and the hub
+        // must stay exactly as they left it rather than closing under their next click.
+        hub.LeaveTabIfActive(HubTab.Hunting);
 
         // Unregistering releases the engagement token if a hunt currently owns the arrow, so a
         // disabled module can never keep guiding.
@@ -98,10 +103,11 @@ internal sealed class HuntingLogModule(
         // by either module — see NativeHubWindow's doc comment.
     }
 
-    /// <summary>Closes the hub if it is open — used by <see cref="Disable"/> (an open hub would
-    /// otherwise linger on screen polling frozen service state; the ImGui counterpart disappears
-    /// with its WindowSystem removal) and by <see cref="OpenLog"/>'s ImGui path to keep the two
-    /// presentations mutually exclusive.</summary>
+    /// <summary>Closes the hub if it is open — used by <see cref="OpenLog"/>'s ImGui fallback path
+    /// to keep the two presentations mutually exclusive. Not used by <see cref="Disable"/>:
+    /// disabling a module must not close a multi-tab window it does not own outright, only vacate
+    /// its own tab if that happens to be the one showing — see
+    /// <see cref="NativeHubWindow.LeaveTabIfActive"/>.</summary>
     private void CloseNativeWindow()
     {
         if (hub.IsOpen)
