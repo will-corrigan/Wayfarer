@@ -87,10 +87,59 @@ public class AethernetGroupsTests
 
         Assert.Null(teleport);
 
-        // No aethernet (433 has no shards), no entrance (map 222 has no map-links),
-        // no teleport, no marker fallback — the honest interior message must win.
+        // No aethernet (433 has no shards), no entrance (map 222 has no map-links), no teleport, no
+        // marker fallback — the honest interior message must win. This still holds now that the
+        // manor's DOOR is a costed leg (InteriorRoute), because the player is standing AT the door:
+        // that leg returns null inside InteriorRoute.AtEntranceYalms, which is the only place the
+        // message is useful advice. From anywhere else in Ishgard the door's leg is what wins — see
+        // InteriorRouteTests.
         var chosen = RouteCosting.Choose(null, null, teleport);
         Assert.Equal(OtherZoneOutcome.InteriorMessage, OtherZoneResolution.Resolve(chosen, null));
+    }
+
+    /// <summary>Answers directly the suspicion that the same-network suppression was itself removing
+    /// the shard hop. It is not, and cannot be: suppression is a rule about TELEPORTS only. On the
+    /// identical inputs — player in Foundation, objective inside Fortemps Manor, one Ishgard network
+    /// — the teleport to the Foundation hub is correctly suppressed (a loading screen to reach a
+    /// stop the free aethernet already covers) while the aethernet leg to the manor's door survives
+    /// untouched. A shard hop inside a city is exactly what should be offered.</summary>
+    [Fact]
+    public void SameNetworkSuppression_RemovesTheTeleportOnly_NotTheAethernetLeg()
+    {
+        var currentGroups = AethernetGroups.ForTerritory(SheetRows, Foundation);
+
+        var teleport = RouteCosting.TeleportCandidate(
+            FoundationHub,
+            aetheryteTerritory: Foundation,
+            targetTerritory: FortempsManor,
+            currentTerritory: Foundation,
+            tx: 0.8f,
+            tz: 4.6f,
+            unlocked: true,
+            currentTerritoryAethernetGroups: currentGroups,
+            aetheryteTerritoryAethernetGroups: AethernetGroups.ForTerritory(SheetRows, Foundation));
+
+        Assert.Null(teleport);
+
+        // Same network, same suppressed shape — and the aethernet hop to the manor's door in The
+        // Pillars is built regardless, because nothing in the suppression rule touches it.
+        AetherytePoint[] foundationShards =
+            [new(80, "The Forgotten Knight", 45.0f, 1.0f, Foundation, IshgardGroup)];
+        AetherytePoint[] pillarsShards =
+            [new(87, "The Last Vigil", 0.0f, -33.5f, Pillars, IshgardGroup)];
+
+        var door = new InteriorEntrance(Pillars, 219, "Fortemps Manor", 32.0f, -6.0f);
+        var leg = InteriorRoute.Route(
+            door, Foundation, 45.0f, 1.0f, foundationShards, pillarsShards, [], []);
+
+        Assert.NotNull(leg);
+        Assert.Equal(RouteMode.Aethernet, leg.Mode);
+        Assert.Equal("The Last Vigil", leg.AethernetExitName);
+
+        // And it is what the router presents, rather than the interior message.
+        Assert.Equal(
+            OtherZoneOutcome.Route,
+            OtherZoneResolution.Resolve(RouteCosting.Choose(null, null, teleport, leg), null));
     }
 
     /// <summary>Suppression must NOT fire across cities: player in Gridania (group 2),
