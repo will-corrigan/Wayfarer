@@ -205,13 +205,13 @@ public class LayoutContainmentTests
 
     /// <summary>The journal window's turn at the same proof.
     ///
-    /// <para><see cref="JournalWindowLayoutTests"/> sweeps that window in detail; this is the entry in
-    /// <i>this</i> file, which is the one a future change to the shared metrics will run. It carries
-    /// the case the field report actually showed: the entry whose gate names thirty jobs, whose
-    /// requirement sentence wraps to five lines of Axis 14, flowed into a window at its authored
-    /// height alongside everything else a full entry has.</para></summary>
+    /// <para><see cref="JournalWindowLayoutTests"/> sweeps that page in detail; this is the entry in
+    /// <i>this</i> file, which is the one a future change to the shared metrics will run. The page is
+    /// a flow rather than a set of computed offsets, so the containment claim it can make is about the
+    /// column — the flow places every block at the column's own x and width, so a block inside the
+    /// frame's rails is a column inside the frame's rails.</para></summary>
     [Fact]
-    public void Every_journal_window_block_stays_inside_its_content_box()
+    public void The_journal_pages_column_stays_inside_the_gilt_frame()
     {
         foreach (var height in new[]
                  {
@@ -222,27 +222,33 @@ public class LayoutContainmentTests
                  })
         {
             var box = JournalWindowLayout.ContentBox(height);
-            var blocks = JournalWindowLayout.Compose(
-                height,
-                hasLevel: true,
-                hasStatusIcon: true,
-                hasBanner: true,
-                hasReward: true,
-                requirementsHeight: JournalWindowLayout.BlockHeight(30),
-                descriptionHeight: JournalWindowLayout.BlockHeight(JournalWindowLayout.MaxDescriptionLines),
-                hasGiver: true,
-                hasProvenance: true);
+            var inner = JournalFrameLayout.Inner(height);
 
-            foreach (var block in blocks.Blocks)
-            {
-                Assert.True(block.ContainedBy(box), $"h={height}: {block} escapes {box}");
-            }
+            Assert.True(box.ContainedBy(inner), $"h={height}: the column {box} escapes the frame {inner}");
 
-            foreach (var block in blocks.All)
+            // The thirty-job requirement string is the case the field report showed. It is no longer
+            // what the plugin prints — see JobGateText — but the layout still has to hold it, and a
+            // flow holds it by putting it after the block above it and nowhere else.
+            var placed = JournalWindowLayout.Flow(
+                [
+                    JournalWindowLayout.TitleHeight(JournalWindowLayout.MaxTitleLines),
+                    JournalWindowLayout.BlockHeight(1),
+                    GameMetrics.Journal.BannerHeight,
+                    JournalWindowLayout.BlockHeight(30),
+                    GameMetrics.Row.TextHeight,
+                ],
+                JournalWindowLayout.Spacing,
+                box);
+
+            var drawn = placed.Where(block => !block.IsEmpty).ToList();
+            for (var i = 0; i < drawn.Count; i++)
             {
-                Assert.True(
-                    block.ContainedBy(JournalFrameLayout.Inner(height)),
-                    $"h={height}: {block} escapes the gilt frame");
+                for (var j = i + 1; j < drawn.Count; j++)
+                {
+                    Assert.False(
+                        drawn[i].Overlaps(drawn[j]),
+                        $"h={height}: {drawn[i]} overlaps {drawn[j]}");
+                }
             }
         }
     }

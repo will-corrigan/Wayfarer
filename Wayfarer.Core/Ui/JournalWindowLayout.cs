@@ -1,475 +1,196 @@
 namespace Wayfarer.Core.Ui;
 
-/// <summary>What goes where inside the journal window, as plain arithmetic.
+/// <summary>The journal page's geometry: the box its contents live in, and the one rule by which a
+/// stack of blocks is placed inside it.
 ///
-/// <para><b>Why this replaced the page drawn inside the hub window.</b> The page had to fit whatever
-/// width the player had dragged the hub to, so it could not wear the border, it had to decide between
-/// one column and two, and it flowed prose into rectangles sized by a line <i>count</i> rather than
-/// by what the text actually measured — which is how a description came to be drawn on top of a
-/// requirement list. This window is <see cref="GameMetrics.JournalFrame.Width"/> wide, always, which
-/// is the width every number on this surface was authored for. One column, no decisions, and the
-/// text heights are measured by the caller and passed in rather than guessed.</para>
+/// <para><b>What this replaced, and why the replacement is a different kind of thing.</b> This class
+/// used to allocate the page out of a budget and then flow it down a cursor — <c>Compose</c>,
+/// <c>Allocate</c>, <c>Advance</c>, and a <c>JournalWindowBlocks</c> record of twenty-three
+/// rectangles. Every block's position was <i>computed</i> from a measurement of the block above it,
+/// so one wrong measurement — a wrapped string measured before its node had the right width, a
+/// paragraph shortened after the arithmetic had already run — moved every block below it and drew
+/// text on top of text. That is not a bug that gets fixed; it is a bug that gets reintroduced, and it
+/// was reintroduced three times.</para>
 ///
-/// <para><b>The ladder.</b> Blocks are allocated in priority order and any block that does not fit
-/// is dropped whole rather than clipped. The order is the design's: the state of the entry always,
-/// then what is in the way, then what you get, then what it is — and the banner last, because it is
-/// the only block that says nothing a player could not read in words. The giver and the confidence
-/// footnote are not flowed at all: they are anchored to the foot of the content box, which is where
-/// the game's own journal puts them and where the player's screenshot shows the giver.</para>
+/// <para><b>The rule that replaced it.</b> A block's position is a consequence of the blocks before
+/// it <i>and of nothing else</i>: <see cref="Flow"/> walks the list once, taking each block's own
+/// declared height. Nothing measures anything on another block's behalf, so there is no measurement
+/// to get wrong. This is exactly what <c>VerticalListNode</c> with <c>FitContents</c> does at
+/// runtime, which is what the window actually uses — the game's own journal works the same way, with
+/// a container that grows to fit its description and the sections below pushed down by that growth.
+/// <see cref="Flow"/> is the same rule in a form that can be asserted and drawn without a client
+/// attached, and <c>JournalWindowLayoutTests</c> asserts that no two blocks it returns can ever
+/// intersect, whatever heights it is handed.</para>
 ///
-/// <para><b>Nothing may overlap.</b> Every block below is either flowed down a single cursor or
-/// anchored to a box edge, and the two are kept apart by taking the anchored band out of the flow's
-/// budget before the flow starts. That is the whole mechanism, and
-/// <c>LayoutContainmentTests</c> asserts it at every height with hostile content.</para></summary>
+/// <para><b>Height follows content.</b> The page is as tall as what is on it
+/// (<see cref="WindowHeight"/>), which is why there is no longer a band of empty parchment between
+/// the requirements and the foot. The game's own page is a fixed 628 with a scroll bar absorbing the
+/// difference; this window has no scroll bar — see
+/// <see cref="GameMetrics.JournalFrame.ColumnLeft"/> — so the honest equivalent of "the foot sits
+/// under the content" is a page that stops where its content stops.</para></summary>
 public static class JournalWindowLayout
 {
     /// <summary>Most lines of prose the description will ever be given. Six Axis-14 lines at leading
     /// 18 is 108 pixels, which is what JournalCanvas <c>#8</c>'s section grows to on a long quest
-    /// summary.</summary>
+    /// summary. A cap on the <i>window's</i> height rather than a budget the text is squeezed into:
+    /// the longest description in the shipped catalogue is 239 characters, which sets in five.
+    /// </summary>
     public const int MaxDescriptionLines = 6;
 
-    /// <summary>Most lines the requirements block will ever be given, including the "and N more"
-    /// tail. Six rather than the strip's four because this is the block the player is reading when
-    /// the entry is locked, and the catalogue's worst case — a job gate naming thirty classes — is a
-    /// single sentence that wraps to five lines at this column's width.</summary>
+    /// <summary>Most lines the requirements block will ever be given.
+    ///
+    /// <para>Six, and it used to matter a great deal more than it does. The catalogue's worst case
+    /// was a job gate that named thirty classes in one sentence and wrapped to five lines; that
+    /// sentence is now the category's own name and a level — see <c>JobGateText</c> — so this cap is
+    /// headroom rather than a guillotine.</para></summary>
     public const int MaxRequirementLines = 6;
 
-    /// <summary>Most lines the state line will ever take. It says one thing now — which state the
-    /// entry is in — because the reason it is in that state belongs to the requirements block and
-    /// saying it twice is what the player's screenshot showed.</summary>
+    /// <summary>Most lines the entry's name will ever be given. JournalDetail <c>#38</c> is 340x50 —
+    /// two Axis-18 lines at leading 20 — so the game wraps a long title to two lines and lets the
+    /// node ellipsise past that. It does not shrink the face and it does not truncate at one line, so
+    /// neither does this.</summary>
+    public const int MaxTitleLines = 2;
+
+    /// <summary>Most lines the state line will ever take. It says one thing — which state the entry
+    /// is in — because the reason it is in that state belongs to the requirements block, and saying
+    /// it twice is what the player's screenshot showed.</summary>
     public const int MaxStatusLines = 1;
 
-    /// <summary>The frame height a fully populated entry wants. What the window asks for before the
-    /// viewport has its say.</summary>
-    public static float NaturalHeight =>
-        GameMetrics.JournalFrame.BodyTop
-        + BlockHeight(MaxStatusLines)
-        + GameMetrics.Journal.BannerHeight + GameMetrics.Window.BlockGap
-        + GameMetrics.Journal.SectionHeadingHeight + GameMetrics.Journal.TrayHeight
-        + GameMetrics.Journal.SectionHeadingHeight + BlockHeight(MaxDescriptionLines)
-        + GameMetrics.Journal.SectionHeadingHeight + BlockHeight(MaxRequirementLines)
-        + GameMetrics.Row.TextHeight
-        + GameMetrics.Journal.FootnoteHeight
-        + GameMetrics.Window.RuleGap
-        + GameMetrics.JournalFrame.FooterRuleBottomInset;
+    /// <summary>Where the page's content box opens, in the frame's own space. JournalDetail's level
+    /// badge group <c>#8</c> is at y=62 and its title <c>#38</c> at y=72 in a root whose frame starts
+    /// at y=20 — so the band opens 42 pixels down the border.</summary>
+    public static float ContentTop => GameMetrics.JournalFrame.TitleTop;
+
+    /// <summary>How far the content box's foot sits above the frame's own foot. The game's button
+    /// row (<c>#49</c>) ends 36 above the frame's bottom edge, and the row is the last thing in the
+    /// flow, so this is the whole of the bottom margin.</summary>
+    public static float ContentBottomInset => GameMetrics.JournalFrame.ButtonBottomInset;
 
     /// <summary>The column everything is drawn in: the game's own authored 394, centred.</summary>
-    public static ScreenRect Column(float height)
-    {
-        var top = GameMetrics.JournalFrame.TitleTop;
-        var h = Math.Max(height, 0f) - top;
-        return h <= 0f
-            ? default
-            : new ScreenRect(GameMetrics.JournalFrame.ColumnLeft, top, GameMetrics.Journal.SectionWidth, h);
-    }
+    public static float ContentWidth => GameMetrics.Journal.SectionWidth;
 
-    /// <summary>The band the title, its level badge and its kind caption share — two Axis-18 lines,
-    /// which is what JournalDetail <c>#38</c> reserves for a title that may wrap.</summary>
-    public static ScreenRect TitleBand(float height)
-    {
-        var column = Column(height);
-        var band = Math.Min(GameMetrics.Journal.PageTitleHeight, column.Height);
-        return column.IsEmpty || band <= 0f ? default : column with { Height = band };
-    }
+    /// <inheritdoc cref="ContentWidth"/>
+    public static float ContentLeft => GameMetrics.JournalFrame.ColumnLeft;
 
-    /// <summary>The rule under the title.</summary>
-    public static ScreenRect TitleRule(float height)
-    {
-        var column = Column(height);
-        var y = GameMetrics.JournalFrame.TitleRuleTop;
-        return column.IsEmpty || y + GameMetrics.Window.RuleHeight > height
-            ? default
-            : new ScreenRect(column.X, y, column.Width, GameMetrics.Window.RuleHeight);
-    }
+    /// <summary>The gap between two blocks in the stack. The game's own gap between stacked blocks,
+    /// used here for every one of them: a single spacing is what makes the page read as one column
+    /// rather than as a set of separately positioned things.</summary>
+    public static float Spacing => GameMetrics.Window.BlockGap;
 
-    /// <summary>The button row along the bottom edge, less the gold rivet at its right end.
-    /// </summary>
-    public static ScreenRect ActionRow(float height)
-    {
-        var column = Column(height);
-        var y = height - GameMetrics.JournalFrame.ButtonBottomInset - GameMetrics.Control.ButtonHeight;
-        var width = column.Width - GameMetrics.JournalFrame.BossSize - GameMetrics.Control.ButtonGap;
-        return column.IsEmpty || y < GameMetrics.JournalFrame.BodyTop || width <= 0f
-            ? default
-            : new ScreenRect(column.X, y, width, GameMetrics.Control.ButtonHeight);
-    }
+    /// <summary>The inset that centres the page's rule in the column. The game draws that image at
+    /// the width its art is authored at and never stretches it, so neither does this.</summary>
+    public static float RuleInset =>
+        Math.Max((ContentWidth - GameMetrics.JournalArt.DividerWidth) / 2f, 0f);
 
-    /// <summary>The gold rivet beside the row — JournalDetail <c>#53</c>'s slot, worn as ornament
-    /// rather than as a control. See <see cref="GameMetrics.JournalFrame.BossSize"/>.</summary>
-    public static ScreenRect Boss(float height)
-    {
-        var row = ActionRow(height);
-        if (row.IsEmpty)
-        {
-            return default;
-        }
+    /// <summary>The frame height a fully populated entry wants — every block present, both wrapping
+    /// blocks at their cap. What the window would ask for at its very largest, used to size the
+    /// sweeps in the tests and never as a target.</summary>
+    public static float NaturalHeight =>
+        WindowHeight(FlowHeight(
+        [
+            TitleHeight(MaxTitleLines),
+            GameMetrics.Window.RuleHeight,
+            BlockHeight(MaxStatusLines),
+            GameMetrics.Journal.BannerHeight,
+            GameMetrics.Journal.SectionHeadingHeight + GameMetrics.Journal.TrayHeight,
+            GameMetrics.Journal.SectionHeadingHeight + BlockHeight(MaxDescriptionLines),
+            GameMetrics.Journal.SectionHeadingHeight + BlockHeight(MaxRequirementLines),
+            GameMetrics.Row.TextHeight,
+            GameMetrics.Journal.FootnoteHeight,
+            GameMetrics.Window.RuleHeight,
+            GameMetrics.Control.ButtonHeight,
+        ]));
 
-        var size = GameMetrics.JournalFrame.BossSize;
-        var column = Column(height);
-        return new ScreenRect(
-            column.Right - size,
-            row.Y + ((row.Height - size) / 2f),
-            size,
-            size);
-    }
-
-    /// <summary>The rule above the button row.</summary>
-    public static ScreenRect FooterRule(float height)
-    {
-        var column = Column(height);
-        var y = height - GameMetrics.JournalFrame.FooterRuleBottomInset;
-        return column.IsEmpty || y < GameMetrics.JournalFrame.BodyTop
-            ? default
-            : new ScreenRect(column.X, y, column.Width, GameMetrics.Window.RuleHeight);
-    }
-
-    /// <summary>The box every flowed block has to live inside: below the title rule, above the
-    /// footer rule.</summary>
+    /// <summary>The box the stack lives in, for a frame of <paramref name="height"/>. Empty when the
+    /// frame is too short to hold anything at all, which is a state a resize passes through rather
+    /// than one a player sees.</summary>
     public static ScreenRect ContentBox(float height)
     {
-        var column = Column(height);
-        if (column.IsEmpty)
+        var available = Math.Max(height, 0f) - ContentTop - ContentBottomInset;
+        return available <= 0f
+            ? default
+            : new ScreenRect(ContentLeft, ContentTop, ContentWidth, available);
+    }
+
+    /// <summary>Places a stack of blocks, taking each block's height from the block itself.
+    ///
+    /// <para><b>This is the whole of the layout.</b> The cursor starts at the box's top and advances
+    /// by whatever the block it just placed says it is; a zero-height block is one that is not being
+    /// drawn and takes no room and no spacing, which is what <c>VerticalListNode</c> does with an
+    /// invisible child. Two consequences, and they are the point of the class: no block's position
+    /// depends on a measurement of any block other than the ones above it, and no two returned
+    /// rectangles can intersect, whatever heights are handed in — including heights far taller than
+    /// the box, which run off the bottom rather than into a sibling.</para></summary>
+    public static IReadOnlyList<ScreenRect> Flow(
+        IReadOnlyList<float> heights, float spacing, ScreenRect box)
+    {
+        ArgumentNullException.ThrowIfNull(heights);
+
+        var placed = new ScreenRect[heights.Count];
+        var y = box.Y;
+        var first = true;
+
+        for (var i = 0; i < heights.Count; i++)
         {
-            return default;
+            if (heights[i] <= 0f || box.Width <= 0f)
+            {
+                continue;
+            }
+
+            if (!first)
+            {
+                y += spacing;
+            }
+
+            placed[i] = new ScreenRect(box.X, y, box.Width, heights[i]);
+            y += heights[i];
+            first = false;
         }
 
-        var top = GameMetrics.JournalFrame.BodyTop;
-        var footer = FooterRule(height);
-        var bottom = footer.IsEmpty
-            ? Math.Max(height - GameMetrics.JournalFrame.FooterRuleBottomInset, top)
-            : footer.Y - GameMetrics.Window.RuleGap;
-
-        return new ScreenRect(column.X, top, column.Width, Math.Max(bottom - top, 0f));
+        return placed;
     }
+
+    /// <summary>How tall that stack comes out — the height a container with <c>FitContents</c> takes
+    /// on. The same walk as <see cref="Flow"/>, and it has to be, so the window's height and its
+    /// contents cannot disagree.</summary>
+    public static float FlowHeight(IReadOnlyList<float> heights, float spacing = -1f)
+    {
+        ArgumentNullException.ThrowIfNull(heights);
+
+        var gap = spacing < 0f ? Spacing : spacing;
+        var total = 0f;
+        var first = true;
+
+        foreach (var height in heights)
+        {
+            if (height <= 0f)
+            {
+                continue;
+            }
+
+            total += first ? height : gap + height;
+            first = false;
+        }
+
+        return total;
+    }
+
+    /// <summary>The frame height a content stack of <paramref name="contentHeight"/> needs: the band
+    /// above it, the stack, and the margin the game leaves under its button row. Never shorter than
+    /// the border can close at — below <see cref="GameMetrics.JournalFrame.MinHeight"/> the gilt
+    /// frame's fixed top and foot would overlap, and half a border is worse than none.</summary>
+    public static float WindowHeight(float contentHeight) =>
+        Math.Max(
+            ContentTop + Math.Max(contentHeight, 0f) + ContentBottomInset,
+            GameMetrics.JournalFrame.MinHeight);
 
     /// <summary>The height a block of <paramref name="lines"/> Axis-14 lines needs — the same
     /// arithmetic the strip and the page use, because it is the same face at the same leading.
     /// </summary>
     public static float BlockHeight(int lines) => DetailPaneLayout.BlockHeight(lines);
 
-    /// <summary>The largest whole number of Axis-14 lines that fits in <paramref name="available"/>,
-    /// as a height. Zero when not even one does.</summary>
-    public static float WholeLines(float available)
-    {
-        for (var lines = (int)(available / GameMetrics.Type.BodyLine) + 1; lines >= 1; lines--)
-        {
-            if (BlockHeight(lines) <= available)
-            {
-                return BlockHeight(lines);
-            }
-        }
-
-        return 0f;
-    }
-
-    /// <summary>How much room a wrapping text block may be given, so the caller can fit its string
-    /// to a measured height before the layout runs. Deliberately generous — the layout below is what
-    /// actually decides, and it never grants more than is left.</summary>
-    public static float TextAllowance(float height, int maxLines) =>
-        Math.Min(BlockHeight(maxLines), Math.Max(ContentBox(height).Height, 0f));
-
-    /// <summary>Lays the window out. <paramref name="descriptionHeight"/> and
-    /// <paramref name="requirementsHeight"/> are the heights the caller's text actually
-    /// <b>measured</b> at this column's width — not a line count — which is the whole difference
-    /// between this and the page it replaces.</summary>
-    public static JournalWindowBlocks Compose(
-        float height,
-        bool hasLevel,
-        bool hasStatusIcon,
-        bool hasBanner,
-        bool hasReward,
-        float requirementsHeight,
-        float descriptionHeight,
-        bool hasGiver,
-        bool hasProvenance)
-    {
-        var box = ContentBox(height);
-        var (giver, provenance, flow) = Foot(box, hasGiver, hasProvenance);
-        var (badge, title, kind) = Header(height, hasLevel);
-
-        // Allocated in priority order and placed in reading order, which are not the same order.
-        //
-        // Priority: the state line always, then what is in the way, then what you get, then what it
-        // is, and the banner last — so a short window loses the picture before it loses a word about
-        // why the entry is locked. Reading: the state, the picture, the reward, the prose, and the
-        // requirements at the foot, which is the order the game's own page puts them in and the order
-        // the player asked for.
-        var budget = Allocate(flow.Height, hasBanner, hasReward, requirementsHeight, descriptionHeight);
-
-        var y = flow.Y;
-        var status = Advance(ref y, flow, budget.Status, BlockHeight(MaxStatusLines));
-        var statusIcon = StatusIcon(status, hasStatusIcon);
-        var statusText = Indent(
-            status,
-            statusIcon.IsEmpty ? 0f : GameMetrics.Detail.HeadingIconSize + GameMetrics.Window.RuleGap);
-
-        var bannerBand = Advance(
-            ref y, flow, budget.Banner, GameMetrics.Journal.BannerHeight + GameMetrics.Window.BlockGap);
-        var reward = Reward(ref y, flow, budget.Reward);
-        var description = Section(ref y, flow, budget.Description);
-        var requirements = Section(ref y, flow, budget.Requirements);
-
-        return new JournalWindowBlocks(
-            badge,
-            title,
-            kind,
-            TitleRule(height),
-            statusIcon,
-            statusText,
-            Banner(bannerBand),
-            reward.Glyph,
-            reward.Label,
-            reward.Tray,
-            reward.Icon,
-            reward.Name,
-            description.Glyph,
-            description.Label,
-            description.Body,
-            requirements.Glyph,
-            requirements.Label,
-            requirements.Body,
-            giver,
-            provenance,
-            FooterRule(height),
-            ActionRow(height),
-            Boss(height));
-    }
-
-    /// <summary>Decides what is drawn at all, out of one budget, in priority order — and how much of
-    /// the two wrapping blocks survives. Whole lines only: granting the sliver that happens to be
-    /// left is worse than granting nothing, because the player cannot tell the text was cut.
-    /// </summary>
-    private static Budget Allocate(
-        float available, bool hasBanner, bool hasReward, float requirementsWanted, float descriptionWanted)
-    {
-        var left = available;
-        var status = Take(ref left, BlockHeight(MaxStatusLines));
-        var requirements = Body(ref left, requirementsWanted);
-        var reward = hasReward
-            && Take(ref left, GameMetrics.Journal.SectionHeadingHeight + GameMetrics.Journal.TrayHeight);
-        var description = Body(ref left, descriptionWanted);
-        var banner = hasBanner
-            && Take(ref left, GameMetrics.Journal.BannerHeight + GameMetrics.Window.BlockGap);
-
-        return new Budget(status, banner, reward, requirements, description);
-    }
-
-    /// <summary>One heading-and-body section's share of the budget: the heading first, then as many
-    /// whole lines of body as are left. A heading with nothing under it is refused, so the heading's
-    /// own height is returned to the budget when the body does not fit.</summary>
-    private static float Body(ref float left, float wanted)
-    {
-        if (wanted <= 0f || !Take(ref left, GameMetrics.Journal.SectionHeadingHeight))
-        {
-            return 0f;
-        }
-
-        var granted = WholeLines(Math.Min(wanted, left));
-        if (granted <= 0f)
-        {
-            left += GameMetrics.Journal.SectionHeadingHeight;
-            return 0f;
-        }
-
-        left -= granted;
-        return granted;
-    }
-
-    private static bool Take(ref float left, float height)
-    {
-        if (height > left)
-        {
-            return false;
-        }
-
-        left -= height;
-        return true;
-    }
-
-    /// <summary>The two blocks anchored to the foot of the content box, and what is left over for
-    /// the flow above them. Taking them out of the budget before anything flows is what makes
-    /// "nothing overlaps" a property of the arithmetic rather than of the content.</summary>
-    private static (ScreenRect Giver, ScreenRect Provenance, ScreenRect Flow) Foot(
-        ScreenRect box, bool hasGiver, bool hasProvenance)
-    {
-        var flow = box;
-        var provenance = default(ScreenRect);
-        var giver = default(ScreenRect);
-
-        if (hasProvenance && flow.Height >= GameMetrics.Journal.FootnoteHeight)
-        {
-            var h = GameMetrics.Journal.FootnoteHeight;
-            provenance = new ScreenRect(flow.X, flow.Bottom - h, flow.Width, h);
-            flow = flow with { Height = flow.Height - h };
-        }
-
-        if (hasGiver && flow.Height >= GameMetrics.Row.TextHeight)
-        {
-            var h = GameMetrics.Row.TextHeight;
-            giver = new ScreenRect(flow.X, flow.Bottom - h, flow.Width, h);
-            flow = flow with { Height = flow.Height - h };
-        }
-
-        return (giver, provenance, flow);
-    }
-
-    /// <summary>The title band's three parts: the level on its disc at the column's left edge, the
-    /// title beside it, and the kind word pinned right.</summary>
-    private static (ScreenRect Badge, ScreenRect Title, ScreenRect Kind) Header(float height, bool hasLevel)
-    {
-        var band = TitleBand(height);
-        if (band.IsEmpty)
-        {
-            return default;
-        }
-
-        var size = GameMetrics.Journal.BadgeSize;
-        var badge = !hasLevel || band.Height < size || band.Width < size * 2f
-            ? default
-            : new ScreenRect(band.X, band.Y + ((band.Height - size) / 2f), size, size);
-
-        var indent = badge.IsEmpty ? 0f : size + GameMetrics.Window.RuleGap;
-        var kindWidth = Math.Min(GameMetrics.Journal.KindWidth, band.Width);
-        var kind = new ScreenRect(
-            band.Right - kindWidth,
-            band.Y,
-            kindWidth,
-            Math.Min(GameMetrics.Detail.HeadingHeight, band.Height));
-
-        var title = Indent(band, indent);
-        title = title with
-        {
-            Width = Math.Max(title.Width - kindWidth - GameMetrics.Row.TrailingGap, 0f),
-        };
-
-        return (badge, title, kind);
-    }
-
-    /// <summary>One heading-and-body section: the glyph in the column's gutter, the heading past it,
-    /// and the body pulled in to the same inset the tray and the banner sit at, so the column reads
-    /// as one object.</summary>
-    private static (ScreenRect Glyph, ScreenRect Label, ScreenRect Body) Section(
-        ref float y, ScreenRect column, float bodyHeight)
-    {
-        if (bodyHeight <= 0f)
-        {
-            return default;
-        }
-
-        var label = Advance(ref y, column, true, GameMetrics.Journal.SectionHeadingHeight);
-        if (label.IsEmpty)
-        {
-            return default;
-        }
-
-        // Already a whole number of lines, and already known to fit: Allocate decided that. This
-        // only places it.
-        var body = Indent(Advance(ref y, column, true, bodyHeight), GameMetrics.Journal.SectionInset);
-
-        // A heading with no line under it is refused whole: a section that says only its own name is
-        // worse than no section.
-        if (body.IsEmpty)
-        {
-            y = label.Y;
-            return default;
-        }
-
-        return (Glyph(column, label), Indent(label, GameMetrics.Journal.GlyphTextLeft), body);
-    }
-
-    /// <summary>The reward section: the chest glyph, the heading, and the tray with one slot's icon
-    /// and the reward said in words beside it.</summary>
-    private static (ScreenRect Glyph, ScreenRect Label, ScreenRect Tray, ScreenRect Icon, ScreenRect Name) Reward(
-        ref float y, ScreenRect column, bool present)
-    {
-        if (!present)
-        {
-            return default;
-        }
-
-        var needed = GameMetrics.Journal.SectionHeadingHeight + GameMetrics.Journal.TrayHeight;
-        if (y + needed > column.Bottom)
-        {
-            return default;
-        }
-
-        var label = Advance(ref y, column, true, GameMetrics.Journal.SectionHeadingHeight);
-        var tray = JournalTrayLayout.Tray(
-            Advance(ref y, column, true, GameMetrics.Journal.TrayHeight), GameMetrics.Journal.SectionInset);
-        var icon = JournalTrayLayout.Icon(tray);
-
-        return (
-            Glyph(column, label),
-            Indent(label, GameMetrics.Journal.GlyphTextLeft),
-            tray,
-            icon,
-            JournalTrayLayout.Name(tray, icon));
-    }
-
-    /// <summary>The banner inside the band reserved for it, at the size the game authors it. The art
-    /// is a plain image the game never stretches, so a column too narrow shows less of it rather
-    /// than a distorted one — which cannot happen at this window's fixed width, and is kept because
-    /// a resize is not atomic.</summary>
-    private static ScreenRect Banner(ScreenRect band)
-    {
-        if (band.IsEmpty)
-        {
-            return default;
-        }
-
-        var inset = GameMetrics.Journal.SectionInset;
-        var width = Math.Min(GameMetrics.Journal.BannerWidth, band.Width - inset);
-        return width <= 0f
-            ? default
-            : new ScreenRect(band.X + inset, band.Y, width, GameMetrics.Journal.BannerHeight);
-    }
-
-    private static ScreenRect StatusIcon(ScreenRect status, bool present)
-    {
-        if (!present || status.IsEmpty)
-        {
-            return default;
-        }
-
-        var size = GameMetrics.Detail.HeadingIconSize;
-        return new ScreenRect(status.X, status.Y + ((status.Height - size) / 2f), size, size);
-    }
-
-    /// <summary>A section glyph in the column's left gutter, 24x24 with the heading two pixels under
-    /// its right edge — the game's own arrangement, and the two pixels are the glyph art's own
-    /// transparent margin rather than an overlap.</summary>
-    private static ScreenRect Glyph(ScreenRect column, ScreenRect block)
-    {
-        var size = GameMetrics.Journal.GlyphSize;
-        return block.IsEmpty || block.Y + size > column.Bottom || column.Width < size
-            ? default
-            : new ScreenRect(block.X, block.Y, size, size);
-    }
-
-    private static ScreenRect Indent(ScreenRect rect, float by) =>
-        rect.IsEmpty || by <= 0f
-            ? rect
-            : new ScreenRect(rect.X + by, rect.Y, Math.Max(rect.Width - by, 0f), rect.Height);
-
-    private static ScreenRect Advance(ref float y, ScreenRect column, bool present, float height)
-    {
-        if (!present || height <= 0f || column.Width <= 0f || y + height > column.Bottom)
-        {
-            return default;
-        }
-
-        var rect = new ScreenRect(column.X, y, column.Width, height);
-        y += height;
-        return rect;
-    }
-
-    /// <summary>What Allocate granted, in the order it was decided. Separate from where any of it
-    /// goes: what survives is a priority question and where it is drawn is a reading question, and
-    /// the two orders are deliberately different.</summary>
-    private readonly record struct Budget(
-        bool Status,
-        bool Banner,
-        bool Reward,
-        float Requirements,
-        float Description);
+    /// <summary>The height a title of <paramref name="lines"/> Axis-18 lines needs. JournalDetail
+    /// <c>#38</c> reserves 50 for two, so 25 a line.</summary>
+    public static float TitleHeight(int lines) =>
+        Math.Max(lines, 0) * GameMetrics.Detail.TitleHeight;
 }

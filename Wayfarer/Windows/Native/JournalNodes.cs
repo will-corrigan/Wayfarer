@@ -27,7 +27,7 @@ internal static class JournalNodes
     /// surface. A failed node stays invisible and the text it decorates is drawn regardless — the
     /// glyphs are the journal's accent, never its content.</para></summary>
     public static SimpleImageNode Art(
-        NodeBase parent, IPluginLog log, (float U, float V) at, float width, float height = 0f)
+        NodeBase? parent, IPluginLog log, (float U, float V) at, float width, float height = 0f)
     {
         ArgumentNullException.ThrowIfNull(log);
 
@@ -47,51 +47,56 @@ internal static class JournalNodes
             log.Warning(ex, why);
         }
 
-        node.AttachNode(parent);
+        Attach(node, parent);
         return node;
     }
 
     /// <summary>A line of body text, attached and ready to be placed.</summary>
-    public static TextNode Line(NodeBase parent, uint size, Vector4 color, TextFlags flags)
+    public static TextNode Line(NodeBase? parent, uint size, Vector4 color, TextFlags flags)
     {
         var node = Body(size, color, flags);
-        node.AttachNode(parent);
+        Attach(node, parent);
         return node;
     }
 
     /// <summary>A section heading in the journal's register: Axis over the glyph beside it, in the
-    /// heading colour. The words are the game's own — Addon 2835 "Requirements", 463 "Reward", 543
-    /// "Description", 2836 "Information".</summary>
-    public static TextNode Heading(NodeBase parent, string text)
+    /// page's heading colour — a muted grey-brown, not the HUD's white, because this text is on
+    /// paper. See <see cref="GameColors.JournalPage"/>. The words are the game's own — Addon 2835
+    /// "Requirements", 463 "Reward", 543 "Description", 2836 "Information".</summary>
+    public static TextNode Heading(NodeBase? parent, string text)
     {
-        var node = Body(GameMetrics.Type.SecondarySize, GameColors.Heading, TextFlags.Ellipsis);
+        var node = Body(GameMetrics.Type.SecondarySize, GameColors.JournalPage.Heading, TextFlags.Ellipsis);
         node.String = text;
-        node.AttachNode(parent);
+        Attach(node, parent);
         return node;
     }
 
     /// <summary>The entry's name. The game's own treatment — JournalDetail sets its heading in Axis
     /// 18 at leading 20, not in the window-title face. TrumpGothic belongs on the window's own title
-    /// bar and on the level badge, nowhere else.</summary>
-    public static TextNode Title(NodeBase parent, TextFlags flags)
+    /// bar and on the level badge, nowhere else.
+    ///
+    /// <para>No edge. The HUD's titles are white with a bronze outline because they are drawn over
+    /// the world; a near-black title on parchment with an outline under it reads as a printing
+    /// fault.</para></summary>
+    public static MeasuredTextNode Title(NodeBase? parent)
     {
-        var node = new TextNode
+        var node = new MeasuredTextNode
         {
             FontType = FontType.Axis,
             FontSize = GameMetrics.Type.DetailTitleSize,
             LineSpacing = GameMetrics.Type.DetailTitleLine,
             AlignmentType = AlignmentType.TopLeft,
-            TextFlags = TextFlags.Edge | flags,
-            TextColor = GameColors.Heading,
-            TextOutlineColor = GameColors.HeadingEdge,
+            TextFlags = TextFlags.MultiLine | TextFlags.WordWrap,
+            TextColor = GameColors.JournalPage.Title,
+            MaxHeight = JournalWindowLayout.TitleHeight(JournalWindowLayout.MaxTitleLines),
         };
-        node.AttachNode(parent);
+        Attach(node, parent);
         return node;
     }
 
-    /// <summary>The kind word, pinned to the right of the title — the game's own dimmed caption
-    /// column.</summary>
-    public static TextNode Kind(NodeBase parent)
+    /// <summary>The kind word, pinned to the right of the title — the game's own caption column, in
+    /// the page's quietest text colour.</summary>
+    public static TextNode Kind(NodeBase? parent)
     {
         var node = new TextNode
         {
@@ -100,15 +105,34 @@ internal static class JournalNodes
             LineSpacing = GameMetrics.Type.SecondaryLine,
             AlignmentType = AlignmentType.TopRight,
             TextFlags = TextFlags.Ellipsis,
-            TextColor = GameColors.Dimmed,
+            TextColor = GameColors.JournalPage.Meta,
         };
-        node.AttachNode(parent);
+        Attach(node, parent);
+        return node;
+    }
+
+    /// <summary>A wrapping block of the page's prose, which reports its own height so the stack above
+    /// it never has to guess. <paramref name="maxLines"/> caps how tall it may grow, which is what
+    /// keeps the page's own height finite.</summary>
+    public static MeasuredTextNode Paragraph(NodeBase? parent, int maxLines)
+    {
+        var node = new MeasuredTextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.BodySize,
+            LineSpacing = GameMetrics.Type.BodyLine,
+            AlignmentType = AlignmentType.TopLeft,
+            TextFlags = TextFlags.MultiLine | TextFlags.WordWrap,
+            TextColor = GameColors.JournalPage.Body,
+            MaxHeight = JournalWindowLayout.BlockHeight(maxLines),
+        };
+        Attach(node, parent);
         return node;
     }
 
     /// <summary>The number on the level badge. TrumpGothic is the Journal's own face for it, and the
     /// only place the page uses that face.</summary>
-    public static TextNode Level(NodeBase parent)
+    public static TextNode Level(NodeBase? parent)
     {
         var node = new TextNode
         {
@@ -120,14 +144,14 @@ internal static class JournalNodes
             TextOutlineColor = GameColors.HeadingEdge,
             IsVisible = false,
         };
-        node.AttachNode(parent);
+        Attach(node, parent);
         return node;
     }
 
     /// <summary>A square of runtime-chosen icon art — the status marker, a reward's own picture, the
     /// banner. Hidden until something fills it, and sized by the caller because those three slots
     /// are three different sizes.</summary>
-    public static IconImageNode Marker(NodeBase parent, Vector2 size)
+    public static IconImageNode Marker(NodeBase? parent, Vector2 size)
     {
         var node = new IconImageNode
         {
@@ -135,7 +159,7 @@ internal static class JournalNodes
             FitTexture = true,
             IsVisible = false,
         };
-        node.AttachNode(parent);
+        Attach(node, parent);
         return node;
     }
 
@@ -148,6 +172,19 @@ internal static class JournalNodes
         node.IconId = iconId;
         var actual = node.ActualTextureSize;
         node.TextureSize = actual.X > 0f && actual.Y > 0f ? actual : authored;
+    }
+
+    /// <summary>Attaches a fresh node to its parent, or leaves it detached when there is none.
+    ///
+    /// <para>A null parent is not an oversight — it is how a node destined for a layout container is
+    /// built. <c>LayoutListNode.AddNode</c> attaches what it is given, so a node that has already
+    /// been attached to the same container would be linked into the tree twice.</para></summary>
+    private static void Attach(NodeBase node, NodeBase? parent)
+    {
+        if (parent is not null)
+        {
+            node.AttachNode(parent);
+        }
     }
 
     private static TextNode Body(uint size, Vector4 color, TextFlags flags) => new()

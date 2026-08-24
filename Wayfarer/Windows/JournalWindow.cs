@@ -27,19 +27,21 @@ namespace Wayfarer.Windows;
 /// chrome <i>is</i> the parchment nine-grid and the gilt border, and a standard window frame around
 /// that would be a frame inside a frame. So the window node is supplied already invisible — the same
 /// trick the readout's clickable host uses — and <see cref="JournalFrameNode"/> is the whole of the
-/// visible edge. The consequence is that this window is not dragged and has no title-bar close box,
-/// which is also true of the game's: <c>JournalDetail</c> is positioned by <c>Journal</c> and closed
-/// with it.</para>
+/// visible edge.</para>
 ///
 /// <para><b>Fixed width, free height.</b> <see cref="GameMetrics.JournalFrame.Width"/>, always. Every
 /// number on this surface — the border's horizontal run, the 376 banner, the 376 reward tray, the 394
 /// canvas column — is authored for that one width, and the border cannot be stretched to any
 /// other.</para>
 ///
-/// <para><b>Text is measured, not counted.</b> Every wrapping block is set, measured with
-/// <c>GetTextDrawSize</c> against this column's width, and shortened until it fits the room the
-/// layout granted it. The page this replaces sized its blocks by a line <i>count</i>, which is how a
-/// one-line requirement that wrapped to five came to be drawn under a description.</para></summary>
+/// <para><b>Nothing on this page is positioned by arithmetic.</b> This is the whole of the fix for
+/// the defect that kept coming back — a description drawn over the Requirements heading, a title
+/// wrapping onto the state line. Every block is a child of a <see cref="SectionStackNode"/>, which
+/// places each one after the height the block itself reports; wrapping text reports that height
+/// through <see cref="MeasuredTextNode"/>, and nothing else ever reads it. There is no y-cursor in
+/// this file. The consequence a player sees is the second one: the page is as tall as its contents,
+/// so the foot sits under the last thing on the page rather than at the bottom of a fixed box with a
+/// band of empty parchment above it.</para></summary>
 internal sealed unsafe class JournalWindow(JournalWords words, IFramework framework, IPluginLog log)
     : NativeAddon
 {
@@ -52,28 +54,37 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     private const int NavStart = 1;
 
     private JournalFrameNode? frame;
+    private ResNode? pageClip;
+    private SectionStackNode? page;
+
+    private HorizontalListNode? header;
     private SimpleImageNode? levelBadgeNode;
     private TextNode? levelNode;
-    private TextNode? titleNode;
+    private MeasuredTextNode? titleNode;
     private TextNode? kindNode;
-    private SimpleImageNode? titleRuleNode;
+    private HorizontalListNode? titleRuleRow;
+
+    private HorizontalListNode? statusRow;
     private IconImageNode? statusIconNode;
     private TextNode? statusNode;
+
+    private HorizontalListNode? bannerRow;
     private IconImageNode? bannerNode;
-    private SimpleImageNode? rewardGlyphNode;
-    private TextNode? rewardLabelNode;
+
+    private JournalSectionNode? rewardSection;
     private SimpleImageNode? rewardTrayNode;
     private IconImageNode? rewardIconNode;
     private TextNode? rewardNameNode;
-    private SimpleImageNode? descriptionGlyphNode;
-    private TextNode? descriptionLabelNode;
-    private TextNode? descriptionNode;
-    private SimpleImageNode? requirementsGlyphNode;
-    private TextNode? requirementsLabelNode;
-    private TextNode? requirementsNode;
+
+    private JournalSectionNode? descriptionSection;
+    private MeasuredTextNode? descriptionNode;
+    private JournalSectionNode? requirementsSection;
+    private MeasuredTextNode? requirementsNode;
+
     private TextNode? giverNode;
     private TextNode? provenanceNode;
-    private SimpleImageNode? footerRuleNode;
+    private HorizontalListNode? footerRuleRow;
+    private HorizontalListNode? footRow;
     private SimpleImageNode? bossNode;
     private AlignedHorizontalListNode? actionRow;
     private TextButtonNode? backButton;
@@ -81,7 +92,6 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
 
     private HubRowDetail? entry;
     private bool wantsFocus;
-    private string giverLine = string.Empty;
 
     /// <summary>Where the window was last put, so PlaceBeside can be called every tick without
     /// writing a position every tick.</summary>
@@ -120,10 +130,22 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
         }
     }
 
-    /// <summary>Puts the window beside another one, at the offset the game uses. <c>Journal.uld</c>
-    /// reserves its detail page at x=450 y=-40 relative to a 462-wide list panel, so the page starts
-    /// twelve pixels inside the list's right edge and forty above its top — a deliberate overlap that
-    /// lets the border's ornament cross the seam.</summary>
+    /// <summary>Puts the window beside another one, at the offset the game uses, and keeps it inside
+    /// the viewport.
+    ///
+    /// <para><c>Journal.uld</c> reserves its detail page at x=450 y=-40 relative to a 462-wide list
+    /// panel, so the page starts twelve pixels inside the list's right edge and forty above its top —
+    /// a deliberate overlap that lets the border's ornament cross the seam. Both numbers are authored
+    /// in addon units, so both are scaled by the interface scale before they are added to a position
+    /// in screen pixels; forgetting that put the page half an ornament out of place at anything other
+    /// than 100%.</para>
+    ///
+    /// <para>The game has no parent-child relationship between two addons — an addon's position is
+    /// its own, and <c>AtkUnitBase</c> has no owner field — so this is a per-frame follow rather than
+    /// an attachment. The caller runs it every tick and it writes only when the answer has changed,
+    /// which is what makes it cheap enough to be the mechanism: it tracks a drag, a resize, a preset
+    /// that moves the hub, and a resolution change under an open page, and it also catches the frame
+    /// after <c>Open()</c> in which the addon is not open yet.</para></summary>
     public void PlaceBeside(Vector2 hostPosition, Vector2 hostSize)
     {
         if (!IsOpen)
@@ -131,21 +153,18 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             return;
         }
 
+        var scale = UiScale();
         var wanted = new Vector2(
-            hostPosition.X + hostSize.X - GameMetrics.JournalFrame.BesideOverlapX,
-            hostPosition.Y - GameMetrics.JournalFrame.BesideOverlapY);
+            hostPosition.X + hostSize.X - (GameMetrics.JournalFrame.BesideOverlapX * scale),
+            hostPosition.Y - (GameMetrics.JournalFrame.BesideOverlapY * scale));
 
-        // Idempotent, because the caller runs this every tick — which is how the page follows a
-        // window that is being dragged, and also how it catches the frame after Open() in which the
-        // addon has only just become open. Writing a position every frame regardless would be a
-        // window nothing else could move.
-        if (Vector2.DistanceSquared(wanted, placedAt) < 1f)
+        if (Vector2.DistanceSquared(Clamp(wanted, scale), placedAt) < 1f)
         {
             return;
         }
 
-        placedAt = wanted;
-        SetWindowPosition(wanted);
+        placedAt = Clamp(wanted, scale);
+        SetWindowPosition(placedAt);
     }
 
     /// <inheritdoc/>
@@ -195,50 +214,38 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     {
         placedAt = new Vector2(float.NaN, float.NaN);
         frame = null;
+        pageClip = null;
+        page = null;
+        header = null;
         levelBadgeNode = null;
         levelNode = null;
         titleNode = null;
         kindNode = null;
-        titleRuleNode = null;
+        titleRuleRow = null;
+        statusRow = null;
         statusIconNode = null;
         statusNode = null;
+        bannerRow = null;
         bannerNode = null;
-        rewardGlyphNode = null;
-        rewardLabelNode = null;
+        rewardSection = null;
         rewardTrayNode = null;
         rewardIconNode = null;
         rewardNameNode = null;
-        descriptionGlyphNode = null;
-        descriptionLabelNode = null;
+        descriptionSection = null;
         descriptionNode = null;
-        requirementsGlyphNode = null;
-        requirementsLabelNode = null;
+        requirementsSection = null;
         requirementsNode = null;
         giverNode = null;
         provenanceNode = null;
-        footerRuleNode = null;
+        footerRuleRow = null;
+        footRow = null;
         bossNode = null;
         actionRow = null;
         backButton = null;
         actionButtons = [];
     }
 
-    private static void Place(NodeBase? node, ScreenRect rect)
-    {
-        if (node is null)
-        {
-            return;
-        }
-
-        node.IsVisible = !rect.IsEmpty;
-        if (rect.IsEmpty)
-        {
-            return;
-        }
-
-        node.Position = new Vector2(rect.X, rect.Y);
-        node.Size = new Vector2(rect.Width, rect.Height);
-    }
+    private static float UiScale() => Math.Max(AtkUnitBase.GetGlobalUIScale(), 0.1f);
 
     /// <summary>The one line at the foot: who hands it over, and where they stand. The quest's own
     /// name is not on it — the quest is <i>how you get this</i> and the page is about <i>what it
@@ -263,261 +270,285 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             return;
         }
 
+        node.IsVisible = true;
         JournalNodes.ApplyIcon(node, iconId, authored);
     }
 
-    /// <summary>The rule, at the width its art is authored at, centred in the block the layout
-    /// gave it. The game draws this image and never stretches it, so neither does this.</summary>
-    private static ScreenRect Rule(ScreenRect block)
+    /// <summary>A single-line label sized to the room it is in — the state line, the giver, the
+    /// footnote. Its height is a constant because a one-line node's height is not a question:
+    /// <see cref="TextFlags.Ellipsis"/> makes it one line whatever the string is.</summary>
+    private static void SetLine(TextNode node, string text, float width, float height)
     {
-        if (block.IsEmpty)
-        {
-            return default;
-        }
-
-        var width = Math.Min(GameMetrics.JournalArt.DividerWidth, block.Width);
-        return new ScreenRect(
-            block.X + ((block.Width - width) / 2f),
-            block.Y,
-            width,
-            GameMetrics.JournalArt.DividerHeight);
-    }
-
-    /// <summary>Sets the requirements block — the game's own "not yet available" sentence when there
-    /// is one, then the unmet requirements as bullets — and shortens it until it measures inside
-    /// <paramref name="allowance"/>, returning the height it ended up at.</summary>
-    private static float FitBullets(
-        TextNode node, string? lead, IReadOnlyList<string> lines, float allowance)
-    {
-        var wanted = lines.Count + (lead is null ? 0 : 1);
-        if (wanted == 0 || allowance <= 0f)
-        {
-            node.String = string.Empty;
-            return 0f;
-        }
-
-        for (var budget = Math.Min(wanted, JournalWindowLayout.MaxRequirementLines); budget >= 1; budget--)
-        {
-            var measured = Measure(node, Compose(lead, lines, budget), allowance);
-            if (measured <= allowance)
-            {
-                return measured;
-            }
-        }
-
-        // Nothing fits even one wrapped line. One ellipsised line is the honest floor: it says there
-        // is a requirement and that it did not fit, rather than running off the page.
-        return Truncate(node, Compose(lead, lines, 1), allowance);
-    }
-
-    private static string Compose(string? lead, IReadOnlyList<string> lines, int budget) =>
-        lead is null
-            ? DetailText.Bullets(lines, budget, out _)
-            : DetailText.Led(lead, lines, budget, out _);
-
-    /// <summary>The same for a paragraph, shortened a sentence at a time from the end.</summary>
-    private static float Fit(TextNode node, string text, float allowance)
-    {
-        if (text.Length == 0 || allowance <= 0f)
-        {
-            node.String = string.Empty;
-            return 0f;
-        }
-
-        var measured = Measure(node, text, allowance);
-        if (measured <= allowance)
-        {
-            return measured;
-        }
-
-        // Trim words off the end until it fits, then mark the cut. A paragraph has no line
-        // structure to give up, so this is the only unit there is.
-        var pieces = text.Split(' ');
-        for (var take = pieces.Length - 1; take >= 1; take--)
-        {
-            var shortened = string.Join(' ', pieces.Take(take)) + "…";
-            measured = Measure(node, shortened, allowance);
-            if (measured <= allowance)
-            {
-                return measured;
-            }
-        }
-
-        return Truncate(node, text, allowance);
-    }
-
-    /// <summary>The last resort: drop the wrap, keep one line, let the node ellipsise it. Bounded by
-    /// construction, which is what makes the fitting loops above safe to give up on.</summary>
-    private static float Truncate(TextNode node, string text, float allowance)
-    {
-        node.RemoveTextFlags(TextFlags.MultiLine, TextFlags.WordWrap);
-        node.AddTextFlags(TextFlags.Ellipsis);
-        node.String = text.ReplaceLineEndings(" ");
-        return Math.Min(JournalWindowLayout.BlockHeight(1), allowance);
-    }
-
-    /// <summary>Sets the text and asks the game how tall it draws at this column's width.
-    ///
-    /// <para>The node's own width has to be right before the measurement, because that is what the
-    /// wrap is computed against — which is the whole reason this is done here rather than guessed
-    /// from a character count in Core. Restores the wrapping flags first: an earlier
-    /// <see cref="Truncate"/> may have taken them away.</para></summary>
-    private static float Measure(TextNode node, string text, float allowance)
-    {
-        node.RemoveTextFlags(TextFlags.Ellipsis);
-        node.AddTextFlags(TextFlags.MultiLine, TextFlags.WordWrap);
-        node.Width = GameMetrics.Journal.ColumnWidth;
-        node.Height = Math.Max(allowance, JournalWindowLayout.BlockHeight(1));
+        node.Width = width;
+        node.Height = height;
         node.String = text;
-
-        var drawn = node.GetTextDrawSize(considerScale: false).Y;
-        return drawn > 0f ? drawn : JournalWindowLayout.BlockHeight(1);
+        node.IsVisible = text.Length > 0;
     }
+
+    /// <summary>What is left of the title band's width once the badge and the kind caption have had
+    /// theirs. Static geometry — three fixed widths and two gaps — and the only reason it is computed
+    /// at all is that the caption is pinned to the column's right edge.</summary>
+    private static float TitleWidth() =>
+        JournalWindowLayout.ContentWidth
+        - GameMetrics.Journal.BadgeSize
+        - GameMetrics.Journal.KindWidth
+        - (GameMetrics.Window.RuleGap * 2f);
+
+    private static float StatusTextWidth() =>
+        JournalWindowLayout.ContentWidth - GameMetrics.Detail.HeadingIconSize - GameMetrics.Window.RuleGap;
+
+    /// <summary>The giver, right-aligned at the foot — where the game's own journal, and the player's
+    /// screenshot, put the name of whoever hands the thing over. In the page's quietest text colour,
+    /// which is the fix for the line the player photographed: it was the readout's near-white on
+    /// cream parchment.</summary>
+    private static TextNode BuildGiver() => new()
+    {
+        FontType = FontType.Axis,
+        FontSize = GameMetrics.Type.BodySize,
+        LineSpacing = GameMetrics.Type.BodyLine,
+        AlignmentType = AlignmentType.TopRight,
+        TextFlags = TextFlags.Ellipsis,
+        TextColor = GameColors.JournalPage.Meta,
+        Width = JournalWindowLayout.ContentWidth,
+        Height = GameMetrics.Row.TextHeight,
+    };
+
+    /// <summary>The confidence footnote. JournalCanvas <c>#54</c>'s register: Axis 12, centred,
+    /// quiet — the line the game reserves for a caveat.</summary>
+    private static TextNode BuildProvenance() => new()
+    {
+        FontType = FontType.Axis,
+        FontSize = GameMetrics.Type.SecondarySize,
+        LineSpacing = GameMetrics.Type.SecondaryLine,
+        AlignmentType = AlignmentType.Top,
+        TextFlags = TextFlags.Ellipsis,
+        TextColor = GameColors.JournalPage.Meta,
+        Width = JournalWindowLayout.ContentWidth,
+        Height = GameMetrics.Journal.FootnoteHeight,
+    };
 
     private void Build()
     {
         frame = new JournalFrameNode(log) { Position = Vector2.Zero };
         AddNode(frame);
 
-        levelBadgeNode = JournalNodes.Art(
-            frame, log, GameMetrics.JournalArt.LevelBadge, GameMetrics.Journal.BadgeSize);
-        levelNode = JournalNodes.Level(frame);
-        titleNode = JournalNodes.Title(frame, TextFlags.MultiLine | TextFlags.WordWrap);
-        kindNode = JournalNodes.Kind(frame);
-        titleRuleNode = Divider();
+        // The clip box. Everything below is inside it, so a page taller than the window it is in — a
+        // viewport too short for the content — is cut off at the border's inside edge rather than
+        // drawn across the gilt frame. Nothing about the layout depends on this; it is the guard for
+        // the day something does.
+        pageClip = new ResNode
+        {
+            Position = new Vector2(JournalWindowLayout.ContentLeft, JournalWindowLayout.ContentTop),
+            Size = new Vector2(JournalWindowLayout.ContentWidth, JournalWindowLayout.ContentWidth),
+            NodeFlags = NodeFlags.Visible | NodeFlags.Clip,
+        };
+        pageClip.AttachNode(frame);
 
-        statusIconNode = JournalNodes.Marker(
-            frame, new Vector2(GameMetrics.Detail.HeadingIconSize, GameMetrics.Detail.HeadingIconSize));
-        statusNode = JournalNodes.Line(
-            frame, GameMetrics.Type.BodySize, GameColors.ListText, TextFlags.Ellipsis);
+        page = new SectionStackNode
+        {
+            Position = Vector2.Zero,
+            Width = JournalWindowLayout.ContentWidth,
+            ItemSpacing = JournalWindowLayout.Spacing,
+        };
+        page.AttachNode(pageClip);
 
-        bannerNode = JournalNodes.Marker(
-            frame, new Vector2(GameMetrics.Journal.BannerWidth, GameMetrics.Journal.BannerHeight));
-
-        rewardGlyphNode = JournalNodes.Art(
-            frame, log, GameMetrics.JournalArt.GlyphReward, GameMetrics.Journal.GlyphSize);
-        rewardLabelNode = JournalNodes.Heading(frame, words.Reward);
-        rewardTrayNode = JournalNodes.Art(
-            frame,
-            log,
-            GameMetrics.JournalArt.TrayOneRow,
-            GameMetrics.Journal.ColumnWidth,
-            GameMetrics.Journal.TrayHeight);
-        rewardIconNode = JournalNodes.Marker(
-            frame, new Vector2(GameMetrics.Journal.SlotIconSize, GameMetrics.Journal.SlotIconSize));
-        rewardNameNode = JournalNodes.Line(
-            frame, GameMetrics.Type.BodySize, GameColors.ListText, TextFlags.Ellipsis);
-
-        (descriptionGlyphNode, descriptionLabelNode, descriptionNode) =
-            Section(GameMetrics.JournalArt.GlyphDescription, words.Description);
-        (requirementsGlyphNode, requirementsLabelNode, requirementsNode) =
-            Section(GameMetrics.JournalArt.GlyphDocument, words.Requirements);
-
-        giverNode = Giver();
-        provenanceNode = Provenance();
-        footerRuleNode = Divider();
-        bossNode = Boss();
-
-        BuildActionRow();
+        // Reading order, and this list is the only statement of it: the entry's name, the rule, what
+        // state it is in, the picture, what it gives you, what it is, what is still in the way, then
+        // who hands it over and the caveat, and the foot. The game's own page reads in that order and
+        // so does the player's screenshot.
+        page.AddNode(BuildHeader());
+        page.AddNode(titleRuleRow = BuildRuleRow());
+        page.AddNode(BuildStatusRow());
+        page.AddNode(BuildBannerRow());
+        page.AddNode(rewardSection = BuildRewardSection());
+        page.AddNode(descriptionSection = BuildDescriptionSection());
+        page.AddNode(requirementsSection = BuildRequirementsSection());
+        page.AddNode(giverNode = BuildGiver());
+        page.AddNode(provenanceNode = BuildProvenance());
+        page.AddNode(footerRuleRow = BuildRuleRow());
+        page.AddNode(BuildFootRow());
     }
 
-    /// <summary>The journal's own rule — <c>Journal_Detail.tex</c> (0,24) 392x4, the image
-    /// JournalDetail draws under its title (<c>#39</c>) and above its buttons (<c>#48</c>). The
-    /// codebase's <c>HorizontalLineNode</c> is the same four pixels of different art; this is the
-    /// page's own, and on this surface that is the point.</summary>
-    private SimpleImageNode Divider() =>
-        JournalNodes.Art(
-            frame!,
+    /// <summary>The title band: the level on its disc, the entry's name, and the kind word pinned
+    /// right.
+    ///
+    /// <para>The name is a <see cref="MeasuredTextNode"/> bounded to
+    /// <see cref="JournalWindowLayout.MaxTitleLines"/> lines, which is the game's own treatment —
+    /// JournalDetail <c>#38</c> is 340x50, two Axis-18 lines, wrapping. So a long name takes a second
+    /// line and the row grows by a line, which pushes the rule and everything under it down. It used
+    /// to wrap into the space the state line was already in.</para></summary>
+    private HorizontalListNode BuildHeader()
+    {
+        header = new HorizontalListNode
+        {
+            Alignment = HorizontalListAnchor.Left,
+            ItemSpacing = GameMetrics.Window.RuleGap,
+            Width = JournalWindowLayout.ContentWidth,
+            FitToContentHeight = true,
+        };
+
+        levelBadgeNode = JournalNodes.Art(
+            header, log, GameMetrics.JournalArt.LevelBadge, GameMetrics.Journal.BadgeSize);
+
+        // The number and its disc are one object: the game centres the numeral on the plate
+        // (JournalDetail #9 over #10), so the text is a child of the art and moves with it.
+        levelNode = JournalNodes.Level(levelBadgeNode);
+        levelNode.Position = Vector2.Zero;
+        levelNode.Size = new Vector2(GameMetrics.Journal.BadgeSize, GameMetrics.Journal.BadgeSize);
+
+        titleNode = JournalNodes.Title(header);
+        kindNode = JournalNodes.Kind(header);
+        kindNode.Width = GameMetrics.Journal.KindWidth;
+        kindNode.Height = GameMetrics.Detail.HeadingHeight;
+
+        header.AddNode([levelBadgeNode, titleNode, kindNode]);
+        return header;
+    }
+
+    /// <summary>One of the page's two rules — <c>Journal_Detail.tex</c> (0,24) 392x4, the image
+    /// JournalDetail draws under its title (<c>#39</c>) and above its buttons (<c>#48</c>). A row of
+    /// its own so it takes its place in the stack rather than being hung off a coordinate, and inset
+    /// to centre the art in the column because the game draws this image and never stretches it.
+    /// </summary>
+    private HorizontalListNode BuildRuleRow()
+    {
+        var row = new HorizontalListNode
+        {
+            Alignment = HorizontalListAnchor.Left,
+            FirstItemSpacing = JournalWindowLayout.RuleInset,
+            Width = JournalWindowLayout.ContentWidth,
+            FitToContentHeight = true,
+        };
+
+        var rule = JournalNodes.Art(
+            row,
             log,
             GameMetrics.JournalArt.Divider,
             GameMetrics.JournalArt.DividerWidth,
             GameMetrics.JournalArt.DividerHeight);
+        rule.IsVisible = true;
 
-    /// <summary>The gold rivet at the foot of the page. Ornament, not a control: see
+        row.AddNode(rule);
+        return row;
+    }
+
+    private HorizontalListNode BuildStatusRow()
+    {
+        statusRow = new HorizontalListNode
+        {
+            Alignment = HorizontalListAnchor.Left,
+            ItemSpacing = GameMetrics.Window.RuleGap,
+            Width = JournalWindowLayout.ContentWidth,
+            FitToContentHeight = true,
+        };
+
+        statusIconNode = JournalNodes.Marker(
+            statusRow, new Vector2(GameMetrics.Detail.HeadingIconSize, GameMetrics.Detail.HeadingIconSize));
+        statusNode = JournalNodes.Line(
+            statusRow, GameMetrics.Type.BodySize, GameColors.JournalPage.Body, TextFlags.Ellipsis);
+
+        statusRow.AddNode([statusIconNode, statusNode]);
+        return statusRow;
+    }
+
+    private HorizontalListNode BuildBannerRow()
+    {
+        bannerRow = new HorizontalListNode
+        {
+            Alignment = HorizontalListAnchor.Left,
+            FirstItemSpacing = GameMetrics.Journal.SectionInset,
+            Width = JournalWindowLayout.ContentWidth,
+            FitToContentHeight = true,
+        };
+
+        bannerNode = JournalNodes.Marker(
+            bannerRow, new Vector2(GameMetrics.Journal.BannerWidth, GameMetrics.Journal.BannerHeight));
+
+        bannerRow.AddNode(bannerNode);
+        return bannerRow;
+    }
+
+    /// <summary>The reward section: the chest glyph and heading, then the recessed tray with one
+    /// slot's icon and the reward said in words beside it. The icon and the name are children of the
+    /// tray art because they are meant to be <i>on</i> it — that is the one intentional overlap on
+    /// this page, and making it a parent-child relationship is what stops it being mistaken for the
+    /// accidental kind.</summary>
+    private JournalSectionNode BuildRewardSection()
+    {
+        var section = new JournalSectionNode(
+            log, GameMetrics.JournalArt.GlyphReward, words.Reward);
+
+        var trayRow = section.BodyRow();
+        rewardTrayNode = JournalNodes.Art(
+            trayRow,
+            log,
+            GameMetrics.JournalArt.TrayOneRow,
+            GameMetrics.Journal.ColumnWidth,
+            GameMetrics.Journal.TrayHeight);
+        rewardTrayNode.IsVisible = true;
+
+        var tray = new ScreenRect(
+            0f, 0f, GameMetrics.Journal.ColumnWidth, GameMetrics.Journal.TrayHeight);
+        var iconRect = JournalTrayLayout.Icon(tray);
+        var nameRect = JournalTrayLayout.Name(tray, iconRect);
+
+        rewardIconNode = JournalNodes.Marker(
+            rewardTrayNode, new Vector2(GameMetrics.Journal.SlotIconSize, GameMetrics.Journal.SlotIconSize));
+        rewardIconNode.Position = new Vector2(iconRect.X, iconRect.Y);
+
+        rewardNameNode = JournalNodes.Line(
+            rewardTrayNode, GameMetrics.Type.BodySize, GameColors.JournalPage.Body, TextFlags.Ellipsis);
+        rewardNameNode.Position = new Vector2(nameRect.X, nameRect.Y);
+        rewardNameNode.Size = new Vector2(nameRect.Width, nameRect.Height);
+
+        trayRow.AddNode(rewardTrayNode);
+        return section;
+    }
+
+    private JournalSectionNode BuildDescriptionSection()
+    {
+        var section = new JournalSectionNode(
+            log, GameMetrics.JournalArt.GlyphDescription, words.Description);
+        var row = section.BodyRow();
+        descriptionNode = JournalNodes.Paragraph(row, JournalWindowLayout.MaxDescriptionLines);
+        row.AddNode(descriptionNode);
+        return section;
+    }
+
+    private JournalSectionNode BuildRequirementsSection()
+    {
+        var section = new JournalSectionNode(
+            log, GameMetrics.JournalArt.GlyphDocument, words.Requirements);
+        var row = section.BodyRow();
+        requirementsNode = JournalNodes.Paragraph(row, JournalWindowLayout.MaxRequirementLines);
+        row.AddNode(requirementsNode);
+        return section;
+    }
+
+    /// <summary>The foot: Back and the entry's actions in one row, with the gold rivet at the far
+    /// end.
+    ///
+    /// <para>One row rather than two because the walker numbers a horizontal container as a single
+    /// row that chains left and right and wraps at both ends — so Back is one press from the far end
+    /// of the row as well as from its neighbour. The rivet is ornament, not a control: see
     /// <see cref="GameMetrics.JournalFrame.BossSize"/> for why the slot the game gives a button is
-    /// given a piece of its border sheet instead.</summary>
-    private SimpleImageNode Boss()
+    /// given a piece of its border sheet instead.</para></summary>
+    private HorizontalListNode BuildFootRow()
     {
-        var node = new SimpleImageNode
+        footRow = new HorizontalListNode
         {
-            Size = new Vector2(GameMetrics.JournalFrame.BossSize, GameMetrics.JournalFrame.BossSize),
-            WrapMode = WrapMode.Tile,
-            IsVisible = false,
+            Alignment = HorizontalListAnchor.Left,
+            ItemSpacing = GameMetrics.Control.ButtonGap,
+            Width = JournalWindowLayout.ContentWidth,
+            FitToContentHeight = true,
         };
 
-        try
-        {
-            node.LoadTexture(GameMetrics.JournalFrame.Texture);
-            node.TextureCoordinates = new Vector2(
-                GameMetrics.JournalFrame.Boss.U, GameMetrics.JournalFrame.Boss.V);
-            node.TextureSize = node.Size;
-        }
-        catch (Exception ex)
-        {
-            const string why =
-                "Wayfarer journal: the journal border's own sheet could not be read, so the rivet at the foot of "
-                + "the page is not drawn. Nothing else is affected.";
-            log.Warning(ex, why);
-        }
-
-        node.AttachNode(frame!);
-        return node;
-    }
-
-    /// <summary>The giver, right-aligned at the foot — where the game's own journal, and the
-    /// player's screenshot, put the name of whoever hands the thing over.</summary>
-    private TextNode Giver()
-    {
-        var node = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = GameMetrics.Type.BodySize,
-            LineSpacing = GameMetrics.Type.BodyLine,
-            AlignmentType = AlignmentType.TopRight,
-            TextFlags = TextFlags.Ellipsis,
-            TextColor = GameColors.ListText,
-        };
-        node.AttachNode(frame!);
-        return node;
-    }
-
-    /// <summary>The confidence footnote. JournalCanvas <c>#54</c>'s register: Axis 12, centred,
-    /// dimmed — the line the game reserves for a caveat.</summary>
-    private TextNode Provenance()
-    {
-        var node = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = GameMetrics.Type.SecondarySize,
-            LineSpacing = GameMetrics.Type.SecondaryLine,
-            AlignmentType = AlignmentType.Top,
-            TextFlags = TextFlags.Ellipsis,
-            TextColor = GameColors.Dimmed,
-        };
-        node.AttachNode(frame!);
-        return node;
-    }
-
-    private (SimpleImageNode Glyph, TextNode Label, TextNode Body) Section(
-        (float U, float V) glyph, string heading) =>
-        (JournalNodes.Art(frame!, log, glyph, GameMetrics.Journal.GlyphSize),
-            JournalNodes.Heading(frame!, heading),
-            JournalNodes.Line(
-                frame!,
-                GameMetrics.Type.BodySize,
-                GameColors.Body,
-                TextFlags.WordWrap | TextFlags.MultiLine));
-
-    /// <summary>Back and the entry's actions, in one row. One row rather than two because the
-    /// walker numbers a horizontal container as a single row that chains left and right and wraps at
-    /// both ends — so Back is one press from the far end of the row as well as from its
-    /// neighbour.</summary>
-    private void BuildActionRow()
-    {
         actionRow = new AlignedHorizontalListNode
         {
+            Width = JournalWindowLayout.ContentWidth
+                - GameMetrics.JournalFrame.BossSize
+                - GameMetrics.Control.ButtonGap,
             Height = GameMetrics.Control.ButtonHeight,
-            FitToContentHeight = true,
             ItemSpacing = GameMetrics.Control.ButtonGap,
         };
 
@@ -542,163 +573,153 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             actionRow.AddNode(actionButtons[i]);
         }
 
-        actionRow.AttachNode(frame!);
+        bossNode = Boss();
+        footRow.AddNode([actionRow, bossNode]);
+        return footRow;
     }
 
-    /// <summary>Writes the stored entry into the tree and lays it out. Separate from
-    /// <see cref="Build"/> so re-showing a different entry into an open window is a fill and a layout
-    /// rather than a rebuild — which is what lets the page follow the list's cursor.</summary>
+    /// <summary>The gold rivet at the foot of the page.</summary>
+    private SimpleImageNode Boss()
+    {
+        var node = new SimpleImageNode
+        {
+            Size = new Vector2(GameMetrics.JournalFrame.BossSize, GameMetrics.JournalFrame.BossSize),
+            WrapMode = WrapMode.Tile,
+        };
+
+        try
+        {
+            node.LoadTexture(GameMetrics.JournalFrame.Texture);
+            node.TextureCoordinates = new Vector2(
+                GameMetrics.JournalFrame.Boss.U, GameMetrics.JournalFrame.Boss.V);
+            node.TextureSize = node.Size;
+        }
+        catch (Exception ex)
+        {
+            const string why =
+                "Wayfarer journal: the journal border's own sheet could not be read, so the rivet at the foot of "
+                + "the page is not drawn. Nothing else is affected.";
+            log.Warning(ex, why);
+            node.IsVisible = false;
+        }
+
+        return node;
+    }
+
+    /// <summary>Writes the stored entry into the tree. There is no layout pass to run afterwards: the
+    /// containers place their own children off the heights the children report, so filling the text
+    /// <i>is</i> laying the page out. All this has to do at the end is ask the stack how tall it came
+    /// out and make the window that size.</summary>
     private void Fill()
     {
-        if (frame is null || entry is not { } detail)
+        if (page is null || entry is not { } detail)
         {
             return;
         }
 
-        titleNode!.String = HeadingText.Plain(detail.Title);
-        kindNode!.String = detail.Kind;
-        levelNode!.String = detail.Level;
+        titleNode!.Set(HeadingText.Plain(detail.Title), TitleWidth());
+        SetLine(kindNode!, detail.Kind, GameMetrics.Journal.KindWidth, GameMetrics.Detail.HeadingHeight);
+        SetBadge(detail.Level);
 
         ApplyIcon(bannerNode!, detail.BannerIconId, HubJournalFacts.SourceSize);
+        bannerRow!.IsVisible = detail.BannerIconId != 0;
+
         ApplyIcon(statusIconNode!, detail.StatusIconId, new Vector2(GameMetrics.Detail.HeadingIconSize));
         ApplyIcon(rewardIconNode!, detail.RewardIconId, detail.RewardIconSize);
         rewardNameNode!.String = detail.RewardName;
+        rewardSection!.IsVisible = detail.RewardName.Length > 0;
 
         // The requirements are assembled before the state line, because whether there are any is what
         // decides what the state line is allowed to say. See JournalRequirementText.
-        var requirements = detail.Requirements;
-        var lead = RequirementsLead(detail);
-        statusNode!.String = JournalRequirementText.StatusLine(
-            detail.StatusWord, detail.StatusSentence, requirements.Count > 0 || lead is not null);
+        var lead = JournalRequirementText.NotMetLead(words.NotAvailable, detail.GatedByQuest);
+        var requirements = DetailText.Led(
+            lead ?? string.Empty, detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _);
+        requirements = lead is null
+            ? DetailText.Bullets(detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _)
+            : requirements;
 
-        descriptionNode!.String = detail.Body;
-        giverLine = GiverLine(detail);
-        giverNode!.String = giverLine;
-        provenanceNode!.String = detail.Provenance;
+        SetLine(
+            statusNode!,
+            JournalRequirementText.StatusLine(
+                detail.StatusWord, detail.StatusSentence, requirements.Length > 0),
+            StatusTextWidth(),
+            GameMetrics.Row.TextHeight);
+        statusRow!.IsVisible = statusNode!.IsVisible;
+
+        descriptionSection!.SetBody(descriptionNode!, detail.Body, GameMetrics.Journal.ColumnWidth);
+        requirementsSection!.SetBody(requirementsNode!, requirements, GameMetrics.Journal.ColumnWidth);
+
+        SetLine(
+            giverNode!,
+            GiverLine(detail),
+            JournalWindowLayout.ContentWidth,
+            GameMetrics.Row.TextHeight);
+        SetLine(
+            provenanceNode!,
+            detail.Provenance,
+            JournalWindowLayout.ContentWidth,
+            GameMetrics.Journal.FootnoteHeight);
 
         ApplyActions(detail.Actions);
-        Resize();
-        Layout(lead, requirements);
+
+        page.RecalculateLayout();
+        Resize(page.Height);
         ApplyNavigation();
     }
 
-    /// <summary>The requirements block's lines, led by the game's own sentence for this shape of gate
-    /// when there is one.
-    ///
-    /// <para><c>Addon</c> row 479 — "This quest is not yet available." — is the string
-    /// <c>AddonJournalDetail</c>'s own <c>RequirementsNotMetLabelTextNode</c> (<c>#33</c>) is authored
-    /// with, so leading with it is the game's own idiom in the game's own words, already localised.
-    /// It is offered only for a quest gate: see <see cref="HubRowDetail.GatedByQuest"/>.</para>
-    /// </summary>
-    private string? RequirementsLead(HubRowDetail detail) =>
-        JournalRequirementText.NotMetLead(words.NotAvailable, detail.GatedByQuest);
-
-    /// <summary>Asks the game for the height a fully populated entry wants, clamped to the border's
-    /// own minimum and to the viewport. The width is never negotiated.</summary>
-    private void Resize()
+    /// <summary>The level on its disc, or no disc at all. The height goes to zero as well as the
+    /// visibility, because a horizontal row takes its own height from the tallest child it holds
+    /// whether that child is drawn or not — a hidden 40-pixel badge would otherwise keep the title
+    /// band 40 tall.</summary>
+    private void SetBadge(string level)
     {
-        var wanted = Math.Max(JournalWindowLayout.NaturalHeight, GameMetrics.JournalFrame.MinHeight);
+        var show = level.Length > 0;
+        levelNode!.String = level;
+        levelNode.IsVisible = show;
+        levelBadgeNode!.IsVisible = show;
+        levelBadgeNode.Height = show ? GameMetrics.Journal.BadgeSize : 0f;
+    }
+
+    /// <summary>Makes the window the height its contents came out at, clamped to what the border can
+    /// close at and to the viewport.
+    ///
+    /// <para>This is the other half of the flow container, and the half the player asked about: there
+    /// is no fixed content box for the page to leave a gap at the bottom of. The foot is the last
+    /// thing in the stack, so it sits under the last thing on the page.</para></summary>
+    private void Resize(float contentHeight)
+    {
+        var wanted = JournalWindowLayout.WindowHeight(contentHeight);
         var viewport = AtkStage.Instance()->ScreenSize.Height;
         var scale = InternalAddon is null || InternalAddon->Scale <= 0f ? 1f : InternalAddon->Scale;
         var cap = viewport <= 0 ? wanted : viewport / scale;
 
-        var height = Math.Clamp(wanted, GameMetrics.JournalFrame.MinHeight, Math.Max(cap, GameMetrics.JournalFrame.MinHeight));
+        var height = Math.Clamp(
+            wanted,
+            GameMetrics.JournalFrame.MinHeight,
+            Math.Max(cap, GameMetrics.JournalFrame.MinHeight));
+
         SetWindowSize(new Vector2(GameMetrics.JournalFrame.Width, height));
         frame!.Size = new Vector2(GameMetrics.JournalFrame.Width, height);
         frame.Layout();
+
+        var box = JournalWindowLayout.ContentBox(height);
+        pageClip!.Size = new Vector2(box.Width, box.Height);
     }
 
-    /// <summary>Places everything, having first shortened the two wrapping blocks to what the layout
-    /// is willing to give them.
-    ///
-    /// <para>Two passes, and the order matters. The first composes with what the text <i>wants</i>,
-    /// which tells each block how much room it is actually getting; the second re-measures the
-    /// shortened strings and composes again, so the rectangles the nodes are given are the
-    /// rectangles the text really occupies. Without the second pass a block that had to give up two
-    /// lines would leave a two-line hole and the block under it would sit in the wrong place — which
-    /// is the visible half of the same defect as drawing text on top of text.</para></summary>
-    private void Layout(string? lead, IReadOnlyList<string> requirements)
+    /// <summary>Keeps the page inside the viewport. A window whose top-left is off screen cannot be
+    /// dragged back — this one has no title bar to drag — so the clamp is not a nicety.</summary>
+    private Vector2 Clamp(Vector2 wanted, float scale)
     {
-        var height = frame!.Height;
-        var hasReward = entry!.RewardName.Length > 0;
-        var hasBanner = entry.BannerIconId != 0;
-
-        var requirementAllowance = JournalWindowLayout.TextAllowance(
-            height, JournalWindowLayout.MaxRequirementLines);
-        var descriptionAllowance = JournalWindowLayout.TextAllowance(
-            height, JournalWindowLayout.MaxDescriptionLines);
-
-        var requirementHeight = FitBullets(requirementsNode!, lead, requirements, requirementAllowance);
-        var descriptionHeight = Fit(descriptionNode!, entry.Body, descriptionAllowance);
-
-        var blocks = JournalWindowLayout.Compose(
-            height,
-            hasLevel: entry.Level.Length > 0,
-            hasStatusIcon: entry.StatusIconId != 0,
-            hasBanner,
-            hasReward,
-            requirementHeight,
-            descriptionHeight,
-            hasGiver: giverLine.Length > 0,
-            hasProvenance: entry.Provenance.Length > 0);
-
-        // Second pass: whatever the ladder granted is the real budget, so re-fit against it and
-        // compose once more. Cheap — two measures and one more pass of arithmetic.
-        requirementHeight = FitBullets(requirementsNode!, lead, requirements, blocks.Requirements.Height);
-        descriptionHeight = Fit(descriptionNode!, entry.Body, blocks.Description.Height);
-        blocks = JournalWindowLayout.Compose(
-            height,
-            hasLevel: entry.Level.Length > 0,
-            hasStatusIcon: entry.StatusIconId != 0,
-            hasBanner,
-            hasReward,
-            requirementHeight,
-            descriptionHeight,
-            hasGiver: giverLine.Length > 0,
-            hasProvenance: entry.Provenance.Length > 0);
-
-        Apply(blocks);
-    }
-
-    private void Apply(JournalWindowBlocks blocks)
-    {
-        // The number and its disc share one rectangle: the game centres the numeral on the plate
-        // (JournalDetail #9 over #10) rather than setting it beside.
-        Place(levelBadgeNode, blocks.LevelBadge);
-        Place(levelNode, blocks.LevelBadge);
-        Place(titleNode, blocks.Title);
-        Place(kindNode, blocks.Kind);
-        Place(titleRuleNode, Rule(blocks.TitleRule));
-
-        Place(statusIconNode, entry!.StatusIconId == 0 ? default : blocks.StatusIcon);
-        Place(statusNode, blocks.Status);
-        Place(bannerNode, entry.BannerIconId == 0 ? default : blocks.Banner);
-
-        Place(rewardGlyphNode, blocks.RewardGlyph);
-        Place(rewardLabelNode, blocks.RewardLabel);
-        Place(rewardTrayNode, blocks.RewardTray);
-        Place(rewardIconNode, entry.RewardIconId == 0 ? default : blocks.RewardIcon);
-        Place(rewardNameNode, blocks.RewardName);
-
-        Place(descriptionGlyphNode, blocks.DescriptionGlyph);
-        Place(descriptionLabelNode, blocks.DescriptionLabel);
-        Place(descriptionNode, blocks.Description);
-        Place(requirementsGlyphNode, blocks.RequirementsGlyph);
-        Place(requirementsLabelNode, blocks.RequirementsLabel);
-        Place(requirementsNode, blocks.Requirements);
-
-        Place(giverNode, blocks.Giver);
-        Place(provenanceNode, blocks.Provenance);
-        Place(footerRuleNode, Rule(blocks.FooterRule));
-        Place(bossNode, blocks.Boss);
-
-        if (actionRow is not null)
+        var screen = (Vector2)AtkStage.Instance()->ScreenSize;
+        if (screen.X <= 0f || screen.Y <= 0f)
         {
-            actionRow.Position = new Vector2(blocks.Actions.X, blocks.Actions.Y);
-            actionRow.Size = new Vector2(blocks.Actions.Width, blocks.Actions.Height);
-            actionRow.IsVisible = !blocks.Actions.IsEmpty;
-            actionRow.RecalculateLayout();
+            return wanted;
         }
+
+        var onScreen = Size * scale;
+        return new Vector2(
+            Math.Clamp(wanted.X, 0f, Math.Max(screen.X - onScreen.X, 0f)),
+            Math.Clamp(wanted.Y, 0f, Math.Max(screen.Y - onScreen.Y, 0f)));
     }
 
     private void ApplyActions(IReadOnlyList<HubDetailAction> actions)
