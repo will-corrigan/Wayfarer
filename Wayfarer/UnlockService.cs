@@ -214,6 +214,25 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         _ => false,
     };
 
+    /// <summary>A <see cref="ClassJobCategory"/> row's own <c>Name</c> — "Disciple of War or Magic",
+    /// "Disciple of the Land", or a single job's name on a job quest.
+    ///
+    /// <para>This is the string the game itself prints for a job gate, and reading it is the whole
+    /// of the fix for a requirement line that used to enumerate thirty jobs. Row 0 is the
+    /// unrestricted category and names nobody; some rows carry a blank name, which is why the
+    /// caller still has the member list to fall back to. See
+    /// <see cref="JobGateText"/>.</para></summary>
+    private static string? CategoryName(RowRef<ClassJobCategory> categoryRef)
+    {
+        if (categoryRef.RowId == 0 || categoryRef.ValueNullable is not { } cat)
+        {
+            return null;
+        }
+
+        var name = cat.Name.ExtractText();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
+
     /// <summary>Adds the ClassJob row ids/names a category flags into <paramref name="rowIds"/>/
     /// <paramref name="names"/> (row 0 means unrestricted — nothing to add). Called separately for
     /// <see cref="Quest.ClassJobCategory0"/> and (only when its own level requirement is real,
@@ -440,8 +459,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         byte LockoutJoin,
         List<uint> RequiredJobRowIds,
         List<string> RequiredJobNames,
+        string? RequiredJobCategoryName,
         List<uint> AltRequiredJobRowIds,
         List<string> AltRequiredJobNames,
+        string? AltRequiredJobCategoryName,
         int AltRequiredJobLevel,
         List<uint> InstanceContentRowIds,
         List<string> InstanceContentNames,
@@ -639,8 +660,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 LockoutJoin: q.QuestLockJoin,
                 RequiredJobRowIds: jobRowIds,
                 RequiredJobNames: jobNames,
+                RequiredJobCategoryName: CategoryName(q.ClassJobCategory0),
                 AltRequiredJobRowIds: altJobRowIds,
                 AltRequiredJobNames: altJobNames,
+                AltRequiredJobCategoryName: lvl1 != 0 ? CategoryName(q.ClassJobCategory1) : null,
                 AltRequiredJobLevel: lvl1,
                 InstanceContentRowIds: icIds,
                 InstanceContentNames: icNames,
@@ -682,8 +705,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.LockoutJoin = LockoutJoin;
             r.RequiredJobRowIds = RequiredJobRowIds;
             r.RequiredJobNames = RequiredJobNames;
+            r.RequiredJobCategoryName = RequiredJobCategoryName;
             r.AltRequiredJobRowIds = AltRequiredJobRowIds;
             r.AltRequiredJobNames = AltRequiredJobNames;
+            r.AltRequiredJobCategoryName = AltRequiredJobCategoryName;
             r.AltRequiredJobLevel = AltRequiredJobLevel;
             r.InstanceContentRowIds = InstanceContentRowIds;
             r.InstanceContentNames = InstanceContentNames;

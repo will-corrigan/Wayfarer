@@ -260,7 +260,7 @@ public static class UnlockStatusCalculator
             return true;
         }
 
-        reason = $"needs {u.HardRequiredJobName ?? "a specific job"} {u.QuestLevel}";
+        reason = $"needs {JobGateText.Describe(u.HardRequiredJobName ?? "a specific job", [], u.QuestLevel)}";
         return false;
     }
 
@@ -324,7 +324,7 @@ public static class UnlockStatusCalculator
             if (ctx.GetClassJobLevel(job.Id) < job.Level)
             {
                 status = UnlockStatus.LevelLocked;
-                reason = $"needs {job.Name} {job.Level}";
+                reason = $"needs {JobGateText.Describe(job.Name, [], job.Level)}";
                 return true;
             }
         }
@@ -577,19 +577,23 @@ public static class UnlockStatusCalculator
         return maxLevel;
     }
 
+    /// <summary>Why a job/level gate is closed, said in the game's own name for the job set rather
+    /// than by enumerating it. See <see cref="JobGateText"/> for the whole of that argument — the
+    /// short of it is that a thirty-job category has a name and the name is one line.</summary>
     private static string BuildJobLevelReason(ResolvedUnlock u, bool cat1Real)
     {
         var cat0Reason = u.RequiredJobRowIds.Count == 0
             ? $"needs level {u.QuestLevel}"
-            : $"needs {string.Join(" or ", u.RequiredJobNames)} {u.QuestLevel}";
+            : $"needs {JobGateText.Describe(u.RequiredJobCategoryName, u.RequiredJobNames, u.QuestLevel)}";
 
         if (!cat1Real)
         {
             return cat0Reason;
         }
 
-        var cat1Label = u.AltRequiredJobNames.Count > 0 ? string.Join(" or ", u.AltRequiredJobNames) : "an alternate job";
-        return $"{cat0Reason} or {cat1Label} {u.AltRequiredJobLevel}";
+        var cat1 = JobGateText.Describe(
+            u.AltRequiredJobCategoryName, u.AltRequiredJobNames, u.AltRequiredJobLevel);
+        return $"{cat0Reason} or {(cat1.Length > 0 ? cat1 : "an alternate job")}";
     }
 
     /// <summary><c>PreviousQuest</c> + <c>PreviousQuestJoin</c>: 2 = OR (blocked only if none are

@@ -293,7 +293,7 @@ public class UnlockGateTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, getClassJobLevel: _ => 1));
 
         Assert.Equal(UnlockStatus.LevelLocked, u.Status);
-        Assert.Equal("needs Fisher 61", u.LockReason);
+        Assert.Equal("needs Fisher Lv. 61", u.LockReason);
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class UnlockGateTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, getClassJobLevel: _ => 60));
 
         Assert.Equal(UnlockStatus.LevelLocked, u.Status);
-        Assert.Equal("needs Fisher 61", u.LockReason);
+        Assert.Equal("needs Fisher Lv. 61", u.LockReason);
     }
 
     [Fact]

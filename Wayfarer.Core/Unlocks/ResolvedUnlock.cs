@@ -96,6 +96,15 @@ public sealed class ResolvedUnlock
 
     public List<string> RequiredJobNames { get; set; } = [];
 
+    /// <summary>The <c>ClassJobCategory0</c> row's own <c>Name</c> — "Disciple of War or Magic",
+    /// "Disciple of the Land", or a single job's name on a job quest.
+    ///
+    /// <para>This is what the gate is <b>called</b>, as against
+    /// <see cref="RequiredJobNames"/>, which is what it is <b>made of</b>. The game prints the
+    /// name; printing the members instead is how a level-70 combat gate came to be said as a
+    /// thirty-job sentence. See <see cref="JobGateText"/>.</para></summary>
+    public string? RequiredJobCategoryName { get; set; }
+
     /// <summary>ClassJob row ids allowed by <c>ClassJobCategory1</c> — a genuine alternative to
     /// <see cref="RequiredJobRowIds"/>, checked against <see cref="AltRequiredJobLevel"/>
     /// (<c>ClassJobLevel[1]</c>). Populated only when <see cref="AltRequiredJobLevel"/> is
@@ -106,6 +115,9 @@ public sealed class ResolvedUnlock
     public List<uint> AltRequiredJobRowIds { get; set; } = [];
 
     public List<string> AltRequiredJobNames { get; set; } = [];
+
+    /// <inheritdoc cref="RequiredJobCategoryName"/>
+    public string? AltRequiredJobCategoryName { get; set; }
 
     /// <summary><c>ClassJobLevel[1]</c>. Zero means <see cref="AltRequiredJobRowIds"/> is empty/
     /// unused — there is no genuine category1 alternative for this quest.</summary>
@@ -231,8 +243,10 @@ public sealed class ResolvedUnlock
         LockoutJoin = LockoutJoin,
         RequiredJobRowIds = RequiredJobRowIds,
         RequiredJobNames = RequiredJobNames,
+        RequiredJobCategoryName = RequiredJobCategoryName,
         AltRequiredJobRowIds = AltRequiredJobRowIds,
         AltRequiredJobNames = AltRequiredJobNames,
+        AltRequiredJobCategoryName = AltRequiredJobCategoryName,
         AltRequiredJobLevel = AltRequiredJobLevel,
         InstanceContentRowIds = InstanceContentRowIds,
         InstanceContentNames = InstanceContentNames,
