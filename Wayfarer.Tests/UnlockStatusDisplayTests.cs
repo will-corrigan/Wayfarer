@@ -143,33 +143,34 @@ public class UnlockStatusDisplayTests
         Assert.Equal(UnlockStatusTone.Dimmed, UnlockStatusDisplay.Tone(UnlockStatus.Done));
     }
 
-    /// <summary>The whole point of <see cref="UnlockStatus.PartnerRequired"/> existing as its own
-    /// status rather than reusing <see cref="UnlockStatus.RequirementsUnknown"/>: the word and the
-    /// sentence a player actually reads have to say "partner", not the vaguer "requirements
-    /// unknown" — one is a gap in this plugin, the other is a gap no plugin can close, and only
-    /// the first invites "maybe a future version will know".</summary>
+    /// <summary>A knowable-but-unverifiable condition (see
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/>) does not get its own status — it is
+    /// carried on an <see cref="UnlockStatus.Available"/> entry via
+    /// <see cref="ResolvedUnlock.AvailableCondition"/>/<see cref="ResolvedUnlock.AvailableConditionDetail"/>,
+    /// and the sentence has to say both things at once: "Available", because it genuinely is, and
+    /// "partner", because that part is still unconfirmed. An ordinary Available entry with no
+    /// condition set keeps its plain "Available." sentence — the dash-suffix is additive, never a
+    /// hedge on every row.</summary>
     [Fact]
-    public void PartnerRequired_ReadsAsNeedingAPartner_NotAsAnUnknownRequirement()
+    public void AvailableWithCondition_ReadsAsAvailable_AndNamesTheCondition()
     {
-        var bare = new ResolvedUnlock { Def = new UnlockDefinition(), Status = UnlockStatus.PartnerRequired };
-        var withReason = new ResolvedUnlock
+        var bare = new ResolvedUnlock { Def = new UnlockDefinition(), Status = UnlockStatus.Available };
+        var withCondition = new ResolvedUnlock
         {
             Def = new UnlockDefinition(),
-            Status = UnlockStatus.PartnerRequired,
-            LockReason = "same Home World, party of two, both wearing a Promise Wristlet, in East Shroud",
+            Status = UnlockStatus.Available,
+            AvailableCondition = "needs a partner",
         };
 
-        Assert.Contains("partner", UnlockStatusDisplay.Word(UnlockStatus.PartnerRequired), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("partner", UnlockStatusDisplay.Sentence(bare), StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("unknown", UnlockStatusDisplay.Sentence(bare), StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(
-            "Needs a partner — same Home World, party of two, both wearing a Promise Wristlet, in East Shroud.",
-            UnlockStatusDisplay.Sentence(withReason));
+        Assert.Equal("Available.", UnlockStatusDisplay.Sentence(bare));
+        Assert.Equal("Available — needs a partner.", UnlockStatusDisplay.Sentence(withCondition));
+        Assert.DoesNotContain("unknown", UnlockStatusDisplay.Sentence(withCondition), StringComparison.OrdinalIgnoreCase);
 
-        // Never Available, and dimmed like every other not-currently-actionable state rather than
-        // singled out as an error — a missing partner is not the player's fault the way LockedOut is.
-        Assert.NotEqual(UnlockStatusDisplay.AvailableIcon, UnlockStatusDisplay.IconId(UnlockStatus.PartnerRequired));
-        Assert.Equal(UnlockStatusTone.Dimmed, UnlockStatusDisplay.Tone(UnlockStatus.PartnerRequired));
+        // Reads exactly like any other Available row — same gold marker, same normal tone — so it
+        // counts towards "unlocks nearby" and appears as something the player can act on, because
+        // it is one: the plugin simply cannot confirm the one condition left.
+        Assert.Equal(UnlockStatusDisplay.AvailableIcon, UnlockStatusDisplay.IconId(UnlockStatus.Available));
+        Assert.Equal(UnlockStatusTone.Normal, UnlockStatusDisplay.Tone(UnlockStatus.Available));
     }
 
     /// <summary>Whether two states are indistinguishable once the colour channel is removed —

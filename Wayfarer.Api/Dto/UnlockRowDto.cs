@@ -10,6 +10,12 @@ public sealed class UnlockRowDto
 
     public string? LockReason { get; init; }
 
+    /// <summary>Set only when <c>Status</c> is <c>Available</c> and a knowable-but-unverifiable
+    /// condition is still outstanding (a partner, or a future requirement of the same shape) — the
+    /// terse note a consumer would put next to "Available", e.g. "needs a partner". Null for every
+    /// ordinary Available row. Mirrors <see cref="Wayfarer.Core.Unlocks.ResolvedUnlock.AvailableCondition"/>.</summary>
+    public string? AvailableCondition { get; init; }
+
     public string? Quest { get; init; }
 
     public string? Giver { get; init; }

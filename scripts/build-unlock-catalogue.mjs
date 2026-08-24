@@ -980,30 +980,54 @@ function applyMountRequirementOverrides(curated) {
  * confirming that half is already a checkable PreviousQuest gate, and `ItemCatalyst`/
  * `ItemCountCatalyst` are `[0,0,0]` — the sheet records NO item requirement on this row, so the
  * wristlet is not a readable gate we were ignoring); consolegameswiki's prose prerequisites for
- * both "The Ties That Bind" and "Ceremony of Eternal Bonding" (partner, same Home World, party of
- * two, both in East Shroud, both wearing Promise Wristlets — a real-money Mog Station item);
- * and the game's own on-screen accept message, which the reporting player photographed, naming
- * "The Scions of the Seventh Dawn" and a promise wristlet directly. */
+ * both "The Ties That Bind" and "Ceremony of Eternal Bonding"; and the game's own on-screen accept
+ * message, which the reporting player photographed, naming "The Scions of the Seventh Dawn" and a
+ * promise wristlet directly.
+ *
+ * `conditionSource`, not a hand-written `label`, is what the player actually reads for this
+ * requirement now — see docs/superpowers/specs/2026-08-24-requirement-text-provenance.md. That
+ * report found the wiki's own "same Home World, party of two, both wearing a Promise Wristlet, in
+ * East Shroud" prose is itself a transcription of Lodestone's requirements checklist, not an
+ * editor's invention — but the client ships a *better* source for the same facts:
+ * `HowToPage` row 1861, column 4 is Square Enix's own structured requirement checklist for this
+ * exact quest, rendered in the in-game How To guide (`HowTo` row 193, "The Ceremony of Eternal
+ * Bonding"). Citing that reference beats curating a paraphrase of it: it is quoted rather than
+ * translated, it is already in whatever language the player's own client runs, and it can never
+ * drift out of date with a patch the way hand-written prose can. `label` becomes a fallback only —
+ * short, honestly ours, for the runtime lookup missing — not the source of truth.
+ *
+ * The one wiki condition with no client string of its own is Home World: the report searched all
+ * 7,181 string-bearing sheets and found only a generic cross-World restriction list (`Addon` row
+ * 12514), never one scoped to this quest. `HowToPage` 1861's three-item checklist (party with your
+ * partner, both wearing promise wristlets, both having completed "The Scions of the Seventh Dawn")
+ * is what ships to the player instead — narrower than the wiki's six-line table, and for that
+ * reason more honest: every word in it is directly attributable to a game sheet. */
 const SOCIAL_REQUIREMENT_OVERRIDES = new Map([
   [67114, { // The Ties That Bind -> Ceremony of Eternal Bonding
     reason: 'The catalogue had no requires block at all, so the calculator fell through to '
       + 'Available for any player who had completed "The Scions of the Seventh Dawn" — the one '
       + "prerequisite the Quest sheet does carry. The ceremony itself needs a second, physically "
-      + 'present player (same Home World, party of two, both in East Shroud, both wearing a '
-      + 'Promise Wristlet bought from the Mog Station), which is not a fact about this character '
-      + "and never will be readable from this client. requiresAnotherPlayer is distinct from "
-      + "unverifiable on purpose: the requirement is not unknown, it is known and permanently "
-      + 'outside anything an API on this machine can check. In passing: the previous curated '
-      + '`notes` on this entry named a second prerequisite quest, "Sanctum Acolyte", that does not '
-      + "exist in the game's Quest sheet under that name — dropped rather than carried forward "
-      + 'unverified.',
-    label: 'same Home World, party of two, both wearing a Promise Wristlet, in East Shroud',
+      + 'present player, which is not a fact about this character and never will be readable from '
+      + "this client. requiresAnotherPlayer is distinct from unverifiable on purpose: the "
+      + "requirement is not unknown, it is known and permanently outside anything an API on this "
+      + 'machine can check — so once every checkable part of it (the prerequisite quest, the level) '
+      + 'is met, the entry now reports Available with the condition named alongside it, rather than '
+      + 'staying blocked forever for a fact this plugin will never be able to confirm. In passing: '
+      + 'the previous curated `notes` on this entry named a second prerequisite quest, "Sanctum '
+      + 'Acolyte", that does not exist in the game\'s Quest sheet under that name — dropped rather '
+      + 'than carried forward unverified.',
+    // The game's own structured checklist for this quest — see the file-level comment above for
+    // how this was found and why it is preferred over a curated paraphrase.
+    conditionSource: { sheet: 'HowToPage', row: 1861, column: 4 },
+    // Only used if the runtime lookup above misses (a future patch moves the row, say). Short and
+    // plainly ours on purpose — see requires.label in data/validate-unlocks.mjs, which now rejects
+    // a long label alongside requiresAnotherPlayer for exactly this reason.
+    label: 'needs a partner',
     // The catalogue's previous description claimed an NPC/no-partner option exists. It does not:
     // consolegameswiki is explicit that the ceremony requires two players throughout, with no
     // alternative described anywhere on the page. Corrected alongside the gate fix rather than
-    // left standing next to a "needs a partner" status it directly contradicted. Deliberately
-    // does not use the word this replaces, so a future search for the old, wrong claim finds
-    // nothing to find.
+    // left standing next to a status it directly contradicted. Deliberately does not use the word
+    // this replaces, so a future search for the old, wrong claim finds nothing to find.
     description: 'Unlocks in-game weddings — the Ceremony of Eternal Bonding lets two players hold '
       + 'a formal wedding ceremony with exclusive attire and rewards. Always needs a partner, '
       + 'present with you, at the same time; there is no way to do it by yourself.',
@@ -1013,11 +1037,13 @@ const SOCIAL_REQUIREMENT_OVERRIDES = new Map([
       + "its own PreviousQuest prerequisite, \"The Scions of the Seventh Dawn\" (Quest#66045), is "
       + 'already checked by the ordinary quest-prerequisite gate. Performing the Ceremony of '
       + 'Eternal Bonding itself additionally needs a partner physically present with you — not '
-      + 'something this or any plugin can verify.',
+      + "something this or any plugin can verify, so this entry reads as Available with that "
+      + "condition named rather than as done-and-dusted.",
     sources: [
       'consolegameswiki:The_Ties_That_Bind',
       'consolegameswiki:Ceremony_of_Eternal_Bonding',
       'player-report:eternal-bonding-ceremony-accept-message',
+      'game-data:HowToPage#1861',
     ],
   }],
 ]);
@@ -1037,7 +1063,12 @@ function applySocialRequirementOverrides(curated) {
     const override = SOCIAL_REQUIREMENT_OVERRIDES.get(questRowId);
     if (!override) continue;
 
-    entry.requires = { ...entry.requires, label: override.label, requiresAnotherPlayer: true };
+    entry.requires = {
+      ...entry.requires,
+      label: override.label,
+      conditionSource: override.conditionSource,
+      requiresAnotherPlayer: true,
+    };
     entry.notes = override.notes;
     if (override.description) entry.description = override.description;
     entry.sources = [...new Set([...(entry.sources ?? []), ...override.sources])];

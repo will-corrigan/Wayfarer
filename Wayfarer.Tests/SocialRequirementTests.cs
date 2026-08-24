@@ -3,10 +3,19 @@ using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
 
-/// <summary>Pins the fix for the "Ceremony of Eternal Bonding" report: the checklist sent a player
-/// to it as something to go and get, when the game's own accept message, corroborated by the
-/// wiki, says it needs a partner — same Home World, party of two, both in East Shroud, both
-/// wearing a Promise Wristlet. None of that is a fact about one character's client state.
+/// <summary>Pins two fixes for the "Ceremony of Eternal Bonding" report, made in two passes.
+///
+/// <para>First pass: the checklist sent a player to it as something to go and get, when the
+/// game's own accept message, corroborated by the wiki, says it needs a partner physically
+/// present — not a fact about one character's client state. That earned it a curated
+/// <c>requires.requiresAnotherPlayer</c> block.</para>
+///
+/// <para>Second pass, this file's current shape: an entry with every checkable gate met (the
+/// prerequisite quest, the level) is not, in fact, unreachable — it is exactly as reachable as any
+/// other Available entry, for a couple who both play the game. It reports Available with the
+/// condition named alongside it, sourced from the game's own <c>HowToPage</c> checklist
+/// (<c>requires.conditionSource</c>) rather than curated prose, per
+/// <c>docs/superpowers/specs/2026-08-24-requirement-text-provenance.md</c>.</para>
 ///
 /// <para>Loads the real, generated <c>data/unlocks-by-level.json</c> (see
 /// <see cref="UnlockDatasetShapeTests"/>), not a hand-built fixture — so this fails if the
@@ -16,19 +25,22 @@ public class SocialRequirementTests
 {
     /// <summary>The red-proof fixture: a player who has done everything this plugin CAN check for
     /// this entry — the prerequisite quest complete, the level met, no other gate in the way —
-    /// must still not be told the ceremony is <see cref="UnlockStatus.Available"/>. Before the fix
-    /// this entry carried no <c>requires</c> block at all, so the calculator fell straight through
-    /// to Available the moment "The Scions of the Seventh Dawn" was done.</summary>
+    /// must be told the ceremony is <see cref="UnlockStatus.Available"/>, with the partner
+    /// condition named alongside it. Before the original fix this entry carried no <c>requires</c>
+    /// block at all, so the calculator fell straight through to a silent Available the moment "The
+    /// Scions of the Seventh Dawn" was done — no condition named at all. After this change it is
+    /// Available again, but honestly this time: the condition is stated, not hidden.</summary>
     [Fact]
-    public void EternalBonding_EverythingCheckableMet_IsStillNotAvailable()
+    public void EternalBonding_EverythingCheckableMet_IsAvailableWithTheConditionNamed()
     {
         var def = Single("Ceremony of Eternal Bonding");
         var unlocks = new List<ResolvedUnlock> { QualifyingResolvedUnlock(def, 67114) };
 
         UnlockStatusCalculator.Compute(unlocks, Gates.Ctx(playerLevel: 90, isQuestComplete: id => id == 66045));
 
-        Assert.NotEqual(UnlockStatus.Available, unlocks[0].Status);
-        Assert.Equal(UnlockStatus.PartnerRequired, unlocks[0].Status);
+        Assert.Equal(UnlockStatus.Available, unlocks[0].Status);
+        Assert.Equal("needs a partner", unlocks[0].AvailableCondition);
+        Assert.NotNull(unlocks[0].AvailableConditionDetail);
     }
 
     [Fact]
@@ -40,31 +52,36 @@ public class SocialRequirementTests
         Assert.True(def.Requires!.RequiresAnotherPlayer);
         Assert.False(def.Requires.Unverifiable, "a partner requirement is a known fact, not the generic 'we don't know' escape hatch");
 
-        // The label itself doesn't repeat "partner" — the calculator's PartnerSentence already
-        // prepends "Needs a partner — ", so the label carries the specifics instead.
-        Assert.Contains("East Shroud", def.Requires.Label, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Home World", def.Requires.Label, StringComparison.OrdinalIgnoreCase);
+        // The curated label is a short, honestly-ours fallback now, not the source of truth — the
+        // requirement's real detail lives in requires.conditionSource, quoting the game itself
+        // (HowToPage#1861) rather than paraphrasing it. See
+        // docs/superpowers/specs/2026-08-24-requirement-text-provenance.md.
+        Assert.NotNull(def.Requires.ConditionSource);
+        Assert.Equal("HowToPage", def.Requires.ConditionSource!.Sheet);
+        Assert.Equal(1861u, def.Requires.ConditionSource.Row);
+        Assert.True(def.Requires.Label is { Length: > 0 } and { Length: <= 40 }, "the fallback label must stay short — the real detail lives in conditionSource");
     }
 
-    /// <summary>The sentence a player actually reads must say "partner", not the vaguer
-    /// "requirements unknown" — the entire reason this status exists rather than reusing
-    /// <see cref="UnlockStatus.RequirementsUnknown"/>.</summary>
+    /// <summary>The sentence a player actually reads must say "partner" and must say "Available" —
+    /// both, in the same breath, because the entry genuinely is something to go and do and the
+    /// condition genuinely is still outstanding.</summary>
     [Fact]
-    public void EternalBonding_Sentence_SaysPartner_NotRequirementsUnknown()
+    public void EternalBonding_Sentence_SaysAvailableAndPartner()
     {
         var def = Single("Ceremony of Eternal Bonding");
         var u = QualifyingResolvedUnlock(def, 67114);
         UnlockStatusCalculator.Compute([u], Gates.Ctx(playerLevel: 90, isQuestComplete: id => id == 66045));
 
         var sentence = UnlockStatusDisplay.Sentence(u);
+        Assert.Contains("Available", sentence, StringComparison.Ordinal);
         Assert.Contains("partner", sentence, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("requirements unknown", sentence, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>The prerequisite quest gate still works normally ahead of the partner gate — a
-    /// player who has not even finished "The Scions of the Seventh Dawn" is QuestLocked on that,
-    /// not PartnerRequired, because that half of the requirement genuinely is checkable and the
-    /// more specific answer is the more useful one.</summary>
+    /// <summary>The prerequisite quest gate still works normally ahead of the partner condition —
+    /// a player who has not even finished "The Scions of the Seventh Dawn" is QuestLocked on that,
+    /// not Available, because that half of the requirement genuinely is checkable and a real
+    /// blocker still wins over the unverifiable one.</summary>
     [Fact]
     public void EternalBonding_PrerequisiteQuestIncomplete_IsQuestLocked()
     {
@@ -76,22 +93,31 @@ public class SocialRequirementTests
         UnlockStatusCalculator.Compute([u], Gates.Ctx(playerLevel: 90));
 
         Assert.Equal(UnlockStatus.QuestLocked, u.Status);
+        Assert.Null(u.AvailableCondition);
     }
 
-    /// <summary>Never plainly Available, whatever the player has done — the property the report
-    /// exists to fix, stated as its own assertion so a future status rename can't quietly make
-    /// this pass for the wrong reason.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EternalBonding_NeverAvailable_RegardlessOfPrerequisiteQuest(bool prereqComplete)
+    /// <summary>Same fact as <see cref="EternalBonding_PrerequisiteQuestIncomplete_IsQuestLocked"/>
+    /// and <see cref="EternalBonding_EverythingCheckableMet_IsAvailableWithTheConditionNamed"/>,
+    /// stated together as the red-proof pair the report exists to fix: a missing checkable gate
+    /// still blocks (never a silent Available), and a met one is Available (never stuck blocked
+    /// forever for a fact this plugin will never be able to confirm).</summary>
+    [Fact]
+    public void EternalBonding_BlockedWithTheGateMissing_AvailableWithTheGateMet()
     {
         var def = Single("Ceremony of Eternal Bonding");
-        var u = QualifyingResolvedUnlock(def, 67114);
 
-        UnlockStatusCalculator.Compute([u], Gates.Ctx(playerLevel: 90, isQuestComplete: id => prereqComplete && id == 66045));
+        var blocked = QualifyingResolvedUnlock(def, 67114);
+        blocked.PrereqRowIds = [66045];
+        blocked.PrereqNames = ["The Scions of the Seventh Dawn"];
+        UnlockStatusCalculator.Compute([blocked], Gates.Ctx(playerLevel: 90));
+        Assert.Equal(UnlockStatus.QuestLocked, blocked.Status);
 
-        Assert.NotEqual(UnlockStatus.Available, u.Status);
+        var met = QualifyingResolvedUnlock(def, 67114);
+        met.PrereqRowIds = [66045];
+        met.PrereqNames = ["The Scions of the Seventh Dawn"];
+        UnlockStatusCalculator.Compute([met], Gates.Ctx(playerLevel: 90, isQuestComplete: id => id == 66045));
+        Assert.Equal(UnlockStatus.Available, met.Status);
+        Assert.Equal("needs a partner", met.AvailableCondition);
     }
 
     /// <summary>Corroboration count: the fix rests on the game's own data (the bound Quest row and

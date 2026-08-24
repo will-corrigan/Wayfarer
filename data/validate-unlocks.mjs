@@ -68,7 +68,25 @@ const checkCollectible = (where, kind, c) => {
 // found" is not the same fact as "no gate exists" — quest row 67086 has every gate column empty
 // and still needs seven Extreme-trial mounts.
 const lists = ['mounts', 'minions', 'items', 'jobs', 'duties'];
-const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel', 'requiresAnotherPlayer']);
+const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel', 'requiresAnotherPlayer', 'conditionSource']);
+
+// A reference into the game's own sheets — sheet name, row, column — rather than a copy of the
+// text living there. See docs/superpowers/specs/2026-08-24-requirement-text-provenance.md: the
+// client ships its own explanations for why something is unavailable, and quoting a pointer to
+// one of those beats curating prose that paraphrases it. Resolved at runtime, in the player's own
+// client language, by UnlockGateContext.ResolveGameText — this file never sees the resolved text.
+const conditionSourceKeys = new Set(['sheet', 'row', 'column']);
+const checkConditionSource = (where, cs) => {
+  if (typeof cs !== 'object' || cs === null || Array.isArray(cs)) {
+    err(`${where}: requires.conditionSource must be an object`);
+    return;
+  }
+
+  checkKeys(`${where} requires.conditionSource`, cs, conditionSourceKeys);
+  if (typeof cs.sheet !== 'string' || cs.sheet.length === 0) err(`${where}: requires.conditionSource.sheet must be a non-empty string`);
+  if (!Number.isInteger(cs.row) || cs.row < 0) err(`${where}: requires.conditionSource.row must be a non-negative integer`);
+  if (!Number.isInteger(cs.column) || cs.column < 0) err(`${where}: requires.conditionSource.column must be a non-negative integer`);
+};
 
 const checkRequires = (where, r) => {
   if (typeof r !== 'object' || r === null || Array.isArray(r)) { err(`${where}: 'requires' must be an object`); return; }
@@ -91,17 +109,29 @@ const checkRequires = (where, r) => {
   // not that this plugin lacks a reader for it, it is that no reader could ever exist, because
   // the missing state lives on another player's client. The two are never both true of the same
   // requirement (one says "we don't know yet", the other says "this can never be known here"),
-  // so a 'requires' block that sets both is a mistake, not a stronger claim.
+  // so a 'requires' block that sets both is a mistake, not a stronger claim. Unlike 'unverifiable',
+  // it does not block Available once every checkable gate is met — see UnlockStatusCalculator.
   if ('requiresAnotherPlayer' in r && typeof r.requiresAnotherPlayer !== 'boolean')
     err(`${where}: requires.requiresAnotherPlayer must be a boolean`);
   if (r.requiresAnotherPlayer === true && r.unverifiable === true)
     err(`${where}: requires.requiresAnotherPlayer and requires.unverifiable are mutually exclusive`);
   if ('label' in r && (typeof r.label !== 'string' || r.label.length < 4)) err(`${where}: requires.label too short`);
+  if ('conditionSource' in r) checkConditionSource(`${where} requires`, r.conditionSource);
+
+  // Quote the game, don't paraphrase it (2026-08-24-requirement-text-provenance.md §6): a
+  // requiresAnotherPlayer entry must point at where the game itself states the condition, not
+  // rely on curated prose as its primary source. 'label' stays allowed alongside it, but only as
+  // the short, honestly-ours fallback for a runtime lookup miss — a long label here is exactly
+  // the confident, uncited paraphrase this rule exists to keep out of the data file.
+  if (r.requiresAnotherPlayer === true && !('conditionSource' in r))
+    err(`${where}: requires.requiresAnotherPlayer needs requires.conditionSource — quote the game's own text, don't paraphrase it`);
+  if (r.requiresAnotherPlayer === true && typeof r.label === 'string' && r.label.length > 40)
+    err(`${where}: requires.label alongside requiresAnotherPlayer must be a short fallback (<=40 chars) — put the real detail in conditionSource, not in curated prose`);
 
   const hasConcrete = lists.some((k) => (r[k]?.length ?? 0) > 0) || 'minLevel' in r;
   const hasEnforcement = hasConcrete || r.unverifiable === true || r.requiresAnotherPlayer === true;
   if (!hasEnforcement) err(`${where}: 'requires' has neither a concrete requirement, unverifiable:true, nor requiresAnotherPlayer:true`);
-  if (!hasConcrete && !r.label) err(`${where}: an unverifiable or partner-gated 'requires' must say what is missing, in 'label'`);
+  if (!hasConcrete && !r.label && !r.conditionSource) err(`${where}: an unverifiable or partner-gated 'requires' must say what is missing, in 'label' or 'conditionSource'`);
 };
 
 const entryKeys = new Set([
