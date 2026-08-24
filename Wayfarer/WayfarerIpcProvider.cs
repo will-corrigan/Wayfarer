@@ -98,6 +98,7 @@ internal sealed class WayfarerIpcProvider : IDisposable
                 Unlock = u.Def.Unlock,
                 Status = u.Status.ToString(),
                 LockReason = u.LockReason,
+                AvailableCondition = u.AvailableCondition,
                 Quest = u.Def.Quest,
                 Giver = u.GiverName,
                 Level = u.QuestLevel,

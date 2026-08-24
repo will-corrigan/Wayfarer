@@ -37,6 +37,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     // write a line for each. The first one carries the whole story; the rest are noise.
     private bool recomputeFailureLogged;
 
+    // Same reasoning as recomputeFailureLogged, for the same-shaped failure in ResolveGameText: a
+    // bad GameTextRef would otherwise spam the log every recompute rather than once.
+    private bool gameTextResolveFailureLogged;
+
     public UnlockService(
         IPluginLog log,
         IObjectTable objects,
@@ -142,7 +146,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             IsMountUnlocked: mountId => ps != null && ps->IsMountUnlocked(mountId),
             IsMinionUnlocked: minionId => ui != null && ui->IsCompanionUnlocked(minionId),
             GetOwnedItemCount: itemId => inventory != null ? inventory->GetInventoryItemCount(itemId) : 0,
-            GetKeyItemCount: itemId => inventory != null ? KeyItemCount(inventory, itemId) : 0);
+            GetKeyItemCount: itemId => inventory != null ? KeyItemCount(inventory, itemId) : 0,
+            ResolveGameText: ResolveGameText);
 
         UnlockStatusCalculator.Compute(entries, ctx);
         var territory = clientState.TerritoryType;
@@ -334,6 +339,43 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         }
 
         return byKey;
+    }
+
+    /// <summary>Reads a <see cref="GameTextRef"/> against the running client's own sheets, in
+    /// whatever client language the player is using — see <see cref="GameTextRef"/> for why a
+    /// reference is stored rather than a copy of the text. <c>RawRow</c> is the generic escape
+    /// hatch for sheets Lumina has no strongly-typed wrapper for (<c>HowToPage</c> among them);
+    /// see <c>tools/Wayfarer.CatalogueGen</c>'s offline use of the same API over sqpack directly.</summary>
+    private string? ResolveGameText(GameTextRef reference)
+    {
+        try
+        {
+            var sheet = dataManager.Excel.GetSheet<RawRow>(null, reference.Sheet);
+            if (!sheet.TryGetRow(reference.Row, out var row))
+            {
+                return null;
+            }
+
+            var text = row.ReadStringColumn(reference.Column).ExtractText();
+            return string.IsNullOrWhiteSpace(text) ? null : text;
+        }
+        catch (Exception ex)
+        {
+            LogGameTextResolveFailure(ex, reference);
+            return null;
+        }
+    }
+
+    private void LogGameTextResolveFailure(Exception ex, GameTextRef reference)
+    {
+        if (gameTextResolveFailureLogged)
+        {
+            return;
+        }
+
+        gameTextResolveFailureLogged = true;
+        var where = $"{reference.Sheet}#{reference.Row} col {reference.Column}";
+        log.Warning(ex, $"Wayfarer: could not resolve game text {where} — falling back to the curated label.");
     }
 
     private void RecomputeSafe()

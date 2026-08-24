@@ -161,11 +161,10 @@ internal sealed class UnlockWindow(
             UnlockStatus.BeastTribeLocked => 6,
             UnlockStatus.MountLocked => 7,
             UnlockStatus.CollectionLocked => 8,
-            UnlockStatus.PartnerRequired => 9,
-            UnlockStatus.RequirementsUnknown => 10,
-            UnlockStatus.UnknownGate => 11,
-            UnlockStatus.LockedOut => 12,
-            _ => 13,
+            UnlockStatus.RequirementsUnknown => 9,
+            UnlockStatus.UnknownGate => 10,
+            UnlockStatus.LockedOut => 11,
+            _ => 12,
         }).ThenBy(u => u.QuestLevel);
 
     /// <summary>One-line explanation for each status tag icon ("[grab]"/"[accepted]"/"[locked]"/
@@ -180,7 +179,6 @@ internal sealed class UnlockWindow(
         UnlockStatus.CollectionLocked => "Needs a set of collectibles. Hover for the list.",
         UnlockStatus.RequirementsUnknown => "Requirements unknown. Treat as not available.",
         UnlockStatus.UnknownGate => "Requirements unknown. Treat as not available.",
-        UnlockStatus.PartnerRequired => "Needs another player. Not something you can do alone.",
         _ => "Locked.",
     };
 
@@ -198,11 +196,6 @@ internal sealed class UnlockWindow(
         // what separates them, so no new colour has to be learned.
         UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
         UnlockStatus.CollectionLocked => ("[collect]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
-
-        // Its own tag rather than sharing "[?]" with the unknown-gate states: those are things
-        // this plugin might learn to check later, this is a fact about another person that no
-        // version of it ever will.
-        UnlockStatus.PartnerRequired => ("[partner]", new Vector4(0.6f, 0.55f, 0.8f, 1f)),
         _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
     };
 
@@ -383,6 +376,14 @@ internal sealed class UnlockWindow(
             ImGui.TextDisabled(reason);
         }
 
+        // Available with a knowable-but-unverifiable condition still outstanding (a partner, or a
+        // future requirement of the same shape) — the terse note is already in the status
+        // sentence/tag; this is the full detail, the game's own words where one was resolved.
+        if (u.AvailableConditionDetail is { Length: > 0 } conditionDetail)
+        {
+            ImGui.TextDisabled(conditionDetail);
+        }
+
         // The whole missing list, not just the blocker the reason names: being told you need
         // "Rose Lanner" when you need seven mounts is the same failure in miniature.
         if (u.Status == UnlockStatus.CollectionLocked && u.MissingRequirements.Count > 1)
@@ -398,6 +399,16 @@ internal sealed class UnlockWindow(
             ImGui.TextDisabled(notes);
         }
 
+        DrawRowTooltipFooter(u);
+
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
+    }
+
+    /// <summary>The status-specific closing line(s): what clicking this row will do. Split out of
+    /// <see cref="DrawRowTooltip"/> so that method stays under the analyzer's line budget.</summary>
+    private void DrawRowTooltipFooter(ResolvedUnlock u)
+    {
         if (u.Status == UnlockStatus.Available)
         {
             ImGui.TextDisabled(u.GiverTerritory == null
@@ -405,25 +416,26 @@ internal sealed class UnlockWindow(
                 : navigator != null
                     ? "Click to be guided there."
                     : "Enable Quest Helper to navigate.");
+            return;
         }
-        else if (u.Status == UnlockStatus.Accepted)
+
+        if (u.Status != UnlockStatus.Accepted)
         {
-            ImGui.TextDisabled(navigator != null
-                ? "In your journal — click to follow it."
-                : "In your journal — enable Quest Helper to follow it.");
-
-            // Live objective: only available while Quest Helper is enabled
-            // (navigator != null) and only once the game has published a marker for this step.
-            if (navigator != null
-                && u.QuestRowId is { } questRowId
-                && navigator.GetAcceptedQuestObjective(questRowId - QuestRowIdOffset) is { Length: > 0 } objective)
-            {
-                ImGui.TextDisabled($"Next: {objective}");
-            }
+            return;
         }
 
-        ImGui.PopTextWrapPos();
-        ImGui.EndTooltip();
+        ImGui.TextDisabled(navigator != null
+            ? "In your journal — click to follow it."
+            : "In your journal — enable Quest Helper to follow it.");
+
+        // Live objective: only available while Quest Helper is enabled
+        // (navigator != null) and only once the game has published a marker for this step.
+        if (navigator != null
+            && u.QuestRowId is { } questRowId
+            && navigator.GetAcceptedQuestObjective(questRowId - QuestRowIdOffset) is { Length: > 0 } objective)
+        {
+            ImGui.TextDisabled($"Next: {objective}");
+        }
     }
 
     private void DrawUnverified()

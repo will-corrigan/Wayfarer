@@ -582,12 +582,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// <summary>Everything standing in this entry's way, for the pane's "Requirements not met"
     /// block — the game's own label, over the game's own kind of content. Falls back through the
     /// computed lock reason and then the curated requirement label, because an entry that is
-    /// plainly locked and lists nothing reads as a bug.</summary>
+    /// plainly locked and lists nothing reads as a bug.
+    ///
+    /// <para>An Available entry still carrying a knowable-but-unverifiable condition (a partner, or
+    /// a future requirement of the same shape) is the one exception to "Available lists nothing
+    /// here": <see cref="ResolvedUnlock.AvailableConditionDetail"/> is the full statement of that
+    /// condition — the game's own words where one was resolved — and this is the requirement-list
+    /// pane it belongs in, even though nothing here is actually blocking the entry.</para></summary>
     private static List<string> MissingFor(ResolvedUnlock u)
     {
         if (u.Status is UnlockStatus.Available or UnlockStatus.Accepted or UnlockStatus.Done)
         {
-            return [];
+            return u.AvailableConditionDetail is { Length: > 0 } detail ? [detail] : [];
         }
 
         if (u.MissingRequirements.Count > 0)
@@ -638,11 +644,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             UnlockStatus.BeastTribeLocked => 6,
             UnlockStatus.MountLocked => 7,
             UnlockStatus.CollectionLocked => 8,
-            UnlockStatus.PartnerRequired => 9,
-            UnlockStatus.RequirementsUnknown => 10,
-            UnlockStatus.UnknownGate => 11,
-            UnlockStatus.LockedOut => 12,
-            _ => 13,
+            UnlockStatus.RequirementsUnknown => 9,
+            UnlockStatus.UnknownGate => 10,
+            UnlockStatus.LockedOut => 11,
+            _ => 12,
         }).ThenBy(u => u.QuestLevel);
 
     /// <summary>Line two of a hunting row: where the thing is. The zone alone for an overworld

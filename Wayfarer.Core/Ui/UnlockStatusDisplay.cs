@@ -64,8 +64,7 @@ public static class UnlockStatusDisplay
         UnlockStatus.Done => CompleteIcon,
         UnlockStatus.LockedOut => MissedIcon,
         UnlockStatus.InstanceLocked => LockedDutyIcon,
-        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown or UnlockStatus.Unverified
-            or UnlockStatus.PartnerRequired => InformationalIcon,
+        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown or UnlockStatus.Unverified => InformationalIcon,
         _ => LockedQuestIcon,
     };
 
@@ -79,7 +78,6 @@ public static class UnlockStatusDisplay
         UnlockStatus.LockedOut => "Missed",
         UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => "Unknown",
         UnlockStatus.Unverified => "Unverified",
-        UnlockStatus.PartnerRequired => "Needs a partner",
         _ => "Locked",
     };
 
@@ -106,29 +104,30 @@ public static class UnlockStatusDisplay
 
         return unlock.Status switch
         {
-            UnlockStatus.Available => "Available.",
+            UnlockStatus.Available => AvailableSentence(unlock),
             UnlockStatus.Accepted => "In progress.",
             UnlockStatus.Done => "Complete.",
             UnlockStatus.LockedOut => "Missed. No longer obtainable.",
             UnlockStatus.Unverified => "Unverified. Not backed by the game's data.",
             UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => UnknownSentence(unlock),
-            UnlockStatus.PartnerRequired => PartnerSentence(unlock),
             _ => LockedSentence(unlock),
         };
     }
+
+    // Every checkable gate has passed — this genuinely is something the player can go and do — but
+    // a knowable-but-unverifiable condition (see UnlockRequirement.RequiresAnotherPlayer) is still
+    // outstanding: the terse, game-register note goes on the row itself, in the same breath as
+    // "Available" rather than instead of it. Deliberately not phrased as a caveat ("Available, but
+    // needs a partner") — the game does not hedge its own gold markers, and neither does this.
+    private static string AvailableSentence(ResolvedUnlock unlock) =>
+        unlock.AvailableCondition is { Length: > 0 } condition
+            ? $"Available — {condition}."
+            : "Available.";
 
     private static string UnknownSentence(ResolvedUnlock unlock) =>
         unlock.LockReason is { Length: > 0 } reason
             ? $"Requirements unknown — {reason}."
             : "Requirements unknown.";
-
-    // Deliberately its own sentence rather than a branch of UnknownSentence: "requirements
-    // unknown" invites "unknown to this version of the plugin, might be fixed later" — a partner
-    // requirement never will be, and saying so plainly is the whole point of the status existing.
-    private static string PartnerSentence(ResolvedUnlock unlock) =>
-        unlock.LockReason is { Length: > 0 } reason
-            ? $"Needs a partner — {reason}."
-            : "Needs a partner.";
 
     // The calculator already phrases every gate as a verb phrase ("needs level 15", "requires
     // clearing Sastasha"), so this reads as one sentence rather than two glued together. The

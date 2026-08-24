@@ -31,15 +31,31 @@ public sealed class UnlockRequirement
     /// (real-money) Promise Wristlet — none of which is a fact about this character's client
     /// state.
     ///
-    /// <para>Distinct from <see cref="Unverifiable"/> on purpose. <c>Unverifiable</c> means "we
-    /// don't currently have a reader for this" — a festival window, a house, something a future
-    /// API might expose. <see cref="RequiresAnotherPlayer"/> means "there is nothing to read,
-    /// ever, because the missing fact lives on someone else's computer" — no version of this
-    /// plugin will ever answer "do you have a partner" the way it answers "do you have this
-    /// mount". Keeping the two separate lets the checklist say "requires a partner" instead of
-    /// the vaguer "requirements unknown", which is both more useful and more honest: one is a gap
-    /// in this plugin, the other is a gap no plugin can close.</para></summary>
+    /// <para>Distinct from <see cref="Unverifiable"/> on purpose, and distinct in what it does to
+    /// the entry's status. <c>Unverifiable</c> means "we don't currently have a reader for this" —
+    /// a festival window, a house, something a future API might expose — and keeps the entry
+    /// blocked, because it might genuinely still be out of reach. <see cref="RequiresAnotherPlayer"/>
+    /// means something different: the condition is fully known, it is a real thing a player can go
+    /// and do, and the only gap is that the fact of a second person's presence lives on someone
+    /// else's computer, not on this one — no version of this plugin will ever read it. Once every
+    /// other, checkable part of the requirement passes, an entry of this kind reports
+    /// <see cref="UnlockStatus.Available"/> with the condition named alongside it (see
+    /// <see cref="ResolvedUnlock.AvailableCondition"/>), not a block: a couple who both play the
+    /// game are not told their own wedding is unreachable.
+    ///
+    /// <para>This is a category, not a fact about one entry — any future requirement of the same
+    /// shape (known, real, and permanently unreadable from this client) sets this flag and
+    /// inherits the same treatment automatically. Nothing in the calculator names the Ceremony of
+    /// Eternal Bonding specifically.</para></summary>
     public bool RequiresAnotherPlayer { get; set; }
+
+    /// <summary>Where the game itself states the <see cref="RequiresAnotherPlayer"/> condition (or
+    /// a future requirement of the same knowable-but-unverifiable shape), resolved at runtime
+    /// through <see cref="UnlockGateContext.ResolveGameText"/> — see <see cref="GameTextRef"/> for
+    /// why a reference beats a copy. <see cref="Label"/> is only the fallback for when this is null
+    /// or the runtime lookup misses, and must stay short and honestly ours (e.g. "needs a partner")
+    /// — never a confident, uncited list of conditions no source is cited for.</summary>
+    public GameTextRef? ConditionSource { get; set; }
 
     /// <summary>A character level the entry needs that the Quest sheet doesn't state plainly.
     /// Curated as a second source for the two Bozjan-front entries, whose real level (80) the

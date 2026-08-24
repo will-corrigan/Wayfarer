@@ -109,12 +109,12 @@ public class UnlockGateTests
     }
 
     /// <summary>The red-proof fixture: a player who has done everything this plugin CAN check —
-    /// the prerequisite quest, the level, no other gate in the way — must still not be told the
-    /// ceremony is Available, because the plugin has no way to know whether a partner is present.
-    /// This must fail before <see cref="UnlockRequirement.RequiresAnotherPlayer"/> exists (the
-    /// entry would fall through every check to Available) and pass after.</summary>
+    /// the prerequisite quest, the level, no other gate in the way — must be told the ceremony is
+    /// <see cref="UnlockStatus.Available"/>, with the partner condition named alongside it rather
+    /// than used to withhold Available. A couple who both play the game are not told their own
+    /// wedding is out of reach for a fact this plugin will never be able to confirm.</summary>
     [Fact]
-    public void EternalBonding_EverythingCheckableMet_IsStillNotAvailable()
+    public void EternalBonding_EverythingCheckableMet_IsAvailableWithTheConditionNamed()
     {
         var u = EternalBonding();
         var all = new List<ResolvedUnlock> { u };
@@ -125,9 +125,11 @@ public class UnlockGateTests
             all,
             Gates.Ctx(playerLevel: 90, isQuestComplete: id => id == 66045));
 
-        Assert.NotEqual(UnlockStatus.Available, u.Status);
-        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("needs a partner", u.AvailableCondition);
+        Assert.NotNull(u.AvailableConditionDetail);
         Assert.Contains("partner", UnlockStatusDisplay.Sentence(u), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Available", UnlockStatusDisplay.Sentence(u), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -142,10 +144,11 @@ public class UnlockGateTests
 
         Assert.Equal(UnlockStatus.QuestLocked, u.Status);
         Assert.Contains("The Scions of the Seventh Dawn", u.LockReason, StringComparison.Ordinal);
+        Assert.Null(u.AvailableCondition);
     }
 
     [Fact]
-    public void CuratedRequirement_RequiresAnotherPlayer_IsPartnerRequired_NeverAvailable_AndDistinctFromUnverifiable()
+    public void CuratedRequirement_RequiresAnotherPlayer_IsAvailableWithCondition_NeverBlocked_AndDistinctFromUnverifiable()
     {
         var u = Make("Some Duo-Only Thing", 70002, 50);
         u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true };
@@ -153,14 +156,15 @@ public class UnlockGateTests
 
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
 
-        Assert.NotEqual(UnlockStatus.Available, u.Status);
+        Assert.Equal(UnlockStatus.Available, u.Status);
         Assert.NotEqual(UnlockStatus.RequirementsUnknown, u.Status);
-        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
-        Assert.Equal("a partner", u.LockReason);
+        Assert.Null(u.LockReason);
+        Assert.Equal("needs a partner", u.AvailableCondition);
+        Assert.Equal("a partner", u.AvailableConditionDetail);
     }
 
     [Fact]
-    public void CuratedRequirement_RequiresAnotherPlayer_WithNoLabel_HasAPlainFallbackReason()
+    public void CuratedRequirement_RequiresAnotherPlayer_WithNoLabelOrConditionSource_HasAPlainFallbackDetail()
     {
         var u = Make("Some Duo-Only Thing", 70002, 50);
         u.Def.Requires = new UnlockRequirement { RequiresAnotherPlayer = true };
@@ -168,8 +172,48 @@ public class UnlockGateTests
 
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
 
-        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
-        Assert.Equal("needs a second player", u.LockReason);
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("needs a partner", u.AvailableCondition);
+        Assert.Equal("The game does not say more than that.", u.AvailableConditionDetail);
+    }
+
+    /// <summary>When a <see cref="GameTextRef"/> is curated, the runtime lookup is preferred over
+    /// the curated label — the whole point of quoting the game rather than paraphrasing it.</summary>
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_WithConditionSource_PrefersTheResolvedGameText()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        var source = new GameTextRef("HowToPage", 1861, 4);
+        u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true, ConditionSource = source };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(
+            all,
+            Gates.Ctx(playerLevel: 90, resolveGameText: r => r == source ? "You are currently in a party with your partner." : null));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("You are currently in a party with your partner.", u.AvailableConditionDetail);
+    }
+
+    /// <summary>A missed runtime lookup (a bad reference, a sheet Lumina can't resolve, the
+    /// resolver itself being null in a caller that never wires one) falls back to the curated
+    /// label rather than surfacing nothing.</summary>
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_WithConditionSourceThatMisses_FallsBackToLabel()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement
+        {
+            Label = "a partner",
+            RequiresAnotherPlayer = true,
+            ConditionSource = new GameTextRef("HowToPage", 1861, 4),
+        };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, resolveGameText: _ => null));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("a partner", u.AvailableConditionDetail);
     }
 
     /// <summary>A partner requirement takes precedence over the generic Unverifiable fallback
@@ -185,7 +229,7 @@ public class UnlockGateTests
 
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
 
-        Assert.Equal(UnlockStatus.PartnerRequired, u.Status);
+        Assert.Equal(UnlockStatus.Available, u.Status);
     }
 
     [Fact]

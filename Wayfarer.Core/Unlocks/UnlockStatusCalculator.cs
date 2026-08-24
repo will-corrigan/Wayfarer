@@ -43,7 +43,7 @@ public static class UnlockStatusCalculator
     /// <see cref="ComputeRemainingGates"/> for the rest.</summary>
     private static void ComputeOne(ResolvedUnlock u, UnlockGateContext ctx, HashSet<AlternativeGroup> doneGroups)
     {
-        u.LockReason = null;
+        ResetComputedFields(u);
 
         // An entry with no quest bound to it has no completion evidence of its own, and cannot
         // borrow another entry's: it is never Done. It can still be told apart from "we know
@@ -103,16 +103,32 @@ public static class UnlockStatusCalculator
         ComputeRemainingGates(u, ctx);
     }
 
+    /// <summary>The three fields a fresh pass over one entry always starts from a clean slate: a
+    /// status this plugin no longer stands behind (the quest was just accepted elsewhere, a gate
+    /// that used to block now doesn't) must not leave a stale reason or condition note sitting
+    /// alongside whatever gets computed this time.</summary>
+    private static void ResetComputedFields(ResolvedUnlock u)
+    {
+        u.LockReason = null;
+        u.AvailableCondition = null;
+        u.AvailableConditionDetail = null;
+    }
+
     /// <summary>Entries with no Quest row at all. Most are honestly unknowable and say so. Some
     /// are not: the guide gates them on clearing a duty or on carrying a treasure map, and the
     /// catalogue records that as a curated requirement. Running it here turns "status unknown" —
     /// which is all these entries could ever say — into "requires clearing Sigmascape V4.0
     /// (Savage)", which is the difference between a shrug and an answer.
     ///
-    /// <para>Satisfying the gate still never yields Available. Clearing the prerequisite duty
-    /// opens the door; whether the player has walked through it (talked to the Wandering Minstrel)
-    /// is not something the client records anywhere a plugin can read, and guessing at it is
-    /// exactly the class of confident wrongness this calculator exists to avoid.</para></summary>
+    /// <para>Satisfying a <see cref="UnlockRequirement.Duties"/> gate still never yields Available:
+    /// clearing the prerequisite duty opens the door, but whether the player has walked through it
+    /// (talked to the Wandering Minstrel) is not something the client records anywhere a plugin can
+    /// read, and guessing at it is exactly the class of confident wrongness this calculator exists
+    /// to avoid — see <see cref="MissingDuty"/>, checked ahead of the fallback below. A curated
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/> gate is the one exception: once it is
+    /// the only thing left, <see cref="CuratedRequirementBlocking"/> already resolved the entry to
+    /// Available with the condition named, and that verdict is kept rather than papered over with
+    /// "no quest to read for this".</para></summary>
     private static void ComputeWithoutQuest(ResolvedUnlock u, UnlockGateContext ctx)
     {
         if (u.Def.Requires?.HasCheckableRequirement != true)
@@ -125,6 +141,12 @@ public static class UnlockStatusCalculator
         {
             u.Status = status;
             u.LockReason = reason;
+            return;
+        }
+
+        if (u.AvailableCondition is not null)
+        {
+            u.Status = UnlockStatus.Available;
             return;
         }
 
@@ -197,8 +219,14 @@ public static class UnlockStatusCalculator
 
         if (u.HasUnmodeledGate)
         {
+            // CuratedRequirementBlocking may have already granted Available-with-a-condition just
+            // above (a RequiresAnotherPlayer gate resolves without blocking) before this check
+            // finds a second, different problem. That tentative verdict must not survive alongside
+            // a status that says the entry is locked.
             u.Status = UnlockStatus.UnknownGate;
             u.LockReason = "needs a festival or a house";
+            u.AvailableCondition = null;
+            u.AvailableConditionDetail = null;
             return;
         }
 
@@ -320,24 +348,34 @@ public static class UnlockStatusCalculator
             return true;
         }
 
-        return UncheckableRequirementBlocking(req, out reason, out status);
+        return UncheckableRequirementBlocking(u, ctx, req, out reason, out status);
     }
 
     /// <summary>Everything left once level, job, duty and collectible checks all pass: the two
-    /// "there is nothing further to check, and that is not the same as clear" fallbacks.
-    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/> is checked first and given its own
-    /// status, ahead of the generic <see cref="UnlockRequirement.Unverifiable"/> catch-all — a
-    /// partner requirement is not "we don't know": every earlier check may well pass (the quest
-    /// is done, the level is met, the wristlet is even in the bags), and the entry must still
-    /// never read as Available, because the one thing left is a second person's presence this
-    /// plugin cannot see and never will.</summary>
-    private static bool UncheckableRequirementBlocking(UnlockRequirement req, out string? reason, out UnlockStatus status)
+    /// "there is nothing further to check" fallbacks, and they resolve in opposite directions on
+    /// purpose.
+    ///
+    /// <para><see cref="UnlockRequirement.RequiresAnotherPlayer"/> — checked first, ahead of the
+    /// generic <see cref="UnlockRequirement.Unverifiable"/> catch-all — does <b>not</b> block. Every
+    /// checkable gate has already passed by the time this runs (the quest is done, the level is
+    /// met, the wristlet is even in the bags): the one thing left is a fact this plugin cannot read,
+    /// not a fact that stands in the player's way, so the entry reports Available with the
+    /// condition named on <see cref="ResolvedUnlock.AvailableCondition"/> rather than a block a
+    /// couple who both play the game would have no way to satisfy.</para>
+    ///
+    /// <para><see cref="UnlockRequirement.Unverifiable"/> still blocks, because it means the
+    /// opposite thing: not "known but unreadable", but "we don't know what this needs at all" —
+    /// there is no "everything checkable" to have finished satisfying.</para></summary>
+    private static bool UncheckableRequirementBlocking(
+        ResolvedUnlock u, UnlockGateContext ctx, UnlockRequirement req, out string? reason, out UnlockStatus status)
     {
         if (req.RequiresAnotherPlayer)
         {
-            status = UnlockStatus.PartnerRequired;
-            reason = req.Label is { Length: > 0 } partnerLabel ? partnerLabel : "needs a second player";
-            return true;
+            reason = null;
+            status = UnlockStatus.Available;
+            u.AvailableCondition = "needs a partner";
+            u.AvailableConditionDetail = ResolveConditionDetail(ctx, req);
+            return false;
         }
 
         if (!req.Unverifiable)
@@ -350,6 +388,25 @@ public static class UnlockStatusCalculator
         status = UnlockStatus.RequirementsUnknown;
         reason = req.Label is { Length: > 0 } label ? label : "has a requirement Wayfarer cannot read";
         return true;
+    }
+
+    /// <summary>The three-tier fallback from <c>2026-08-24-requirement-text-provenance.md</c> §6,
+    /// as far as this codebase currently wires it: prefer the game's own words
+    /// (<see cref="UnlockRequirement.ConditionSource"/>, resolved live against the player's own
+    /// client), then the curated <see cref="UnlockRequirement.Label"/> — which must stay short and
+    /// honestly ours, never a paraphrased list of conditions — and only when both miss, an
+    /// admission that the game does not say. The seam is general-purpose: any future requirement
+    /// that sets <see cref="UnlockRequirement.RequiresAnotherPlayer"/> and a
+    /// <see cref="UnlockRequirement.ConditionSource"/> gets the same resolution, no entry-specific
+    /// code required.</summary>
+    private static string ResolveConditionDetail(UnlockGateContext ctx, UnlockRequirement req)
+    {
+        if (req.ConditionSource is { } source && ctx.ResolveGameText?.Invoke(source) is { Length: > 0 } fromGame)
+        {
+            return fromGame;
+        }
+
+        return req.Label is { Length: > 0 } label ? label : "The game does not say more than that.";
     }
 
     /// <summary>The first curated duty the player has not cleared, or null when they all are.

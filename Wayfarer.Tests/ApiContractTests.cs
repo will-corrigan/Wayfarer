@@ -259,7 +259,6 @@ public class ApiContractTests
     [Theory]
     [InlineData(UnlockStatus.CollectionLocked, "CollectionLocked")]
     [InlineData(UnlockStatus.RequirementsUnknown, "RequirementsUnknown")]
-    [InlineData(UnlockStatus.PartnerRequired, "PartnerRequired")]
     public void GetUnlocks_CarriesTheNewStatuses_AsPlainStrings(UnlockStatus status, string wireValue)
     {
         Assert.Equal(wireValue, status.ToString());
@@ -275,6 +274,29 @@ public class ApiContractTests
 
         Assert.Equal(wireValue, row.Status);
         Assert.Contains("Rose Lanner", row.LockReason, StringComparison.Ordinal);
+    }
+
+    // AvailableCondition is the wire counterpart of ResolvedUnlock.AvailableCondition: an
+    // Available row that still carries a knowable-but-unverifiable condition (a partner, or a
+    // future requirement of the same shape). Additive on the wire, same as any new status —
+    // absent (null) on every ordinary Available row, so an old consumer sees nothing new unless
+    // it looks for the field.
+    [Fact]
+    public void GetUnlocks_CarriesAvailableCondition_OnAnAvailableRow()
+    {
+        const string json = """
+            [{"unlock":"Ceremony of Eternal Bonding","status":"Available","lockReason":null,
+              "availableCondition":"needs a partner","quest":"The Ties That Bind","giver":null,
+              "level":50,"zone":"East Shroud","priority":"nice","category":"system",
+              "description":"Unlocks in-game weddings."}]
+            """;
+        var client = new WayfarerClient(() => WayfarerIpc.ApiVersion, () => "{}", (_, _) => json);
+
+        var row = Assert.Single(client.GetUnlocks());
+
+        Assert.Equal("Available", row.Status);
+        Assert.Null(row.LockReason);
+        Assert.Equal("needs a partner", row.AvailableCondition);
     }
 
     [Fact]

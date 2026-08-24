@@ -19,7 +19,8 @@ internal static class Gates
         Func<uint, bool>? isMountUnlocked = null,
         Func<uint, bool>? isMinionUnlocked = null,
         Func<uint, int>? getOwnedItemCount = null,
-        Func<uint, int>? getKeyItemCount = null) => new(
+        Func<uint, int>? getKeyItemCount = null,
+        Func<GameTextRef, string?>? resolveGameText = null) => new(
             playerLevel,
             playerGrandCompany,
             playerGrandCompanyRank,
@@ -32,5 +33,6 @@ internal static class Gates
             isMountUnlocked ?? (_ => false),
             isMinionUnlocked ?? (_ => false),
             getOwnedItemCount ?? (_ => 0),
-            getKeyItemCount ?? (_ => 0));
+            getKeyItemCount ?? (_ => 0),
+            resolveGameText);
 }

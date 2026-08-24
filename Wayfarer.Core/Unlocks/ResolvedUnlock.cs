@@ -3,7 +3,15 @@ namespace Wayfarer.Core.Unlocks;
 /// <summary>What the checklist says about one entry. Everything except <see cref="Available"/>
 /// and <see cref="Done"/> is a specific reason the player is not going anywhere yet, and the
 /// several flavours of "unknown" are deliberately distinct: they are the difference between a gate
-/// this plugin can see and one it merely suspects.</summary>
+/// this plugin can see and one it merely suspects.
+///
+/// <para>There is no status for "known but unverifiable" (a partner, or a future requirement of the
+/// same shape) — that is not a reason to withhold Available, it is a fact to state alongside it.
+/// An entry with every checkable gate met reports <see cref="Available"/> and carries the condition
+/// in <see cref="ResolvedUnlock.AvailableCondition"/> / <see cref="ResolvedUnlock.AvailableConditionDetail"/>
+/// instead. That keeps it distinct from <see cref="RequirementsUnknown"/>, which means the opposite
+/// thing: "we cannot even say what this needs", not "we cannot see whether you meet the stated
+/// condition".</para></summary>
 public enum UnlockStatus
 {
     Unverified,
@@ -44,14 +52,6 @@ public enum UnlockStatus
     /// This is the honest answer, and it exists because "I found no gate" was previously reported
     /// as "go and get it".</summary>
     RequirementsUnknown,
-
-    /// <summary>Gated behind a second player acting at the same time — a ceremony partner, not a
-    /// duty-finder party. Never Available, and deliberately not folded into
-    /// <see cref="RequirementsUnknown"/>: that status means "this plugin doesn't know how to
-    /// check yet", which invites the reader to wonder whether a future version might. This one
-    /// never will, because the missing fact is on another person's client. See
-    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/>.</summary>
-    PartnerRequired,
 }
 
 /// <summary>An unlock entry after the plugin has matched it against game data.
@@ -196,6 +196,22 @@ public sealed class ResolvedUnlock
 
     public string? LockReason { get; set; }
 
+    /// <summary>Set only when <see cref="Status"/> is <see cref="UnlockStatus.Available"/> and the
+    /// curated requirement still carries a knowable-but-unverifiable condition (see
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/>) — a short, terse phrase in the game's
+    /// own register ("needs a partner"), for the list row: "Available — needs a partner." Null for
+    /// every ordinary Available entry, where nothing is left to say.</summary>
+    public string? AvailableCondition { get; set; }
+
+    /// <summary>The full statement of <see cref="AvailableCondition"/>, for the detail pane /
+    /// journal page where the requirement list lives. Preferably the game's own words, resolved at
+    /// runtime through <see cref="UnlockGateContext.ResolveGameText"/> from
+    /// <see cref="UnlockRequirement.ConditionSource"/>; falls back to the curated
+    /// <see cref="UnlockRequirement.Label"/> when that lookup misses, and to a plain admission that
+    /// the game does not say more when even that is absent. Null whenever
+    /// <see cref="AvailableCondition"/> is.</summary>
+    public string? AvailableConditionDetail { get; set; }
+
     /// <summary>Member-wise copy for cross-thread hand-off (e.g. MCP serialization while
     /// the framework thread may concurrently call <c>UnlockStatusCalculator.Compute</c> on
     /// the live instance). <see cref="Def"/> and the gate lists are shared, not deep-copied —
@@ -247,5 +263,7 @@ public sealed class ResolvedUnlock
         GiverName = GiverName,
         Status = Status,
         LockReason = LockReason,
+        AvailableCondition = AvailableCondition,
+        AvailableConditionDetail = AvailableConditionDetail,
     };
 }
