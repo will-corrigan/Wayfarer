@@ -44,6 +44,14 @@ public enum UnlockStatus
     /// This is the honest answer, and it exists because "I found no gate" was previously reported
     /// as "go and get it".</summary>
     RequirementsUnknown,
+
+    /// <summary>Gated behind a second player acting at the same time — a ceremony partner, not a
+    /// duty-finder party. Never Available, and deliberately not folded into
+    /// <see cref="RequirementsUnknown"/>: that status means "this plugin doesn't know how to
+    /// check yet", which invites the reader to wonder whether a future version might. This one
+    /// never will, because the missing fact is on another person's client. See
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/>.</summary>
+    PartnerRequired,
 }
 
 /// <summary>An unlock entry after the plugin has matched it against game data.

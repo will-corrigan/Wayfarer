@@ -64,7 +64,8 @@ public static class UnlockStatusDisplay
         UnlockStatus.Done => CompleteIcon,
         UnlockStatus.LockedOut => MissedIcon,
         UnlockStatus.InstanceLocked => LockedDutyIcon,
-        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown or UnlockStatus.Unverified => InformationalIcon,
+        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown or UnlockStatus.Unverified
+            or UnlockStatus.PartnerRequired => InformationalIcon,
         _ => LockedQuestIcon,
     };
 
@@ -78,6 +79,7 @@ public static class UnlockStatusDisplay
         UnlockStatus.LockedOut => "Missed",
         UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => "Unknown",
         UnlockStatus.Unverified => "Unverified",
+        UnlockStatus.PartnerRequired => "Needs a partner",
         _ => "Locked",
     };
 
@@ -110,6 +112,7 @@ public static class UnlockStatusDisplay
             UnlockStatus.LockedOut => "Missed. No longer obtainable.",
             UnlockStatus.Unverified => "Unverified. Not backed by the game's data.",
             UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => UnknownSentence(unlock),
+            UnlockStatus.PartnerRequired => PartnerSentence(unlock),
             _ => LockedSentence(unlock),
         };
     }
@@ -118,6 +121,14 @@ public static class UnlockStatusDisplay
         unlock.LockReason is { Length: > 0 } reason
             ? $"Requirements unknown — {reason}."
             : "Requirements unknown.";
+
+    // Deliberately its own sentence rather than a branch of UnknownSentence: "requirements
+    // unknown" invites "unknown to this version of the plugin, might be fixed later" — a partner
+    // requirement never will be, and saying so plainly is the whole point of the status existing.
+    private static string PartnerSentence(ResolvedUnlock unlock) =>
+        unlock.LockReason is { Length: > 0 } reason
+            ? $"Needs a partner — {reason}."
+            : "Needs a partner.";
 
     // The calculator already phrases every gate as a verb phrase ("needs level 15", "requires
     // clearing Sastasha"), so this reads as one sentence rather than two glued together. The

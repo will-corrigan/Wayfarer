@@ -23,6 +23,24 @@ public sealed class UnlockRequirement
     /// "requirements unknown" — never Available.</summary>
     public bool Unverifiable { get; set; }
 
+    /// <summary>The requirement is real, known, and involves a second human player acting at the
+    /// same time — a partner for a ceremony, not a duty-finder party the game can assemble. The
+    /// Ceremony of Eternal Bonding is the case that named this: completing "The Ties That Bind"
+    /// only opens the door; performing the ceremony additionally needs a partner physically
+    /// present in East Shroud, in a party of two, on the same Home World, each wearing a
+    /// (real-money) Promise Wristlet — none of which is a fact about this character's client
+    /// state.
+    ///
+    /// <para>Distinct from <see cref="Unverifiable"/> on purpose. <c>Unverifiable</c> means "we
+    /// don't currently have a reader for this" — a festival window, a house, something a future
+    /// API might expose. <see cref="RequiresAnotherPlayer"/> means "there is nothing to read,
+    /// ever, because the missing fact lives on someone else's computer" — no version of this
+    /// plugin will ever answer "do you have a partner" the way it answers "do you have this
+    /// mount". Keeping the two separate lets the checklist say "requires a partner" instead of
+    /// the vaguer "requirements unknown", which is both more useful and more honest: one is a gap
+    /// in this plugin, the other is a gap no plugin can close.</para></summary>
+    public bool RequiresAnotherPlayer { get; set; }
+
     /// <summary>A character level the entry needs that the Quest sheet doesn't state plainly.
     /// Curated as a second source for the two Bozjan-front entries, whose real level (80) the
     /// sheet splits across <c>ClassJobLevel[0]</c> (71) and <c>QuestLevelOffset</c> (9).</summary>
@@ -47,7 +65,7 @@ public sealed class UnlockRequirement
     /// carries prose.</summary>
     public bool HasCheckableRequirement =>
         Mounts.Count > 0 || Minions.Count > 0 || Items.Count > 0 || Jobs.Count > 0
-        || Duties.Count > 0 || MinLevel is > 0;
+        || Duties.Count > 0 || MinLevel is > 0 || RequiresAnotherPlayer;
 
     /// <summary>A mount or minion the player must already own.</summary>
     /// <param name="Id">Mount/Companion sheet row id, checked with <c>IsMountUnlocked</c> /

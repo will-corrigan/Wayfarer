@@ -143,6 +143,35 @@ public class UnlockStatusDisplayTests
         Assert.Equal(UnlockStatusTone.Dimmed, UnlockStatusDisplay.Tone(UnlockStatus.Done));
     }
 
+    /// <summary>The whole point of <see cref="UnlockStatus.PartnerRequired"/> existing as its own
+    /// status rather than reusing <see cref="UnlockStatus.RequirementsUnknown"/>: the word and the
+    /// sentence a player actually reads have to say "partner", not the vaguer "requirements
+    /// unknown" — one is a gap in this plugin, the other is a gap no plugin can close, and only
+    /// the first invites "maybe a future version will know".</summary>
+    [Fact]
+    public void PartnerRequired_ReadsAsNeedingAPartner_NotAsAnUnknownRequirement()
+    {
+        var bare = new ResolvedUnlock { Def = new UnlockDefinition(), Status = UnlockStatus.PartnerRequired };
+        var withReason = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition(),
+            Status = UnlockStatus.PartnerRequired,
+            LockReason = "same Home World, party of two, both wearing a Promise Wristlet, in East Shroud",
+        };
+
+        Assert.Contains("partner", UnlockStatusDisplay.Word(UnlockStatus.PartnerRequired), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("partner", UnlockStatusDisplay.Sentence(bare), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("unknown", UnlockStatusDisplay.Sentence(bare), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(
+            "Needs a partner — same Home World, party of two, both wearing a Promise Wristlet, in East Shroud.",
+            UnlockStatusDisplay.Sentence(withReason));
+
+        // Never Available, and dimmed like every other not-currently-actionable state rather than
+        // singled out as an error — a missing partner is not the player's fault the way LockedOut is.
+        Assert.NotEqual(UnlockStatusDisplay.AvailableIcon, UnlockStatusDisplay.IconId(UnlockStatus.PartnerRequired));
+        Assert.Equal(UnlockStatusTone.Dimmed, UnlockStatusDisplay.Tone(UnlockStatus.PartnerRequired));
+    }
+
     /// <summary>Whether two states are indistinguishable once the colour channel is removed —
     /// evaluated on a bare entry, because a state's own fallback sentence is the one it is
     /// guaranteed to be able to show.</summary>
