@@ -278,6 +278,14 @@ dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.SA1649.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
+[Wayfarer.Core/Navigation/InteriorRoute.cs]
+# InteriorEntrance is the place InteriorRoute routes to and is meaningless apart
+# from it - one interior-approach concept, kept in one file rather than two
+# near-empty ones (same rationale as RouteCosting.cs above).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Navigation/OtherZoneResolution.cs]
 # OtherZoneOutcome is a small companion enum to OtherZoneResolution itself
 # (task-fix-interior-report.md fix round 3) - one decision concept, kept in
