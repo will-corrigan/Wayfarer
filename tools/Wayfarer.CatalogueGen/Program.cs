@@ -34,27 +34,87 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (args.Length != 3 || !string.Equals(args[0], "resolve", StringComparison.Ordinal))
+        if (args.Length != 3 || args[0] is not ("resolve" or "rewards"))
         {
-            Console.Error.WriteLine("usage: Wayfarer.CatalogueGen resolve <request.json> <response.json>");
+            Console.Error.WriteLine("usage: Wayfarer.CatalogueGen <resolve|rewards> <request.json> <response.json>");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("  request.json  { \"sqpack\": \"<path>\", \"names\": [ ... ] }");
-            Console.Error.WriteLine("  response.json { \"names\": { \"<raw name>\": { \"key\": ..., \"quest\": ... } } }");
+            Console.Error.WriteLine("  resolve  request  { \"sqpack\": \"<path>\", \"names\": [ ... ] }");
+            Console.Error.WriteLine("           response { \"names\": { \"<raw name>\": { \"key\": ..., \"quest\": ... } } }");
+            Console.Error.WriteLine("  rewards  request  { \"sqpack\": \"<path>\", \"joins\": [ { \"ref\", \"unlock\", \"type\", \"questRowIds\", \"duties\" } ] }");
+            Console.Error.WriteLine("           response { \"rewards\": { \"<ref>\": { \"kind\", \"id\", \"name\", \"how\", \"via\" } } }");
             return 2;
         }
 
-        var request = JsonSerializer.Deserialize<ResolveRequest>(File.ReadAllText(args[1]), ReadOptions)
-            ?? throw new InvalidOperationException($"could not read a request from {args[1]}");
+        return string.Equals(args[0], "rewards", StringComparison.Ordinal)
+            ? Rewards(args[1], args[2])
+            : Resolve(args[1], args[2]);
+    }
 
-        var sqpack = request.Sqpack;
-        if (string.IsNullOrWhiteSpace(sqpack) || !Directory.Exists(sqpack))
+    /// <summary>What each entry actually grants — see <see cref="RewardIndex"/>. A verb of its own
+    /// rather than another field on <c>resolve</c> because it runs at a different moment: the join
+    /// needs the quest rows the caller only has once every name and infobox has been read.</summary>
+    private static int Rewards(string requestPath, string responsePath)
+    {
+        var request = JsonSerializer.Deserialize<RewardRequest>(File.ReadAllText(requestPath), ReadOptions)
+            ?? throw new InvalidOperationException($"could not read a request from {requestPath}");
+
+        if (OpenGame(request.Sqpack) is not { } game)
         {
-            Console.Error.WriteLine($"sqpack directory not found: '{sqpack}'");
-            Console.Error.WriteLine("Generation needs a local game installation. CI validates the committed dataset instead.");
             return 3;
         }
 
-        var game = new GameData(sqpack);
+        var index = RewardIndex.Build(game);
+        Console.Error.WriteLine($"reward index built; joining {request.Joins.Count} entries");
+
+        var rewards = new SortedDictionary<string, RewardAnswer>(StringComparer.Ordinal);
+        foreach (var join in request.Joins)
+        {
+            if (index.Resolve(join) is not { } match)
+            {
+                continue;
+            }
+
+            rewards[join.Ref] = new RewardAnswer
+            {
+                Kind = match.Candidate.Kind,
+                Id = match.Candidate.Id,
+                Name = match.Candidate.Name,
+                How = match.How,
+                Via = match.Candidate.Via,
+                IconId = index.IconId(match.Candidate),
+            };
+        }
+
+        File.WriteAllText(responsePath, JsonSerializer.Serialize(new RewardResponse { Rewards = rewards }, WriteOptions));
+        Console.Error.WriteLine($"rewards resolved for {rewards.Count} of {request.Joins.Count} entries -> {responsePath}");
+        return 0;
+    }
+
+    /// <summary>The sqpack, or null with the reason already reported. Generation is a local,
+    /// developer-only step by design — see the file header.</summary>
+    private static GameData? OpenGame(string sqpack)
+    {
+        if (!string.IsNullOrWhiteSpace(sqpack) && Directory.Exists(sqpack))
+        {
+            return new GameData(sqpack);
+        }
+
+        Console.Error.WriteLine($"sqpack directory not found: '{sqpack}'");
+        Console.Error.WriteLine("Generation needs a local game installation. CI validates the committed dataset instead.");
+        return null;
+    }
+
+    private static int Resolve(string requestPath, string responsePath)
+    {
+        var request = JsonSerializer.Deserialize<ResolveRequest>(File.ReadAllText(requestPath), ReadOptions)
+            ?? throw new InvalidOperationException($"could not read a request from {requestPath}");
+
+        var sqpack = request.Sqpack;
+        if (OpenGame(sqpack) is not { } game)
+        {
+            return 3;
+        }
+
         var index = SheetIndex.Build(game);
         Console.Error.WriteLine(
             $"indexed {index.QuestRows.Count} quest rows, {index.Sheets["duty"].Count} duty keys, {index.Sheets["item"].Count} item keys");
@@ -73,10 +133,48 @@ internal static class Program
             Quests = index.FactsFor(names.Values, request.QuestRowIds),
         };
 
-        File.WriteAllText(args[2], JsonSerializer.Serialize(response, WriteOptions));
-        Console.Error.WriteLine($"resolved {names.Count} names -> {args[2]}");
+        File.WriteAllText(responsePath, JsonSerializer.Serialize(response, WriteOptions));
+        Console.Error.WriteLine($"resolved {names.Count} names -> {responsePath}");
         return 0;
     }
+}
+
+internal sealed class RewardRequest
+{
+    public string Sqpack { get; init; } = string.Empty;
+
+    public List<RewardJoin> Joins { get; init; } = [];
+}
+
+internal sealed class RewardResponse
+{
+    /// <summary>Keyed by the caller's own <c>ref</c>. An entry the game states no reward for is
+    /// simply absent — there is no "none" answer to store, and an absent key reads the same way in
+    /// every consumer.</summary>
+    public SortedDictionary<string, RewardAnswer> Rewards { get; init; } = [];
+}
+
+internal sealed class RewardAnswer
+{
+    public string Kind { get; init; } = string.Empty;
+
+    public uint Id { get; init; }
+
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>Which of the three join rules picked this — for the generation report, so a
+    /// reviewer can see the difference between a name two sources agree on and a duty inferred
+    /// from a link.</summary>
+    public string How { get; init; } = string.Empty;
+
+    /// <summary>The exact sheet column the claim rests on.</summary>
+    public string Via { get; init; } = string.Empty;
+
+    /// <summary>The icon the game would draw today, or 0 for a kind that has none. Deliberately
+    /// NOT written into the dataset — the plugin resolves icons live, because an icon id is a fact
+    /// about the installed patch. It is here so generation can fail on a kind that claims to draw
+    /// something and cannot. See <see cref="RewardIcons"/>.</summary>
+    public uint IconId { get; init; }
 }
 
 internal sealed class ResolveRequest
