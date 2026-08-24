@@ -2,7 +2,10 @@ using System.Globalization;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using Lumina.Text.Payloads;
+using Lumina.Text.ReadOnly;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Navigation;
 using GameMap = FFXIVClientStructs.FFXIV.Client.Game.UI.Map;
@@ -26,6 +29,30 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
     /// the head of the main scenario: which of the two it is belongs to the mode label below, not to
     /// the module's name. See <see cref="ObjectiveCopy.SourceName"/>.</summary>
     private const string ModuleName = "Quest";
+
+    /// <summary>Macro payload codes that ExtractText always resolves fully, regardless of runtime
+    /// state — a button glyph, a line break, a colour tag. Anything else (a player-name insert, an
+    /// item-name sheet reference, an if/switch branch) needs live game state Lumina does not have,
+    /// and silently drops out of the extracted string instead of erroring — verified live: a
+    /// "Sheet" code left "Deliver a suit of steel chainmail  to Blanstyr." (the item name gap) and
+    /// an "If" code left a bare "." (the whole branch resolved empty). See
+    /// <see cref="ReadQuestStepTexts"/>, the only place this is consulted.</summary>
+    private static readonly HashSet<MacroCode> PresentationalMacroCodes =
+    [
+        MacroCode.NewLine, MacroCode.Wait, MacroCode.Icon, MacroCode.Color, MacroCode.EdgeColor,
+        MacroCode.ShadowColor, MacroCode.SoftHyphen, MacroCode.Key, MacroCode.Scale, MacroCode.Bold,
+        MacroCode.Italic, MacroCode.Edge, MacroCode.Shadow, MacroCode.NonBreakingSpace, MacroCode.Icon2,
+        MacroCode.Hyphen, MacroCode.Link, MacroCode.Caps, MacroCode.Head, MacroCode.Split,
+        MacroCode.HeadAll, MacroCode.Fixed, MacroCode.Lower, MacroCode.LowerHead, MacroCode.ColorType,
+        MacroCode.EdgeColorType, MacroCode.Ruby, MacroCode.Sound, MacroCode.LevelPos,
+        MacroCode.SetResetTime, MacroCode.SetTime,
+    ];
+
+    /// <summary>Per-quest ToDo text, read once and kept forever: the sheet is static game data (only
+    /// the runtime SEQUENCE that selects among its entries changes tick to tick), so re-scanning the
+    /// raw text sheet every <see cref="Poll"/> would be pure waste on the "must be cheap, runs every
+    /// tick" path. See <see cref="ReadQuestStepTexts"/>.</summary>
+    private readonly Dictionary<ushort, List<QuestStepText>> stepTextCache = [];
 
     public string SourceId => "quest";
 
@@ -52,7 +79,10 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
             return null;
         }
 
-        var (stepLabel, markers) = ReadQuestMarkers(questId);
+        var (markerLabel, markers) = ReadQuestMarkers(questId);
+        var sequence = QuestManager.GetQuestSequence(questId);
+        var stepTexts = ReadQuestStepTexts(questId);
+        var stepLabel = QuestStepTextSelection.SelectCurrentStepText(stepTexts, sequence, markerLabel);
         var objective = new GuidanceObjective(
             new ObjectiveKey(SourceId, questId.ToString(CultureInfo.InvariantCulture)),
             ResolveDestination(questId, markers, ctx),
@@ -97,8 +127,10 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
         return result;
     }
 
-    /// <summary>Live current-objective label for any accepted quest, keyed by its raw id. Same scan
-    /// as the followed quest's step label (see <see cref="ReadQuestMarkers"/>), but standalone so
+    /// <summary>Live current-objective label for any accepted quest, keyed by its raw id. Marker-only
+    /// — deliberately NOT the sheet-first read <see cref="Poll"/> uses for the followed quest (see
+    /// <see cref="ReadQuestStepTexts"/>), since this runs once per row in a popup that can list every
+    /// accepted quest at once and a raw-sheet open per row per frame is not "cheap". Standalone so
     /// the checklist can show an accepted row's objective without following it first. Framework
     /// thread only. Null when the game has no marker for this quest right now (not every step/zone
     /// has one) or the marker's label text is empty.</summary>
@@ -145,11 +177,15 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
         return result;
     }
 
-    /// <summary>The game's own live quest markers — authoritative for the current step. Returns the
-    /// step label (the first non-empty marker label) and every marker position for this quest.</summary>
-    private static (string? StepLabel, List<MarkerPoint> Markers) ReadQuestMarkers(ushort questId)
+    /// <summary>The game's own live quest markers — every marker position for this quest, plus
+    /// whatever label the FIRST one happens to carry. That label is now the FALLBACK for the step
+    /// text (see <see cref="ReadQuestStepTexts"/> and <see cref="QuestStepTextSelection"/>), not
+    /// the primary source — a marker very often carries no label at all (the exact readout gap
+    /// this file exists to close), while the quest's own ToDo text sheet almost always has
+    /// one.</summary>
+    private static (string? MarkerLabel, List<MarkerPoint> Markers) ReadQuestMarkers(ushort questId)
     {
-        string? stepLabel = null;
+        string? markerLabel = null;
         var markers = new List<MarkerPoint>();
         var gameMap = GameMap.Instance();
         if (gameMap == null)
@@ -164,12 +200,12 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
                 continue;
             }
 
-            if (stepLabel == null)
+            if (markerLabel == null)
             {
                 var label = mi.Label.ToString();
                 if (label.Length > 0)
                 {
-                    stepLabel = label;
+                    markerLabel = label;
                 }
             }
 
@@ -188,7 +224,140 @@ internal sealed unsafe class QuestObjectiveSource(IDataManager dataManager) : IG
             }
         }
 
-        return (stepLabel, markers);
+        return (markerLabel, markers);
+    }
+
+    /// <summary>Every <c>TEXT_&lt;InternalName&gt;_TODO_&lt;nn&gt;</c> row in <paramref
+    /// name="raw"/>, keyed by its <c>nn</c> index (the same index as <c>Quest.TodoParams</c>) —
+    /// matched by string key rather than a fixed row offset, since nothing guarantees the TODO
+    /// block sits at the same offset in every quest's sheet.</summary>
+    private static Dictionary<int, (string Text, bool HasPlaceholder)> ParseTodoRows(
+        ExcelSheet<RawRow> raw, string internalName)
+    {
+        var keyPrefix = $"TEXT_{internalName.ToUpperInvariant()}_TODO_";
+        var byIndex = new Dictionary<int, (string Text, bool HasPlaceholder)>();
+        foreach (var row in raw)
+        {
+            var key = row.ReadStringColumn(0).ExtractText();
+            if (!key.StartsWith(keyPrefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!int.TryParse(
+                    key.AsSpan(keyPrefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var index))
+            {
+                continue;
+            }
+
+            var seString = row.ReadStringColumn(1);
+            byIndex[index] = (seString.ExtractText(), HasUnresolvedPlaceholder(seString));
+        }
+
+        return byIndex;
+    }
+
+    /// <summary>True when <paramref name="seString"/> carries a macro payload outside
+    /// <see cref="PresentationalMacroCodes"/> — a value only the live client can fill in.</summary>
+    private static bool HasUnresolvedPlaceholder(ReadOnlySeString seString)
+    {
+        foreach (var payload in seString)
+        {
+            if (payload.Type == ReadOnlySePayloadType.Macro && !PresentationalMacroCodes.Contains(payload.MacroCode))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>The quest's own ToDo text sheet — <c>TEXT_&lt;InternalName&gt;_TODO_&lt;nn&gt;</c>,
+    /// the exact strings the game's own quest tracker prints, one entry per
+    /// <c>Quest.TodoParams</c> index and keyed by the same sequence byte
+    /// <c>QuestManager.GetQuestSequence</c> returns at runtime — verified live against "Heroes of
+    /// the Hour" (quest 67782): sequence 1's entry reads "Speak with Lucia.", the exact text the
+    /// game's tracker shows, for a quest whose marker carries no label at all.
+    ///
+    /// <para>The per-quest sheet lives at <c>quest/&lt;first 3 digits of the internal row
+    /// number&gt;/&lt;InternalName&gt;</c> (e.g. quest 67782's internal id <c>HeaVnd105_02246</c>
+    /// resolves to <c>quest/022/HeaVnd105_02246</c>) — there is no strongly-typed sheet for it, so
+    /// this reads it as <see cref="RawRow"/> and matches rows by their string key rather than by a
+    /// fixed row offset, since nothing guarantees the TODO block sits at the same offset in every
+    /// quest's sheet.</para>
+    ///
+    /// <para>Cached forever per quest id in <see cref="stepTextCache"/> — this is static game data,
+    /// so unlike the live marker scan it never needs a fresh read.</para></summary>
+    private List<QuestStepText> ReadQuestStepTexts(ushort questId)
+    {
+        if (!stepTextCache.TryGetValue(questId, out var cached))
+        {
+            cached = ReadQuestStepTextsUncached(questId);
+            stepTextCache[questId] = cached;
+        }
+
+        return cached;
+    }
+
+    private List<QuestStepText> ReadQuestStepTextsUncached(ushort questId)
+    {
+        var result = new List<QuestStepText>();
+        var questSheet = dataManager.GetExcelSheet<Quest>();
+        if (questSheet.GetRowOrDefault(questId + QuestRowIdOffset) is not { } q || q.TodoParams.Count == 0)
+        {
+            return result;
+        }
+
+        var internalName = q.Id.ExtractText();
+        var raw = OpenQuestTextSheet(internalName);
+        if (raw == null)
+        {
+            return result;
+        }
+
+        var byIndex = ParseTodoRows(raw, internalName);
+        for (var i = 0; i < q.TodoParams.Count; i++)
+        {
+            var seq = q.TodoParams[i].ToDoCompleteSeq;
+            if (seq == 0 || !byIndex.TryGetValue(i, out var entry) || entry.Text.Length == 0)
+            {
+                continue;
+            }
+
+            result.Add(new QuestStepText(seq, entry.Text, entry.HasPlaceholder));
+        }
+
+        return result;
+    }
+
+    /// <summary>The per-quest raw text sheet at <c>quest/&lt;first 3 digits of the internal row
+    /// number&gt;/&lt;InternalName&gt;</c> (e.g. quest 67782's internal id
+    /// <c>HeaVnd105_02246</c> resolves to <c>quest/022/HeaVnd105_02246</c>), or null when
+    /// <paramref name="internalName"/> is too short for that split or the sheet does not
+    /// exist.</summary>
+    private ExcelSheet<RawRow>? OpenQuestTextSheet(string internalName)
+    {
+        if (internalName.Length < 4)
+        {
+            return null;
+        }
+
+        var numPart = internalName.Split('_')[^1];
+        if (numPart.Length < 3)
+        {
+            return null;
+        }
+
+        try
+        {
+            return dataManager.Excel.GetSheet<RawRow>(name: $"quest/{numPart[..3]}/{internalName}");
+        }
+        catch (Exception)
+        {
+            // No text sheet for this quest, or the naming convention doesn't hold for it — the
+            // marker-label fallback in QuestStepTextSelection covers this case.
+            return null;
+        }
     }
 
     /// <summary>Where the followed quest's current step is. Marker precedence is a pure decision
