@@ -141,17 +141,52 @@ public class ScenarioBannerTests
     }
 
     [Fact]
-    public void The_crest_slot_leaves_room_for_the_headline_and_the_marker_column_both()
+    public void The_emblem_costs_the_plate_the_same_share_the_games_own_does()
     {
-        // The emblem, the gap after it and the name have to add up to where the name actually starts,
-        // or the crest overlaps the first letter.
-        Assert.Equal(
-            GameMetrics.Banner.CrestLeft + GameMetrics.Banner.CrestSize + GameMetrics.Banner.CrestGap,
-            GameMetrics.Banner.HeadlineLeft);
+        // The measurement the whole left-hand arrangement is about. The game's crest is 52 wide at
+        // row-x 12 against a plate starting at row-x 39, so it takes 21 of the plate's 300 and hangs
+        // the rest outside. Ours has to sit the same way, or a 48-tall bar spends a fifth of its
+        // width on an ornament — which is what the first cut did, at 64 of 400.
+        Assert.InRange(GameMetrics.Banner.CrestOverlap, 18f, 26f);
+        Assert.True(
+            GameMetrics.Banner.CrestOverlap / GameMetrics.Banner.PlateWidth < 0.09f,
+            "the emblem is eating more of the plate than the game's own does");
 
-        // And the markers hang into the crest's own column, below it — which is fine, because the
-        // crest stops at the plate's bottom edge and the markers start there.
-        Assert.True(GameMetrics.Banner.MarkerLeft < GameMetrics.Banner.CrestLeft + GameMetrics.Banner.CrestSize);
+        // Most of it is outside the plate, which is what buys the headline the game's own inset.
+        Assert.True(GameMetrics.Banner.CrestOverlap < GameMetrics.Banner.CrestSize / 2f);
+    }
+
+    [Fact]
+    public void The_emblem_is_no_larger_than_the_games_own_crest_draws()
+    {
+        // The game's part is 52x52 but its ink is only 47x50 of that — measured off (228,50) as the
+        // bounding box of everything with any alpha, at 64% coverage, because it is a ragged flame.
+        // Ours is a ring that reaches its own box's edge in both axes, so the honest comparison is
+        // our drawn size against their ink.
+        Assert.True(GameMetrics.Banner.CrestSize <= 47f, "the emblem is wider than the game's crest draws");
+        Assert.True(
+            GameMetrics.Banner.CrestSize < GameMetrics.Banner.PlateHeight,
+            "the emblem is taller than the bar it is pinned to");
+    }
+
+    [Fact]
+    public void The_headline_gets_the_same_room_the_games_own_does()
+    {
+        // 300 - 24 - 26, which is the point of hanging the emblem outside the plate: the name is no
+        // more likely to truncate than the main scenario's own names already are.
+        Assert.Equal(250f, GameMetrics.Banner.HeadlineWidth);
+        Assert.Equal(GameMetrics.Banner.PlateLeft + GameMetrics.Banner.PlateTextInset, GameMetrics.Banner.HeadlineLeft);
+    }
+
+    [Fact]
+    public void The_readout_is_not_wider_than_the_games_own_banner()
+    {
+        // The plate is drawn at the part's native width, so the nine-slice is the identity and the
+        // whole box is 324 against the game's own 340 root. This is the test for "ours should not
+        // look bigger than the game's own banner sitting near it".
+        Assert.Equal(GameMetrics.Banner.PlateWidth, GameMetrics.Banner.Width - GameMetrics.Banner.PlateLeft);
+        Assert.True(GameMetrics.Banner.Width <= 340f, "the readout is wider than the Main Scenario Guide's own root");
+        Assert.True(GameMetrics.Banner.Width < GameMetrics.Hud.Width, "the readout did not actually get smaller");
     }
 
     [Fact]
@@ -175,7 +210,7 @@ public class ScenarioBannerTests
         // The art's one interior detail sits at source x=279-288 of a 300-wide part, so an inset
         // under 24 slices through it and the readout gets a smeared chevron at every width.
         Assert.True(GameMetrics.Banner.PlateInsetX >= 300f - 288f + 12f);
-        Assert.True(GameMetrics.Banner.PlateInsetX * 2f < GameMetrics.Hud.Width);
+        Assert.True(GameMetrics.Banner.PlateInsetX * 2f < GameMetrics.Banner.PlateWidth);
     }
 
     [Fact]

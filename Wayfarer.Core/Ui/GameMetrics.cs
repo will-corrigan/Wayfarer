@@ -373,12 +373,14 @@ public static class GameMetrics
     /// a parchment plate, a crest hanging off the plate's left end, and subordinate lines beneath at
     /// a fixed pitch with markers hanging into the gutter to the left of the text.</para>
     ///
-    /// <para><b>The one thing the game does that we do not.</b> The game draws the plate as a plain
-    /// <c>Image</c> at the part's native 300x48 and ships no wider variant. The art nine-slices
-    /// cleanly at <see cref="PlateInsetX"/>, which was checked by rendering it at 400, 420 and 600
-    /// and looking at all three, so the readout wears it at <see cref="Hud.Width"/> instead.
-    /// Vertically it does not stretch — the longest run of identical rows in the art is two pixels —
-    /// so <see cref="PlateHeight"/> is fixed.</para></summary>
+    /// <para><b>It is worn at the game's own size, and this is load-bearing.</b> The plate is drawn
+    /// at the part's native 300x48 — what the game itself draws it at — so the readout cannot end up
+    /// looking bigger than the element it is imitating when the two sit near each other: our whole
+    /// box is <see cref="Width"/> = 324 against the game's own 340 root. The nine-grid stays, because
+    /// the art does slice cleanly at <see cref="PlateInsetX"/> (rendered at 400, 420 and 600, all
+    /// three inspected), but at 300 the slice is the identity and nothing is stretched in either
+    /// axis. Vertically it could not be anyway: the longest run of identical rows in the art is two
+    /// pixels.</para></summary>
     public static class Banner
     {
         /// <summary>Left edge of the plate part on the sheet. <c>ScenarioTree.uld</c> partlist 4,
@@ -395,6 +397,26 @@ public static class GameMetrics
         /// <summary>The plate's height, which is not negotiable: the art has no stretchable band
         /// vertically.</summary>
         public const float PlateHeight = 48f;
+
+        /// <summary>Where the plate starts inside the readout's own box — the strip of margin the
+        /// emblem hangs into, which is the game's construction rather than a border of ours.
+        ///
+        /// <para>The game's crest does not sit <i>on</i> its plate: the plate starts at x=39 of the
+        /// headline row and the crest at x=12, so four fifths of the emblem is out to the left and it
+        /// costs the plate only its last 21 pixels. That is why the game can put a 52-pixel ornament
+        /// on a 48-pixel bar without the quest name losing any room — and it is exactly what the
+        /// first cut of this got wrong by putting the whole emblem inside the plate, where it ate 64
+        /// of the plate's own width.</para>
+        ///
+        /// <para>Twenty-four rather than the game's 39 because the game's ornament block is 76 wide —
+        /// it carries a chapter numeral in a ring, which we deliberately do not draw (see
+        /// <see cref="CrestSize"/>). With <see cref="CrestLeft"/> at 1 and a 44-wide emblem the
+        /// overlap comes out at 21 — the game's own number.</para></summary>
+        public const float PlateLeft = 24f;
+
+        /// <summary>The readout's whole box when it wears the banner: the emblem's margin plus the
+        /// plate at its native width. 324, against the game's own 340 root.</summary>
+        public const float Width = PlateLeft + PlateWidth;
 
         /// <summary>The nine-slice's left and right insets. Twenty-four rather than something
         /// smaller because the plate carries a small chevron near its right end, at source x=279-288,
@@ -436,33 +458,57 @@ public static class GameMetrics
         /// <summary>The pill's top edge. ULD node <c>#12</c>, y=3.</summary>
         public const float StripTop = 3f;
 
-        /// <summary>The crest that hangs off the plate's left end. Component <c>1001 #3</c> is a
-        /// 52x52 image; ours is the plugin's own emblem rather than the game's meteor, for the reason
-        /// <see cref="WayfarerBitmap"/> gives.</summary>
-        public const float CrestSize = 52f;
+        /// <summary>The emblem hanging off the plate's left end. Ours is the plugin's own mark rather
+        /// than the game's meteor, for the reason <see cref="WayfarerBitmap"/> gives.
+        ///
+        /// <para><b>Smaller than the game's 52, on purpose, and by a measurement.</b> The game's part
+        /// is 52x52 but its ink only fills 47x50 of that (measured off <c>(228,50)</c>: bounding box
+        /// of everything with any alpha, 90% x 96% of the part at 64% coverage — it is a ragged flame
+        /// shape, not a disc). Ours is a ring that reaches the edge of its own box in both axes, so at
+        /// 52 it drew a solidly bigger mark than the game's does, which is what "the crest icon is too
+        /// big" was. At 44 our ink is about 43x43 — inside the game's 47x50 in both axes — and the
+        /// ring's stroke is still two pixels, which is the floor for it staying a ring.</para>
+        ///
+        /// <para>It also fixes the ratio that matters more: with <see cref="PlateLeft"/>, a 44-wide
+        /// emblem at <see cref="CrestLeft"/> overlaps the plate by 21 of its 300 — exactly what the
+        /// game's crest ink overlaps its own. The plate gives up the same share of itself to an
+        /// ornament that the game's does.</para></summary>
+        public const float CrestSize = 44f;
 
-        /// <summary>How far in from the banner's left edge the crest sits. The game's own hangs
-        /// <i>outside</i> the plate — the plate starts at x=39 of the row and the crest at x=12 —
-        /// which is not available to us, because our plate spans the readout's whole width. Just
-        /// inside the plate's own chamfered cap is the nearest thing to it.</summary>
-        public const float CrestLeft = 6f;
+        /// <summary>How far in from the readout's own left edge the emblem sits, inside the margin
+        /// <see cref="PlateLeft"/> reserves for it. One, so a 44-wide emblem overlaps the plate by
+        /// exactly the 21 the game's own crest ink does.</summary>
+        public const float CrestLeft = 1f;
 
-        /// <summary>How far the crest rises above the plate's top edge. The game's sits at absolute
-        /// y=15 against a plate at y=20 — a deliberate five-pixel overhang, which is what makes it
-        /// read as pinned <i>to</i> the plate rather than printed on it.</summary>
-        public const float CrestRise = 5f;
+        /// <summary>How far the emblem rises above the plate's top edge. The game's sits at absolute
+        /// y=15 against a plate at y=20 — a deliberate overhang, which is what makes it read as
+        /// pinned <i>to</i> the plate rather than printed on it. Two rather than the game's five
+        /// because ours is 44 tall against a 48 plate and the game's is 52: the same idea, scaled to
+        /// leave the emblem sitting just proud of the bar rather than towering over it.</summary>
+        public const float CrestRise = 2f;
 
-        /// <summary>The gap between the crest and the start of the headline's words.</summary>
-        public const float CrestGap = 6f;
+        /// <summary>How much of the plate's own width the emblem costs it, which is the number the
+        /// game's own arrangement is really about — see <see cref="PlateLeft"/>. Recorded so the
+        /// relationship can be asserted rather than eyeballed.</summary>
+        public const float CrestOverlap = CrestLeft + CrestSize - PlateLeft;
 
-        /// <summary>Where the headline's words start, measured from the banner's left edge. The same
-        /// 64 the game reaches by a different route (its plate at x=39 plus a text block at x=63,
-        /// against our crest slot plus its gap).</summary>
-        public const float HeadlineLeft = CrestLeft + CrestSize + CrestGap;
+        /// <summary>The headline's inset from the plate's own left edge — <b>the game's own 24</b>
+        /// (its plate is at x=39 and its text block at x=63), which is what the emblem hanging
+        /// outside the plate buys back.</summary>
+        public const float PlateTextInset = 24f;
+
+        /// <summary>Where the headline's words start, measured from the readout's left edge.</summary>
+        public const float HeadlineLeft = PlateLeft + PlateTextInset;
 
         /// <summary>What the headline gives back to the plate's right-hand cap. The game's own text
-        /// box is 250 wide in a 300 plate starting at 24, which leaves 26.</summary>
+        /// box is 250 wide in a 300 plate starting at 24, which leaves 26 — and at our native plate
+        /// width the headline's box comes out at exactly that same 250.</summary>
         public const float HeadlineRight = 26f;
+
+        /// <summary>The room the name actually gets: <c>300 - 24 - 26</c>. The same 250 the game's
+        /// own headline node is, so nothing we put in the bar is at more risk of truncating than the
+        /// main scenario's own names already are.</summary>
+        public const float HeadlineWidth = PlateWidth - PlateTextInset - HeadlineRight;
 
         /// <summary>The headline's own line inside the plate — <c>(48 - 18) / 2</c>, which is exactly
         /// centred, and exactly what component <c>1001 #5</c> does (y=15, h=18).</summary>

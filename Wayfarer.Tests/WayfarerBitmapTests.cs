@@ -18,8 +18,8 @@ public class WayfarerBitmapTests
     [Fact]
     public void The_corners_are_empty_so_the_emblem_reads_as_round()
     {
-        // Also the check that the installer icon's dark rounded-square tile really is gone: a crest
-        // sits ON the banner's plate, and a filled corner would be a sticker pasted onto it.
+        // The installer icon's tile is a rounded SQUARE and this one has to be a disc: a square field
+        // pasted on the banner's plate is a sticker, and the game's own crest in that slot is round.
         var pixels = WayfarerBitmap.Render();
         const int Last = WayfarerBitmap.Size - 1;
 
@@ -30,17 +30,23 @@ public class WayfarerBitmapTests
     }
 
     [Fact]
-    public void There_is_a_ring_with_nothing_but_air_inside_it()
+    public void The_emblem_is_opaque_right_out_to_its_ring()
     {
-        // Walking out along a diagonal — which no compass point lies on, and no tick — has to cross
-        // empty, then the ring, then empty again. A solid disc would fail the first of those and is
-        // exactly what the emblem must not be.
+        // The defect this pins, seen and not guessed at: with nothing behind the ring, the banner
+        // plate's own chamfered left cap showed straight through the middle of the emblem and it read
+        // as broken. A crest is an object — solid from the centre out to its rim, and stopping there.
+        // The diagonal is the one direction along which neither a compass point nor a tick lies.
         var pixels = WayfarerBitmap.Render();
         const float Diagonal = MathF.PI / 4f;
 
-        Assert.False(Solid(pixels, 0.45f, Diagonal), "the space between the needle and the ring is filled in");
+        Assert.True(Solid(pixels, 0.45f, Diagonal), "the emblem has a hole in it and the plate shows through");
         Assert.True(Solid(pixels, 0.82f, Diagonal), "there is no ring");
-        Assert.False(Solid(pixels, 0.99f, Diagonal), "the ring has no outside");
+        Assert.False(Solid(pixels, 0.99f, Diagonal), "the emblem does not end");
+
+        // And what it is solid WITH is dark, so the gold on top of it reads.
+        var half = WayfarerBitmap.Size / 2;
+        var offset = (int)(0.45f * half * MathF.Cos(Diagonal));
+        Assert.True(Luma(pixels, half + offset, half + offset) < 80, "the emblem's field is not dark");
     }
 
     [Fact]
@@ -71,14 +77,18 @@ public class WayfarerBitmapTests
     {
         // The long half is above the waist and the short one below, which is what makes it a needle
         // rather than a diamond — and what says which way is north without a letter.
+        //
+        // Measured in BRIGHTNESS rather than in alpha, because the whole emblem is opaque: the needle
+        // is gold and the field it lies on is navy, so "is there needle here?" is "is this bright?".
         var pixels = WayfarerBitmap.Render();
         const int Centre = WayfarerBitmap.Size / 2;
+        var reach = (int)(0.50f * (WayfarerBitmap.Size / 2f));
 
-        Assert.True(Solid(pixels, -0.50f, MathF.PI / 2f), "the needle has no tip");
-        Assert.False(Solid(pixels, 0.50f, MathF.PI / 2f), "the needle's tail is as long as its tip");
+        Assert.True(Luma(pixels, Centre, Centre - reach) > 120, "the needle has no tip");
+        Assert.True(Luma(pixels, Centre, Centre + reach) < 80, "the needle's tail is as long as its tip");
 
-        // And the pin through it is dark, not gold: it is the one part of the mark that is a hole in
-        // the source icon.
+        // And the pin through it is dark, not gold: it is the one part of the mark that is the field
+        // showing through the needle rather than being drawn on top of it.
         Assert.True(Luma(pixels, Centre, Centre) < 80, "the hub is not dark");
     }
 

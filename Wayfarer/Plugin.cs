@@ -77,7 +77,6 @@ public sealed class Plugin : IDalamudPlugin
         INamePlateGui namePlateGui,
         ITextureProvider textureProvider,
         IDtrBar dtrBar,
-        IKeyState keyState,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -112,7 +111,7 @@ public sealed class Plugin : IDalamudPlugin
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, inputMode, textureProvider, log);
 
-        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider, keyState);
+        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
 
         modules.Register(
@@ -381,7 +380,6 @@ public sealed class Plugin : IDalamudPlugin
             services.ClientState,
             services.Framework,
             services.Textures,
-            services.KeyState,
             OpenConfig,
             hub.GetFollowChoices,
             log);
@@ -463,8 +461,7 @@ public sealed class Plugin : IDalamudPlugin
         IClientState ClientState,
         IObjectTable Objects,
         InputModeService InputMode,
-        ITextureProvider Textures,
-        IKeyState KeyState);
+        ITextureProvider Textures);
 
     /// <summary>What <see cref="BuildGuidance"/> hands back, so the module builders can take one
     /// parameter instead of five.</summary>

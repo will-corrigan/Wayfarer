@@ -64,10 +64,16 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// tab, on the row that is currently selected.</para></summary>
     private const TextFlags SubjectFlags = TextFlags.Edge | TextFlags.Ellipsis;
 
-    /// <summary>The readout box, at the width the game gives its own always-on overlay — the quest
-    /// tracker is 400 wide (ToDoList root <c>#1</c>) and every line in it 372. It is also the width
-    /// the banner plate is nine-sliced to; see <see cref="GameMetrics.Banner"/>.</summary>
-    private const float BaseWidth = GameMetrics.Hud.Width;
+    /// <summary>The readout box: the banner's own width — the plate at the size the game draws it,
+    /// plus the margin its emblem hangs into. 324, against the game's own 340 root.
+    ///
+    /// <para><b>Deliberately no longer the quest tracker's 400.</b> That was the right width while
+    /// the readout was a bare block of text, because the tracker is the game's other always-on
+    /// overlay. It became the wrong one the moment the readout started wearing a specific piece of
+    /// art: it meant stretching a 300-wide plate by a third, and the result was visibly larger than
+    /// the game's own banner sitting near it. At the plate's native width the nine-slice is the
+    /// identity and the readout is exactly the size of the thing it is imitating.</para></summary>
+    private const float BaseWidth = GameMetrics.Banner.Width;
 
     /// <summary>The game's own art sheet for the Main Scenario Guide's banner. Every rectangle taken
     /// out of it is in <see cref="GameMetrics.Banner"/>, which also says which parts are deliberately
@@ -273,7 +279,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// ended up being described as unintuitive. It also draws no list of its own — <i>this</i> node
     /// still owns exactly one objective, which is the rule that keeps it glanceable and
     /// click-through-able on the overlay. What clicking it does is not this node's business at all:
-    /// the clickable host wires it to a sibling of the whole body, <c>FollowSwitcherPopupNode</c>,
+    /// the clickable host asks the game to open its own context menu (<see cref="FollowSwitcherMenu"/>),
     /// so the objective the overlay draws and the list the switcher drops are two node trees that
     /// happen to sit next to each other rather than one that would have to be different on the two
     /// hosts.</para>
@@ -423,17 +429,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// stays true across the teleport line appearing under a cog that was already there, and the
     /// list would never be rebuilt for it — a hit box that is never hit.</para></summary>
     public int ClickTargets { get; private set; }
-
-    /// <summary>Where the switcher's dropdown should anchor this frame — the same left edge every
-    /// other line in the block shares, just below the subject line — and null whenever there is no
-    /// switcher to hang one off (no host wired for it, or its art has not loaded). The clickable
-    /// host reads this at the moment the switcher is clicked; nothing here owns the dropdown
-    /// itself, which is deliberately a sibling of this node rather than a child of it — see
-    /// <see cref="ClickableReadoutAddon"/>.</summary>
-    public Vector2? DropdownAnchor { get; private set; }
-
-    /// <inheritdoc cref="DropdownAnchor"/>
-    public float DropdownWidth { get; private set; }
 
     /// <summary>Lays the whole readout out for this frame and returns the size it needs, in the
     /// host's own units. The host positions and sizes itself from that; nothing else about the
@@ -1006,8 +1001,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     {
         var drawable = BannerDrawable();
 
-        plateNode.Size = new Vector2(width, GameMetrics.Banner.PlateHeight * factor);
-        plateNode.Position = new Vector2(0f, top + (GameMetrics.Banner.PlateTop * factor));
+        // The plate starts past the margin its emblem hangs into, which is the game's own
+        // construction — see GameMetrics.Banner.PlateLeft. At the readout's width this comes out at
+        // the part's native 300, so the nine-slice is the identity and nothing is stretched.
+        var plateLeft = GameMetrics.Banner.PlateLeft * factor;
+        plateNode.Size = new Vector2(
+            Math.Max(width - plateLeft, factor), GameMetrics.Banner.PlateHeight * factor);
+        plateNode.Position = new Vector2(plateLeft, top + (GameMetrics.Banner.PlateTop * factor));
         plateNode.IsVisible = drawable;
 
         var stripWidth = Math.Min(GameMetrics.Banner.StripWidth * factor, width);
@@ -1044,8 +1044,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         if (bannerHitBox is not null)
         {
-            bannerHitBox.Size = plateNode.Size;
-            bannerHitBox.Position = plateNode.Position;
+            // The plate AND the emblem's margin beside it: the mark is the most obviously "this is
+            // the plugin" thing on the readout, so it would be strange for it to be the one part of
+            // the banner that is not the plugin's own button.
+            bannerHitBox.Size = new Vector2(width, GameMetrics.Banner.PlateHeight * factor);
+            bannerHitBox.Position = new Vector2(0f, top + (GameMetrics.Banner.PlateTop * factor));
             bannerHitBox.IsVisible = true;
         }
     }
@@ -1388,9 +1391,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// — which is the same room the line was truncated into, so a name that ran out of space gets
     /// the arrow right after its ellipsis rather than off the end of the plate.</para>
     ///
-    /// <para>The dropdown it opens hangs from the same left edge every subordinate line shares, just
-    /// below the plate: the list is a list of things to follow, and the lines beneath the banner are
-    /// where the followed thing's own detail lives, so they line up.</para></summary>
+    /// <para>Nothing here knows where the list it opens goes: it is the game's own context menu now,
+    /// which opens at the cursor and is the game's to place — see
+    /// <see cref="FollowSwitcherMenu"/>.</para></summary>
     private void LayoutSwitcher(float factor, float width, SubjectLine? subject)
     {
         if (switcherNode is null)
@@ -1401,7 +1404,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         if (subject is not { } line || !SwitcherDrawable())
         {
             switcherNode.IsVisible = false;
-            DropdownAnchor = null;
             return;
         }
 
@@ -1418,14 +1420,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             Math.Clamp(x, left, Math.Max(left + lineWidth - size, left)),
             line.Top + OpticalCentreOffset(line.FontSize, size));
         switcherNode.IsVisible = true;
-
-        // Where the dropdown hangs if the switcher is clicked this frame: the subordinate lines'
-        // own left edge, immediately below the plate. See DropdownAnchor's own doc comment.
-        var subLineLeft = GameMetrics.Banner.SubLineLeft * factor;
-        var plateBottom = line.Top
-            + ((GameMetrics.Banner.PlateHeight - GameMetrics.Banner.HeadlineTop) * factor);
-        DropdownAnchor = new Vector2(subLineLeft, plateBottom);
-        DropdownWidth = Math.Max(width - subLineLeft - (GameMetrics.Banner.HeadlineRight * factor), factor);
     }
 
     /// <summary>Generates the cog once. Same contract as the arrow's texture: the pixels are

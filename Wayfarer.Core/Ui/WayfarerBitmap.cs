@@ -16,11 +16,15 @@ namespace Wayfarer.Core.Ui;
 /// installer (<c>images/icon.png</c>, referenced as <c>IconUrl</c> in <c>repo.json</c>). Two
 /// deliberate differences, both forced by where it is going:
 /// <list type="bullet">
-/// <item>the installer icon's dark navy rounded square is <b>dropped</b>. A crest sits <i>on</i> the
-/// plate the way the game's own emblems do; a filled tile pasted on it would read as a
-/// sticker.</item>
+/// <item>the installer icon's dark navy rounded square becomes a dark navy <b>disc</b>. It cannot
+/// simply be dropped, which is what the first cut of this did: with nothing behind the ring, the
+/// plate's own chamfered left cap showed straight through the middle of the emblem and it read as
+/// broken. It cannot stay a square either — a filled tile sitting on the plate is a sticker. A disc
+/// is what a crest <i>is</i>: the game's own is opaque, with 64% of its 52x52 box inked, and this
+/// very banner already carries filled circular emblems at exactly this size —
+/// <c>ScenarioTree.uld</c> partlist 1 is four 44x44 chapter medallions.</item>
 /// <item>the strokes are <b>thicker in proportion</b> than the 512-pixel original's. A ring drawn
-/// four pixels wide at 512 is under half a pixel at 52 and simply vanishes; the ring, the ticks and
+/// four pixels wide at 512 is under half a pixel at 44 and simply vanishes; the ring, the ticks and
 /// the hub are all sized against the crest slot rather than scaled down from the source.</item>
 /// </list></para>
 ///
@@ -36,8 +40,8 @@ namespace Wayfarer.Core.Ui;
 /// </summary>
 public static class WayfarerBitmap
 {
-    /// <summary>The generated texture is square and this is its side, in pixels. Getting on for four
-    /// times the 52 the crest slot draws it at, so the downscale does the anti-aliasing.</summary>
+    /// <summary>The generated texture is square and this is its side, in pixels. Well over four
+    /// times the 44 the crest slot draws it at, so the downscale does the anti-aliasing.</summary>
     public const int Size = 192;
 
     /// <summary>Bytes per generated image — <c>Size * Size * 4</c>, RGBA, straight (not
@@ -47,6 +51,11 @@ public static class WayfarerBitmap
     // Geometry, in units of half the image, measured off images/icon.png at 512 and then adjusted
     // where the original's proportions do not survive being drawn at 52 pixels. The source's own
     // numbers are quoted beside each so the two can be compared.
+
+    /// <summary>The field the mark sits on — the round equivalent of the source icon's dark tile, and
+    /// what makes the emblem opaque so the plate's own edge cannot show through it. Stops just inside
+    /// the ring so the ring reads as a rim around it rather than a line drawn on it.</summary>
+    private const float FieldRadius = 0.84f;
 
     /// <summary>The ring's radius. Source: 210 of 256.</summary>
     private const float RingRadius = 0.82f;
@@ -79,7 +88,10 @@ public static class WayfarerBitmap
     /// dot closes up entirely once the outline is drawn around it.</summary>
     private const float HubRadius = 0.075f;
 
-    // Outline widths, in texture pixels: about one pixel each once the texture is drawn at 52.
+    // Outline widths, in texture pixels: about one pixel each once the texture is drawn at 44.
+    private const float FieldOutline = 3.4f;
+
+    /// <inheritdoc cref="FieldOutline"/>
     private const float RingOutline = 3.4f;
     private const float NeedleOutline = 3.6f;
     private const float HubOutline = 2.2f;
@@ -97,9 +109,9 @@ public static class WayfarerBitmap
     /// <summary>The shaded half — everything below the waist.</summary>
     private static readonly Vector3 NeedleShaded = Rgb(201, 150, 46);
 
-    /// <summary>The hub. The source icon draws it as its own dark navy background showing through
-    /// the needle; with the background gone it has to be painted, so it is painted that same
-    /// navy.</summary>
+    /// <summary>The field behind the mark, and the pin at the centre of the needle — the same colour,
+    /// because in the source icon the pin <i>is</i> the background showing through. Sampled off the
+    /// installer icon's own tile.</summary>
     private static readonly Vector3 HubNavy = Rgb(26, 26, 36);
 
     /// <summary>Renders the emblem as straight-alpha RGBA bytes, row-major from the top-left, ready
@@ -115,9 +127,12 @@ public static class WayfarerBitmap
             {
                 var point = new Vector2(((x + 0.5f) / Half) - 1f, ((y + 0.5f) / Half) - 1f);
 
-                // Painter's order, back to front, exactly as the source icon stacks: the ring and
-                // its ticks, the needle over them, the pin through the needle.
+                // Painter's order, back to front, exactly as the source icon stacks: its dark field,
+                // the ring and its ticks, the needle over them, the pin through the needle. The pin
+                // is the same navy as the field, which is how the source draws it — as its own
+                // background showing through the needle.
                 var pixel = Vector4.Zero;
+                Paint(ref pixel, (point.Length() - FieldRadius) * Half, FieldOutline, HubNavy);
                 Paint(ref pixel, RingDistance(point) * Half, RingOutline, RingGold);
                 Paint(
                     ref pixel,

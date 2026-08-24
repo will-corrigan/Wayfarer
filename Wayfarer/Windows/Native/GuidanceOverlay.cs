@@ -44,7 +44,6 @@ internal sealed class GuidanceOverlay(
     IClientState clientState,
     IFramework framework,
     ITextureProvider textures,
-    IKeyState keyState,
     Action onSettingsClicked,
     Func<IReadOnlyList<FollowChoice>> getFollowChoices,
     IPluginLog log) : IDisposable
@@ -206,7 +205,6 @@ internal sealed class GuidanceOverlay(
                 OpenJournal,
                 textures,
                 framework,
-                keyState,
                 log,
                 () => cfg.LogDiagnostics)
             {
