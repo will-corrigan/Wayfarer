@@ -17,7 +17,7 @@ namespace Wayfarer.Tests;
 /// depends on; they cannot run it.</para></summary>
 public class NativeDisposalTests
 {
-    private const string ReadoutHost = "Wayfarer/Windows/Native/ClickableReadoutAddon.cs";
+    private const string ReadoutHost = "Wayfarer/Windows/Native/ReadoutAddon.cs";
     private const string FollowMenu = "Wayfarer/Windows/Native/FollowSwitcherMenu.cs";
 
     /// <summary>Nothing is freed above the thread check. That is where the old code put the menu — the
@@ -29,9 +29,9 @@ public class NativeDisposalTests
         var dispose = ReadoutDispose();
 
         var check = dispose.IndexOf("if (framework.IsInFrameworkUpdateThread)", StringComparison.Ordinal);
-        Assert.True(check >= 0, "ClickableReadoutAddon.Dispose no longer checks which thread it is on.");
+        Assert.True(check >= 0, "ReadoutAddon.Dispose no longer checks which thread it is on.");
 
-        var early = "ClickableReadoutAddon.Dispose frees the follow menu before it has the framework thread. That "
+        var early = "ReadoutAddon.Dispose frees the follow menu before it has the framework thread. That "
             + "menu hands an allocation back to the game's UI heap, and Dalamud unloads plugins on a thread-pool "
             + "thread.";
 
@@ -39,7 +39,7 @@ public class NativeDisposalTests
 
         Assert.True(
             dispose.IndexOf("base.Dispose()", StringComparison.Ordinal) > check,
-            "ClickableReadoutAddon.Dispose frees its node tree before it has the framework thread.");
+            "ReadoutAddon.Dispose frees its node tree before it has the framework thread.");
     }
 
     /// <summary>And the menu is freed on every path the node tree is freed on — the
@@ -53,7 +53,7 @@ public class NativeDisposalTests
         var menus = SourceGuard.Occurrences(dispose, "followMenu.Dispose()");
         var trees = SourceGuard.Occurrences(dispose, "base.Dispose()");
 
-        Assert.True(trees > 0, "ClickableReadoutAddon.Dispose no longer disposes the addon itself.");
+        Assert.True(trees > 0, "ReadoutAddon.Dispose no longer disposes the addon itself.");
         Assert.Equal(trees, menus);
     }
 

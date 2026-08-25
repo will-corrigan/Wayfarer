@@ -1,46 +1,47 @@
 using System.Numerics;
-using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
-using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
 
 namespace Wayfarer.Windows.Native;
 
-/// <summary>The mouse player's host for the guidance readout: the same
-/// <see cref="ReadoutBodyNode"/> the overlay draws, in an addon that can be clicked.
+/// <summary>The readout's host: the <see cref="ReadoutBodyNode"/> in a chromeless native addon that
+/// a mouse can click and a controller can reach.
 ///
-/// <b>Why this exists.</b> The default loop is walk, read, click, teleport. The readout says
-/// "Teleport to Horizon first" and, on the overlay, that line cannot be clicked — an overlay is
-/// click-through by construction, which is exactly what makes it safe for a controller. So a mouse
-/// gets a different <i>host</i> for the identical <i>body</i>: one node tree, one layout pass, one
-/// set of fonts and colours, hosted in something that receives mouse events.
+/// <b>Why there is one host and not two.</b> There used to be two, chosen by what the player was
+/// holding, on the belief that an always-visible focusable window is a trap for a controller — that
+/// a cursor could land on it mid-fight. It cannot. The game puts a controller into UI navigation
+/// with a deliberate press of its own (<i>HUD Select</i>: the touchpad, the View button, the minus
+/// button; <c>PAD_HUDFOCUS</c> in the game's own keybind names) and only then does anything cycle.
+/// Nothing about holding a pad moves the cursor onto a window by itself. So the mouse's host became
+/// the only host: the same pixels, the same four controls, reachable both ways.
 ///
 /// <b>Why it does not look like a window.</b> It is chromeless. KamiToolKit builds a
 /// <see cref="WindowNode"/> for every non-overlay addon, and this supplies that node already
 /// invisible, so the frame, the title bar, the close button and the draggable header are all
-/// allocated and none of them are drawn. The readout therefore renders pixel-for-pixel as it does
-/// on the overlay — that appearance is a fixed point, and hosting is not allowed to change it.
+/// allocated and none of them are drawn. The readout therefore renders pixel-for-pixel as it did on
+/// the overlay — that appearance is a fixed point, and hosting is not allowed to change it.
 ///
-/// <b>What it must never do.</b> Steal focus, or be reachable by a controller:
-/// <c>DisableFocusOnShow</c>, <c>DisableFocusability</c> and the "disable controller nav" bit of
-/// <c>Flags1A2</c> are all set — three of the four flags KamiToolKit sets for its own overlays.
-/// Only the fourth, click-through, is deliberately left off, because being clickable is the entire
-/// point of this host. Be dragged: dragging is the window node's header collision, and that node is
-/// invisible. Be closed by Esc: <c>RespectCloseAll</c> is off. Make a sound, or offer a title-bar
-/// menu: both off.
+/// <b>What it must never do.</b> Take focus unasked: <c>DisableFocusOnShow</c> is set, so being
+/// shown never moves the cursor here — the same posture the game's own HUD elements have, which are
+/// never focused until HUD Select reaches them and are reachable all the same. Be closed by Esc:
+/// <c>RespectCloseAll</c> is off and <c>DisableUnfocusedCloseOnEsc</c> is on, and if the game closes
+/// it anyway <see cref="GuidanceOverlay"/> opens it again on the next frame, so Esc cannot make the
+/// readout go away for the session. Make a sound, or offer a title-bar menu: both off. Be dragged
+/// other than deliberately: dragging is the window node's header collision, and that node is
+/// invisible.
 ///
-/// <b>The settings cog.</b> The readout carries one, and only here. The player asked to be able to
-/// reach Settings from the readout instead of going through the plugin list, and this host is the one
-/// that can receive the click. The overlay deliberately does not draw one — see
-/// <see cref="ReadoutBodyNode"/>.
+/// <b>What it deliberately no longer does.</b> Set <c>DisableFocusability</c> and the "disable
+/// controller nav" bit of <c>Flags1A2</c> — the two flags KamiToolKit sets for its own click-through
+/// overlays. Those are what kept a pad out, and keeping a pad out was the mistake.
 ///
-/// <b>The follow switcher's list.</b> Also only here, and for the same reason as the cog — a
-/// controller's readout is click-through by construction and cannot host anything interactive at
-/// all. It is the game's own context menu rather than a panel of ours, so its depth, its input, its
-/// scrolling and its dismissal are all the game's; see <see cref="FollowSwitcherMenu"/> for what
-/// that fixed and what it costs.
+/// <b>The settings cog, and the follow switcher's list.</b> Both live on the readout, and both are
+/// this host's, because it is the one that receives input at all. The switcher's list is the game's
+/// own context menu rather than a panel of ours, so its depth, its input, its scrolling and its
+/// dismissal are all the game's; see <see cref="FollowSwitcherMenu"/> for what that fixed and what
+/// it costs.
 ///
 /// <b>Scale — and this host now does nothing whatsoever about it.</b> The game renders a normal
 /// addon at the player's interface scale, which is exactly what is wanted: the addon that draws the
@@ -57,7 +58,7 @@ namespace Wayfarer.Windows.Native;
 /// The one consequence to keep in mind: <see cref="ReadoutBodyNode.Layout"/> returns a size in
 /// addon UNITS here, while <see cref="ReadoutPlacement"/> works in screen PIXELS, so
 /// <see cref="Render"/> converts between them.</summary>
-internal sealed unsafe class ClickableReadoutAddon(
+internal sealed unsafe class ReadoutAddon(
     Func<ReadoutFrame?> provider,
     ReadoutPlacement placement,
     Action onTeleportClicked,
@@ -84,6 +85,10 @@ internal sealed unsafe class ClickableReadoutAddon(
     private int lastClickTargets = -1;
 
     private bool broken;
+
+    /// <summary>Whether the game had the cursor on this addon last frame — see
+    /// <see cref="ReportFocus"/>.</summary>
+    private bool hadFocus;
 
     /// <inheritdoc/>
     public override void Dispose()
@@ -117,7 +122,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         catch (Exception ex)
         {
             const string message =
-                "Wayfarer readout: disposing the clickable readout on the framework thread failed or timed out, "
+                "Wayfarer readout: disposing the readout on the framework thread failed or timed out, "
                 + "so a stray readout may remain on screen until the game is restarted.";
             log.Warning(ex, message);
         }
@@ -125,22 +130,21 @@ internal sealed unsafe class ClickableReadoutAddon(
 
     protected override unsafe void OnSetup(AtkUnitBase* addon, Span<AtkValue> values)
     {
-        // None of these can be set through the toolkit's own surface, and together they are what
-        // keep a clickable addon from behaving like a window: never take focus when shown, never be
-        // focusable at all, and never appear in the controller's navigation graph. Click dispatch
-        // runs through the collision node list, not the focus stack, so mouse events still arrive.
-        //
-        // The third is the one this surface would otherwise be missing. KamiToolKit sets all three
-        // together for its own non-interactive addons (NativeAddon.Flags.cs, SetOverlayFlags), but
-        // only reaches that path for overlays, and this is a normal addon. Nothing here is ever
-        // meant to be reached by a d-pad — the same teleport is on the game's context menu and on
-        // the window's Quests tab — so being outside the graph costs nothing and closes the one
-        // question this addon's focus posture could not otherwise answer: a player who pins the
-        // input mode to Mouse while holding a pad would otherwise have a focusable surface parked
-        // over the world with a cursor able to land on it.
+        // The readout is furniture that can be operated, which is a particular focus posture and
+        // neither of the two obvious ones. It is focusABLE — that is what lets the game's own HUD
+        // Select bring the cursor here, and it is why DisableFocusability and the "disable controller
+        // nav" bit of Flags1A2 are NOT set, though KamiToolKit sets both for its click-through
+        // overlays (NativeAddon.Flags.cs, SetOverlayFlags). It is never focusED of its own accord:
+        // DisableFocusOnShow means being shown does not move the cursor here, so a readout that
+        // appears while the player is fighting cannot take the d-pad away from them. Every HUD
+        // element the game ships has exactly this pair — never focused on show, reachable all the
+        // same — which is the precedent for reading the two as independent.
         addon->DisableFocusOnShow = true;
-        addon->DisableFocusability = true;
-        FlagHelper.UpdateFlag(ref addon->Flags1A2, 0x2, true);
+
+        // Esc, when this is not the focused addon, must not be able to close the readout: it is not
+        // a window the player opened and there is no obvious way to get it back. RespectCloseAll,
+        // set false at construction, is the toolkit's half of the same guarantee; this is the game's.
+        addon->DisableUnfocusedCloseOnEsc = true;
 
         // The show sound is already silenced by OpenWindowSoundEffectId = 0; this is its hide
         // counterpart. The host is opened and closed automatically as the player changes device,
@@ -167,13 +171,23 @@ internal sealed unsafe class ClickableReadoutAddon(
         };
         AddNode(body);
 
+        // Where the cursor lands when HUD Select reaches this addon. The toolkit's default is the
+        // window header's focus node, which here is a node inside an invisible window: a cursor on
+        // it would be a cursor on nothing. The plate is the readout's face and its press opens the
+        // Journal at whatever is being followed, so that is the first thing the pad finds.
+        if (body.ControllerFocusNode is { } focus)
+        {
+            addon->FocusNode = focus;
+        }
+
         framework.Update += OnFrameworkUpdate;
     }
 
     /// <summary>Runs on the framework thread immediately before the game deallocates the addon.
     ///
-    /// <para>This host is opened and closed automatically as the player changes device, and the
-    /// addon — node tree and all — is built again from scratch on every open. Nothing else frees
+    /// <para>This host is closed and opened again whenever the native readout is switched off and on
+    /// (and once more if the game ever closes it), and the addon — node tree and all — is built from
+    /// scratch on every open. Nothing else frees
     /// the tree: the toolkit's unload-time net skips anything still parented, so dropping the
     /// reference would leave a whole readout behind on every transition. Disposing the body root
     /// takes its children with it and reverses the attach; it is guarded against running twice, so
@@ -202,6 +216,7 @@ internal sealed unsafe class ClickableReadoutAddon(
         lastPosition = Vector2.Zero;
         lastClickTargets = -1;
         broken = false;
+        hadFocus = false;
     }
 
     /// <summary>What the follow switcher's click does: ask the game to open its own context menu, at
@@ -224,13 +239,40 @@ internal sealed unsafe class ClickableReadoutAddon(
         try
         {
             Render();
+            ReportFocus();
         }
         catch (Exception ex)
         {
             broken = true;
             body.HideAll();
-            log.Error(ex, "Wayfarer readout: the clickable readout failed and has switched itself off for this session.");
+            log.Error(ex, "Wayfarer readout: the readout failed and has switched itself off for this session.");
         }
+    }
+
+    /// <summary>Says once, each way, when the game hands the cursor to this addon and when it takes
+    /// it back. Only with diagnostics turned on, and only because there is no other way to see it:
+    /// whether the game's HUD Select cycle reaches a plugin's own addon is a question about the
+    /// game's cursor, and this is the line that answers it from inside the game rather than from
+    /// reading its code.</summary>
+    private void ReportFocus()
+    {
+        if (!diagnosticsEnabled())
+        {
+            return;
+        }
+
+        var manager = RaptureAtkUnitManager.Instance();
+        var focused = manager is not null && manager->FocusedAddon == InternalAddon;
+        if (focused == hadFocus)
+        {
+            return;
+        }
+
+        hadFocus = focused;
+        log.Debug(
+            focused
+                ? "Wayfarer readout: the game has given the readout the cursor — a controller can operate it now."
+                : "Wayfarer readout: the game has taken the cursor off the readout.");
     }
 
     private void Render()

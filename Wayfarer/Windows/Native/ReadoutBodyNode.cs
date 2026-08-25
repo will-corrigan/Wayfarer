@@ -18,10 +18,11 @@ namespace Wayfarer.Windows.Native;
 /// nodes, fonts and colours.
 ///
 /// <b>This is the only definition of what the readout looks like.</b> It is a plain
-/// <c>ResNode</c> rather than an overlay node or a window so that both of the plugin's hosts can
-/// contain it: the click-through overlay (<see cref="GuidanceOverlayNode"/>) and the chromeless
-/// clickable addon (<see cref="ClickableReadoutAddon"/>). They differ in what the player can do to
-/// it, never in what it looks like — there is no second layout pass anywhere to drift from this one.
+/// <c>ResNode</c> rather than an overlay node or a window so that either surface can contain it: the
+/// chromeless addon every player operates (<see cref="ReadoutAddon"/>) and the click-through overlay
+/// that stands in when that addon cannot be built (<see cref="GuidanceOverlayNode"/>). They differ
+/// in what the player can do to it, never in what it looks like — there is no second layout pass
+/// anywhere to drift from this one.
 ///
 /// <b>Scale is not automatic and this is the one thing about overlays that surprises everyone.</b>
 /// KamiToolKit deliberately de-scales overlay addons to raw screen pixels
@@ -30,7 +31,8 @@ namespace Wayfarer.Windows.Native;
 /// renders at 14 raw pixels whether the player's interface size is 100% or 200%. Everything below
 /// is therefore multiplied by <c>GetGlobalUIScale() * userScale</c> every frame, by hand — which is
 /// also why the plugin's own text-size setting had to stay rather than being deleted as redundant.
-/// The clickable host applies the same de-scaling to itself, so both produce identical pixels.
+/// A normal addon is scaled by the game instead, which is why the body is told which kind of host it
+/// is in (<c>hostIsHudScaled</c>) and why both produce identical pixels.
 ///
 /// <b>It must never throw.</b> Its hosts run <see cref="Layout"/> from a per-frame update, so an
 /// exception here is an exception sixty times a second inside the game's render path. Each host

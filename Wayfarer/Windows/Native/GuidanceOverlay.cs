@@ -2,44 +2,32 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using KamiToolKit.Nodes;
 using KamiToolKit.UiOverlay;
-using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Windows.Native;
 
-/// <summary>Owns the guidance readout and decides which of its two hosts is on screen.
+/// <summary>Owns the guidance readout: one host for every player, and one fallback for when that
+/// host cannot be built.
 ///
-/// There is one readout — one <see cref="ReadoutBodyNode"/> definition, one layout pass, one set of
-/// fonts and colours — and two ways to host it, chosen by what the player is holding:
+/// <b>The host</b> is <see cref="ReadoutAddon"/>, a chromeless native addon that takes input. A
+/// mouse clicks its four controls; a controller reaches the same four by pressing the game's own HUD
+/// Select and cycling to the readout, which is the interaction the game already teaches for its own
+/// HUD. There is no longer a device-dependent host: the readout used to switch to a click-through
+/// overlay whenever a pad was in hand, on the belief that a focusable surface over the world would
+/// trap the pad's cursor. It cannot — the cursor only moves into the UI when the player asks it to —
+/// and the cost of that belief was a controller player who could see the cog and could not press it.
 ///
-/// <list type="bullet">
-/// <item><description><b>Mouse</b> gets <see cref="ClickableReadoutAddon"/>, a chromeless addon that
-/// receives clicks, so "Teleport to X first" is one click. That is the default loop: walk, read,
-/// click, teleport.</description></item>
-/// <item><description><b>Controller</b> gets <see cref="GuidanceOverlayNode"/>, which is
-/// click-through and outside the cursor graph by construction — a focusable surface floating over
-/// the world is exactly the thing that traps a controller cursor. The same teleport is a d-pad press
-/// away on the game's own context menu and on the window's Quests tab.</description></item>
-/// </list>
-///
-/// The same asymmetry decides where the settings cog and the follow switcher's dropdown go: onto the
-/// clickable host only. Nothing on the overlay can be clicked, so either would be an affordance that
-/// does nothing there. A controller reaches Settings through the game's own context menu, through
-/// the Wayfarer window's Settings tab, and through <c>/wayfarer settings</c> — and reaches what to
-/// follow through that same context menu's Follow submenu and the window's Following tab.
-///
-/// The failure modes are what make this safe to do at all: a host that never attaches draws nothing,
-/// and "nothing appears" is recoverable. If the clickable addon cannot be created the overlay covers
-/// mouse players too — read-only, but there. And whenever the host this player's device would
-/// actually use is missing, in either direction, <see cref="IsActive"/> reports false and the ImGui
-/// widget takes over: there is no arrangement of failures that leaves a readout on no surface at
-/// all.</summary>
+/// <b>The fallback</b> is <see cref="GuidanceOverlayNode"/>, and it is now only that. If the addon
+/// cannot be created, the overlay draws the identical readout with nothing on it that can be
+/// operated, and the log says so once; the game's own right-click menu still reaches the Journal,
+/// Settings, the follow list and the teleport. Below that again, if neither native host exists,
+/// <see cref="IsActive"/> reports false and the ImGui widget takes over. There is no arrangement of
+/// failures that leaves the readout on no surface at all.</summary>
 internal sealed class GuidanceOverlay(
     ReadoutFeed feed,
     QuestHelperConfig cfg,
     ReadoutPlacement placement,
-    InputModeService inputMode,
     IObjectTable objects,
     IClientState clientState,
     IFramework framework,
@@ -50,25 +38,16 @@ internal sealed class GuidanceOverlay(
 {
     private OverlayController? controller;
     private GuidanceOverlayNode? node;
-    private ClickableReadoutAddon? clickable;
+    private ReadoutAddon? addon;
     private bool started;
     private bool disposed;
 
-    /// <summary>Whether the readout is actually on screen <b>in the host this player's current
-    /// device would use</b>. That qualification is the whole of it: asking only whether either host
-    /// exists is what let a controller player end up with nothing at all. The clickable host is
-    /// closed outside mouse mode by design, so if the overlay failed to construct while the
-    /// clickable one succeeded, "a host exists" was true, the ImGui fallback stood down, and the
-    /// surface that existed was the one deliberately not being shown.
-    ///
-    /// <para>The ImGui widget keys off this, so it now takes over in exactly the cases where
-    /// nothing native is going to draw — in either mode.</para></summary>
-    public bool IsActive => cfg.UseNativeReadout && (UseClickableHost || node is not null);
+    /// <summary>Whether the readout is on screen on some native surface. The ImGui widget keys off
+    /// this, so it takes over in exactly the cases where nothing native is going to draw.</summary>
+    public bool IsActive => cfg.UseNativeReadout && (UseAddonHost || node is not null);
 
-    // The overlay is the fallback host as well as the controller's host, so it takes over whenever
-    // the clickable one is absent for any reason at all.
-    private bool UseClickableHost =>
-        clickable is not null && cfg.UseNativeReadout && inputMode.Mode == InputMode.Mouse;
+    // The overlay is the fallback, so the addon is the host whenever it exists at all.
+    private bool UseAddonHost => addon is not null && cfg.UseNativeReadout;
 
     /// <summary>Creates both hosts, marshalling onto the framework thread because every node
     /// constructor and the overlay controller itself assert it. Idempotent.</summary>
@@ -94,8 +73,8 @@ internal sealed class GuidanceOverlay(
 
         framework.Update -= OnFrameworkUpdate;
 
-        clickable?.Dispose();
-        clickable = null;
+        addon?.Dispose();
+        addon = null;
 
         if (controller is null)
         {
@@ -143,7 +122,7 @@ internal sealed class GuidanceOverlay(
         return cameraManager != null && cameraManager->Camera != null ? cameraManager->Camera->DirH : 0f;
     }
 
-    /// <summary>Builds both hosts. Queued onto the framework thread by <see cref="Start"/>, which
+    /// <summary>Builds the host and its fallback. Queued onto the framework thread by <see cref="Start"/>, which
     /// does not wait for it — so by the time this runs the plugin may already have been unloaded.
     /// Without the guard, that path ends with an overlay controller, a native addon and a live
     /// per-frame subscription all belonging to a plugin that is gone, which is the shape of an
@@ -161,7 +140,7 @@ internal sealed class GuidanceOverlay(
             // addon-creation state machine and its per-frame handler.
             controller = new OverlayController();
             node = new GuidanceOverlayNode(
-                () => BuildFrame(forClickableHost: false), placement, textures, log, () => cfg.LogDiagnostics);
+                () => BuildFrame(forAddonHost: false), placement, textures, log, () => cfg.LogDiagnostics);
             controller.AddNode(node);
         }
         catch (Exception ex)
@@ -175,7 +154,7 @@ internal sealed class GuidanceOverlay(
             log.Warning(ex, message);
         }
 
-        CreateClickable();
+        CreateAddon();
 
         // Checked again: Dispose runs on whichever thread Dalamud unloads on, so it can have
         // arrived while the two constructors above were running and found nothing yet to tear
@@ -189,15 +168,15 @@ internal sealed class GuidanceOverlay(
         framework.Update += OnFrameworkUpdate;
     }
 
-    /// <summary>The mouse-only half of <see cref="Create"/>: an addon that can be clicked, as
-    /// opposed to the overlay, which is click-through by construction. Failing here costs the
-    /// teleport click and nothing else, which is why it is guarded separately.</summary>
-    private void CreateClickable()
+    /// <summary>The half of <see cref="Create"/> that builds the host the player actually operates.
+    /// Failing here costs every control on the readout and nothing else — the words and the arrow
+    /// are the overlay's — which is why it is guarded separately.</summary>
+    private void CreateAddon()
     {
         try
         {
-            clickable = new ClickableReadoutAddon(
-                () => BuildFrame(forClickableHost: true),
+            addon = new ReadoutAddon(
+                () => BuildFrame(forAddonHost: true),
                 placement,
                 Teleport,
                 onSettingsClicked,
@@ -221,47 +200,48 @@ internal sealed class GuidanceOverlay(
         }
         catch (Exception ex)
         {
-            clickable = null;
+            addon = null;
             const string message =
-                "Wayfarer readout: the clickable readout could not be created, so the readout still shows the "
-                + "route but clicking its teleport line will do nothing. Teleport from the window's Quests tab "
-                + "or the game's right-click menu instead.";
+                "Wayfarer readout: the readout's own host could not be created, so the read-only overlay is being "
+                + "used instead — the readout still shows the route, but nothing on it can be pressed. The "
+                + "Journal, Settings, the follow list and the teleport are all on the game's right-click menu.";
             log.Warning(ex, message);
         }
     }
 
-    /// <summary>Opens and closes the clickable host as the player changes device. Cheap: two field
+    /// <summary>Keeps the host open for as long as the native readout is switched on — and opens it
+    /// again if anything else ever closes it, which is what makes Esc harmless. Cheap: two field
     /// reads and a comparison on the frames where nothing has changed.</summary>
     private void OnFrameworkUpdate(IFramework tick)
     {
-        if (clickable is null)
+        if (addon is null)
         {
             return;
         }
 
         try
         {
-            var wanted = UseClickableHost;
-            if (wanted != clickable.IsOpen)
+            var wanted = UseAddonHost;
+            if (wanted != addon.IsOpen)
             {
                 if (wanted)
                 {
-                    clickable.Open();
+                    addon.Open();
                 }
                 else
                 {
-                    clickable.Close();
+                    addon.Close();
                 }
             }
         }
         catch (Exception ex)
         {
-            var failed = clickable;
-            clickable = null;
+            var failed = addon;
+            addon = null;
             const string message =
-                "Wayfarer readout: the clickable readout failed to open, so the read-only overlay is being used "
-                + "for the rest of the session — the readout still shows the route, but its teleport line is no "
-                + "longer clickable.";
+                "Wayfarer readout: the readout's own host failed to open, so the read-only overlay is being used "
+                + "for the rest of the session — the readout still shows the route, but nothing on it can be "
+                + "pressed. Use the game's right-click menu instead.";
             log.Warning(ex, message);
             try
             {
@@ -270,7 +250,7 @@ internal sealed class GuidanceOverlay(
             catch (Exception disposeEx)
             {
                 const string disposeMessage =
-                    "Wayfarer readout: disposing the failed clickable readout also threw, so an empty readout "
+                    "Wayfarer readout: disposing the failed readout host also threw, so an empty readout "
                     + "frame may remain on screen until the game is restarted.";
                 log.Warning(disposeEx, disposeMessage);
             }
@@ -297,17 +277,18 @@ internal sealed class GuidanceOverlay(
         }
     }
 
-    private ReadoutFrame? BuildFrame(bool forClickableHost)
+    private ReadoutFrame? BuildFrame(bool forAddonHost)
     {
-        if (!cfg.UseNativeReadout || !feed.ShouldShow() || forClickableHost != UseClickableHost)
+        if (!cfg.UseNativeReadout || !feed.ShouldShow() || forAddonHost != UseAddonHost)
         {
             return null;
         }
 
         // The content is the same on both hosts now: the words no longer say whether they can be
-        // clicked, because the clickable host lights the line under the pointer instead. This flag
-        // decides only whether that host puts a hit box on the line at all.
-        var clickableTeleport = forClickableHost && cfg.ClickTeleportEnabled;
+        // operated, because the host that takes input lights the line under the pointer instead. This
+        // flag decides only whether that host puts a hit box on the line — and, with it, the anchor
+        // the d-pad comes to rest on — at all.
+        var clickableTeleport = forAddonHost && cfg.ClickTeleportEnabled;
         var content = feed.Compose();
         var (radians, hidden) = Bearing(content);
         return new ReadoutFrame(

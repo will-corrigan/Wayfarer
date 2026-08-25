@@ -112,7 +112,7 @@ public sealed class Plugin : IDalamudPlugin
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, textureProvider, dataManager);
 
-        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
+        var readoutHosts = new ReadoutHosts(framework, clientState, objects, textureProvider);
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
 
         modules.Register(
@@ -250,9 +250,8 @@ public sealed class Plugin : IDalamudPlugin
     private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
 
     /// <summary>What the game's own Follow submenu hands off to for "A Quest..." — the one tab
-    /// listing every followable thing, for the controller player that menu is built for. The
-    /// readout's own follow caret no longer opens this: on a mouse it drops its own list in place
-    /// (see <see cref="Windows.Native.ClickableReadoutAddon"/>), reading the same
+    /// listing every followable thing. The readout's own follow caret no longer opens this: it drops
+    /// the game's own menu in place (see <see cref="Windows.Native.ReadoutAddon"/>), reading the same
     /// <see cref="NativeHubWindow.GetFollowChoices"/> this tab does — one source of truth for what
     /// is followable, two doors onto it.</summary>
     private void OpenFollowing() => OpenHub(HubTab.Quests, () => configWindow.IsOpen = true);
@@ -424,7 +423,6 @@ public sealed class Plugin : IDalamudPlugin
             feed,
             config.QuestHelper,
             readoutPlacement,
-            services.InputMode,
             services.Objects,
             services.ClientState,
             services.Framework,
@@ -503,13 +501,13 @@ public sealed class Plugin : IDalamudPlugin
             guidance.HuntingSource);
     }
 
-    /// <summary>The Dalamud services the readout's two native hosts need, bundled so the builder
-    /// below stays inside the parameter-count analyzer rather than growing a ninth argument.</summary>
+    /// <summary>The Dalamud services the readout's host and its overlay fallback need, bundled so the
+    /// builder below stays inside the parameter-count analyzer rather than growing a ninth
+    /// argument.</summary>
     private sealed record ReadoutHosts(
         IFramework Framework,
         IClientState ClientState,
         IObjectTable Objects,
-        InputModeService InputMode,
         ITextureProvider Textures);
 
     /// <summary>What <see cref="BuildGuidance"/> hands back, so the module builders can take one
