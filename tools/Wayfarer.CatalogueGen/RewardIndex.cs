@@ -56,6 +56,13 @@ internal sealed class RewardIndex
     /// on kill counts, gil and levels, and are not quest-gated.</summary>
     private const byte AchievementTypeQuestCompletion = 6;
 
+    /// <summary>The difficulty markers the game writes into a duty's own name and the guide writes
+    /// into an entry's. Parenthesised so the word has to be the marker rather than part of a title —
+    /// "The Howling Eye (Extreme)" is a tier, "Hard Times" is a quest. See
+    /// <see cref="DifficultyAgrees"/>.</summary>
+    private static readonly string[] Difficulties =
+        ["(Hard)", "(Extreme)", "(Savage)", "(Unreal)", "(Chaotic)"];
+
     private readonly Dictionary<uint, List<Candidate>> byQuest;
     private readonly RewardIcons icons;
 
@@ -116,7 +123,11 @@ internal sealed class RewardIndex
     /// an entry the catalogue types as a mount, whose quest grants exactly one mount, and whose name
     /// shares a word with that mount, can only be about it — see <see cref="SharesAWord"/> for why
     /// all three clauses are needed. Anything weaker is a guess of the kind that bound seven entries
-    /// to the wrong quest, so it returns null and the entry ships with no reward.</para></summary>
+    /// to the wrong quest, so it returns null and the entry ships with no reward.</para>
+    ///
+    /// <para>All three rules draw from a pool that has already had the difficulty tier applied to it
+    /// — see <see cref="DifficultyAgrees"/>. That is not one of the rules; it is a veto over all of
+    /// them.</para></summary>
     public Match? Resolve(RewardJoin join)
     {
         var pool = new List<Candidate>();
@@ -140,6 +151,8 @@ internal sealed class RewardIndex
             }
         }
 
+        pool.RemoveAll(c => !DifficultyAgrees(join.Unlock, c.Name));
+
         var wanted = EntryNameKeys(join.Unlock);
         var named = pool.Where(c => wanted.Contains(QuestNameKey.For(c.Name))).ToList();
         if (named.Count == 1)
@@ -147,7 +160,7 @@ internal sealed class RewardIndex
             return new Match(named[0], "name-match");
         }
 
-        if (join.Duties.Count == 1)
+        if (join.Duties.Count == 1 && DifficultyAgrees(join.Unlock, join.Duties[0].Name))
         {
             var duty = join.Duties[0];
             return new Match(
@@ -168,6 +181,38 @@ internal sealed class RewardIndex
 
         return null;
     }
+
+    /// <summary>Whether an entry and a candidate reward name the same difficulty. A veto over every
+    /// rule below, applied to the pool before any of them runs.
+    ///
+    /// <para><b>Why a difficulty is different from any other word.</b> A raid tier and its Savage
+    /// tier are two separate duties with two separate unlock bits, and the catalogue has a separate
+    /// entry for each. But the Savage entry is bound to the <i>normal</i> tier's final-floor unlock
+    /// quest, because that clear is what opens Savage — so every channel that reasons from the bound
+    /// quest states the normal tier, correctly, about a quest the entry only borrowed. Sharing a word
+    /// then passes: "Sigmascape (Savage) Access" and "Sigmascape V4.0" share <i>sigmascape</i>, and
+    /// three Savage tiers shipped carrying the normal tier's duty as their reward — a wrong plate on
+    /// the page, and an identity gate reading the wrong duty's bit, which marked the Savage entry
+    /// Done the moment the normal tier was cleared.</para>
+    ///
+    /// <para>The marker is the one part of these names that is never decorative: the game puts it in
+    /// the duty's own name, and the guide puts it in the entry's. Where they disagree the candidate is
+    /// about the other tier, whatever else the two names have in common.</para>
+    ///
+    /// <para><b>Why the answer is then "no reward" rather than the Savage row.</b> Nothing in the
+    /// sheets connects that quest to the Savage tier — the pool has no Savage candidate to promote —
+    /// and deriving one from the name would mean deciding which floor a tier's <i>access</i> means.
+    /// The eight Savage entries that resolve correctly all name the tier's FIRST floor, which is not
+    /// what a suffix rule would produce from the normal tier's last: "Asphodelos: The Fourth Circle"
+    /// plus "(Savage)" is a real row, and the wrong one. So these three ship with no reward, which is
+    /// what "the game states none through anything this entry is bound to" honestly is.</para>
+    ///
+    /// <para>Both directions are checked. A candidate carrying a difficulty the entry does not name is
+    /// the same error the other way round.</para></summary>
+    private static bool DifficultyAgrees(string unlock, string rewardName) =>
+        Difficulties.All(d =>
+            unlock.Contains(d, StringComparison.OrdinalIgnoreCase)
+            == rewardName.Contains(d, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Whether an entry and a reward are talking about the same thing at all — the guard on
     /// the type rule, and the reason that rule is not a guess.

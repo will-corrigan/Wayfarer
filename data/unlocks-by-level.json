@@ -6355,11 +6355,6 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Sigmascape (Savage) Access",
       "type": "raid",
-      "reward": {
-        "kind": "ContentFinderCondition",
-        "id": 289,
-        "name": "Sigmascape V4.0"
-      },
       "quest": "Test World of Ruin",
       "wikiUrl": "https://ffxiv.consolegameswiki.com/wiki/Test_World_of_Ruin",
       "questKind": "sidequest",
@@ -10200,11 +10195,6 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Asphodelos (Savage) Access",
       "type": "raid",
-      "reward": {
-        "kind": "ContentFinderCondition",
-        "id": 800,
-        "name": "Asphodelos: The Fourth Circle"
-      },
       "quest": "Who Wards the Warders?",
       "wikiUrl": "https://ffxiv.consolegameswiki.com/wiki/Who_Wards_the_Warders%3F",
       "questKind": "sidequest",
@@ -10401,11 +10391,6 @@
       "levelSource": "gamerescape:progression-guide-section",
       "unlock": "Abyssos (Savage) Access",
       "type": "raid",
-      "reward": {
-        "kind": "ContentFinderCondition",
-        "id": 883,
-        "name": "Abyssos: The Eighth Circle"
-      },
       "quest": "One Final Wish",
       "wikiUrl": "https://ffxiv.consolegameswiki.com/wiki/One_Final_Wish",
       "questKind": "sidequest",

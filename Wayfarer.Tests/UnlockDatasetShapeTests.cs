@@ -49,16 +49,41 @@ public class UnlockDatasetShapeTests
         }
     }
 
+    /// <summary>Every kind the gate language defines has an evaluator behind it. This is the
+    /// non-vacuous half: it iterates the eighteen names in <see cref="GateKinds"/>, so emptying the
+    /// registry — or adding a kind string and forgetting to register it — goes red.</summary>
+    [Fact]
+    public void EveryGateKindTheLanguageDefines_HasARegisteredEvaluator()
+    {
+        var registered = GateEvaluatorRegistry.Standard.Kinds;
+
+        Assert.NotEmpty(GateKinds.All);
+        foreach (var kind in GateKinds.All)
+        {
+            Assert.Contains(kind, registered, StringComparer.Ordinal);
+        }
+    }
+
     /// <summary>The data file and the shipped registry cannot drift apart. A catalogue naming a
     /// gate kind this build lacks degrades safely at runtime — to "we can't check this" — but
     /// safely is not the same as visibly, and a kind misspelt in the data would otherwise ship as
-    /// an entry that quietly says nothing. This is the check that keeps the closed set honest
-    /// without a kind list existing in two places.</summary>
+    /// an entry that quietly says nothing.
+    ///
+    /// <para><b>The shipped catalogue uses none of them.</b> Not one of the 587 entries carries a
+    /// <c>requires.gates</c> node — the only gate the plugin builds today is the one the identity
+    /// gate synthesises at runtime — so the loop below iterates nothing and cannot fail. That is
+    /// asserted rather than assumed: without the count, this test reads as a guarantee it is not
+    /// currently providing, and it would stay green with the evaluator registry emptied out (which is
+    /// why the test above exists). The day the catalogue starts declaring gates, this number changes
+    /// and the loop starts guarding for real.</para></summary>
     [Fact]
     public void EveryShippedCatalogueKind_HasARegisteredEvaluator()
     {
         var registered = GateEvaluatorRegistry.Standard.Kinds;
-        foreach (var kind in CatalogueGateKinds.Of(Load()))
+        var shipped = CatalogueGateKinds.Of(Load()).ToList();
+
+        Assert.Empty(shipped);
+        foreach (var kind in shipped)
         {
             Assert.Contains(kind, registered, StringComparer.Ordinal);
         }
@@ -174,6 +199,53 @@ public class UnlockDatasetShapeTests
             // prefix is not.
             Assert.StartsWith(line, d.Description, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>An entry and its reward must name the same difficulty tier.
+    ///
+    /// <para>A raid tier and its Savage tier are two duties with two unlock bits and two catalogue
+    /// entries — but the Savage entry is bound to the <i>normal</i> tier's final-floor unlock quest,
+    /// because that clear is what opens Savage. Every channel that reasons from the bound quest
+    /// therefore states the normal tier, correctly, about a quest the Savage entry only borrowed.
+    /// Three Savage tiers shipped this way: Sigmascape (Savage) carrying <i>Sigmascape V4.0</i>,
+    /// Asphodelos (Savage) carrying <i>Asphodelos: The Fourth Circle</i>, Abyssos (Savage) carrying
+    /// <i>Abyssos: The Eighth Circle</i>. The consequence is not only a wrong plate on the page: the
+    /// reward is what the identity gate is derived from, so those entries were marked Done off the
+    /// NORMAL tier's unlock bit.</para>
+    ///
+    /// <para>Checked over every difficulty marker rather than only Savage, and in both directions.
+    /// The count of Savage entries is asserted too, because a rule about a group is worth nothing
+    /// once the group is empty — and <c>reward.name</c> is deliberately outside the coverage
+    /// fingerprint, so nothing else in CI would have caught this.</para></summary>
+    [Fact]
+    public void AnEntryAndItsRewardNameTheSameDifficulty()
+    {
+        string[] difficulties = ["(Hard)", "(Extreme)", "(Savage)", "(Unreal)", "(Chaotic)"];
+        var all = Load();
+
+        foreach (var d in all)
+        {
+            if (d.Reward is not { } reward)
+            {
+                continue;
+            }
+
+            foreach (var marker in difficulties)
+            {
+                var onEntry = d.Unlock.Contains(marker, StringComparison.OrdinalIgnoreCase);
+                var onReward = reward.Name.Contains(marker, StringComparison.OrdinalIgnoreCase);
+
+                var message = $"'{d.Unlock}' and its reward '{reward.Name}' disagree about {marker}, so one of "
+                    + "them is about the other tier. The identity gate is derived from the reward, so this entry "
+                    + "would be graded on the wrong duty's unlock bit.";
+
+                Assert.True(onEntry == onReward, message);
+            }
+        }
+
+        var savage = all.FindAll(d => d.Unlock.Contains("(Savage)", StringComparison.Ordinal));
+        Assert.Equal(20, savage.Count);
+        Assert.Equal(8, savage.FindAll(d => d.Reward is not null).Count);
     }
 
     private static List<UnlockDefinition> Load() =>

@@ -236,7 +236,11 @@ const checkWikiUrl = (where, e) => {
 // icon-bearing rule in scripts/build-unlock-catalogue.mjs — which is the only place that can.
 const rewardKeys = new Set(['kind', 'id', 'name']);
 
-const checkReward = (where, r) => {
+// Lower-cased and parenthesised: the word has to be the marker rather than part of a title.
+// "The Howling Eye (Extreme)" is a tier; "Hard Times" is a quest.
+const DIFFICULTIES = ['(hard)', '(extreme)', '(savage)', '(unreal)', '(chaotic)'];
+
+const checkReward = (where, r, unlock) => {
   if (typeof r !== 'object' || r === null || Array.isArray(r)) {
     err(`${where}: 'reward' must be an object`);
     return;
@@ -250,6 +254,26 @@ const checkReward = (where, r) => {
   // registers tooltips on mouse events only, so an icon is not a substitute on a controller.
   if (typeof r.name !== 'string' || r.name.trim().length === 0)
     err(`${where}: reward needs a name — an icon on its own is unreadable on a pad`);
+
+  // The difficulty tier is the one part of these two names that is never decorative: the game puts
+  // it in the duty's name and the guide puts it in the entry's. A raid tier and its Savage tier are
+  // two duties with two unlock bits and two entries, and the Savage entry is bound to the NORMAL
+  // tier's final-floor unlock quest, because that clear is what opens Savage — so any channel
+  // reasoning from the bound quest states the normal tier, correctly, about a quest the Savage entry
+  // only borrowed. Three Savage tiers shipped that way. It is not only a wrong plate on the page:
+  // the reward is what the plugin derives the entry's identity gate from, so those entries were
+  // marked Done off the wrong duty's bit. Checked in both directions.
+  if (typeof r.name === 'string' && typeof unlock === 'string') {
+    for (const marker of DIFFICULTIES) {
+      const onEntry = unlock.toLowerCase().includes(marker);
+      const onReward = r.name.toLowerCase().includes(marker);
+      if (onEntry !== onReward)
+        err(
+          `${where}: the entry and its reward '${r.name}' disagree about ${marker} — one of them is about the ` +
+            'other tier, and the identity gate is derived from the reward',
+        );
+    }
+  }
 };
 
 // A set of quest rows any ONE of which completes this unlock — the Grand Company, starting-city
@@ -336,7 +360,7 @@ for (const [i, e] of d.unlocks.entries()) {
 
   // Absent is a real answer: most `system` entries open a feature the game keeps no row for, and
   // presenting that as a gap would be a lie about the game rather than about the catalogue.
-  if ('reward' in e) checkReward(where, e.reward);
+  if ('reward' in e) checkReward(where, e.reward, e.unlock);
   checkQuestAnyOf(where, e);
   checkWikiUrl(where, e);
 
