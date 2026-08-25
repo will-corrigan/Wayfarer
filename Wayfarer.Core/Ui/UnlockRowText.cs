@@ -26,10 +26,19 @@ public static class UnlockRowText
     /// Doing it here rather than in the data file keeps the committed value equal to the row it came
     /// from — see <see cref="DisplayNames.SheetCase"/>, which cases a name only when the sheet wrote
     /// all of it in lower case and leaves curated prose exactly as somebody wrote it.</para></summary>
+    /// <param name="unlock">The entry to name.</param>
+    /// <returns>The entry's name, with its qualifier in parentheses when it has one.</returns>
     public static string Name(ResolvedUnlock unlock)
     {
         ArgumentNullException.ThrowIfNull(unlock);
-        return DisplayNames.SheetCase(unlock.Def.Unlock);
+
+        var name = DisplayNames.SheetCase(unlock.Def.Unlock);
+
+        // Parenthesised, which is the game's own habit for exactly this — "the Palace of the Dead
+        // (Floors 1-10)", "Sastasha (Hard)". Twelve names cover thirty-five entries and they are not
+        // duplicates: one Sightseeing Log per expansion, one Levequest unlock per city. See
+        // UnlockDisambiguation for where the qualifier comes from and why most rows have none.
+        return unlock.Qualifier is { Length: > 0 } qualifier ? $"{name} ({qualifier})" : name;
     }
 
     /// <summary>Line two: the catalogue's own sentence about what this unlock gives the player.

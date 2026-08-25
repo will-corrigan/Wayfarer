@@ -216,6 +216,26 @@ public sealed class ResolvedUnlock
 
     public string? ZoneName { get; set; }
 
+    /// <summary>The bound quest's <c>Expansion</c> name — "A Realm Reborn", "Shadowbringers" — or
+    /// null when no quest is bound. Read for one purpose: telling apart the entries that share a
+    /// name. See <see cref="UnlockDisambiguation"/>.</summary>
+    public string? QuestExpansion { get; set; }
+
+    /// <summary>The bound quest's own <c>PlaceName</c> — the journal's place for it, which is the
+    /// city for the per-city unlocks. Distinct from <see cref="ZoneName"/>, which is the territory the
+    /// GIVER stands in: the two usually agree, and the quest's own is the one the game prints in the
+    /// Journal, so it is the one a qualifier should read.</summary>
+    public string? QuestPlaceName { get; set; }
+
+    /// <summary>What tells this entry apart from the others of the same name — an expansion or a
+    /// city, taken from its own bound quest. Null on all but thirty-five of the catalogue's entries,
+    /// and on any of those that nothing on the quest distinguishes.
+    ///
+    /// <para>Computed by <see cref="UnlockDisambiguation.Apply"/> rather than carried in the data,
+    /// because whether a name needs qualifying is a property of the catalogue as a whole and the
+    /// qualifier itself lives in the game's own sheets, already localised.</para></summary>
+    public string? Qualifier { get; set; }
+
     /// <summary>The game's own sentence about this unlock, read at load from the sheet cell
     /// <see cref="UnlockDefinition.DescriptionSource"/> names — or null when the entry cites none, or
     /// when the cell could not be read against the installed patch.

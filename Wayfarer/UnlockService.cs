@@ -540,6 +540,11 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
             entries.Add(r);
         }
+
+        // Once, here, rather than on every recompute: which names collide is a property of the
+        // catalogue, and the expansion and place that tell them apart come off the bound quest, which
+        // is settled by the loop above and does not change again.
+        UnlockDisambiguation.Apply(entries);
     }
 
     /// <summary>Everything pulled from a <see cref="Quest"/> sheet row, in one place so
@@ -585,6 +590,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         float Y,
         float Z,
         string? Zone,
+        string? QuestExpansion,
+        string? QuestPlaceName,
         string? GiverName)
     {
         public static QuestFacts From(
@@ -683,6 +690,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             {
                 CollectAllowedJobs(q.ClassJobCategory1, classJobs, altJobRowIds, altJobNames);
             }
+
+            // The two facts that tell apart the catalogue entries sharing a name. Both come off the
+            // quest itself rather than out of the unlock name, which is the whole point of an entry
+            // binding to a quest ROW — see UnlockDisambiguation.
+            var expansion = q.Expansion.RowId != 0 ? q.Expansion.ValueNullable?.Name.ExtractText() : null;
+            var placeName = q.PlaceName.RowId != 0 ? q.PlaceName.ValueNullable?.Name.ExtractText() : null;
 
             // IssuerStart is an untyped RowRef: some quests are issued by objects/eobjects
             // rather than an ENpcResident, so a miss here is expected, not an error — degrade
@@ -786,6 +799,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 Y: y,
                 Z: z,
                 Zone: zone,
+                QuestExpansion: expansion,
+                QuestPlaceName: placeName,
                 GiverName: giverName);
         }
 
@@ -831,6 +846,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.GiverY = Y;
             r.GiverZ = Z;
             r.ZoneName = Zone;
+            r.QuestExpansion = QuestExpansion;
+            r.QuestPlaceName = QuestPlaceName;
             r.GiverName = GiverName;
         }
     }
