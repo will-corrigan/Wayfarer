@@ -457,12 +457,22 @@ public static class UnlockStatusCalculator
     /// <para><see cref="UnlockRequirement.Unverifiable"/> still blocks, because it means the
     /// opposite thing: not "known but unreadable", but "we don't know what this needs at all" —
     /// there is no "everything checkable" to have finished satisfying. The single exception is an
-    /// entry whose <see cref="ResolvedUnlock.IdentityGate"/> returned a determinate answer.
+    /// entry whose <see cref="ResolvedUnlock.IdentityGate"/> returned a determinate answer <b>and</b>
+    /// which has something checkable for that answer to sit on top of.
     /// <c>Unverifiable</c> is a statement about what the CATALOGUE can express, written when the
     /// only readable fact was a prerequisite; an identity gate reads the unlock itself, which is
     /// the very thing the flag was hedging about. Where the plugin can now answer the question,
     /// the hedge is stale rather than authoritative — and only there: an entry with no identity
-    /// gate, or one whose gate could not be read, keeps the shrug exactly as before.</para></summary>
+    /// gate, or one whose gate could not be read, keeps the shrug exactly as before.</para>
+    ///
+    /// <para><b>Why the second half of that condition.</b> The whole argument above rests on "every
+    /// checkable gate has already passed by the time this runs". On an entry with no checkable gate
+    /// at all there are none to have passed, and the identity gate's "you have not taken this
+    /// unlock" then says nothing whatever about whether the player <i>can</i>. Without the
+    /// <see cref="UnlockRequirement.HasCheckableRequirement"/> half, such an entry read plainly
+    /// <see cref="UnlockStatus.Available"/> with the gold "go and do this" marker, pointing at
+    /// nothing, off a field that says in so many words that the requirement is unknown. One entry in
+    /// the shipped catalogue is that shape today.</para></summary>
     private static bool UncheckableRequirementBlocking(
         ResolvedUnlock u,
         UnlockGateContext ctx,
@@ -480,7 +490,7 @@ public static class UnlockStatusCalculator
             return false;
         }
 
-        if (!req.Unverifiable || identity is { Outcome: GateOutcome.Blocked })
+        if (!req.Unverifiable || (req.HasCheckableRequirement && identity is { Outcome: GateOutcome.Blocked }))
         {
             reason = null;
             status = UnlockStatus.CollectionLocked;

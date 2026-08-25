@@ -128,6 +128,65 @@ public class IdentityGateTests
         Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
     }
 
+    /// <summary>The other half of that guard, and the one the shipped catalogue actually hits. An
+    /// identity gate that says "you have not taken this unlock" retires the curated shrug because
+    /// everything checkable has already passed — but on an entry with nothing checkable at all there
+    /// is nothing to have passed, and "you have not got it" says nothing about whether you can go and
+    /// get it. Such an entry read plainly Available, with the gold "go and do this" marker, pointing
+    /// at no quest, no giver, no level gate and no route — derived from a field whose whole content is
+    /// that the requirement is unknown.
+    ///
+    /// <para><c>The Final Verse Access</c> is exactly this shape in the catalogue today: a label and
+    /// <c>unverifiable</c>, a quest name that does not bind, and a duty reward that gives it an
+    /// identity gate.</para></summary>
+    [Fact]
+    public void IdentityDutyLocked_NothingElseCheckable_IsStillNotPlainlyAvailable()
+    {
+        var all = new List<ResolvedUnlock> { UnreadableAccess() };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(100, isInstanceContentUnlocked: _ => false));
+
+        Assert.Equal(UnlockStatus.RequirementsUnknown, all[0].Status);
+        Assert.Equal("the catalogue does not record what this needs", all[0].LockReason);
+    }
+
+    /// <summary>And the identity gate still grades the same entry when it CAN answer the half it is
+    /// authoritative about: owning the unlock is owning it, whatever the catalogue failed to say
+    /// about how to get there.</summary>
+    [Fact]
+    public void IdentityDutyUnlocked_NothingElseCheckable_IsStillDone()
+    {
+        var all = new List<ResolvedUnlock> { UnreadableAccess() };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(100, isInstanceContentUnlocked: id => id == TargetDutyId));
+
+        Assert.Equal(UnlockStatus.Done, all[0].Status);
+    }
+
+    /// <summary>An entry that carries prose and nothing else: no duties, no items, no gates, no level
+    /// requirement, and a quest name the game's data does not know — so no quest row binds and
+    /// nothing about it is checkable. Its duty reward still earns it an identity gate.</summary>
+    private static ResolvedUnlock UnreadableAccess() => new()
+    {
+        Def = new UnlockDefinition
+        {
+            Unlock = "An Unreadable Access",
+            Type = "dungeon",
+            Level = 91,
+            Reward = new UnlockReward("ContentFinderCondition", 1065, "an unreadable duty"),
+            Requires = new UnlockRequirement
+            {
+                Label = "the catalogue does not record what this needs",
+                Unverifiable = true,
+            },
+        },
+        IdentityGate = Gates.Node(
+            GateKinds.DutyUnlocked,
+            [TargetDutyId],
+            scope: GateKinds.ScopeInstance,
+            display: "an unreadable duty"),
+    };
+
     private static ResolvedUnlock TrialAccess(bool withIdentity = true) => new()
     {
         Def = new UnlockDefinition
