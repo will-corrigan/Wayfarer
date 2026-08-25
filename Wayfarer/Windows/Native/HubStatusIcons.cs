@@ -75,8 +75,28 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
         return ok ? iconId : 0;
     }
 
-    /// <summary>The state's shape, already validated. 0 means "say it in words instead".</summary>
-    public uint For(Wayfarer.Core.Unlocks.UnlockStatus status) => Resolve(UnlockStatusDisplay.IconId(status));
+    /// <summary>The state's shape, already validated. 0 means "say it in words instead".
+    ///
+    /// <para><b>The one deliberate fallback.</b> <see cref="UnlockStatusDisplay.LockedQuestIcon"/> is
+    /// the shape most locked rows draw — see that type's own doc for why every locked reason but a
+    /// duty gate shares it — so a patch that renumbers or removes that one composite costs every row
+    /// in the plugin its padlock at once. Rather than drop straight to words, a miss on that specific
+    /// id tries <see cref="UnlockStatusDisplay.LockedDutyIcon"/> next: the same 24x24 family, a
+    /// padlock either way, and — because it is the icon the duty-locked state already draws every
+    /// session — an id this table has independent, continuous evidence still resolves. Every other
+    /// status keeps the plain one-id lookup: substituting a shape for <c>Available</c>'s gold marker
+    /// or <c>Done</c>'s check, say, would draw something that means a different state.</para></summary>
+    public uint For(Wayfarer.Core.Unlocks.UnlockStatus status)
+    {
+        var iconId = UnlockStatusDisplay.IconId(status);
+        var primary = Resolve(iconId);
+        if (primary != 0 || iconId != UnlockStatusDisplay.LockedQuestIcon)
+        {
+            return primary;
+        }
+
+        return Resolve(UnlockStatusDisplay.LockedDutyIcon);
+    }
 
     private bool Probe(uint iconId)
     {

@@ -38,7 +38,15 @@ public static class UnlockStatusDisplay
     /// that are honestly "Wayfarer does not know".</summary>
     public const uint InformationalIcon = 71006;
 
-    /// <summary>Quest scroll with a closed padlock.</summary>
+    /// <summary>Quest scroll with a closed padlock.
+    ///
+    /// <para>Measured against an earlier install; a later one stopped shipping the file at this id
+    /// (<c>Wayfarer hub: status icon 60645 does not resolve in this game version</c>), which this
+    /// constant alone cannot self-heal — a hardcoded id is a claim about one patch, not every future
+    /// one. <c>HubStatusIcons.For</c> is where the drift is actually survived: a miss here falls back
+    /// to <see cref="LockedDutyIcon"/>, verified against the live texture table the same way every
+    /// icon id in this file is, before the row gives up its shape and falls back to words.</para>
+    /// </summary>
     public const uint LockedQuestIcon = 60645;
 
     /// <summary>Duty icon with a closed padlock.</summary>

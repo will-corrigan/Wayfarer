@@ -31,6 +31,18 @@ public class JournalEmptyContainerTests
         Assert.True(guardAt >= 0 && attachAt >= 0 && guardAt < attachAt, message);
     }
 
+    [Fact]
+    public void A_locked_quest_icon_miss_falls_back_to_the_duty_locks_padlock_before_words()
+    {
+        var body = MethodBody(
+            Path.Combine("Wayfarer", "Windows", "Native", "HubStatusIcons.cs"),
+            "public uint For(",
+            "private bool Probe(");
+
+        Assert.Contains("LockedQuestIcon", body, StringComparison.Ordinal);
+        Assert.Contains("LockedDutyIcon", body, StringComparison.Ordinal);
+    }
+
     /// <summary>The text of one method, comments stripped, found by its own signature and the next
     /// member's. Crude on purpose, like every other structural guard in this file set: a signature
     /// that moves costs a clearer failure message, never a silently-skipped assertion.</summary>
