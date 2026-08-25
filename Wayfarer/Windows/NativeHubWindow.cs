@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
@@ -2328,7 +2329,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     /// <summary>What can be done about an entry, in the three slots JournalDetail gives a quest —
     /// <c>InitiateButton</c>, the duty's own entry point, and <c>AcceptMapButton</c>, whose whole job
-    /// is "take me to this".
+    /// is "take me to this" — plus the wiki link, which fits the same three-slot budget because
+    /// <c>Accepted</c> and <c>Available</c> are mutually exclusive statuses: "Follow this quest" and
+    /// "Route me there" never both show, so at most two of the game's three slots are ever taken
+    /// before the wiki link claims the third.
     ///
     /// <para>Hidden rather than greyed when they do not apply, which is the game's own habit and the
     /// opposite of the "nothing in here works" report. Most entries offer one; a duty you have
@@ -2364,7 +2368,31 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             actions.Add(new HubDetailAction("Route me there", () => OnChecklistRowActivated(u)));
         }
 
+        // The player-facing backup for "the game does not say": a verified link to the entry's own
+        // wiki page, only offered when the generator confirmed one exists (see data/README.md).
+        // Absent rather than disabled when there is none — the same habit every other slot here
+        // follows.
+        if (u.Def.WikiUrl is { Length: > 0 } wikiUrl)
+        {
+            actions.Add(new HubDetailAction("View on wiki", () => OpenWiki(wikiUrl)));
+        }
+
         return actions;
+    }
+
+    /// <summary>Opens a verified wiki URL in the player's default browser. <c>Util.OpenLink</c>
+    /// rather than shelling out directly: it is Dalamud's own facility for exactly this, and it
+    /// additionally attempts to focus the newly launched browser window.</summary>
+    private void OpenWiki(string url)
+    {
+        try
+        {
+            Util.OpenLink(url);
+        }
+        catch (Exception ex)
+        {
+            log.Warning(ex, $"Wayfarer wiki link: could not open '{url}' in a browser.");
+        }
     }
 
     private void OnChecklistRowActivated(ResolvedUnlock u)

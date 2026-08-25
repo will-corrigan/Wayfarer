@@ -108,6 +108,30 @@ moved draws a band of nothing with no way to notice, so the plugin resolves them
 identity. What generation does check is that one *exists*: a kind listed in `WITH_ICON` whose row has
 no icon fails the generator on the spot, where the sheet walk that produced it can be corrected.
 
+## The wiki link
+
+When Wayfarer cannot explain a requirement — "the game does not say" — the player has nowhere to
+go. `wikiUrl` is the backup: a link to the entry's own page on Consolegameswiki (chosen over Gamer
+Escape, the site this catalogue is otherwise built from, because it is the genuinely independent
+source and its Prerequisites sections carry exactly the conditions this pipeline cannot derive; see
+`2026-08-24-requirement-text-provenance.md` and `2026-08-23-ecosystem-data-sources.md`).
+
+It links the entry's own **quest** page, never the catalogue's label — the quest is what the
+player is actually sent to do, and `unlock` is this repo's own name for it, not a wiki title. Where
+an entry has no bound quest at all, it links whatever the entry genuinely is instead (a duty, most
+often). Where an entry's quest identity is ambiguous (`questAnyOf`, or no single duty identity), no
+name is even attempted: picking one of several pages to link would be the same kind of guess the
+rest of this generator exists to refuse.
+
+Checked, never assembled. The generator hits Consolegameswiki's own API for every candidate name —
+politely: a contactable user agent, a floor on the request interval, and a cache so a re-run asks
+again for nothing already checked — and `wikiUrl` is written only when the wiki confirms the page
+exists. A name that resolves to nothing, or resolves ambiguously, leaves the field absent rather
+than guessed; the journal window's wiki button simply does not render for that entry.
+`data/validate-unlocks.mjs` checks that any URL present is well-formed, but cannot re-verify it
+against the wiki with no network — the field's presence is the verification, by construction of
+the one thing that is allowed to write it.
+
 ## Where the generator reaches into curated fields
 
 It owns identity and provenance and leaves prose alone, with three narrow exceptions. The first
@@ -139,6 +163,7 @@ The generator owns the entry's **identity and provenance**. It preserves everyth
 |---|---|
 | `quest` (display name of the resolved row) | `unlock`, `questKind` |
 | `questAnyOf` | `description`, `notes`, `priority`, `cosmetic` |
+| `wikiUrl`, checked every run, absent when unverified | |
 | `sources` | `requires` (curated script-only requirements) |
 | `confidence` | `type`, except the one correction above |
 | `level`, `levelSource`, `category` | |
