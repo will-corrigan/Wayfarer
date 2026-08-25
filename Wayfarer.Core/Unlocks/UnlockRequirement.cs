@@ -77,11 +77,25 @@ public sealed class UnlockRequirement
     /// entries keep <see cref="Unverifiable"/> and gain a real reason instead of a shrug.</summary>
     public List<UnlockRequirement.Collectible> Duties { get; set; } = [];
 
+    /// <summary>Requirements stated in the declarative gate language rather than as one of the
+    /// typed lists above: a tree of <see cref="Gates.GateNode"/>, AND-ed at the root, dispatched by
+    /// kind through <see cref="Gates.GateEvaluatorRegistry"/>.
+    ///
+    /// <para>This is where every requirement kind added after the first five lands, and the reason
+    /// adding one no longer means editing <see cref="UnlockStatusCalculator"/>. The lists above are
+    /// the same idea in an older shape and keep working unchanged; nothing needs migrating for a
+    /// new kind to be expressible.</para>
+    ///
+    /// <para>A kind this build does not implement makes the entry report
+    /// <see cref="UnlockStatus.RequirementsUnknown"/> rather than passing — a catalogue from a
+    /// newer plugin degrades to an admission, never to a claim.</para></summary>
+    public List<Gates.GateNode> Gates { get; set; } = [];
+
     /// <summary>True when there is something concrete to check, as opposed to a block that only
     /// carries prose.</summary>
     public bool HasCheckableRequirement =>
         Mounts.Count > 0 || Minions.Count > 0 || Items.Count > 0 || Jobs.Count > 0
-        || Duties.Count > 0 || MinLevel is > 0 || RequiresAnotherPlayer;
+        || Duties.Count > 0 || Gates.Count > 0 || MinLevel is > 0 || RequiresAnotherPlayer;
 
     /// <summary>A mount or minion the player must already own.</summary>
     /// <param name="Id">Mount/Companion sheet row id, checked with <c>IsMountUnlocked</c> /

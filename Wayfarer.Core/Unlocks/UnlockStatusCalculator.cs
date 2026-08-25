@@ -1,4 +1,5 @@
 using System.Globalization;
+using Wayfarer.Core.Unlocks.Gates;
 
 namespace Wayfarer.Core.Unlocks;
 
@@ -20,6 +21,18 @@ public static class UnlockStatusCalculator
     /// else is <see cref="UnlockStatus.RequirementsUnknown"/>.</para></summary>
     public static void Compute(List<ResolvedUnlock> all, UnlockGateContext ctx)
     {
+        ArgumentNullException.ThrowIfNull(ctx);
+
+        // Nothing is worth computing from a client that is not there yet. Every "is it unlocked"
+        // read answers false against an unloaded player state, and a pass run then would replace a
+        // correct list with the claim that the player owns nothing at all. Leaving the previous
+        // statuses in place is the only honest response, and the surfaces already have a
+        // "not loaded" affordance for the case where there are none yet.
+        if (!ctx.LiveStateReady)
+        {
+            return;
+        }
+
         // Alternative quests — one per starting city, the player gets exactly one — share both an
         // unlock name and a level, so completing any one of them completes the unlock for all.
         // See AlternativeGroup for why the level has to be part of that key.
@@ -45,37 +58,28 @@ public static class UnlockStatusCalculator
     {
         ResetComputedFields(u);
 
-        // An entry with no quest bound to it has no completion evidence of its own, and cannot
-        // borrow another entry's: it is never Done. It can still be told apart from "we know
-        // nothing", though, when the catalogue curated a gate for it.
-        if (u.QuestRowId is not { } rowId)
-        {
-            ComputeWithoutQuest(u, ctx);
-            return;
-        }
-
-        if (doneGroups.Contains(AlternativeGroup.Of(u)))
+        // Ahead of everything, including the quest chain: the entry's own identity, read live. If
+        // the thing this entry unlocks is already open to the player then they have it, whatever
+        // any quest row says — and that is a stronger fact than "the quest we matched by name is
+        // complete", because it is about the unlock rather than about our name match.
+        var identity = EvaluateIdentityGate(u, ctx);
+        if (identity is { Outcome: GateOutcome.Satisfied })
         {
             u.Status = UnlockStatus.Done;
             return;
         }
 
-        if (ctx.IsQuestAccepted(rowId) || AnyAlternativeAccepted(u, ctx))
+        // An entry with no quest bound to it has no completion evidence of its own, and cannot
+        // borrow another entry's: it is never Done. It can still be told apart from "we know
+        // nothing", though, when the catalogue curated a gate for it.
+        if (u.QuestRowId is not { } rowId)
         {
-            u.Status = UnlockStatus.Accepted;
+            ComputeWithoutQuest(u, ctx, identity);
             return;
         }
 
-        // Every gate below this line is read off one Quest row, and when several rows share the
-        // catalogue's name the matcher picked one of them arbitrarily — the character's starting
-        // city decides which is really theirs and the plugin cannot see it. Done and Accepted are
-        // safe above, because they ask about all the siblings at once; nothing below can. Graded
-        // on the wrong sibling, a Gridanian was told a Limsa Lominsa quest was in their way, in
-        // the confident voice this plugin reserves for things it knows.
-        if (u.AlternativeQuestRowIds.Count > 1)
+        if (JournalStateResolves(u, ctx, doneGroups, rowId))
         {
-            u.Status = UnlockStatus.RequirementsUnknown;
-            u.LockReason = $"{u.AlternativeQuestRowIds.Count} quests share this name";
             return;
         }
 
@@ -100,8 +104,49 @@ public static class UnlockStatusCalculator
             return;
         }
 
-        ComputeRemainingGates(u, ctx);
+        ComputeRemainingGates(u, ctx, identity);
     }
+
+    /// <summary>The three verdicts the quest journal alone settles, in precedence order: Done,
+    /// Accepted, and the refusal to grade an entry whose name matches several rows.
+    ///
+    /// <para>Done and Accepted are safe here because they ask about all the sibling rows at once.
+    /// Nothing after this point can: every gate below is read off ONE Quest row, and when several
+    /// share the catalogue's name the matcher picked one arbitrarily — the character's starting
+    /// city decides which is really theirs and the plugin cannot see it. Graded on the wrong
+    /// sibling, a Gridanian was told a Limsa Lominsa quest was in their way, in the confident voice
+    /// this plugin reserves for things it knows.</para></summary>
+    /// <returns>True when the entry is resolved and no further gate should run.</returns>
+    private static bool JournalStateResolves(
+        ResolvedUnlock u, UnlockGateContext ctx, HashSet<AlternativeGroup> doneGroups, uint rowId)
+    {
+        if (doneGroups.Contains(AlternativeGroup.Of(u)))
+        {
+            u.Status = UnlockStatus.Done;
+            return true;
+        }
+
+        if (ctx.IsQuestAccepted(rowId) || AnyAlternativeAccepted(u, ctx))
+        {
+            u.Status = UnlockStatus.Accepted;
+            return true;
+        }
+
+        if (u.AlternativeQuestRowIds.Count <= 1)
+        {
+            return false;
+        }
+
+        u.Status = UnlockStatus.RequirementsUnknown;
+        u.LockReason = $"{u.AlternativeQuestRowIds.Count} quests share this name";
+        return true;
+    }
+
+    /// <summary>Runs <see cref="ResolvedUnlock.IdentityGate"/>, or null when the entry has none.
+    /// Dispatch is by the node's <c>kind</c> through the registry, exactly as for a curated gate —
+    /// there is no separate path here and no knowledge of which entry is being graded.</summary>
+    private static GateResult? EvaluateIdentityGate(ResolvedUnlock u, UnlockGateContext ctx) =>
+        u.IdentityGate is { } node ? ctx.Gates.Evaluate(node, ctx.Live) : null;
 
     /// <summary>The three fields a fresh pass over one entry always starts from a clean slate: a
     /// status this plugin no longer stands behind (the quest was just accepted elsewhere, a gate
@@ -120,31 +165,37 @@ public static class UnlockStatusCalculator
     /// which is all these entries could ever say — into "requires clearing Sigmascape V4.0
     /// (Savage)", which is the difference between a shrug and an answer.
     ///
-    /// <para>Satisfying a <see cref="UnlockRequirement.Duties"/> gate still never yields Available:
-    /// clearing the prerequisite duty opens the door, but whether the player has walked through it
-    /// (talked to the Wandering Minstrel) is not something the client records anywhere a plugin can
-    /// read, and guessing at it is exactly the class of confident wrongness this calculator exists
-    /// to avoid — see <see cref="MissingDuty"/>, checked ahead of the fallback below. A curated
-    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/> gate is the one exception: once it is
-    /// the only thing left, <see cref="CuratedRequirementBlocking"/> already resolved the entry to
-    /// Available with the condition named, and that verdict is kept rather than papered over with
-    /// "no quest to read for this".</para></summary>
-    private static void ComputeWithoutQuest(ResolvedUnlock u, UnlockGateContext ctx)
+    /// <para>Satisfying a <see cref="UnlockRequirement.Duties"/> gate does not on its own yield
+    /// Available: clearing the prerequisite duty opens the door, and whether the player then walked
+    /// through it is a separate question. What answers that question is
+    /// <see cref="ResolvedUnlock.IdentityGate"/> — the unlock bit of the duty this entry IS. When
+    /// that gate returns a determinate answer the entry can be graded outright, and when it cannot
+    /// the entry keeps the old, honest shrug rather than guessing, which is the class of confident
+    /// wrongness this calculator exists to avoid. A curated
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/> gate resolves the same way for a
+    /// different reason: once it is the only thing left,
+    /// <see cref="CuratedRequirementBlocking"/> already resolved the entry to Available with the
+    /// condition named, and that verdict is kept rather than papered over.</para></summary>
+    private static void ComputeWithoutQuest(ResolvedUnlock u, UnlockGateContext ctx, GateResult? identity)
     {
-        if (u.Def.Requires?.HasCheckableRequirement != true)
+        if (u.Def.Requires?.HasCheckableRequirement != true && identity is null)
         {
             u.Status = UnlockStatus.Unverified;
             return;
         }
 
-        if (CuratedRequirementBlocking(u, ctx, out var reason, out var status))
+        if (CuratedRequirementBlocking(u, ctx, identity, out var reason, out var status))
         {
             u.Status = status;
             u.LockReason = reason;
             return;
         }
 
-        if (u.AvailableCondition is not null)
+        // Nothing blocks. Available is still a conclusion rather than a default: it is reached
+        // either because a partner-shaped condition already granted it, or because the identity
+        // gate read the very thing that used to be unknowable and said the player has not taken
+        // this unlock yet — which, with every prerequisite met, is precisely "go and get it".
+        if (u.AvailableCondition is not null || identity is { Outcome: GateOutcome.Blocked })
         {
             u.Status = UnlockStatus.Available;
             return;
@@ -156,7 +207,7 @@ public static class UnlockStatusCalculator
 
     /// <summary>InstanceContent, Grand Company, beast tribe, mount, and unmodeled-gate checks —
     /// the tail of the precedence chain, reached only once every earlier stage has passed.</summary>
-    private static void ComputeRemainingGates(ResolvedUnlock u, UnlockGateContext ctx)
+    private static void ComputeRemainingGates(ResolvedUnlock u, UnlockGateContext ctx, GateResult? identity)
     {
         if (InstanceContentBlocking(u, ctx, out var icReason))
         {
@@ -188,13 +239,13 @@ public static class UnlockStatusCalculator
             return;
         }
 
-        ComputeFinalGates(u, ctx);
+        ComputeFinalGates(u, ctx, identity);
     }
 
     /// <summary>The gates that live outside the Quest row's own columns — a hard job requirement,
     /// the separate accept-condition sheet, the catalogue's curated requirements — and then the
     /// two "we don't know" outcomes that stand between this and reporting Available.</summary>
-    private static void ComputeFinalGates(ResolvedUnlock u, UnlockGateContext ctx)
+    private static void ComputeFinalGates(ResolvedUnlock u, UnlockGateContext ctx, GateResult? identity)
     {
         if (!HardRequiredJobMet(u, ctx, out var hardJobReason))
         {
@@ -210,7 +261,7 @@ public static class UnlockStatusCalculator
             return;
         }
 
-        if (CuratedRequirementBlocking(u, ctx, out var curatedReason, out var curatedStatus))
+        if (CuratedRequirementBlocking(u, ctx, identity, out var curatedReason, out var curatedStatus))
         {
             u.Status = curatedStatus;
             u.LockReason = curatedReason;
@@ -239,7 +290,13 @@ public static class UnlockStatusCalculator
         // The curated block only lifts that verdict if it actually checks something. A `requires`
         // carrying nothing but prose — or nothing at all — is a note, not a gate, and letting its
         // mere presence disable the guard would reopen the hole it was written to close.
-        if (u.HasNoDiscoverableGate && u.Def.Requires?.HasCheckableRequirement != true)
+        //
+        // An entry whose own identity gate answered definitively is exempt: "the game records no
+        // requirement" is a statement about the Quest row, and the identity read is a statement
+        // about the unlock itself. When the second one is available it is the better evidence.
+        if (u.HasNoDiscoverableGate
+            && u.Def.Requires?.HasCheckableRequirement != true
+            && identity is not { Outcome: GateOutcome.Blocked })
         {
             u.Status = UnlockStatus.RequirementsUnknown;
             u.LockReason = "the game records no requirement for this";
@@ -302,7 +359,11 @@ public static class UnlockStatusCalculator
     /// be expressed. Fills <see cref="ResolvedUnlock.MissingRequirements"/> with the whole list —
     /// telling the player only the first of seven missing mounts would be its own small lie.</summary>
     private static bool CuratedRequirementBlocking(
-        ResolvedUnlock u, UnlockGateContext ctx, out string? reason, out UnlockStatus status)
+        ResolvedUnlock u,
+        UnlockGateContext ctx,
+        GateResult? identity,
+        out string? reason,
+        out UnlockStatus status)
     {
         reason = null;
         status = UnlockStatus.CollectionLocked;
@@ -348,7 +409,37 @@ public static class UnlockStatusCalculator
             return true;
         }
 
-        return UncheckableRequirementBlocking(u, ctx, req, out reason, out status);
+        if (DeclaredGatesBlocking(ctx, req, out reason, out status))
+        {
+            return true;
+        }
+
+        return UncheckableRequirementBlocking(u, ctx, req, identity, out reason, out status);
+    }
+
+    /// <summary>The declarative half of a <c>requires</c> block, and the whole of it for every kind
+    /// added after the typed lists. Dispatch is a dictionary lookup on a string that came out of
+    /// the data file: no requirement kind is named here, no catalogue entry is recognised, and a
+    /// kind this build has never heard of comes back as Indeterminate rather than as a pass.</summary>
+    private static bool DeclaredGatesBlocking(
+        UnlockGateContext ctx, UnlockRequirement req, out string? reason, out UnlockStatus status)
+    {
+        reason = null;
+        status = UnlockStatus.CollectionLocked;
+        if (req.Gates.Count == 0)
+        {
+            return false;
+        }
+
+        var result = ctx.Gates.EvaluateAll(req.Gates, ctx.Live);
+        if (result.Outcome == GateOutcome.Satisfied)
+        {
+            return false;
+        }
+
+        status = result.Status;
+        reason = result.Reason;
+        return true;
     }
 
     /// <summary>Everything left once level, job, duty and collectible checks all pass: the two
@@ -365,9 +456,20 @@ public static class UnlockStatusCalculator
     ///
     /// <para><see cref="UnlockRequirement.Unverifiable"/> still blocks, because it means the
     /// opposite thing: not "known but unreadable", but "we don't know what this needs at all" —
-    /// there is no "everything checkable" to have finished satisfying.</para></summary>
+    /// there is no "everything checkable" to have finished satisfying. The single exception is an
+    /// entry whose <see cref="ResolvedUnlock.IdentityGate"/> returned a determinate answer.
+    /// <c>Unverifiable</c> is a statement about what the CATALOGUE can express, written when the
+    /// only readable fact was a prerequisite; an identity gate reads the unlock itself, which is
+    /// the very thing the flag was hedging about. Where the plugin can now answer the question,
+    /// the hedge is stale rather than authoritative — and only there: an entry with no identity
+    /// gate, or one whose gate could not be read, keeps the shrug exactly as before.</para></summary>
     private static bool UncheckableRequirementBlocking(
-        ResolvedUnlock u, UnlockGateContext ctx, UnlockRequirement req, out string? reason, out UnlockStatus status)
+        ResolvedUnlock u,
+        UnlockGateContext ctx,
+        UnlockRequirement req,
+        GateResult? identity,
+        out string? reason,
+        out UnlockStatus status)
     {
         if (req.RequiresAnotherPlayer)
         {
@@ -378,7 +480,7 @@ public static class UnlockStatusCalculator
             return false;
         }
 
-        if (!req.Unverifiable)
+        if (!req.Unverifiable || identity is { Outcome: GateOutcome.Blocked })
         {
             reason = null;
             status = UnlockStatus.CollectionLocked;
