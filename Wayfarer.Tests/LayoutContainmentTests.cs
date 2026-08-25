@@ -540,17 +540,30 @@ public class LayoutContainmentTests
     }
 
     /// <summary>The smallest readout there is — a quest and how far away it is — and the largest, at
-    /// the same scale, to pin the two ends of what the surface actually measures.</summary>
+    /// the same scale, to pin the two ends of what the surface actually measures.
+    ///
+    /// <para><b>The gutter's own mark is the one thing allowed past the bottom edge, and only into the
+    /// trailing margin.</b> Marks in that column overhang by design — the game's "!" medallion is 32
+    /// tall in a 26-tall row, which is the reason the readout's stack does not clip — and the
+    /// direction indicator is now a compass whose ring is a few pixels taller than the arrow it
+    /// replaced. On a readout with a single line that puts the bottom of the ring just past that line,
+    /// so what is worth asserting is not that it never happens but that it stays inside the margin the
+    /// readout already leaves under itself.</para></summary>
     [Theory]
     [MemberData(nameof(Scales))]
     public void A_minimal_readout_is_shorter_than_a_maximal_one_and_both_hold_together(float scale)
     {
         var minimal = ReadoutBodyLayout.Compose(Minimal(scale));
         var maximal = ReadoutBodyLayout.Compose(Maximal(scale, rows: 3f));
+        var flowed = minimal.All.Where(rect => rect != minimal.Arrow);
+        var overhang = minimal.Arrow.Bottom - minimal.Height;
 
         Assert.True(minimal.Height < maximal.Height, $"scale={scale}: {minimal.Height} !< {maximal.Height}");
         Assert.Single(minimal.Sections);
-        Assert.All(minimal.All, rect => Assert.True(rect.Bottom <= minimal.Height + 0.01f, $"{rect} runs long"));
+        Assert.All(flowed, rect => Assert.True(rect.Bottom <= minimal.Height + 0.01f, $"{rect} runs long"));
+        Assert.True(
+            overhang <= ReadoutBodyLayout.Gap(scale),
+            $"scale={scale}: the compass hangs {overhang} past the readout, more than its own margin");
     }
 
     /// <summary>The worst readout the composer can actually emit: a quest in another zone reached

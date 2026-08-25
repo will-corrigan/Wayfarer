@@ -30,8 +30,8 @@ public class GameMetricsTests
     public void CapHeightCentre_is_the_tuned_value()
     {
         // Pinned rather than merely range-checked: this exact number was tuned once against the
-        // readout's own direction arrow (see ReadoutBodyNode.LayoutArrow) and a silent change here
-        // would silently misalign the arrow, the cog and the follow switcher together.
+        // readout's own direction indicator (see ReadoutBodyNode.LayoutCompass) and a silent change
+        // here would silently misalign the compass, the cog and the follow switcher together.
         Assert.Equal(0.58f, GameMetrics.Type.CapHeightCentre);
     }
 }
