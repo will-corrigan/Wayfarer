@@ -89,19 +89,30 @@ internal sealed unsafe class ClickableReadoutAddon(
     public override void Dispose()
     {
         framework.Update -= OnFrameworkUpdate;
-        followMenu.Dispose();
 
         // Same marshalling as the hub window, and for the same reason: Dalamud unloads plugins on a
         // thread-pool thread while Close() asserts the main thread.
+        //
+        // EVERYTHING that gives memory back to the game belongs below this check, and the follow
+        // menu is easy to miss: its context menu owns an AtkEventInterface allocated out of the
+        // game's UI heap and handed back with two IMemorySpace.Free calls. Freeing that heap from a
+        // thread-pool thread is unsynchronised mutation of a structure the game is using — nothing
+        // throws, nothing is logged, and the corruption surfaces later somewhere else. It was
+        // disposed four lines above this check until the review that found it.
         if (framework.IsInFrameworkUpdateThread)
         {
+            followMenu.Dispose();
             base.Dispose();
             return;
         }
 
         try
         {
-            framework.RunOnFrameworkThread(() => base.Dispose()).Wait(TimeSpan.FromSeconds(2));
+            framework.RunOnFrameworkThread(() =>
+            {
+                followMenu.Dispose();
+                base.Dispose();
+            }).Wait(TimeSpan.FromSeconds(2));
         }
         catch (Exception ex)
         {

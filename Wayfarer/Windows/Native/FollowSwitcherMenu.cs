@@ -96,6 +96,11 @@ internal sealed class FollowSwitcherMenu(IPluginLog log) : IDisposable
     {
         try
         {
+            // Closed before it is disposed, and in that order. Disposing frees the event interface
+            // the game holds a pointer to in every menu entry that is on screen, and it calls into
+            // that pointer on the next click — closing gives the entries back to the game first.
+            // Must therefore run on the framework thread; the caller marshals.
+            menu?.Close();
             menu?.Dispose();
         }
         catch (Exception ex)
