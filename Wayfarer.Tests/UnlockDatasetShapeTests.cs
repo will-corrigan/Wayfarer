@@ -1,5 +1,6 @@
 using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
+using Wayfarer.Core.Unlocks.Gates;
 
 namespace Wayfarer.Tests;
 
@@ -19,12 +20,16 @@ public class UnlockDatasetShapeTests
     /// grade an entry carrying <c>requires.unverifiable</c>, and nothing else in the file would
     /// stop it falling through to Available.
     ///
-    /// <para>Identity and gradeability are separate. A Quest row is a gate the client records, so
-    /// an entry citing one can be graded and must not also claim to be unverifiable. A
-    /// ContentFinderCondition or Item row identifies the entry without being a gate: clearing
-    /// Sigmascape opens the Ultimate, but whether the player then took the unlock is written
-    /// nowhere a plugin can read. Those entries carry rows AND the marker, and that is
-    /// correct.</para></summary>
+    /// <para>Identity and gradeability are separate <i>in the data file</i>. A Quest row is a gate
+    /// the client records, so an entry citing one can be graded and must not also claim to be
+    /// unverifiable. A ContentFinderCondition or Item row identifies the entry without the data
+    /// file itself carrying a gate for it, and those entries carry rows AND the marker.</para>
+    ///
+    /// <para>The marker is not the last word at runtime. An entry whose reward identity is a duty
+    /// gets a gate derived from that row — the duty's own unlock bit — and where that reads, the
+    /// entry is graded on it. The flag records what the CATALOGUE can express, which is a
+    /// different thing from what the client knows; see
+    /// <c>ResolvedUnlock.IdentityGate</c>.</para></summary>
     [Fact]
     public void EveryEntryEitherRestsOnAGameRowOrDeclaresItRestsOnNothing()
     {
@@ -41,6 +46,21 @@ public class UnlockDatasetShapeTests
             Assert.False(
                 hasRow && !hasQuestRow && d.Requires?.Unverifiable != true,
                 $"'{d.Unlock}' cites only non-quest rows, so nothing says whether the unlock was taken: {string.Join(", ", d.Sources)}");
+        }
+    }
+
+    /// <summary>The data file and the shipped registry cannot drift apart. A catalogue naming a
+    /// gate kind this build lacks degrades safely at runtime — to "we can't check this" — but
+    /// safely is not the same as visibly, and a kind misspelt in the data would otherwise ship as
+    /// an entry that quietly says nothing. This is the check that keeps the closed set honest
+    /// without a kind list existing in two places.</summary>
+    [Fact]
+    public void EveryShippedCatalogueKind_HasARegisteredEvaluator()
+    {
+        var registered = GateEvaluatorRegistry.Standard.Kinds;
+        foreach (var kind in CatalogueGateKinds.Of(Load()))
+        {
+            Assert.Contains(kind, registered, StringComparer.Ordinal);
         }
     }
 
