@@ -17,7 +17,62 @@ Lumina. GitHub's runners have no game installation, so **generation can never be
 is the whole reason the output is committed: CI checks the committed file, and a regeneration is
 something a person does deliberately and reviews as a diff.
 
-## What it is generated from
+## The two halves
+
+The file has 1,208 entries and they come from two different places. Almost everything below is
+about the first half; the second is short because it has to be.
+
+| | Curated | Imported |
+|---|---:|---:|
+| entries | 587 | 621 |
+| built from | the wiki guide, corroborated against the game | the game's own enumeration, alone |
+| carries a description | yes, always, and CI requires one | no — nothing states one |
+| `channel` | derived from what it unlocks | the channel it was enumerated under |
+| marked by | `gamerescape:progression-guide` in `sources` | `game-enumeration:<channel>` in `sources` |
+
+**Why the second half exists.** The guide decides what exists, so anything the guide omits this
+pipeline could never learn about — and the completeness check below had been measuring that gap
+without closing it: every quest-completion title, every orchestrion roll, all twenty ARR job
+unlocks, three live dungeons. The generator now writes an entry for each of them from the game's own
+row.
+
+**Why imported entries are rebuilt every run rather than carried forward.** The committed file is
+also the input to the next generation. An import that landed once would be indistinguishable from
+curation immediately afterwards, and the next patch's new duty would need the whole exercise
+repeating by hand. So `main` drops every entry marked `game-enumeration:` on the way in and rebuilds
+it from the enumeration on the way out. A patch that adds a title adds an entry; one that removes a
+duty removes one.
+
+**What an imported entry will not do: invent.** No description, because the sheets state a name and
+a gate and no prose, and manufacturing a sentence that reads like curation is the same error as
+inventing a level. No `questKind`, because the guide is the only source that has ever said whether a
+quest is main scenario or a sidequest. No level unless the Quest row or the duty row states one, and
+never a level of 1 — in both those places 1 means "no level requirement". `priority` is the neutral
+value for the channel (`optional` for cosmetics, `nice` for the rest) rather than a judgement nobody
+made.
+
+## What kind of thing an entry is — `channel`
+
+Every entry carries one, and it is the field a per-category display groups by.
+
+`type` cannot do that job. Its nine values were chosen when the catalogue was 587 duties, systems
+and a handful of cosmetics; it has no word for a title, an orchestrion roll, a folklore book or a
+Masked Carnivale act, so asked to describe 1,208 entries it answers `system` for a third of them.
+`channel` is the vocabulary the game-data enumeration already walks — `duty`, `title`,
+`orchestrion`, `job`, `minion`, `challenge-log`, and 20 more — which means the taxonomy and the
+completeness check cannot drift apart. `type` is left exactly as it was, because it drives filter
+chips that already exist and rewriting those is presentation work.
+
+It is generated, never curated. An imported entry carries the channel it was enumerated under; a
+curated one has it derived from the sheet its `reward` names, falling back to its `type` when it has
+none — no string matching, which is the failure class `reward` exists to have ended. The closed set
+and both derivations live in `data/unlock-channels.mjs`, and `validate-unlocks.mjs` re-derives every
+curated entry's channel in CI, so a hand-edited one does not survive.
+
+The one channel the game cannot supply is `zone`: the housing districts, the Gold Saucer and White
+Wolf Gate open a place rather than a row, and no sheet holds a "you may now enter" bit for them.
+
+## What the curated half is generated from
 
 Two sources, and neither one alone is trusted.
 
@@ -166,11 +221,17 @@ The generator owns the entry's **identity and provenance**. It preserves everyth
 | `sources` | `requires` (curated script-only requirements) |
 | `confidence` | `type`, except the one correction above |
 | `level`, `levelSource`, `category` | |
-| `reward` | |
+| `reward`, `channel` | |
 | `requires.duties`, `requires.items` where the guide states one | |
 
 The committed dataset is therefore also the **curation store**. Editing prose in it is expected;
 the next regeneration keeps that prose and rewrites only the identity fields around it.
+
+**This table describes the curated half only.** An imported entry has no curated side at all: every
+field on it is generated, and the whole entry is discarded and rebuilt from the game data on the next
+run. Writing prose into one is not curation, it is an edit that the next regeneration will silently
+revert — and the way to keep it is to say so somewhere the generator reads, which today means
+promoting the entry into curation.
 
 ## Levels
 
@@ -244,10 +305,21 @@ dev-plugin folder, on top of whatever is being tested in-game.
 
 ## What CI enforces
 
-`validate-unlocks.mjs` — the schema: every field's type, the closed set of types, priorities,
-confidences, requirement kinds and reward kinds, and that an unknown field is an error rather than a
-value the plugin silently ignores. It cannot check that a `reward.id` exists or has an icon — those
-need sqpack and CI has no game — so the generator checks both at the moment it writes the field.
+`validate-unlocks.mjs` — the schema: every field's type, the closed set of types, channels,
+priorities, confidences, requirement kinds and reward kinds, and that an unknown field is an error
+rather than a value the plugin silently ignores. It cannot check that a `reward.id` exists or has an
+icon — those need sqpack and CI has no game — so the generator checks both at the moment it writes
+the field.
+
+It also checks the two halves separately (587 curated, 621 imported), because they fail differently:
+a change in the first is somebody editing curation and a change in the second is the game shipping a
+patch, and a single total would let one move inside the other. And it requires a **description on
+every curated entry** while allowing an imported one to have none. That rule used to be "every entry
+carries 20 to 400 characters of description", which was right while every entry had been written by a
+person and is a trap now that most have not — satisfying it for 621 game-proposed rows would mean
+generating a sentence each, and a manufactured sentence that reads like curation is worse than an
+honest blank. The row and the journal fall through to `notes`, then the requirement label, then the
+entry's own name; see `UnlockRowText.Description`.
 
 `validate-catalogue-identity.mjs` — the properties that make the file trustworthy and its diffs
 readable:
@@ -265,7 +337,10 @@ readable:
   `ContentFinderCondition` row it came from;
 - **grounded levels** — a level needs a `levelSource`, and a `levelSource` naming a quest row must
   name a row the entry itself cites;
-- **no duplicate identities** — same unlock, same level, same rows.
+- **no duplicate identities** — same unlock, same level, same rows, same reward. The reward is part
+  of that key because two different things can share a name: the quest behind "The Promise of
+  Tomorrow" grants both a title and an orchestrion roll of that name, and "Tiisol Ja" is both a
+  custom-delivery client and that client's crafting-log division.
 
 `Wayfarer.Tests/UnlockDatasetShapeTests.cs` asserts the same invariants through the C# parser, so
 they hold for the code that actually reads the file and not only for the Node validator.
@@ -286,67 +361,94 @@ reflecting over every `RowRef<Quest>` in `Lumina.Excel.Sheets` — and produces 
 36 channels**. The diff against the catalogue about to be written is `data/coverage.json`, which is
 committed. CI checks it with no game installation.
 
-**This changes nothing about what the catalogue contains.** It makes the gap measurable.
+It used to change nothing about what the catalogue contains, and only make the gap measurable. It now
+decides part of it: the generator imports every row this classifies as **recommended**, so the gap
+and the import cannot disagree about what a gap is.
 
 ### The numbers
 
-| channel | the game has | we cover | of those, by identity | our entries | recommended | undecided | excluded |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `duty` | 857 | 298 | 269 | 284 | 46 | 157 | 356 |
-| `triple-triad-card` | 481 | 209 | 0 | 154 | 5 | — | 267 |
-| `dye-slot` | 243 | 0 | 0 | 0 | — | — | 243 |
-| `title` | 201 | 43 | 0 | 48 | **150** | — | 8 |
-| `action` | 160 | 0 | 0 | 0 | — | — | 160 |
-| `aether-current` | 151 | 43 | 0 | 48 | — | — | 108 |
-| `gathering-folklore` | 134 | 40 | 0 | 1 | 14 | — | 80 |
-| `triple-triad-npc` | 108 | 32 | 0 | 39 | — | — | 76 |
-| `orchestrion` | 79 | 25 | 0 | 26 | **47** | — | 7 |
-| `minion` | 64 | 23 | 18 | 27 | 11 | — | 30 |
-| `flight` | 63 | 26 | 0 | 22 | — | — | 37 |
-| `fate` | 58 | 18 | 0 | 2 | — | — | 40 |
-| `emote` | 56 | 16 | 13 | 21 | 14 | — | 26 |
-| `occult-note` | 56 | 7 | 0 | 7 | — | — | 49 |
-| `trait` | 54 | 4 | 0 | 2 | — | — | 50 |
-| `job` | 48 | 11 | 0 | 11 | **36** | — | 1 |
-| `crafting-log-division` | 44 | 20 | 3 | 17 | 18 | — | 6 |
-| `mount` | 37 | 18 | 12 | 22 | 4 | — | 15 |
-| `aether-current-set` | 31 | 0 | 0 | 0 | — | — | 31 |
-| `craft-action` | 24 | 0 | 0 | 0 | — | — | 24 |
-| `emj-costume` | 21 | 14 | 0 | 12 | — | — | 7 |
-| `hunt-board` | 20 | 20 | 0 | 20 | — | — | — |
-| `challenge-log` | 19 | 4 | 0 | 2 | 13 | — | 2 |
-| `system` | 13 | 3 | 2 | 3 | 9 | — | 1 |
-| `allied-society` | 12 | 9 | 0 | 5 | 3 | — | — |
-| `custom-delivery` | 12 | 11 | 0 | 11 | 1 | — | — |
-| `general-action` | 12 | 11 | 0 | 8 | — | — | 1 |
-| `barding` | 6 | 1 | 1 | 2 | — | — | 5 |
-| `grand-company-rank` | 6 | 3 | 0 | 1 | 3 | — | — |
-| `stone-sky-sea` | 5 | 5 | 0 | 5 | — | — | — |
-| `fashion-accessory` | 4 | 0 | 0 | 0 | 1 | — | 3 |
-| `framers-kit` | 4 | 1 | 1 | 2 | 3 | — | — |
-| `variant-dungeon` | 4 | 4 | 0 | 4 | — | — | — |
-| `chocobo-companion` | 2 | 0 | 0 | 0 | — | — | 2 |
-| `facewear` | 1 | 0 | 0 | 0 | — | — | 1 |
-| `hairstyle` | 1 | 0 | 0 | 0 | — | — | 1 |
-| **total** | **3,091** | **919** | **319** | — | **378** | **157** | **1,637** |
+| channel | the game has | we cover | of those, by identity | curated entries | imported entries | excluded |
+|---|---:|---:|---:|---:|---:|---:|
+| `duty` | 857 | 540 | 486 | 290 | **220** | 317 |
+| `triple-triad-card` | 481 | 381 | 10 | — | **5** | 100 |
+| `dye-slot` | 243 | — | — | — | — | 243 |
+| `title` | 201 | 201 | 158 | — | **158** | — |
+| `action` | 160 | 41 | — | — | — | 119 |
+| `aether-current` | 151 | 45 | — | — | — | 106 |
+| `gathering-folklore` | 134 | 54 | 12 | — | **12** | 80 |
+| `triple-triad-npc` | 108 | 46 | — | — | — | 62 |
+| `orchestrion` | 79 | 79 | 54 | — | **53** | — |
+| `minion` | 64 | 64 | 59 | 20 | **41** | — |
+| `flight` | 63 | 29 | — | — | — | 34 |
+| `fate` | 58 | 18 | — | — | — | 40 |
+| `emote` | 56 | 56 | 53 | 15 | **40** | — |
+| `occult-note` | 56 | 13 | — | — | — | 43 |
+| `trait` | 54 | 15 | — | — | — | 39 |
+| `job` | 48 | 47 | 36 | — | **20** | 1 |
+| `crafting-log-division` | 44 | 32 | 13 | 3 | **10** | 12 |
+| `mount` | 37 | 37 | 31 | 18 | **19** | — |
+| `aether-current-set` | 31 | — | — | — | — | 31 |
+| `craft-action` | 24 | 24 | — | — | — | — |
+| `emj-costume` | 21 | 21 | — | — | — | — |
+| `hunt-board` | 20 | 20 | — | — | — | — |
+| `challenge-log` | 19 | 17 | 13 | — | **13** | 2 |
+| `system` | 13 | 13 | 12 | 225 | **10** | — |
+| `allied-society` | 12 | 12 | 3 | — | **3** | — |
+| `custom-delivery` | 12 | 12 | 1 | — | **1** | — |
+| `general-action` | 12 | 12 | 1 | — | **1** | — |
+| `barding` | 6 | 6 | 6 | 1 | **5** | — |
+| `grand-company-rank` | 6 | 6 | 3 | — | **1** | — |
+| `stone-sky-sea` | 5 | 5 | — | — | — | — |
+| `fashion-accessory` | 4 | 4 | 4 | — | **4** | — |
+| `framers-kit` | 4 | 4 | 4 | 1 | **3** | — |
+| `variant-dungeon` | 4 | 4 | — | — | — | — |
+| `chocobo-companion` | 2 | — | — | — | — | 2 |
+| `facewear` | 1 | 1 | 1 | — | **1** | — |
+| `hairstyle` | 1 | 1 | 1 | — | **1** | — |
+| `zone` | — | — | — | 14 | — | — |
+| **total** | **3,091** | **1,860** | **961** | **587** | **621** | **1,231** |
 
-The `our entries` column has no meaningful total: an entry can cover rows in more than one channel
-and would be counted twice. The entry-level figures are **462 of 587 tied to an enumerated row**
-(315 through an identity, 147 through a gate) and **125 allowed by rule**.
+The `curated entries` and `imported entries` columns count catalogue entries, not enumerated rows,
+and only the imported column totals cleanly: a curated entry can cover rows in more than one channel
+and would be counted twice. `zone` has no enumerated rows at all, which is the point of it.
 
-**378 rows are recommended for inclusion** and nothing in this pipeline imports them — that is a
-separate, deliberate piece of work. The largest are the 150 quest-completion titles and the 47
-orchestrion rolls the catalogue has *none* of, the 36 rows covering 20 missing job unlocks (no
-Gladiator, no Paladin, no Ninja, no Blue Mage), and 46 duties including `Alzadaal's Legacy`, `the
-Clyteum`, `Mistwake`, 13 guildhests and the three Occult Crescent zones.
+**Nothing is recommended and nothing is undecided**, and that is the baseline CI now holds. Every
+row of a kind the catalogue lists is either covered or excluded with a stated reason, so a non-zero
+`recommended` means the installed game data has an unlock the committed file does not — which is
+the alarm this artefact was written for, with the manual step taken out.
 
-**157 are undecided**, all of them the raid and deep-dungeon rows where the catalogue lists the
-*tier* and the game lists the *floor*. That is a UI decision nobody has made, so it is left visible
-rather than quietly recommended or quietly dropped.
+The 1,231 excluded rows, by reason:
+
+| reason | rows |
+|---|---:|
+| `channel:dye-slot` | 243 |
+| `row:duplicate-identity` | 140 |
+| `channel:action` | 119 |
+| `granularity:aether-current` | 106 |
+| `triple-triad-card:npc-match-prerequisite` | 100 |
+| `row:dead-gate` | 91 |
+| `duty-kind:Quest Battles` | 82 |
+| `duty-kind:Gold Saucer` | 63 |
+| `channel:triple-triad-npc` | 62 |
+| `channel:occult-note` | 43 |
+| `channel:fate` | 40 |
+| `channel:trait` | 39 |
+| `channel:flight` | 34 |
+| `channel:aether-current-set` | 31 |
+| `duty-kind:` (tutorial and retired rows) | 22 |
+| `duty-kind:PvP` | 16 |
+
+Two of those are worth reading twice. `row:duplicate-identity` is the game holding several rows for
+one thing — 22 `ContentFinderCondition` rows are called "Ocean Fishing", one per route — and one row
+of each name carries the entry. `granularity:aether-current` is the one place the catalogue is
+deliberately coarser than the game: it lists 30 zones against the game's 151 individual currents,
+because collecting a zone's currents is one thing a player sets out to do and 151 pickup rows is not
+a checklist anybody wants.
 
 `shipped, of those by identity` is worth reading as its own column. A channel with coverage and a
 zero there is one where the catalogue names the right *quests* without ever naming what they
-unlock — which is the shape of every bug this pipeline has had.
+unlock — which is the shape of every bug this pipeline has had. The import moved that figure from
+319 to 961.
 
 ### Where "we cover it" comes from
 
@@ -359,31 +461,59 @@ Two joins, and a row counts as covered if either hits. Neither uses a name.
 
 ### The policy — `coverage-policy.mjs`
 
-Every row the catalogue does not cover is classified **recommended**, **excluded with a stated
-reason**, or **undecided**. Two layers, and mixing them up is the bug to watch for.
+Every row the catalogue does not cover is classified **recommended** (which now means "the
+generator will write an entry for it"), **excluded with a stated reason**, or **undecided**. Two
+layers, and mixing them up is the bug to watch for.
 
-**Layer 1 is editorial taste** and has to be written down: whether a channel belongs in a level
-checklist at all is a judgement about the product, not something derivable. It resolves 1,463 of
-the missing rows in about twenty lines — `dye-slot` is a per-item colour condition, `action` and
-`trait` are announced by the game itself on level-up, 475 of the 481 Triple Triad rows record an
-NPC-match prerequisite rather than a reward.
+**Layer 1 is editorial taste** and has to be written down: whether a channel belongs in the
+catalogue at all is a judgement about the product, not something derivable. The test each channel
+has to pass is *does a player have to go and do something to get it* — a quest, a duty, a purchase, a
+collection, an achievement, a discovery. Something that arrives by gaining a level in a class is not
+an unlock, which is the whole of why `action` (160 rows), `trait` (54) and `craft-action` (24) are
+out. So is `dye-slot`, for a different reason: `ItemStainCondition` keys on an *item* and records
+that that one item accepts a second dye channel, 242 of its 243 rows name the same single quest, and
+the rows carry no name a checklist could show — the player-facing unlock is that one quest, which the
+catalogue lists.
 
-**Layer 2 is facts**, and must never be written down as a list, because the facts change every
-patch: does the gate quest still exist, does the identity have a name, is the gate a seasonal
-event. Seasonal rows are excluded with a reason rather than proposed — they are real, but showing
-them as *Available* in a level checklist would be a lie.
+**Layer 2 is facts**, and must never be written down as a list, because the facts change every patch:
+does the gate quest still exist, does the identity have a name, is this row a second copy of
+something already listed.
+
+**Seasonal rows are listed**, and they used to be excluded. They are real, permanent once earned, and
+not obtainable today — but that is a fact about *status* rather than about existence, and the plugin
+already reads `Quest.Festival` off the bound row and refuses to call such an entry Available (it
+reports "needs a festival or a house" instead). Nothing has to be written into the entry to say so,
+and writing `unverifiable` into it would have been the opposite of true: the gate is perfectly
+readable.
 
 **There is no layer 3.** There is deliberately no per-identity exception list: an exclusion that has
 to name a row id is a sign the rule is wrong, and a list of row ids is exactly the thing that goes
 stale silently and cannot be reviewed. Reasons are cited by *key* against a dictionary at the head
-of `coverage.json`, so a reviewer reads the 25 distinct reasons once and rewording one is a one-line
-diff rather than a 1,637-line one.
+of `coverage.json`, so a reviewer reads the 16 distinct reasons once and rewording one is a one-line
+diff rather than a 1,231-line one.
+
+Two rules were removed rather than reworded, and both had been quietly wrong:
+
+- **`duty:retired`** — "not in the duty finder and the game names no unlock quest". It called *the
+  Unmaking (Extreme)* and *Shinryu's Domain (Unreal)* retired, both of which are live, because whole
+  KINDS of duty have that flag false on every row (Ultimates, Deep Dungeons, Treasure Hunt, the
+  Carnivale). A flag that is false for a whole kind cannot be evidence about one row. The two
+  superseded rows it did catch are now caught properly, as duplicates.
+- **the raid/deep-dungeon granularity question** — 157 rows sat `undecided` because the catalogue
+  listed the *tier* and the game lists the *floor*. That was a presentation question dressed up as a
+  correctness one. The floors are real duties a player clears one at a time, so they are listed;
+  grouping them back under their tier is something a display can do and a missing row is not.
 
 ### What CI fails on
 
-Not on rows being missing. 378 recommended and 157 undecided rows are the *point* of the artefact,
-and a check that went red for them would be switched off within a week. It fails when the artefact
-and the catalogue stop describing the same thing:
+**On rows being missing — now.** That used to be the one thing it did not do, because 378
+recommended and 157 undecided rows were the point of the artefact and a check that went red for them
+would have been switched off within a week. The generator imports every recommended row, so the
+baseline is **zero recommended and zero undecided**, and a non-zero count means the installed game
+data has unlocks the committed file does not. Stated as "must be zero" rather than as a number to
+keep updating, so growth in the catalogue cannot turn it red on its own — only a gap can.
+
+It also fails when the artefact and the catalogue stop describing the same thing:
 
 - **the identity fingerprint moves** — a sha256 over each entry's `unlock`, `level`, `type`,
   `reward` and quest rows. Drop an entry, rebind one to another quest, or change what one unlocks
