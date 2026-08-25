@@ -1,5 +1,4 @@
 using Dalamud.Game.Gui.NamePlate;
-using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using Wayfarer.Modules;
 
@@ -165,8 +164,7 @@ internal sealed class NamePlateMarkers(
 
         try
         {
-            var lookup = new GameIconLookup((uint)cfg.NamePlateMarkerIcon);
-            if (textures.TryGetFromGameIcon(lookup, out var texture) && texture.TryGetWrap(out _, out _))
+            if (GameIconProbe.Exists(textures, (uint)cfg.NamePlateMarkerIcon))
             {
                 validatedIcon = cfg.NamePlateMarkerIcon;
             }

@@ -102,8 +102,7 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
     {
         try
         {
-            return textures.TryGetFromGameIcon(new GameIconLookup(iconId), out var texture)
-                   && texture.TryGetWrap(out _, out _);
+            return GameIconProbe.Exists(textures, iconId);
         }
         catch (Exception ex)
         {

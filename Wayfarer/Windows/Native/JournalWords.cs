@@ -1,6 +1,4 @@
 using Dalamud.Plugin.Services;
-using Lumina.Excel;
-using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Windows.Native;
 
@@ -77,14 +75,10 @@ internal sealed class JournalWords(IDataManager data, IPluginLog log)
         string? text = null;
         try
         {
-            // RawRow rather than a typed wrapper for the same reason UnlockService reads its
-            // GameTextRefs that way: one code path for any sheet, and column 0 is Addon's text.
-            var sheet = data.Excel.GetSheet<RawRow>(null, "Addon");
-            if (sheet.TryGetRow(row, out var value))
-            {
-                var read = value.ReadStringColumn(0).ExtractText();
-                text = string.IsNullOrWhiteSpace(read) ? null : read;
-            }
+            // Column 0 is Addon's text. The sheet read itself is GameSheetText.Read — the same one
+            // UnlockService resolves its GameTextRefs through, so there is one code path for any
+            // sheet rather than two.
+            text = GameSheetText.Read(data, "Addon", row, 0);
         }
         catch (Exception ex)
         {
