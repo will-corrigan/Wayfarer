@@ -1,0 +1,180 @@
+name: Testing Publish
+
+# Publishes a TESTING build from `main` (or another ref) to Dalamud's testing channel, without
+# cutting a stable release. See the "Releases" section of the README for what this is for and how
+# to use it. This is a SEPARATE workflow from release.yml on purpose: it never touches
+# Wayfarer.csproj's <Version>, never touches release-please's manifest, and its only commit to
+# repo.json is scoped to the two testing fields, so a testing dispatch can never be confused with,
+# or block, a stable release.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch/commit to build (default main)"
+        default: main
+        type: string
+
+permissions:
+  contents: write
+
+# A stable release (release.yml) and a testing dispatch both end by pushing repo.json to `main`.
+# Two testing dispatches racing on that same commit would be worse: serialize them.
+concurrency:
+  group: testing-publish
+  cancel-in-progress: false
+
+env:
+  DALAMUD_HOME: ${{ github.workspace }}\.dalamud
+
+jobs:
+  publish-testing:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+
+      - name: Resolve build sha
+        id: sha
+        shell: pwsh
+        run: |
+          $sha = git rev-parse HEAD
+          "sha=$sha" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.DALAMUD_HOME }}" | Out-Null
+          Invoke-WebRequest -Uri "https://goatcorp.github.io/dalamud-distrib/latest.zip" -OutFile "$env:TEMP\dalamud-latest.zip"
+          Expand-Archive -Path "$env:TEMP\dalamud-latest.zip" -DestinationPath "${{ env.DALAMUD_HOME }}" -Force
+
+      - name: Restore
+        run: dotnet restore --locked-mode
+
+      - name: Compute testing version
+        id: version
+        shell: pwsh
+        run: |
+          # The testing version's Major.Minor.Patch always tracks whatever is CURRENTLY stable on
+          # `main` (read fresh here, not from the ref being built, so a dispatch of an older branch
+          # still compares against the channel it is about to publish next to) and the fourth
+          # component is 40000 + this run's number: always non-zero, so it can never collide with a
+          # real stable release (release.yml always emits `X.Y.Z.0`), always increasing across
+          # dispatches, and obviously not a real patch version to anyone reading it in the installer
+          # or the logs.
+          #
+          # 40000, not the round 100000 an earlier draft of this scheme used: each of the four
+          # components ends up in the built assembly's AssemblyVersionAttribute, and the .NET
+          # compiler requires every component to fit in a ushort (0-65535, CS7034/CS7035
+          # otherwise) - verified by actually trying 100000 against this csproj and watching the
+          # build fail. 40000 leaves over 25000 runs of headroom before that ever matters again,
+          # checked explicitly below anyway.
+          git fetch origin main --depth=1
+          $mainRepoJson = git show origin/main:repo.json | ConvertFrom-Json
+          $stable = $mainRepoJson[0].AssemblyVersion
+          $parts = $stable -split "\."
+          $runNumber = [int]"${{ github.run_number }}"
+          if ($runNumber -gt 25535) {
+            throw "github.run_number ($runNumber) has grown too large for the 40000-offset testing version scheme (would exceed the ushort range .NET requires for AssemblyVersion). Lower the offset or otherwise revise the scheme in this workflow before continuing."
+          }
+          $testingVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$((40000 + $runNumber))"
+          "testingVersion=$testingVersion" >> $env:GITHUB_OUTPUT
+          "stableVersion=$stable" >> $env:GITHUB_OUTPUT
+
+      - name: Guard - testing version must be strictly greater than stable
+        shell: pwsh
+        run: |
+          # LOAD-BEARING, DO NOT SIMPLIFY AWAY: Dalamud's PluginManifest.IsAvailableForTesting is
+          #   TestingAssemblyVersion != null && TestingAssemblyVersion > AssemblyVersion
+          #     && TestingDalamudApiLevel == the running Dalamud's API level
+          # compared as a plain four-integer System.Version - no semver, no pre-release syntax. If
+          # TestingAssemblyVersion is not STRICTLY greater than AssemblyVersion, Dalamud treats the
+          # testing channel as unavailable and the opted-in tester keeps whatever she already has -
+          # no error anywhere, just an update that silently never reaches her. That is exactly the
+          # bug that made Wayfarer's testing channel inert before this workflow existed (both
+          # fields were being set equal to stable on every release). The version scheme above is
+          # built to make this impossible by construction; this guard is what catches it anyway if
+          # that construction is ever changed without noticing what it guarantees.
+          $testing = [version]"${{ steps.version.outputs.testingVersion }}"
+          $stable = [version]"${{ steps.version.outputs.stableVersion }}"
+          if ($testing -le $stable) {
+            throw "Testing version $testing is not strictly greater than stable $stable - Dalamud would treat the testing channel as unavailable. Refusing to publish."
+          }
+          Write-Host "OK: testing $testing > stable $stable"
+
+      - name: Build
+        run: dotnet build --no-restore -c Release -p:Version=${{ steps.version.outputs.testingVersion }}
+
+      - name: Package testing asset
+        shell: pwsh
+        run: Copy-Item -Path "Wayfarer/bin/Release/Wayfarer/latest.zip" -Destination "Wayfarer-testing.zip"
+
+      - name: Create testing prerelease
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          # A unique, non-rolling tag per dispatch - a rolling "testing" tag would need
+          # force-pushing the tag ref and replacing assets in place, which is unusual git hygiene
+          # for no real benefit here. Old testing prereleases are harmless clutter, prunable
+          # whenever.
+          $tag = "testing-v${{ steps.version.outputs.testingVersion }}"
+          gh release create $tag Wayfarer-testing.zip `
+            --repo "${{ github.repository }}" `
+            --prerelease `
+            --title "Testing build ${{ steps.version.outputs.testingVersion }}" `
+            --notes "Built from ${{ inputs.ref }} @ ${{ steps.sha.outputs.sha }}. Not a stable release - do not report bugs from this build as regular issues." `
+            --target "${{ steps.sha.outputs.sha }}"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Switch to main for repo.json update
+        shell: pwsh
+        run: |
+          # The build above ran against `inputs.ref`, but repo.json is only ever published from
+          # `main` - switch (or create) a local branch pinned to the current tip of origin/main
+          # regardless of what was checked out to build.
+          git fetch origin main
+          git checkout -B main origin/main
+
+      - name: Update repo.json testing fields
+        shell: pwsh
+        run: |
+          $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ steps.release.outputs.tag }}/Wayfarer-testing.zip"
+
+          $repo = Get-Content repo.json -Raw | ConvertFrom-Json
+          # ONLY the testing fields change here. AssemblyVersion, DownloadLinkInstall,
+          # DownloadLinkUpdate and LastUpdate are release.yml's business alone - see the guard step
+          # above for why leaving stable untouched matters, and the README for why release.yml
+          # already resets these two fields back to stable on every real release.
+          $repo[0].TestingAssemblyVersion = "${{ steps.version.outputs.testingVersion }}"
+          $repo[0].DownloadLinkTesting = $downloadUrl
+
+          ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json
+
+      - name: Commit repo.json
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repo.json
+          $status = git status --porcelain -- repo.json
+          if ($status) {
+            git commit -m "chore: publish testing build ${{ steps.version.outputs.testingVersion }}"
+            # `chore:` so release-please ignores this commit entirely - no version bump implied,
+            # no changelog entry, and no interference with a release PR that may be in flight.
+            git pull --rebase origin main
+            git push origin HEAD:main
+          } else {
+            Write-Host "repo.json unchanged, skipping commit"
+          }
