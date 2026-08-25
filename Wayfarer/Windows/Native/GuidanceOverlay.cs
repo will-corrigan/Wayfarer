@@ -49,7 +49,7 @@ internal sealed class GuidanceOverlay(
     // The overlay is the fallback, so the addon is the host whenever it exists at all.
     private bool UseAddonHost => addon is not null && cfg.UseNativeReadout;
 
-    /// <summary>Creates both hosts, marshalling onto the framework thread because every node
+    /// <summary>Creates the host and its fallback, marshalling onto the framework thread because every node
     /// constructor and the overlay controller itself assert it. Idempotent.</summary>
     public void Start()
     {

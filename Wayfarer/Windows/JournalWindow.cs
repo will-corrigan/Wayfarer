@@ -26,7 +26,7 @@ namespace Wayfarer.Windows;
 /// <para><b>Chromeless on purpose.</b> <c>JournalDetail</c> has no window component at all: its
 /// chrome <i>is</i> the parchment nine-grid and the gilt border, and a standard window frame around
 /// that would be a frame inside a frame. So the window node is supplied already invisible — the same
-/// trick the readout's clickable host uses — and <see cref="JournalFrameNode"/> is the whole of the
+/// trick the readout's own host uses — and <see cref="JournalFrameNode"/> is the whole of the
 /// visible edge.</para>
 ///
 /// <para><b>Fixed width, free height.</b> <see cref="GameMetrics.JournalFrame.Width"/>, always. Every

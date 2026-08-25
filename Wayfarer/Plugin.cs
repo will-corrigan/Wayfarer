@@ -32,7 +32,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly NamePlateMarkers namePlateMarkers;
     private readonly SettingsCatalog settings;
 
-    /// <summary>The single owner of where the readout sits: read by both native hosts every frame,
+    /// <summary>The single owner of where the readout sits: read by the readout's host and its fallback every frame,
     /// written by the Settings tab's position sliders and by a mouse drag.</summary>
     private readonly ReadoutPlacement readoutPlacement;
 
@@ -90,7 +90,7 @@ public sealed class Plugin : IDalamudPlugin
         var config = LoadConfig(pluginInterface, log);
         void SaveConfig() => pluginInterface.SavePluginConfig(config);
 
-        // Where the readout sits — one owner shared by both of its hosts and by the settings, so a
+        // Where the readout sits — one owner shared by the host, its fallback and the settings, so a
         // nudge from the Settings tab and a drag with the mouse write to the same place.
         readoutPlacement = new ReadoutPlacement(config.QuestHelper, SaveConfig);
 
@@ -367,7 +367,7 @@ public sealed class Plugin : IDalamudPlugin
     /// and the draggable header are all allocated and none of them drawn. That is deliberate and it
     /// is what <c>JournalDetail</c> itself does — the page's chrome <i>is</i> its parchment and its
     /// gilt border, and a standard window frame around that would be a frame inside a frame. The
-    /// same trick, for the same reason, as the readout's clickable host.</para>
+    /// same trick, for the same reason, as the readout's own host.</para>
     ///
     /// <para>Handed to the hub window, which owns its lifetime: it is opened, moved, and closed
     /// entirely in response to what is happening in that window's list.</para></summary>

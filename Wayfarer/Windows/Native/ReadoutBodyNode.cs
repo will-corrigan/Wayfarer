@@ -236,7 +236,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// renders at <c>g</c> — identical only when <c>g</c> is exactly 1, and visibly wrong at every
     /// other interface size. On this player's 5120x1440 display it is not 1.</para>
     ///
-    /// <para><b>The clickable host now does nothing at all about scale</b>, which is the only
+    /// <para><b>The addon host now does nothing at all about scale</b>, which is the only
     /// arrangement that is provably right without knowing <c>g</c>: it is an ordinary addon holding
     /// ordinary ULD-unit nodes, exactly like the addon that draws the game's own banner, so the two
     /// cannot disagree. The overlay host is different because the toolkit forces the de-scale on
@@ -896,7 +896,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     /// <summary>Records which of the readout's click targets are live this frame. The cog, the
     /// switcher, the name and the plate are all collision nodes whenever they are drawn, and the
-    /// clickable host watches this to know when the addon's collision list has to be rebuilt.</summary>
+    /// host watches this to know when the addon's collision list has to be rebuilt.</summary>
     private void SettleClickTargets()
     {
         if (cogNode is { IsVisible: true })

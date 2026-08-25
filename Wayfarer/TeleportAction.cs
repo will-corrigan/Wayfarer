@@ -6,7 +6,7 @@ namespace Wayfarer;
 /// <summary>The plugin's only SERVER-affecting action (everything else is read-only;
 /// client UI navigation, like opening the Duty Finder, is permitted — it doesn't
 /// touch the game's simulation, just the UI). One deliberate user click = one
-/// teleport cast. Called from every surface that offers the teleport: the clickable readout, the
+/// teleport cast. Called from every surface that offers the teleport: the readout, the
 /// window's Quests tab, the game's context menu and the ImGui fallback.</summary>
 internal static unsafe class TeleportAction
 {
