@@ -28,6 +28,13 @@ internal sealed class HubListRow
     /// in <see cref="StatusWord"/> instead rather than leaving a hole where the state should be.</summary>
     public uint IconId { get; set; }
 
+    /// <summary>Whether <see cref="IconId"/> is creature art rather than a status marker, which is
+    /// the difference between the game's Hunting Log row and its Journal row: a 48x48 portrait
+    /// filling the row's height with the words at x=56, against a 20x20 marker with the words at
+    /// x=24. Only the Hunting Log's own rows set this — see
+    /// <see cref="Core.Ui.GameMetrics.Row.PortraitSize"/>.</summary>
+    public bool Portrait { get; init; }
+
     /// <summary>The state in one word, used only when <see cref="IconId"/> is 0. Colour is never
     /// the only signal and neither is a shape that did not load.
     ///

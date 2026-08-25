@@ -37,6 +37,7 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     private HubRowKind kind = HubRowKind.Entry;
     private bool hasIcon;
     private bool hasStatus;
+    private bool portrait;
 
     public HubListRowNode()
     {
@@ -118,6 +119,7 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
     protected override void SetNodeData(HubListRow itemData)
     {
         kind = itemData.Kind;
+        portrait = itemData.Portrait;
 
         ApplyIcon(itemData.IconId);
 
@@ -270,7 +272,12 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         // rows and clipped to the row's own box — so nothing here can put a node outside it.
         var shape = Shape(kind);
         var blocks = RowLayout.Compose(
-            shape, Width, Height, hasIcon && shape == RowShape.Entry, hasStatus && shape == RowShape.Entry);
+            shape,
+            Width,
+            Height,
+            hasIcon && shape == RowShape.Entry,
+            hasStatus && shape == RowShape.Entry,
+            portrait && shape == RowShape.Entry);
 
         iconNode.IsVisible = !blocks.Icon.IsEmpty;
         if (!blocks.Icon.IsEmpty)

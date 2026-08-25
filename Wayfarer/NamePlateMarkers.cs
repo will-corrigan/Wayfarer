@@ -146,7 +146,12 @@ internal sealed class NamePlateMarkers(
     /// <summary>Resolves the configured icon against the game's own texture table, once per change.
     /// This is the highest-value guard here: it turns "does this id exist?" — which otherwise could
     /// only be answered by someone looking at a screen — into something the player's own machine
-    /// answers at runtime, before the id is ever written to a nameplate.</summary>
+    /// answers at runtime, before the id is ever written to a nameplate.
+    ///
+    /// <para>An id whose texture is still loading leaves <see cref="validatedFor"/> alone, so the next
+    /// frame asks again rather than the session settling on "nothing will be marked". Only a genuine
+    /// miss is recorded — the same distinction, and for the same reason, as
+    /// <see cref="Windows.Native.HubStatusIcons"/>.</para></summary>
     private int ResolveIcon()
     {
         if (validatedFor == cfg.NamePlateMarkerIcon)
@@ -154,27 +159,34 @@ internal sealed class NamePlateMarkers(
             return validatedIcon;
         }
 
-        validatedFor = cfg.NamePlateMarkerIcon;
-        validatedIcon = 0;
-
         if (cfg.NamePlateMarkerIcon <= 0)
         {
+            validatedFor = cfg.NamePlateMarkerIcon;
+            validatedIcon = 0;
             return 0;
         }
 
         try
         {
-            if (GameIconProbe.Exists(textures, (uint)cfg.NamePlateMarkerIcon))
+            var availability = GameIconProbe.Check(textures, (uint)cfg.NamePlateMarkerIcon);
+            if (availability == GameIconAvailability.Pending)
             {
-                validatedIcon = cfg.NamePlateMarkerIcon;
+                // Not an answer. Nothing is recorded and nothing is marked this frame.
+                return 0;
             }
-            else
+
+            validatedFor = cfg.NamePlateMarkerIcon;
+            validatedIcon = availability == GameIconAvailability.Present ? cfg.NamePlateMarkerIcon : 0;
+
+            if (validatedIcon == 0)
             {
                 log.Warning($"Wayfarer markers: icon {cfg.NamePlateMarkerIcon} does not resolve, so nothing will be marked.");
             }
         }
         catch (Exception ex)
         {
+            validatedFor = cfg.NamePlateMarkerIcon;
+            validatedIcon = 0;
             log.Warning(ex, $"Wayfarer markers: icon {cfg.NamePlateMarkerIcon} could not be checked, so nothing will be marked.");
         }
 

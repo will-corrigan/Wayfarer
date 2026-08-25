@@ -17,7 +17,17 @@ namespace Wayfarer.Windows.Native;
 /// <para>Resolved once per session, lazily, on the first row that asks. The lookup is against
 /// Dalamud's shared texture cache, so a hit costs nothing after the first; caching the
 /// <b>miss</b> is the part that matters, because a missing id would otherwise be looked up for
-/// every row of every rebuild.</para></summary>
+/// every row of every rebuild.</para>
+///
+/// <para><b>Only a verdict is cached.</b> This table used to store the raw boolean the texture cache
+/// returned, which cost the Hunting Log every one of its creature portraits. Those 63xxx ids are art
+/// no other plugin and no other part of the game UI loads, so on the one frame a rank's rows were
+/// built they were all still loading, all answered "not loaded", and all got written down as "does
+/// not exist in this patch" for the rest of the session. A <see cref="GameIconAvailability.Pending"/>
+/// id is therefore not recorded and is drawn anyway: the node's own id assignment goes through the
+/// game's texture loader rather than this cache, so being optimistic costs a frame of nothing where
+/// being pessimistic cost a permanent blank. Only <see cref="GameIconAvailability.Absent"/> — the id
+/// does not resolve to a game path, or its load threw — is remembered as a miss.</para></summary>
 internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
 {
     private readonly Dictionary<uint, bool> resolved = [];
@@ -44,9 +54,13 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
         _ => new Vector2(32f, 32f),
     };
 
-    /// <summary>The id to draw, or 0 when it could not be resolved and the caller should fall back
+    /// <summary>The id to draw, or 0 when it is known not to exist and the caller should fall back
     /// to words. Never throws: a texture lookup must not be the thing that stops a list from being
-    /// built.</summary>
+    /// built.
+    ///
+    /// <para>An id whose texture has not finished loading comes back as itself, not as 0 — see the
+    /// type's own doc for why that is the whole difference between a Hunting Log with portraits and
+    /// one without.</para></summary>
     public uint Resolve(uint iconId)
     {
         if (iconId == 0)
@@ -59,7 +73,15 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
             return ok ? iconId : 0;
         }
 
-        ok = Probe(iconId);
+        var availability = Probe(iconId);
+        if (availability == GameIconAvailability.Pending)
+        {
+            // No verdict yet, so nothing is written down and the id is drawn on the assumption that a
+            // path the game resolved is a path the game can load. The next rebuild asks again.
+            return iconId;
+        }
+
+        ok = availability == GameIconAvailability.Present;
         resolved[iconId] = ok;
 
         if (!ok && !loggedFailure)
@@ -98,16 +120,16 @@ internal sealed class HubStatusIcons(ITextureProvider textures, IPluginLog log)
         return Resolve(UnlockStatusDisplay.LockedDutyIcon);
     }
 
-    private bool Probe(uint iconId)
+    private GameIconAvailability Probe(uint iconId)
     {
         try
         {
-            return GameIconProbe.Exists(textures, iconId);
+            return GameIconProbe.Check(textures, iconId);
         }
         catch (Exception ex)
         {
             log.Warning(ex, $"Wayfarer hub: status icon {iconId} could not be checked, so it will not be drawn.");
-            return false;
+            return GameIconAvailability.Absent;
         }
     }
 }

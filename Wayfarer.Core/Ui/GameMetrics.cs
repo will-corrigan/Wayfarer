@@ -213,10 +213,27 @@ public static class GameMetrics
         /// name, a right-hand count and a second element beneath.</summary>
         public const float EntryHeight = Height + SecondaryHeight;
 
-        /// <summary>The icon on the Hunting Log's 48-tall row is 48x48 (MonsterNoteBook
-        /// <c>1017 #3</c>) because it is creature art. Wayfarer's row carries a 20px status marker
-        /// instead, so it keeps the list-row icon size and centres it over both lines.</summary>
+        /// <summary>Where a 20px status marker sits on a 48-tall row: centred over both lines.
+        /// </summary>
         public const float EntryIconTop = (EntryHeight - IconSize) / 2f;
+
+        /// <summary>A creature portrait, not a status marker. MonsterNoteBook <c>1017 #3</c> — the
+        /// Hunting Log's own monster row — is 48x48, and that row (<c>1017 #1</c>) is 48 tall, which
+        /// is already <see cref="EntryHeight"/>. The portrait therefore fills the row's full height
+        /// rather than being centred in it.
+        ///
+        /// <para>Wayfarer drew these 63xxx portraits in the 20px status slot, which is what "the
+        /// hunting log has no images" looked like once the ids themselves started resolving: a
+        /// 48x48 piece of creature art sampled down into a marker's box.</para></summary>
+        public const float PortraitSize = EntryHeight;
+
+        /// <summary>Inset from the row's left edge to the portrait. MonsterNoteBook <c>1017 #3</c>
+        /// is at x=6.</summary>
+        public const float PortraitPadding = 6f;
+
+        /// <summary>The left edge of a portrait row's text. MonsterNoteBook <c>1017 #4</c> — the
+        /// creature's name — is at x=56, which is the portrait's own 6 plus its 48 plus two.</summary>
+        public const float PortraitTextLeft = 56f;
     }
 
     /// <summary>The scroll bar, and the width a list has to give up to it.</summary>
