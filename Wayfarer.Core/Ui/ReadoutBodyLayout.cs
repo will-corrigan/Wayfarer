@@ -157,56 +157,18 @@ public static class ReadoutBodyLayout
 
     /// <summary>Places a stack of sections, taking each section's height from the section itself.
     ///
-    /// <para><b>This is the whole of the vertical layout.</b> The cursor starts at the box's top and
-    /// advances by whatever the section it just placed says it is. A section of no height is one that
-    /// is not being drawn: it takes no room and no spacing, which is what <c>VerticalListNode</c> does
-    /// with an invisible child. Two consequences, and they are the point: no section's position
-    /// depends on a measurement of any section other than the ones above it, and no two returned
-    /// rectangles can intersect, whatever heights are handed in.</para></summary>
-    public static IReadOnlyList<ScreenRect> Flow(IReadOnlyList<float> heights, ScreenRect box)
-    {
-        ArgumentNullException.ThrowIfNull(heights);
-
-        var placed = new ScreenRect[heights.Count];
-        var y = box.Y;
-
-        for (var i = 0; i < heights.Count; i++)
-        {
-            if (heights[i] <= 0f || box.Width <= 0f)
-            {
-                continue;
-            }
-
-            placed[i] = new ScreenRect(box.X, y, box.Width, heights[i]);
-            y += heights[i] + Spacing;
-        }
-
-        return placed;
-    }
+    /// <para><b>This is the whole of the vertical layout.</b> The walk itself — the cursor starting
+    /// at the box's top and advancing by whatever the section it just placed says it is — is shared
+    /// with the journal window's own stack; see <see cref="FlowLayout"/> for the rule and why it lives
+    /// there once. The readout's own contribution is the spacing between sections, which is
+    /// <see cref="Spacing"/> and is nothing.</para></summary>
+    public static IReadOnlyList<ScreenRect> Flow(IReadOnlyList<float> heights, ScreenRect box) =>
+        FlowLayout.Flow(heights, Spacing, box);
 
     /// <summary>How tall that stack comes out — the height a container with <c>FitContents</c> takes
     /// on. The same walk as <see cref="Flow"/>, and it has to be, so the readout's height and its
     /// contents cannot disagree.</summary>
-    public static float FlowHeight(IReadOnlyList<float> heights)
-    {
-        ArgumentNullException.ThrowIfNull(heights);
-
-        var total = 0f;
-        var counted = 0;
-
-        foreach (var height in heights)
-        {
-            if (height <= 0f)
-            {
-                continue;
-            }
-
-            total += height;
-            counted++;
-        }
-
-        return total + (Math.Max(counted - 1, 0) * Spacing);
-    }
+    public static float FlowHeight(IReadOnlyList<float> heights) => FlowLayout.FlowHeight(heights, Spacing);
 
     /// <summary>Arranges the whole readout at one scale, for one set of lines — the same arrangement
     /// the live node produces, from the same helpers, so a proof about this is a proof about what is

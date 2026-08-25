@@ -114,66 +114,20 @@ public static class JournalWindowLayout
 
     /// <summary>Places a stack of blocks, taking each block's height from the block itself.
     ///
-    /// <para><b>This is the whole of the layout.</b> The cursor starts at the box's top and advances
-    /// by whatever the block it just placed says it is; a zero-height block is one that is not being
-    /// drawn and takes no room and no spacing, which is what <c>VerticalListNode</c> does with an
-    /// invisible child. Two consequences, and they are the point of the class: no block's position
-    /// depends on a measurement of any block other than the ones above it, and no two returned
-    /// rectangles can intersect, whatever heights are handed in — including heights far taller than
-    /// the box, which run off the bottom rather than into a sibling.</para></summary>
+    /// <para><b>This is the whole of the layout.</b> The walk itself — the cursor starting at the
+    /// box's top and advancing by whatever the block it just placed says it is — is shared with the
+    /// readout's own stack; see <see cref="FlowLayout"/> for the rule and why it lives there once. The
+    /// window's own contribution is <paramref name="spacing"/>, its gap between stacked blocks.
+    /// </para></summary>
     public static IReadOnlyList<ScreenRect> Flow(
-        IReadOnlyList<float> heights, float spacing, ScreenRect box)
-    {
-        ArgumentNullException.ThrowIfNull(heights);
-
-        var placed = new ScreenRect[heights.Count];
-        var y = box.Y;
-        var first = true;
-
-        for (var i = 0; i < heights.Count; i++)
-        {
-            if (heights[i] <= 0f || box.Width <= 0f)
-            {
-                continue;
-            }
-
-            if (!first)
-            {
-                y += spacing;
-            }
-
-            placed[i] = new ScreenRect(box.X, y, box.Width, heights[i]);
-            y += heights[i];
-            first = false;
-        }
-
-        return placed;
-    }
+        IReadOnlyList<float> heights, float spacing, ScreenRect box) =>
+        FlowLayout.Flow(heights, spacing, box);
 
     /// <summary>How tall that stack comes out — the height a container with <c>FitContents</c> takes
     /// on. The same walk as <see cref="Flow"/>, and it has to be, so the window's height and its
     /// contents cannot disagree.</summary>
-    public static float FlowHeight(IReadOnlyList<float> heights, float spacing = -1f)
-    {
-        ArgumentNullException.ThrowIfNull(heights);
-
-        var gap = spacing < 0f ? Spacing : spacing;
-        var total = 0f;
-        var first = true;
-
-        foreach (var height in heights)
-        {
-            if (height <= 0f)
-            {
-                continue;
-            }
-
-            total += first ? height : gap + height;
-            first = false;
-        }
-
-        return total;
-    }
+    public static float FlowHeight(IReadOnlyList<float> heights, float spacing = -1f) =>
+        FlowLayout.FlowHeight(heights, spacing < 0f ? Spacing : spacing);
 
     /// <summary>The frame height a content stack of <paramref name="contentHeight"/> needs: the band
     /// above it, the stack, and the margin the game leaves under its button row. Never shorter than
