@@ -17,8 +17,9 @@ namespace Wayfarer.Tests;
 /// depends on; they cannot run it.</para></summary>
 public class NativeDisposalTests
 {
-    private const string ReadoutHost = "Wayfarer/Windows/Native/ClickableReadoutAddon.cs";
+    private const string ReadoutHost = "Wayfarer/Windows/Native/ReadoutAddon.cs";
     private const string FollowMenu = "Wayfarer/Windows/Native/FollowSwitcherMenu.cs";
+    private const string ReadoutMenu = "Wayfarer/Windows/Native/ReadoutMenu.cs";
 
     /// <summary>Nothing is freed above the thread check. That is where the old code put the menu — the
     /// check below it guarded the node tree and nothing else — so the first thing to pin is that no
@@ -29,9 +30,9 @@ public class NativeDisposalTests
         var dispose = ReadoutDispose();
 
         var check = dispose.IndexOf("if (framework.IsInFrameworkUpdateThread)", StringComparison.Ordinal);
-        Assert.True(check >= 0, "ClickableReadoutAddon.Dispose no longer checks which thread it is on.");
+        Assert.True(check >= 0, "ReadoutAddon.Dispose no longer checks which thread it is on.");
 
-        var early = "ClickableReadoutAddon.Dispose frees the follow menu before it has the framework thread. That "
+        var early = "ReadoutAddon.Dispose frees the follow menu before it has the framework thread. That "
             + "menu hands an allocation back to the game's UI heap, and Dalamud unloads plugins on a thread-pool "
             + "thread.";
 
@@ -39,22 +40,43 @@ public class NativeDisposalTests
 
         Assert.True(
             dispose.IndexOf("base.Dispose()", StringComparison.Ordinal) > check,
-            "ClickableReadoutAddon.Dispose frees its node tree before it has the framework thread.");
+            "ReadoutAddon.Dispose frees its node tree before it has the framework thread.");
     }
 
-    /// <summary>And the menu is freed on every path the node tree is freed on — the
+    /// <summary>And every menu is freed on every path the node tree is freed on — the
     /// already-on-the-thread shortcut as well as the marshalled call. One of two is how the defect
-    /// looked from a distance: correct-looking marshalling with a release outside it.</summary>
+    /// looked from a distance: correct-looking marshalling with a release outside it.
+    ///
+    /// <para>Both menus, since the readout grew a second one: the follow list the switcher cap drops,
+    /// and the subcommand list the plate drops. Each owns an event interface out of the game's UI
+    /// heap, so each is the same hazard.</para></summary>
     [Fact]
-    public void TheMenuIsFreedOnEveryPathTheNodeTreeIs()
+    public void EveryMenuIsFreedOnEveryPathTheNodeTreeIs()
     {
         var dispose = ReadoutDispose();
 
-        var menus = SourceGuard.Occurrences(dispose, "followMenu.Dispose()");
+        var follow = SourceGuard.Occurrences(dispose, "followMenu.Dispose()");
+        var subcommands = SourceGuard.Occurrences(dispose, "actionMenu.Dispose()");
         var trees = SourceGuard.Occurrences(dispose, "base.Dispose()");
 
-        Assert.True(trees > 0, "ClickableReadoutAddon.Dispose no longer disposes the addon itself.");
-        Assert.Equal(trees, menus);
+        Assert.True(trees > 0, "ReadoutAddon.Dispose no longer disposes the addon itself.");
+        Assert.Equal(trees, follow);
+        Assert.Equal(trees, subcommands);
+    }
+
+    /// <summary>The subcommand menu is closed before it is freed, for the same reason the follow list
+    /// is: freeing first leaves the game holding a pointer to released memory in whatever entries are
+    /// still on screen.</summary>
+    [Fact]
+    public void TheReadoutMenuIsClosedBeforeItIsFreed()
+    {
+        var dispose = SourceGuard.Body(SourceGuard.SourceOf(ReadoutMenu), "public void Dispose()");
+
+        var close = dispose.IndexOf("menu?.Close()", StringComparison.Ordinal);
+        var free = dispose.IndexOf("menu?.Dispose()", StringComparison.Ordinal);
+
+        Assert.True(close >= 0, "ReadoutMenu.Dispose no longer closes the menu.");
+        Assert.True(free > close, "ReadoutMenu.Dispose frees the menu before closing it.");
     }
 
     /// <summary>The menu is closed before it is freed. Freeing first leaves the game holding a

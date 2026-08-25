@@ -5,15 +5,15 @@ using KamiToolKit.UiOverlay;
 
 namespace Wayfarer.Windows.Native;
 
-/// <summary>The click-through host for the guidance readout — a thin shell around
-/// <see cref="ReadoutBodyNode"/>, which is where everything the readout looks like actually lives.
+/// <summary>The readout's fallback surface — a thin shell around <see cref="ReadoutBodyNode"/>,
+/// which is where everything the readout looks like actually lives.
 ///
 /// It sits on the overlay layer above nameplates and below the player's own windows, where the
 /// toolkit has already made it click-through, unfocusable and outside controller navigation, and
-/// where it hides itself during cutscenes and with the Toggle UI Display hotkey. That is what makes
-/// it the right host for a controller: it cannot be in the way, cannot steal focus and cannot trap
-/// the cursor. It is also why it cannot carry the teleport click — see
-/// <see cref="ClickableReadoutAddon"/>, which hosts the identical body for a mouse.
+/// where it hides itself during cutscenes and with the Toggle UI Display hotkey. Nothing on it can
+/// be pressed, by a pointer or by a pad, which is exactly why it is the fallback and not the host:
+/// it draws every word the readout has to say and offers none of its four controls. It stands in
+/// when <see cref="ReadoutAddon"/> — the host that does offer them — cannot be built at all.
 ///
 /// <b>It must never throw.</b> <c>OnUpdate</c> runs every frame from the addon's update hook, so an
 /// exception here is an exception sixty times a second inside the game's render path. The whole

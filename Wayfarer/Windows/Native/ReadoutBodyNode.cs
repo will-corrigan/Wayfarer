@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Enums;
@@ -18,10 +19,11 @@ namespace Wayfarer.Windows.Native;
 /// nodes, fonts and colours.
 ///
 /// <b>This is the only definition of what the readout looks like.</b> It is a plain
-/// <c>ResNode</c> rather than an overlay node or a window so that both of the plugin's hosts can
-/// contain it: the click-through overlay (<see cref="GuidanceOverlayNode"/>) and the chromeless
-/// clickable addon (<see cref="ClickableReadoutAddon"/>). They differ in what the player can do to
-/// it, never in what it looks like — there is no second layout pass anywhere to drift from this one.
+/// <c>ResNode</c> rather than an overlay node or a window so that either surface can contain it: the
+/// chromeless addon every player operates (<see cref="ReadoutAddon"/>) and the click-through overlay
+/// that stands in when that addon cannot be built (<see cref="GuidanceOverlayNode"/>). They differ
+/// in what the player can do to it, never in what it looks like — there is no second layout pass
+/// anywhere to drift from this one.
 ///
 /// <b>Scale is not automatic and this is the one thing about overlays that surprises everyone.</b>
 /// KamiToolKit deliberately de-scales overlay addons to raw screen pixels
@@ -30,7 +32,8 @@ namespace Wayfarer.Windows.Native;
 /// renders at 14 raw pixels whether the player's interface size is 100% or 200%. Everything below
 /// is therefore multiplied by <c>GetGlobalUIScale() * userScale</c> every frame, by hand — which is
 /// also why the plugin's own text-size setting had to stay rather than being deleted as redundant.
-/// The clickable host applies the same de-scaling to itself, so both produce identical pixels.
+/// A normal addon is scaled by the game instead, which is why the body is told which kind of host it
+/// is in (<c>hostIsHudScaled</c>) and why both produce identical pixels.
 ///
 /// <b>It must never throw.</b> Its hosts run <see cref="Layout"/> from a per-frame update, so an
 /// exception here is an exception sixty times a second inside the game's render path. Each host
@@ -155,6 +158,32 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int BannerTarget = 16;
 
+    /// <summary>Where a control's controller anchor sits inside that control's own rectangle: two
+    /// units in from its left edge, and half its height down. The same offsets KamiToolKit's own
+    /// navigable list rows use (<c>ListItemWithFocusNav</c>), so the game's cursor comes to rest
+    /// beside a control here exactly as it does beside a row there.</summary>
+    private const float NavAnchorInset = 2f;
+
+    /// <summary>How many controls the readout can offer a controller at once — the cog, the plate,
+    /// the switcher's cap and the teleport line.</summary>
+    private const int MaxNavTargets = 4;
+
+    /// <summary>Where each control sits in the order a controller walks them, top to bottom as they
+    /// are drawn: the cog on the pill, then the plate, then the cap at the plate's right end, then
+    /// the teleport line beneath the banner. Down moves along this list and up moves back, both
+    /// wrapping, so every control is reachable in at most three presses and no press is a dead
+    /// end.</summary>
+    private const int NavCog = 0;
+
+    /// <inheritdoc cref="NavCog"/>
+    private const int NavBanner = 1;
+
+    /// <inheritdoc cref="NavCog"/>
+    private const int NavSwitcher = 2;
+
+    /// <inheritdoc cref="NavCog"/>
+    private const int NavTeleport = 3;
+
     /// <summary>What the pointer is told the plate's own chevron does. The mark is the game's and is
     /// baked into the parchment, so a tooltip is the only thing that can say what WE have made it
     /// mean.</summary>
@@ -208,7 +237,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// renders at <c>g</c> — identical only when <c>g</c> is exactly 1, and visibly wrong at every
     /// other interface size. On this player's 5120x1440 display it is not 1.</para>
     ///
-    /// <para><b>The clickable host now does nothing at all about scale</b>, which is the only
+    /// <para><b>The addon host now does nothing at all about scale</b>, which is the only
     /// arrangement that is provably right without knowing <c>g</c>: it is an ordinary addon holding
     /// ordinary ULD-unit nodes, exactly like the addon that draws the game's own banner, so the two
     /// cannot disagree. The overlay host is different because the toolkit forces the de-scale on
@@ -329,9 +358,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rectangle and the hand cursor over that one line.</summary>
     private readonly ResNode? teleportHitBox;
 
-    /// <summary>The settings cog, or null in a host that cannot be clicked. Drawing one on the
-    /// click-through overlay would be a lie: the controller's readout takes no input at all, and an
-    /// affordance that does nothing is worse than none.</summary>
+    /// <summary>The settings cog, or null in a host that takes no input at all. Drawing one on the
+    /// fallback overlay would be a lie — an affordance that does nothing is worse than none — but on
+    /// the readout's own host it is drawn for everyone, because a pointer and a pad reach it the
+    /// same way there.</summary>
     private readonly ImGuiImageNode? cogNode;
 
     /// <summary>The "choose what to follow" switcher: <b>an invisible click target over the chevron
@@ -353,9 +383,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// The hand cursor and a tooltip (<see cref="SwitcherTooltip"/>) are what say it is a control —
     /// which is the same pair the readout already relies on for the teleport line.</para>
     ///
-    /// <para>Mouse only, for the same reason as the cog. A controller reaches the same list through
-    /// the window's Following tab and through the Wayfarer entry in the game's own right-click
-    /// menu, both of which take no cursor.</para></summary>
+    /// <para>A controller reaches this cap the same way it reaches the cog — HUD Select, then along
+    /// the ring of anchors — and the same list is still on the window's Following tab and on the
+    /// Wayfarer entry in the game's own right-click menu.</para></summary>
     private readonly ResNode? switcherHitBox;
 
     /// <summary>An invisible box over the words of the subject line, or null in a host that takes no
@@ -398,15 +428,44 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// (see <see cref="subjectHitBox"/>) for the truncated-name tooltip that lives with them. Hitting
     /// either region opens the same Journal entry, so which one caught the click never matters.</para>
     ///
-    /// <para>Mouse only, like the cog and the switcher, and for the same reason — the controller's
-    /// host is click-through by construction. A pad reaches the Journal, settings and the follow list
-    /// through the window's own tabs, the game's own right-click menu and <c>/wayfarer settings</c>,
-    /// none of which need a pointer.</para></summary>
+    /// <para>It is also where the game's cursor lands first when a controller cycles to the readout,
+    /// so "HUD Select, then Confirm" opens the Journal at whatever is being followed — the shortest
+    /// route the readout has. And it is the one control that answers a second press: the game's own
+    /// <b>Display Subcommands</b> drops a menu with everything else Wayfarer can be asked to do —
+    /// see <see cref="AddSubcommand"/> and <see cref="ReadoutMenu"/>.</para></summary>
     private readonly ResNode? bannerHitBox;
 
     /// <summary>Whether this host was given somewhere to send a click on the quest name. False on
     /// the overlay, where nothing is clickable at all.</summary>
     private readonly bool journalClickable;
+
+    /// <summary>The four controls as the game's controller cursor sees them: zero-sized component
+    /// nodes parked on the same rectangles the hit boxes above cover, in the order the cursor walks
+    /// them. Null in a host that takes no input at all.
+    ///
+    /// <para><b>Why these exist at all, when the hit boxes are already there.</b> A hit box is a
+    /// plain <c>ResNode</c> carrying a collision rectangle, which is everything the mouse needs and
+    /// nothing the pad can see: the game's cursor moves between COMPONENTS carrying cursor-navigation
+    /// info, which is exactly why KamiToolKit ships <c>NavFocusNode</c> and why its own list rows
+    /// grow one when they have no component of their own. These are that node, four times.</para>
+    ///
+    /// <para><b>They cost nothing on screen.</b> Zero size, so their collision rectangles are zero
+    /// too — they draw no pixels, swallow no world click and shift no layout. The visible part of
+    /// being focused is the game's own cursor, drawn by the game's own addon.</para>
+    ///
+    /// <para>Confirm on each does exactly what a click on the control it shadows does. The plate's
+    /// alone answers one more press — see <see cref="AddSubcommand"/>.</para></summary>
+    private readonly NavFocusNode?[] navTargets = new NavFocusNode?[MaxNavTargets];
+
+    /// <summary>Which inputs the focused plate has already been seen to receive, so the diagnostic
+    /// that names them says each one once rather than once a frame — see
+    /// <see cref="ReportInput"/>.</summary>
+    private readonly HashSet<InputId> seenInputs = [];
+
+    /// <summary>The set of controls the nav chain was last built for, as a
+    /// <see cref="ClickTargets"/> bitmask. Starts at -1, which no real set can equal, so the first
+    /// frame always builds one.</summary>
+    private int lastNavTargets = -1;
 
     private ArrowIconVariant? loadedVariant;
     private ArrowIconVariant? loadedElevationVariant;
@@ -459,6 +518,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Action? onSettingsClicked = null,
         Action? onFollowClicked = null,
         Action? onQuestNameClicked = null,
+        Action? onPlateSubcommand = null,
         bool hostIsHudScaled = false)
     {
         this.log = log;
@@ -516,7 +576,19 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         teleportHitBox = onTeleportClicked is null ? null : BuildTeleportHitBox(onTeleportClicked);
         subjectHitBox = BuildSubjectHitBox(onFollowClicked, onQuestNameClicked);
         journalClickable = onQuestNameClicked is not null;
+
+        BuildNavAnchors(onSettingsClicked, onQuestNameClicked, onFollowClicked, onTeleportClicked);
+        AddSubcommand(navTargets[NavBanner], onPlateSubcommand);
     }
+
+    /// <summary>Where the game should put the controller cursor when this readout is the focused
+    /// addon: on the plate, whose press opens the Journal at whatever is being followed. Null in a
+    /// host that takes no input, and null before the plate has ever been drawn.
+    ///
+    /// <para>It is the plate rather than the cog because that is the readout's answer to "what am I
+    /// doing" — the same reason the plate rather than the cog is what a mouse click on the parchment
+    /// does.</para></summary>
+    public NodeBase? ControllerFocusNode => navTargets[NavBanner]?.FocusNode;
 
     /// <summary>Which clickable targets are on screen right now, as a bit per target — the teleport
     /// advice and the settings cog.
@@ -594,6 +666,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             journalClickable && subjectContent?.Action == ReadoutLineAction.OpenJournal);
 
         SettleClickTargets();
+        SettleNav();
 
         // The readout is as tall as the container made itself, which is the sum of its sections. There
         // is no second answer to compare it against and nothing here to get wrong.
@@ -663,6 +736,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         ClickTargets = 0;
+        HideNav();
         headlineNode.IsVisible = false;
         HideLinesFrom(0);
 
@@ -749,6 +823,55 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return box;
     }
 
+    /// <summary>The controller's half of a hit box: a component the game's cursor can come to rest
+    /// on, whose Confirm runs the same action the mouse's click does.
+    ///
+    /// <para><b>Zero size, and one flag off.</b> A component's collision node is built to fill and to
+    /// answer the mouse; this one is sized to nothing and has <c>Fill</c> taken away, so whatever
+    /// that flag would have made it cover, it covers nothing. That is what keeps a nav anchor from
+    /// being a rectangle over the world — the guarantee the readout has always had to hold, and the
+    /// reason the drag handle is a mode rather than a permanent listener.</para>
+    ///
+    /// <para>Null when there is no action to run: a host that was given no callbacks (the fallback
+    /// overlay) grows no anchors, exactly as it grows no hit boxes.</para></summary>
+    private static NavFocusNode? BuildNavAnchor(Action? onSelected, NodeBase parent)
+    {
+        if (onSelected is null)
+        {
+            return null;
+        }
+
+        var nav = new NavFocusNode
+        {
+            OnSelected = onSelected,
+            Size = Vector2.Zero,
+            IsVisible = false,
+        };
+
+        nav.CollisionNode.RemoveNodeFlags(NodeFlags.Fill);
+        nav.AttachNode(parent);
+        return nav;
+    }
+
+    /// <summary>Parks one anchor on one control: visible exactly when that control is, and two units
+    /// in from its left edge at half its height, so the game's cursor sits beside the thing it is
+    /// about to press rather than in its corner.</summary>
+    private static void MirrorNav(NavFocusNode? nav, NodeBase? target)
+    {
+        if (nav is null || target is null)
+        {
+            return;
+        }
+
+        nav.IsVisible = target.IsVisible;
+        if (!target.IsVisible)
+        {
+            return;
+        }
+
+        nav.Position = target.Position + new Vector2(NavAnchorInset, target.Height / 2f);
+    }
+
     /// <summary>The teleport line's target, plus the hover treatment that replaced the words
     /// "(click)".
     ///
@@ -783,9 +906,70 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
     }
 
+    /// <summary>Gives one anchor a second press: the game's own <b>Display Subcommands</b>, which is
+    /// what every focused thing in this game answers when the player wants the list of everything
+    /// that can be done to it rather than the obvious one thing.
+    ///
+    /// <para><b>Why this is the right press, and not a press we chose.</b> It is the game's own, by
+    /// name: row 215 of the <c>ConfigKey</c> sheet is "Display Subcommands", keyed <c>MENU</c>, and it
+    /// sits in the same UI-navigation category as "Confirm" (row 211, <c>OK</c>), "Cancel" (212,
+    /// <c>CANCEL</c>) and "Cycle through HUD Components" (227, <c>PAD_HUDFOCUS</c>) — the presses this
+    /// readout already answers. It is therefore bound on the player's own pad already — Square on a
+    /// PlayStation pad, X on an Xbox one, which is what the game's own controls guide means by "use A
+    /// to confirm, B to cancel, and X to open submenus" — and remapping it in the game's own keybinds
+    /// remaps this, because what is matched here is the input's id and not a button.
+    ///
+    /// <para>Registered as a second handler for the event the anchor already listens to, so Confirm
+    /// keeps doing exactly what a mouse click on the plate does — open the Journal — and this is
+    /// strictly an addition beside it.</para>
+    ///
+    /// <para>What no source could settle is whether the game routes this id to a focused node
+    /// belonging to a plugin's own addon, the way it routes Confirm there. If it does not, this press
+    /// does nothing and everything else on the readout is unaffected — so the diagnostic below names
+    /// every id that does arrive, which turns one press in game into the answer.</para></summary>
+    private void AddSubcommand(NavFocusNode? nav, Action? onSubcommand)
+    {
+        if (nav is null || onSubcommand is null)
+        {
+            return;
+        }
+
+        nav.AddEvent(AtkEventType.InputReceived, (_, eventType, _, _, data) =>
+        {
+            if (eventType is not AtkEventType.InputReceived || data is null)
+            {
+                return;
+            }
+
+            var input = (InputId)data->InputData.InputId;
+            if (data->InputData.State is InputState.Down)
+            {
+                ReportInput(input);
+            }
+
+            if (input is InputId.MENU && data->InputData.State is InputState.Down)
+            {
+                onSubcommand();
+            }
+        });
+    }
+
+    /// <summary>Names each input the focused plate is sent, once per input, and only with diagnostics
+    /// on. It exists for one question that reading the game's code cannot answer — which presses reach
+    /// a plugin addon's own focused node — and it answers it from inside the game instead.</summary>
+    private void ReportInput(InputId input)
+    {
+        if (!diagnosticsEnabled() || !seenInputs.Add(input))
+        {
+            return;
+        }
+
+        log.Debug($"Wayfarer readout: the focused readout was sent input {input} ({(int)input}).");
+    }
+
     /// <summary>Records which of the readout's click targets are live this frame. The cog, the
     /// switcher, the name and the plate are all collision nodes whenever they are drawn, and the
-    /// clickable host watches this to know when the addon's collision list has to be rebuilt.</summary>
+    /// host watches this to know when the addon's collision list has to be rebuilt.</summary>
     private void SettleClickTargets()
     {
         if (cogNode is { IsVisible: true })
@@ -806,6 +990,100 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         if (bannerHitBox is { IsVisible: true })
         {
             ClickTargets |= BannerTarget;
+        }
+    }
+
+    /// <summary>Grows one controller anchor per control, each on the same parent as the rectangle it
+    /// shadows, because an anchor is positioned from that rectangle's own coordinates. Nothing here
+    /// draws, and a host that was given no callbacks grows nothing at all.</summary>
+    private void BuildNavAnchors(
+        Action? onSettingsClicked, Action? onQuestNameClicked, Action? onFollowClicked, Action? onTeleportClicked)
+    {
+        navTargets[NavCog] = BuildNavAnchor(onSettingsClicked, bannerSection);
+        navTargets[NavBanner] = BuildNavAnchor(onQuestNameClicked, bannerSection);
+        navTargets[NavSwitcher] = BuildNavAnchor(onFollowClicked, bannerSection);
+        navTargets[NavTeleport] = BuildNavAnchor(onTeleportClicked, this);
+    }
+
+    /// <summary>Takes every anchor down with the controls they shadow: a cursor resting on a control
+    /// that is no longer drawn would be a press with nothing behind it. The ring is marked stale
+    /// rather than rebuilt, so it is rebuilt once when the readout comes back rather than on every
+    /// frame it is away.</summary>
+    private void HideNav()
+    {
+        foreach (var nav in navTargets)
+        {
+            if (nav is not null)
+            {
+                nav.IsVisible = false;
+            }
+        }
+
+        lastNavTargets = -1;
+    }
+
+    /// <summary>Puts each controller anchor where its control ended up this frame, and rebuilds the
+    /// order the cursor walks them in when the set of live controls has changed.
+    ///
+    /// <para>Run after everything has been placed, for the same reason the hit boxes are: an anchor
+    /// is positioned from a rectangle that has already been decided, not from a measurement of
+    /// its own.</para>
+    ///
+    /// <para>The chain is rebuilt only when the set changes — <see cref="ClickTargets"/> is the same
+    /// signal the host uses to rebuild the game's collision list — because writing five cursor
+    /// indices per frame to say the same thing is the kind of per-frame write this readout is
+    /// careful not to do.</para></summary>
+    private void SettleNav()
+    {
+        MirrorNav(navTargets[NavCog], cogNode);
+        MirrorNav(navTargets[NavBanner], bannerHitBox);
+        MirrorNav(navTargets[NavSwitcher], switcherHitBox);
+        MirrorNav(navTargets[NavTeleport], teleportHitBox);
+
+        if (ClickTargets == lastNavTargets)
+        {
+            return;
+        }
+
+        lastNavTargets = ClickTargets;
+        LinkNav();
+    }
+
+    /// <summary>Numbers the live anchors top to bottom and joins them into a ring: down goes to the
+    /// next one, up to the previous, and both wrap. Left and right stay on the anchor they are on —
+    /// the readout's controls are a column, and a horizontal press that moved the cursor sideways
+    /// off the plate would be a press with nowhere to arrive.
+    ///
+    /// <para>Indices start at one because zero is the game's "no such target". A control that is not
+    /// on screen this frame is left out of the ring entirely rather than left in it pointing at
+    /// nothing, which is what makes "press down four times and you are back where you started" true
+    /// whether or not there is a teleport line.</para></summary>
+    private void LinkNav()
+    {
+        Span<int> live = stackalloc int[MaxNavTargets];
+        var count = 0;
+
+        for (var i = 0; i < MaxNavTargets; i++)
+        {
+            if (navTargets[i] is { IsVisible: true })
+            {
+                live[count++] = i;
+            }
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            if (navTargets[live[i]] is not { } nav)
+            {
+                continue;
+            }
+
+            var index = i + 1;
+            nav.NavIndex = index;
+            nav.NavUp = i == 0 ? count : i;
+            nav.NavDown = i == count - 1 ? 1 : index + 1;
+            nav.NavLeft = index;
+            nav.NavRight = index;
         }
     }
 

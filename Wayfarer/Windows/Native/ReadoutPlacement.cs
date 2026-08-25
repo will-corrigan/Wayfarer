@@ -5,7 +5,7 @@ using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Windows.Native;
 
-/// <summary>Where the readout sits, in raw screen pixels. Shared by both hosts so the readout does
+/// <summary>Where the readout sits, in raw screen pixels. Shared by the host and its fallback so the readout does
 /// not move when the player switches between a mouse and a controller, and the single place the
 /// player's chosen position is read and written.
 ///
@@ -40,7 +40,7 @@ internal sealed unsafe class ReadoutPlacement(QuestHelperConfig cfg, Action save
     public float FractionY => Math.Clamp(cfg.ReadoutFractionY, 0f, 1f);
 
     /// <summary>This frame's position for a readout of <paramref name="size"/> pixels. Called from
-    /// both hosts' per-frame paths, so it does no allocation beyond the obstacle list and never
+    /// either surface's per-frame path, so it does no allocation beyond the obstacle list and never
     /// throws — a missing addon simply is not an obstacle.</summary>
     public Vector2 Resolve(Vector2 measured)
     {

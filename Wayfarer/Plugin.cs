@@ -32,7 +32,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly NamePlateMarkers namePlateMarkers;
     private readonly SettingsCatalog settings;
 
-    /// <summary>The single owner of where the readout sits: read by both native hosts every frame,
+    /// <summary>The single owner of where the readout sits: read by the readout's host and its fallback every frame,
     /// written by the Settings tab's position sliders and by a mouse drag.</summary>
     private readonly ReadoutPlacement readoutPlacement;
 
@@ -62,6 +62,11 @@ public sealed class Plugin : IDalamudPlugin
     /// tab all compose their own presentation from, so no two of them can say different things.</summary>
     private ReadoutFeed feed = null!;
 
+    /// <summary>Every action Wayfarer offers, decided once. Both menus onto them — the game's own
+    /// right-click menu and the one the readout drops for a controller — render this, so neither can
+    /// offer something the other does not.</summary>
+    private GuidanceActions guidanceActions = null!;
+
     private bool loggedHubFallback;
 
     public Plugin(
@@ -90,7 +95,7 @@ public sealed class Plugin : IDalamudPlugin
         var config = LoadConfig(pluginInterface, log);
         void SaveConfig() => pluginInterface.SavePluginConfig(config);
 
-        // Where the readout sits — one owner shared by both of its hosts and by the settings, so a
+        // Where the readout sits — one owner shared by the host, its fallback and the settings, so a
         // nudge from the Settings tab and a drag with the mouse write to the same place.
         readoutPlacement = new ReadoutPlacement(config.QuestHelper, SaveConfig);
 
@@ -112,7 +117,7 @@ public sealed class Plugin : IDalamudPlugin
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
         hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, textureProvider, dataManager);
 
-        var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
+        var readoutHosts = new ReadoutHosts(framework, clientState, objects, textureProvider);
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
 
         modules.Register(
@@ -124,7 +129,7 @@ public sealed class Plugin : IDalamudPlugin
             enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
-        contextMenuActions = BuildContextMenuActions(contextMenu, objects, clientState, config, log);
+        contextMenuActions = BuildContextMenuActions(contextMenu, config, log);
         namePlateMarkers = new(namePlateGui, textureProvider, framework, modules, config.Guidance, log);
         namePlateMarkers.Start();
 
@@ -250,9 +255,8 @@ public sealed class Plugin : IDalamudPlugin
     private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
 
     /// <summary>What the game's own Follow submenu hands off to for "A Quest..." — the one tab
-    /// listing every followable thing, for the controller player that menu is built for. The
-    /// readout's own follow caret no longer opens this: on a mouse it drops its own list in place
-    /// (see <see cref="Windows.Native.ClickableReadoutAddon"/>), reading the same
+    /// listing every followable thing. The readout's own follow caret no longer opens this: it drops
+    /// the game's own menu in place (see <see cref="Windows.Native.ReadoutAddon"/>), reading the same
     /// <see cref="NativeHubWindow.GetFollowChoices"/> this tab does — one source of truth for what
     /// is followable, two doors onto it.</summary>
     private void OpenFollowing() => OpenHub(HubTab.Quests, () => configWindow.IsOpen = true);
@@ -313,16 +317,14 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.
-    /// "Open settings" is the controller's counterpart of the readout's cog — see
-    /// <see cref="Windows.Native.ReadoutBodyNode"/> for why the overlay cannot carry one.</summary>
+    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer. Both
+    /// menus onto Wayfarer's actions — this one and the readout's own — render the same
+    /// <see cref="GuidanceActions"/>.</summary>
     private ContextMenuActions BuildContextMenuActions(
         IContextMenu contextMenu,
-        IObjectTable objects,
-        IClientState clientState,
         Configuration config,
         IPluginLog log) =>
-        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, OpenFollowing, log);
+        new(contextMenu, modules, config.QuestHelper, guidanceActions, inputMode, log);
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.</summary>
     private NativeHubWindow BuildHub(
@@ -368,7 +370,7 @@ public sealed class Plugin : IDalamudPlugin
     /// and the draggable header are all allocated and none of them drawn. That is deliberate and it
     /// is what <c>JournalDetail</c> itself does — the page's chrome <i>is</i> its parchment and its
     /// gilt border, and a standard window frame around that would be a frame inside a frame. The
-    /// same trick, for the same reason, as the readout's clickable host.</para>
+    /// same trick, for the same reason, as the readout's own host.</para>
     ///
     /// <para>Handed to the hub window, which owns its lifetime: it is opened, moved, and closed
     /// entirely in response to what is happening in that window's list.</para></summary>
@@ -420,17 +422,24 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
+        // Built here, where the readout's inputs are assembled, and held on the plugin because the
+        // game's own right-click menu renders the same actions. Every action reads the module
+        // registry at the moment a menu opens, so building it before the modules are registered is
+        // safe — nothing is resolved now.
+        guidanceActions = new GuidanceActions(
+            modules, config.QuestHelper, services.Objects, services.ClientState, OpenConfig, OpenFollowing, log);
+
         overlay = new GuidanceOverlay(
             feed,
             config.QuestHelper,
             readoutPlacement,
-            services.InputMode,
             services.Objects,
             services.ClientState,
             services.Framework,
             services.Textures,
             OpenConfig,
             hub.GetFollowChoices,
+            guidanceActions,
             log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,
@@ -503,13 +512,13 @@ public sealed class Plugin : IDalamudPlugin
             guidance.HuntingSource);
     }
 
-    /// <summary>The Dalamud services the readout's two native hosts need, bundled so the builder
-    /// below stays inside the parameter-count analyzer rather than growing a ninth argument.</summary>
+    /// <summary>The Dalamud services the readout's host and its overlay fallback need, bundled so the
+    /// builder below stays inside the parameter-count analyzer rather than growing a ninth
+    /// argument.</summary>
     private sealed record ReadoutHosts(
         IFramework Framework,
         IClientState ClientState,
         IObjectTable Objects,
-        InputModeService InputMode,
         ITextureProvider Textures);
 
     /// <summary>What <see cref="BuildGuidance"/> hands back, so the module builders can take one
