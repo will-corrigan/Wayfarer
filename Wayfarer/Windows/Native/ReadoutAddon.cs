@@ -16,7 +16,9 @@ namespace Wayfarer.Windows.Native;
 /// with a deliberate press of its own (<i>HUD Select</i>: the touchpad, the View button, the minus
 /// button; <c>PAD_HUDFOCUS</c> in the game's own keybind names) and only then does anything cycle.
 /// Nothing about holding a pad moves the cursor onto a window by itself. So the mouse's host became
-/// the only host: the same pixels, the same four controls, reachable both ways.
+/// the only host: the same pixels, the same four controls, reachable both ways — plus one press a
+/// mouse has no use for, the game's own Display Subcommands on the plate, which drops the rest of
+/// Wayfarer's actions in the game's own menu (<see cref="ReadoutMenu"/>).
 ///
 /// <b>Why it does not look like a window.</b> It is chromeless. KamiToolKit builds a
 /// <see cref="WindowNode"/> for every non-overlay addon, and this supplies that node already
@@ -37,11 +39,13 @@ namespace Wayfarer.Windows.Native;
 /// controller nav" bit of <c>Flags1A2</c> — the two flags KamiToolKit sets for its own click-through
 /// overlays. Those are what kept a pad out, and keeping a pad out was the mistake.
 ///
-/// <b>The settings cog, and the follow switcher's list.</b> Both live on the readout, and both are
-/// this host's, because it is the one that receives input at all. The switcher's list is the game's
-/// own context menu rather than a panel of ours, so its depth, its input, its scrolling and its
-/// dismissal are all the game's; see <see cref="FollowSwitcherMenu"/> for what that fixed and what
-/// it costs.
+/// <b>The two menus it owns.</b> Both are the game's own, opened through <c>AgentContext</c> rather
+/// than drawn by us, so their depth, their input, their scrolling and their dismissal are all the
+/// game's: the follow switcher's list, dropped by the cap at the plate's right end
+/// (<see cref="FollowSwitcherMenu"/> — read it for what that fixed and what it costs), and the
+/// readout's own subcommand list, dropped by the plate when a controller asks it for subcommands
+/// (<see cref="ReadoutMenu"/>). Both hand memory back to the game, so both are freed on the framework
+/// thread; see <see cref="Dispose"/>.
 ///
 /// <b>Scale — and this host now does nothing whatsoever about it.</b> The game renders a normal
 /// addon at the player's interface scale, which is exactly what is wanted: the addon that draws the
@@ -65,6 +69,7 @@ internal sealed unsafe class ReadoutAddon(
     Action onSettingsClicked,
     Func<IReadOnlyList<FollowChoice>> getFollowChoices,
     Action onQuestNameClicked,
+    GuidanceActions actions,
     ITextureProvider textures,
     IFramework framework,
     IPluginLog log,
@@ -74,6 +79,11 @@ internal sealed unsafe class ReadoutAddon(
     /// game to open its own context menu, which the game then owns entirely. See
     /// <see cref="FollowSwitcherMenu"/>.</summary>
     private readonly FollowSwitcherMenu followMenu = new(log);
+
+    /// <summary>What a controller's Confirm on the plate opens: the game's own menu, holding every
+    /// action on the readout. Same kind of thing as the follow list above, and freed the same way.
+    /// See <see cref="ReadoutMenu"/>.</summary>
+    private readonly ReadoutMenu actionMenu = new(actions, getFollowChoices, log);
 
     private ReadoutBodyNode? body;
 
@@ -98,15 +108,16 @@ internal sealed unsafe class ReadoutAddon(
         // Same marshalling as the hub window, and for the same reason: Dalamud unloads plugins on a
         // thread-pool thread while Close() asserts the main thread.
         //
-        // EVERYTHING that gives memory back to the game belongs below this check, and the follow
-        // menu is easy to miss: its context menu owns an AtkEventInterface allocated out of the
-        // game's UI heap and handed back with two IMemorySpace.Free calls. Freeing that heap from a
-        // thread-pool thread is unsynchronised mutation of a structure the game is using — nothing
-        // throws, nothing is logged, and the corruption surfaces later somewhere else. It was
-        // disposed four lines above this check until the review that found it.
+        // EVERYTHING that gives memory back to the game belongs below this check, and the two menus
+        // are easy to miss: each owns an AtkEventInterface allocated out of the game's UI heap and
+        // handed back with two IMemorySpace.Free calls. Freeing that heap from a thread-pool thread
+        // is unsynchronised mutation of a structure the game is using — nothing throws, nothing is
+        // logged, and the corruption surfaces later somewhere else. The follow menu was disposed
+        // four lines above this check until the review that found it.
         if (framework.IsInFrameworkUpdateThread)
         {
             followMenu.Dispose();
+            actionMenu.Dispose();
             base.Dispose();
             return;
         }
@@ -116,6 +127,7 @@ internal sealed unsafe class ReadoutAddon(
             framework.RunOnFrameworkThread(() =>
             {
                 followMenu.Dispose();
+                actionMenu.Dispose();
                 base.Dispose();
             }).Wait(TimeSpan.FromSeconds(2));
         }
@@ -165,6 +177,7 @@ internal sealed unsafe class ReadoutAddon(
             onSettingsClicked: onSettingsClicked,
             onFollowClicked: OpenFollowMenu,
             onQuestNameClicked: onQuestNameClicked,
+            onPlateSubcommand: actionMenu.Open,
             hostIsHudScaled: true)
         {
             Position = Vector2.Zero,
@@ -173,8 +186,8 @@ internal sealed unsafe class ReadoutAddon(
 
         // Where the cursor lands when HUD Select reaches this addon. The toolkit's default is the
         // window header's focus node, which here is a node inside an invisible window: a cursor on
-        // it would be a cursor on nothing. The plate is the readout's face and its press opens the
-        // Journal at whatever is being followed, so that is the first thing the pad finds.
+        // it would be a cursor on nothing. The plate is the readout's face — Confirm opens the
+        // Journal, exactly as a click does, and Display Subcommands drops the whole menu.
         if (body.ControllerFocusNode is { } focus)
         {
             addon->FocusNode = focus;

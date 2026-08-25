@@ -1,8 +1,6 @@
 using Dalamud.Game.Gui.ContextMenu;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Input;
-using Wayfarer.Core.Navigation;
-using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
 
 namespace Wayfarer;
@@ -10,14 +8,15 @@ namespace Wayfarer;
 /// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu — a native row
 /// that inherits the game's own d-pad focus navigation, no cursor required.
 ///
-/// This is the controller's second route, and for several things its only one. The readout itself is
-/// now reachable with a pad — HUD Select, then along the ring of controls on it — so the Journal,
-/// Settings, the follow list and the teleport all have a shorter path than this menu. What still
-/// lives only here: starting a hunt, stopping one, starting an unlock route, the Duty Finder, the
-/// unlocks list and the hunting log — and every one of those actions while the readout is hidden or
-/// has nothing to say. A mouse operates the readout directly, which is why this is off for a mouse
-/// by default. <see cref="QuestHelperConfig.MenuMode"/> therefore
-/// defaults to <see cref="ContextMenuMode.ControllerOnly"/> — evaluated fresh via
+/// This is one of two menus onto the same actions. The other is the one the readout's plate drops
+/// when it is asked for subcommands (<see cref="Windows.Native.ReadoutMenu"/>); both render
+/// <see cref="GuidanceActions"/>, so neither can offer something the other does not. This one is
+/// still the only route while the readout is hidden or has nothing to say, and it is the only one
+/// that works with no readout on screen at all — which is why it stays exactly as it was.
+///
+/// A mouse operates the readout directly, which is why this is off for a mouse by default.
+/// <see cref="QuestHelperConfig.MenuMode"/> defaults to
+/// <see cref="ContextMenuMode.ControllerOnly"/> — evaluated fresh via
 /// <see cref="InputModeService.Mode"/> on every
 /// menu open (not registered/unregistered on mode flips, since checking is cheap and avoids a
 /// second subscription to manage). Either way, only <see cref="ContextMenuType.Default"/> is
@@ -28,58 +27,48 @@ namespace Wayfarer;
 /// IReadOnlyList{IMenuItem})"/>) rather than at menu-open time, so a slow player never sees a
 /// submenu built from state that's gone stale by the time they confirm it.
 ///
-/// Every entry is hidden rather than disabled when inapplicable: no active teleport suggestion, no
-/// routable unlock, nothing to cancel/follow back from. The whole submenu is absent when Quest
-/// Helper is disabled — every entry ultimately reads or drives its <see cref="QuestNavigator"/>.
-/// The unlock-route entries are additionally gated on Unlock Checklist being enabled. Teleport
-/// routes through the existing <see cref="TeleportAction"/> gate (click-to-teleport setting,
-/// login state, attunement) — the plugin's only server-affecting action stays exactly that.
+/// Every entry is hidden rather than disabled when inapplicable, and the whole submenu is absent
+/// when Quest Helper is disabled — both decided in <see cref="GuidanceActions"/>, which is also
+/// where the teleport's own gate lives.
 ///
 /// Pure DI: constructed once by <see cref="Plugin"/>, and disposed by unregistering the one event
 /// subscription.</summary>
 internal sealed class ContextMenuActions : IDisposable
 {
     private readonly IContextMenu contextMenu;
-    private readonly IObjectTable objects;
     private readonly ModuleRegistry modules;
     private readonly QuestHelperConfig cfg;
-    private readonly IClientState clientState;
+    private readonly GuidanceActions actions;
     private readonly InputModeService inputMode;
-    private readonly Action openSettings;
-    private readonly Action openFollowing;
     private readonly IPluginLog log;
 
     private bool loggedMenuFailure;
 
     public ContextMenuActions(
         IContextMenu contextMenu,
-        IObjectTable objects,
         ModuleRegistry modules,
         QuestHelperConfig cfg,
-        IClientState clientState,
+        GuidanceActions actions,
         InputModeService inputMode,
-        Action openSettings,
-        Action openFollowing,
         IPluginLog log)
     {
         this.contextMenu = contextMenu;
-        this.objects = objects;
         this.modules = modules;
         this.cfg = cfg;
-        this.clientState = clientState;
+        this.actions = actions;
         this.inputMode = inputMode;
-        this.openSettings = openSettings;
-        this.openFollowing = openFollowing;
         this.log = log;
         contextMenu.OnMenuOpened += OnMenuOpened;
     }
 
     public void Dispose() => contextMenu.OnMenuOpened -= OnMenuOpened;
 
+    private static IMenuItem Item(GuidanceAction action) =>
+        new MenuItem { Name = action.Label, OnClicked = _ => action.Invoke() };
+
     /// <summary>Runs inside the game's own menu-building path, which is why it cannot be allowed to
     /// throw: an exception here surfaces as the player's right-click menu failing, not as a Wayfarer
-    /// problem, and this is a controller player's main way in. Every other game callback on this
-    /// plugin is wrapped; this one was the exception.</summary>
+    /// problem. Every other game callback on this plugin is wrapped; this one was the exception.</summary>
     private void OnMenuOpened(IMenuOpenedArgs args)
     {
         try
@@ -125,246 +114,36 @@ internal sealed class ContextMenuActions : IDisposable
     private void OnWayfarerClicked(IMenuItemClickedArgs args) =>
         args.OpenSubmenu("Wayfarer", BuildSubmenuItems());
 
-    /// <summary>Rebuilt from live state every time the submenu opens (Quest Helper is re-checked
-    /// too — it could have been disabled from the config window between the outer click and this
-    /// one).</summary>
+    /// <summary>Rebuilt from live state every time the submenu opens — the same order this menu has
+    /// always had: what to do now, then what to follow, then the doors onto Wayfarer's own
+    /// windows.</summary>
     private List<IMenuItem> BuildSubmenuItems()
     {
         var items = new List<IMenuItem>();
-        if (modules.Get<QuestHelperModule>() is not { Enabled: true } questHelper)
+
+        foreach (var action in actions.Route())
         {
-            return items;
+            items.Add(Item(action));
         }
 
-        var navigator = questHelper.Navigator;
-        var state = navigator.Current;
-
-        AddTeleportItem(items, state);
-
-        // The universal exit, shown whenever anything is engaged — a chained unlock route, a
-        // single unlock pickup or a hunt alike, since ClearPickup() (guidance.Arbiter.ReleaseAll())
-        // is the one release valve for all three. Offered here rather than only as a route-specific
-        // "Cancel route" (the previous behaviour) because a single, unchained pickup or an active
-        // hunt is just as much "something the player asked for" that needs a way out, and this is
-        // the only entry point a controller has by default.
-        if (state.Engaged)
-        {
-            items.Add(new MenuItem { Name = "Stop", OnClicked = _ => navigator.ClearPickup() });
-        }
-        else
-        {
-            // Switching into hunting is meant to be one deliberate act, not a hunt through tabs —
-            // so it sits here, beside Stop, which is the one act that ends it. The same pair exists
-            // on the window's Hunting Log tab; this is the version that needs no cursor.
-            AddStartHuntItem(items, navigator);
-
-            if (modules.Get<UnlockChecklistModule>() is { Enabled: true } routableModule)
-            {
-                AddStartRouteItem(items, navigator, routableModule);
-            }
-        }
-
-        AddFollowItem(items, navigator);
-        AddWindowItems(items, navigator, state);
-        return items;
-    }
-
-    /// <summary>"Follow" — the parallel path to the window's Following tab and to the readout's own
-    /// follow-switcher cap, with the same word and the same choices,
-    /// so there is one concept with one name on every surface instead of three names for one
-    /// feature.
-    ///
-    /// <para>A real submenu rather than a flat list: it inherits the game's own d-pad navigation,
-    /// which is the whole reason this menu is the controller's action surface at all.</para></summary>
-    private void AddFollowItem(List<IMenuItem> items, QuestNavigator navigator)
-    {
+        // A real submenu rather than a flat list: it inherits the game's own d-pad navigation, which
+        // is the whole reason this menu is an action surface for a controller at all.
         items.Add(new MenuItem
         {
             Name = "Follow",
             IsSubmenu = true,
-            OnClicked = args => args.OpenSubmenu("Follow", BuildFollowItems(navigator)),
+            OnClicked = args => args.OpenSubmenu("Follow", BuildFollowItems()),
         });
-    }
 
-    /// <summary>What Wayfarer can be told to follow. Built when the submenu opens rather than when
-    /// the menu does, so a slow player never confirms a choice built from state that has since gone
-    /// stale — the same reasoning as the outer submenu.</summary>
-    private List<IMenuItem> BuildFollowItems(QuestNavigator navigator)
-    {
-        var items = new List<IMenuItem>
+        foreach (var action in actions.Windows())
         {
-            // Wayfarer has no "following nothing" state: not following anything in particular IS
-            // the main scenario, which is why this is a choice rather than a way to clear one.
-            new MenuItem
-            {
-                Name = "Main Scenario",
-                OnClicked = _ =>
-                {
-                    navigator.ClearPickup();
-                    navigator.FollowedOverride = null;
-                },
-            },
-        };
-
-        if (modules.Get<UnlockChecklistModule>() is { Enabled: true } unlockModule)
-        {
-            var routable = unlockModule.Unlocks.Entries
-                .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null)
-                .ToList();
-            if (routable.Count > 0)
-            {
-                items.Add(new MenuItem
-                {
-                    Name = $"Unlock Route ({routable.Count})",
-                    OnClicked = _ => StartUnlockRoute(navigator, unlockModule, routable),
-                });
-            }
+            items.Add(Item(action));
         }
 
-        AddStartHuntItem(items, navigator);
-
-        // Choosing which quest needs a list of quests, which is a list and not a menu item — so it
-        // is the one choice that hands off to the window. The tab it opens is the same one the
-        // readout's own follow-switcher dropdown reads its rows from and the same one the Change
-        // button on the strip opens.
-        items.Add(new MenuItem { Name = "A Quest...", OnClicked = _ => openFollowing() });
         return items;
     }
 
-    private void AddWindowItems(List<IMenuItem> items, QuestNavigator navigator, NavigationState state)
-    {
-        if (modules.Get<UnlockChecklistModule>() is { Enabled: true } unlockModule)
-        {
-            items.Add(new MenuItem
-            {
-                Name = "Open Unlocks",
-                OnClicked = _ => unlockModule.OpenChecklist(),
-            });
-        }
-
-        if (modules.Get<HuntingLogModule>() is { Enabled: true } huntingModule)
-        {
-            items.Add(new MenuItem
-            {
-                Name = "Open Hunting Log",
-                OnClicked = _ => huntingModule.OpenLog(),
-            });
-        }
-
-        // The second door onto Settings, and the one that works while the readout is hidden. The
-        // readout's own cog is now pressable with either device, so this is no longer the pad's only
-        // way in — it is one press from the game's own menu instead of a walk through the plugin list.
-        items.Add(new MenuItem
-        {
-            Name = "Open Settings",
-            OnClicked = _ => openSettings(),
-        });
-
-        // Nothing to reset when nothing is engaged and no override is set — following the MSQ is
-        // already exactly what's happening. The "Stop" item above already covers the engaged case.
-        if (!state.Engaged && navigator.FollowedOverride is not null)
-        {
-            items.Add(new MenuItem
-            {
-                Name = "Main Scenario",
-                OnClicked = _ => navigator.FollowedOverride = null,
-            });
-        }
-    }
-
-    private void AddTeleportItem(List<IMenuItem> items, NavigationState state)
-    {
-        if (string.Equals(state.Mode, NavigationState.Modes.OtherZone, StringComparison.Ordinal)
-            && cfg.ClickTeleportEnabled
-            && state.AetheryteUnlocked
-            && state.AetheryteId is { } aetheryteId
-            && state.AetheryteName is { } aetheryteName)
-        {
-            items.Add(new MenuItem
-            {
-                Name = $"Teleport to {aetheryteName}",
-                OnClicked = _ => TeleportAction.Execute(aetheryteId, cfg, clientState, log),
-            });
-        }
-
-        // The guided quest's objective is inside instanced content it can be queued for right now
-        // (see DutyObjectiveGuidance). This is the cursor-free way to reach it; the window's Quests
-        // tab has the same button for a mouse.
-        if (state.DutyContentFinderConditionId is { } cfcId)
-        {
-            items.Add(new MenuItem
-            {
-                Name = "Open Duty Finder",
-                OnClicked = _ => DutyFinderAction.Execute(cfcId),
-            });
-        }
-    }
-
-    /// <summary>"Start hunting" — the deliberate switch into hunting mode, with the rank's remaining
-    /// count so the player can see there is something to switch into. Runs the identical path the
-    /// window's own "Start hunting" button does, so both produce the same chained route through the
-    /// same guidance machinery.</summary>
-    private void AddStartHuntItem(List<IMenuItem> items, QuestNavigator navigator)
-    {
-        if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule)
-        {
-            return;
-        }
-
-        var order = huntingModule.Hunting.HuntHereOrder;
-        if (order.Count == 0)
-        {
-            return;
-        }
-
-        items.Add(new MenuItem
-        {
-            Name = $"Start Hunting ({order.Count})",
-            OnClicked = _ =>
-            {
-                var targets = order.Select(huntingModule.Hunting.ToPickupTarget)
-                                   .Where(t => t != null)
-                                   .Select(t => t!)
-                                   .ToList();
-                if (targets.Count > 0)
-                {
-                    navigator.SetRoute(targets);
-                }
-            },
-        });
-    }
-
-    /// <summary>"Start Unlock Route" when at least one available, locatable unlock exists to route
-    /// through — the same predicate and ordering (<see cref="RoutePlanner.Order"/>) as
-    /// UnlockWindow's "Route me" button. Only ever offered while nothing is already engaged (see
-    /// the caller) — the "Stop" item is what ends a route once one is running.</summary>
-    private void AddStartRouteItem(List<IMenuItem> items, QuestNavigator navigator, UnlockChecklistModule unlockModule)
-    {
-        var routable = unlockModule.Unlocks.Entries
-            .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null)
-            .ToList();
-        if (routable.Count == 0)
-        {
-            return;
-        }
-
-        items.Add(new MenuItem
-        {
-            Name = "Start Unlock Route",
-            OnClicked = _ => StartUnlockRoute(navigator, unlockModule, routable),
-        });
-    }
-
-    private void StartUnlockRoute(
-        QuestNavigator navigator, UnlockChecklistModule unlockModule, List<ResolvedUnlock> routable)
-    {
-        var player = objects.LocalPlayer;
-        var ordered = RoutePlanner.Order(
-            routable, clientState.TerritoryType, player?.Position.X ?? 0, player?.Position.Z ?? 0);
-        var targets = ordered.Select(unlockModule.Unlocks.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
-        if (targets.Count > 0)
-        {
-            navigator.SetRoute(targets);
-        }
-    }
+    /// <summary>Built when the submenu opens rather than when the menu does, so a slow player never
+    /// confirms a choice built from state that has since gone stale.</summary>
+    private List<IMenuItem> BuildFollowItems() => [.. actions.Follow().Select(Item)];
 }

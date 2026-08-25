@@ -10,13 +10,16 @@ namespace Wayfarer.Windows.Native;
 /// <summary>Owns the guidance readout: one host for every player, and one fallback for when that
 /// host cannot be built.
 ///
-/// <b>The host</b> is <see cref="ReadoutAddon"/>, a chromeless native addon that takes input. A
-/// mouse clicks its four controls; a controller reaches the same four by pressing the game's own HUD
-/// Select and cycling to the readout, which is the interaction the game already teaches for its own
-/// HUD. There is no longer a device-dependent host: the readout used to switch to a click-through
-/// overlay whenever a pad was in hand, on the belief that a focusable surface over the world would
-/// trap the pad's cursor. It cannot — the cursor only moves into the UI when the player asks it to —
-/// and the cost of that belief was a controller player who could see the cog and could not press it.
+/// <b>The host</b> is <see cref="ReadoutAddon"/>, a chromeless native addon that takes input, and it
+/// is the host whatever the player is holding. A mouse clicks its four controls, exactly as it always
+/// has. A controller presses the game's own HUD Select until the cursor reaches the readout, then
+/// walks the same four with the d-pad and confirms on one — and on the plate, the game's own Display
+/// Subcommands press drops a menu with everything else in it (<see cref="ReadoutMenu"/>).
+///
+/// <para>The readout used to switch to a click-through overlay whenever a pad was in hand, on the
+/// belief that a focusable surface over the world would trap the pad's cursor. It cannot — the
+/// cursor only moves into the UI when the player asks it to — and the cost of that belief was a
+/// controller player who could see the cog and could not press it.</para>
 ///
 /// <b>The fallback</b> is <see cref="GuidanceOverlayNode"/>, and it is now only that. If the addon
 /// cannot be created, the overlay draws the identical readout with nothing on it that can be
@@ -34,6 +37,7 @@ internal sealed class GuidanceOverlay(
     ITextureProvider textures,
     Action onSettingsClicked,
     Func<IReadOnlyList<FollowChoice>> getFollowChoices,
+    GuidanceActions actions,
     IPluginLog log) : IDisposable
 {
     private OverlayController? controller;
@@ -182,6 +186,7 @@ internal sealed class GuidanceOverlay(
                 onSettingsClicked,
                 getFollowChoices,
                 OpenJournal,
+                actions,
                 textures,
                 framework,
                 log,

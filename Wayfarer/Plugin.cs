@@ -62,6 +62,11 @@ public sealed class Plugin : IDalamudPlugin
     /// tab all compose their own presentation from, so no two of them can say different things.</summary>
     private ReadoutFeed feed = null!;
 
+    /// <summary>Every action Wayfarer offers, decided once. Both menus onto them — the game's own
+    /// right-click menu and the one the readout drops for a controller — render this, so neither can
+    /// offer something the other does not.</summary>
+    private GuidanceActions guidanceActions = null!;
+
     private bool loggedHubFallback;
 
     public Plugin(
@@ -124,7 +129,7 @@ public sealed class Plugin : IDalamudPlugin
             enabledByDefault: true);
 
         ipcProvider = new(pluginInterface, modules, clientState);
-        contextMenuActions = BuildContextMenuActions(contextMenu, objects, clientState, config, log);
+        contextMenuActions = BuildContextMenuActions(contextMenu, config, log);
         namePlateMarkers = new(namePlateGui, textureProvider, framework, modules, config.Guidance, log);
         namePlateMarkers.Start();
 
@@ -312,16 +317,14 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.
-    /// "Open settings" is the controller's counterpart of the readout's cog — see
-    /// <see cref="Windows.Native.ReadoutBodyNode"/> for why the overlay cannot carry one.</summary>
+    /// <summary>Factored out of the constructor purely to stay under the method-length analyzer. Both
+    /// menus onto Wayfarer's actions — this one and the readout's own — render the same
+    /// <see cref="GuidanceActions"/>.</summary>
     private ContextMenuActions BuildContextMenuActions(
         IContextMenu contextMenu,
-        IObjectTable objects,
-        IClientState clientState,
         Configuration config,
         IPluginLog log) =>
-        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, OpenFollowing, log);
+        new(contextMenu, modules, config.QuestHelper, guidanceActions, inputMode, log);
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.</summary>
     private NativeHubWindow BuildHub(
@@ -419,6 +422,13 @@ public sealed class Plugin : IDalamudPlugin
         IPluginLog log,
         GuidanceGraph guidance)
     {
+        // Built here, where the readout's inputs are assembled, and held on the plugin because the
+        // game's own right-click menu renders the same actions. Every action reads the module
+        // registry at the moment a menu opens, so building it before the modules are registered is
+        // safe — nothing is resolved now.
+        guidanceActions = new GuidanceActions(
+            modules, config.QuestHelper, services.Objects, services.ClientState, OpenConfig, OpenFollowing, log);
+
         overlay = new GuidanceOverlay(
             feed,
             config.QuestHelper,
@@ -429,6 +439,7 @@ public sealed class Plugin : IDalamudPlugin
             services.Textures,
             OpenConfig,
             hub.GetFollowChoices,
+            guidanceActions,
             log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,

@@ -74,13 +74,7 @@ internal sealed class FollowSwitcherMenu(IPluginLog log) : IDisposable
 
             foreach (var choice in choices)
             {
-                var activate = choice.Activate;
-                menu.AddItem(new ContextMenuItem
-                {
-                    Name = Label(choice),
-                    IsEnabled = activate is not null && !choice.IsFollowed,
-                    OnClick = activate ?? (() => { }),
-                });
+                menu.AddItem(Entry(choice));
             }
 
             menu.Open();
@@ -109,6 +103,21 @@ internal sealed class FollowSwitcherMenu(IPluginLog log) : IDisposable
         }
 
         menu = null;
+    }
+
+    /// <summary>One follow choice as a row of the game's menu. Shared with the menu the readout
+    /// drops for a controller (<see cref="ReadoutMenu"/>), which lists the same choices in a
+    /// submenu: the words, and the rule that a choice with nothing behind it is shown disabled
+    /// rather than hidden, are decided once here.</summary>
+    internal static ContextMenuItem Entry(FollowChoice choice)
+    {
+        var activate = choice.Activate;
+        return new ContextMenuItem
+        {
+            Name = Label(choice),
+            IsEnabled = activate is not null && !choice.IsFollowed,
+            OnClick = activate ?? (() => { }),
+        };
     }
 
     /// <summary>One entry's words. The tab's right-hand caption is folded in after the name, because

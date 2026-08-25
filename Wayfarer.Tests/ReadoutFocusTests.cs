@@ -73,6 +73,70 @@ public class ReadoutFocusTests
         Assert.Contains("RemoveNodeFlags(NodeFlags.Fill)", anchor, StringComparison.Ordinal);
     }
 
+    /// <summary>All four of the readout's controls get an anchor, so a controller reaches every one of
+    /// them the way a mouse clicks it. Cutting this back to the plate alone was tried and rejected —
+    /// the four controls are the design.</summary>
+    [Fact]
+    public void EveryControlOnTheReadoutIsReachableWithAPad()
+    {
+        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildNavAnchors(");
+
+        Assert.Equal(4, SourceGuard.Occurrences(anchors, "BuildNavAnchor("));
+        foreach (var slot in new[] { "NavCog", "NavBanner", "NavSwitcher", "NavTeleport" })
+        {
+            Assert.Contains($"navTargets[{slot}]", anchors, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>The plate's second press is the game's own "Display Subcommands" (<c>InputId.MENU</c>,
+    /// <c>ConfigKey</c> row 215), not a button of our choosing, and it is a press BESIDE Confirm
+    /// rather than instead of it — Confirm on the plate still opens the Journal, exactly as a click
+    /// does. Both halves are asserted, because either one alone would be the wrong design.</summary>
+    [Fact]
+    public void ThePlateAnswersTheGamesOwnSubcommandPress()
+    {
+        var subcommand = SourceGuard.Body(SourceGuard.SourceOf(Body), "private static void AddSubcommand(");
+
+        Assert.Contains("InputId.MENU", subcommand, StringComparison.Ordinal);
+        Assert.Contains("AtkEventType.InputReceived", subcommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("InputId.OK", subcommand, StringComparison.Ordinal);
+
+        // The plate's Confirm is still the Journal: its anchor is built from the same callback the
+        // plate's own mouse hit box is.
+        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildNavAnchors(");
+        Assert.Contains("BuildNavAnchor(onQuestNameClicked", anchors, StringComparison.Ordinal);
+    }
+
+    /// <summary>Both menus onto Wayfarer's actions render the one source, so neither can offer
+    /// something the other does not. A menu label written out in either renderer is the drift this
+    /// guards against.
+    ///
+    /// <para>The followable set is the one place they legitimately differ, and each still reads a
+    /// single source: the readout's menu lists what the switcher cap beside it lists (the window's
+    /// Following tab's own choices, every accepted quest included), while the game's menu keeps the
+    /// shorter list it has always had, ending in the hand-off to that tab.</para></summary>
+    [Fact]
+    public void BothMenusRenderTheSameActionSource()
+    {
+        var readoutMenu = SourceGuard.SourceOf("Wayfarer/Windows/Native/ReadoutMenu.cs");
+        var gameMenu = SourceGuard.SourceOf("Wayfarer/ContextMenuActions.cs");
+
+        foreach (var source in new[] { readoutMenu, gameMenu })
+        {
+            Assert.Contains("actions.Route()", source, StringComparison.Ordinal);
+            Assert.Contains("actions.Windows()", source, StringComparison.Ordinal);
+
+            // The words and the conditions live in GuidanceActions; a renderer that spells one out
+            // is a renderer that can come to disagree with the other.
+            Assert.DoesNotContain("Open Settings", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("Start Hunting", source, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("actions.Follow()", gameMenu, StringComparison.Ordinal);
+        Assert.Contains("getFollowChoices()", readoutMenu, StringComparison.Ordinal);
+        Assert.Contains("FollowSwitcherMenu.Entry(", readoutMenu, StringComparison.Ordinal);
+    }
+
     private static string Setup() =>
         SourceGuard.Body(SourceGuard.SourceOf(Host), "void OnSetup");
 }

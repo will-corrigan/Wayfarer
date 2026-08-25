@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Enums;
@@ -429,8 +430,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     ///
     /// <para>It is also where the game's cursor lands first when a controller cycles to the readout,
     /// so "HUD Select, then Confirm" opens the Journal at whatever is being followed — the shortest
-    /// route the readout has. The Journal, Settings and the follow list are all still on the window's
-    /// own tabs and on the game's right-click menu.</para></summary>
+    /// route the readout has. And it is the one control that answers a second press: the game's own
+    /// <b>Display Subcommands</b> drops a menu with everything else Wayfarer can be asked to do —
+    /// see <see cref="AddSubcommand"/> and <see cref="ReadoutMenu"/>.</para></summary>
     private readonly ResNode? bannerHitBox;
 
     /// <summary>Whether this host was given somewhere to send a click on the quest name. False on
@@ -449,7 +451,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     ///
     /// <para><b>They cost nothing on screen.</b> Zero size, so their collision rectangles are zero
     /// too — they draw no pixels, swallow no world click and shift no layout. The visible part of
-    /// being focused is the game's own cursor, drawn by the game's own addon.</para></summary>
+    /// being focused is the game's own cursor, drawn by the game's own addon.</para>
+    ///
+    /// <para>Confirm on each does exactly what a click on the control it shadows does. The plate's
+    /// alone answers one more press — see <see cref="AddSubcommand"/>.</para></summary>
     private readonly NavFocusNode?[] navTargets = new NavFocusNode?[MaxNavTargets];
 
     /// <summary>The set of controls the nav chain was last built for, as a
@@ -508,6 +513,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Action? onSettingsClicked = null,
         Action? onFollowClicked = null,
         Action? onQuestNameClicked = null,
+        Action? onPlateSubcommand = null,
         bool hostIsHudScaled = false)
     {
         this.log = log;
@@ -567,6 +573,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         journalClickable = onQuestNameClicked is not null;
 
         BuildNavAnchors(onSettingsClicked, onQuestNameClicked, onFollowClicked, onTeleportClicked);
+        AddSubcommand(navTargets[NavBanner], onPlateSubcommand);
     }
 
     /// <summary>Where the game should put the controller cursor when this readout is the focused
@@ -839,6 +846,41 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         nav.CollisionNode.RemoveNodeFlags(NodeFlags.Fill);
         nav.AttachNode(parent);
         return nav;
+    }
+
+    /// <summary>Gives one anchor a second press: the game's own <b>Display Subcommands</b>, which is
+    /// what every focused thing in this game answers when the player wants the list of everything
+    /// that can be done to it rather than the obvious one thing.
+    ///
+    /// <para><b>Why this is the right press and not a press we chose.</b> It is the game's, by name:
+    /// the <c>ConfigKey</c> sheet's row 215 is "Display Subcommands", keyed <c>MENU</c>, in the same
+    /// UI-navigation category as Confirm (211), Cancel (212) and Cycle through HUD Components (227) —
+    /// so it is bound on the player's own pad, next to the presses she already uses, and remapping it
+    /// remaps this. The game's own list component opts into the identical input for the identical
+    /// purpose (<c>AtkComponentList.IsInputMenuOptionEnabled</c>).</para>
+    ///
+    /// <para>Registered as a second handler for the same event the anchor already listens to, so
+    /// Confirm keeps doing exactly what a mouse click on the plate does — open the Journal — and this
+    /// is strictly an addition beside it.</para></summary>
+    private static void AddSubcommand(NavFocusNode? nav, Action? onSubcommand)
+    {
+        if (nav is null || onSubcommand is null)
+        {
+            return;
+        }
+
+        nav.AddEvent(AtkEventType.InputReceived, (_, eventType, _, _, data) =>
+        {
+            if (eventType is not AtkEventType.InputReceived || data is null)
+            {
+                return;
+            }
+
+            if ((InputId)data->InputData.InputId is InputId.MENU && data->InputData.State is InputState.Down)
+            {
+                onSubcommand();
+            }
+        });
     }
 
     /// <summary>Parks one anchor on one control: visible exactly when that control is, and two units
