@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/will-corrigan/Wayfarer/compare/v0.8.1...v0.9.0) (2026-08-25)
+
+
+### New
+
+* reach the readout with a controller, and open the game's menu on it ([#33](https://github.com/will-corrigan/Wayfarer/issues/33)) ([487aea2](https://github.com/will-corrigan/Wayfarer/commit/487aea210a9d84c5d8213826d1f663bd1b40bded))
+
 ## [0.8.1](https://github.com/will-corrigan/Wayfarer/compare/v0.8.0...v0.8.1) (2026-08-25)
 
 
