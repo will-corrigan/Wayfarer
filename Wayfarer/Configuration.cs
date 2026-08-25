@@ -231,8 +231,8 @@ public sealed class QuestHelperConfig
     /// permanently would swallow world clicks and camera drags under the readout — which is exactly
     /// the click-through guarantee that makes the readout safe to park over the world in the first
     /// place. It would also mean permanently painting the HUD-Layout handle over the readout and
-    /// putting the hand cursor on it. Off by default; a controller never needs it, because the two
-    /// position sliders in Settings move the readout with no cursor at all.</summary>
+    /// putting the hand cursor on it. Off by default; a controller does not need it at all, because
+    /// the two position sliders in Settings move the readout with no cursor.</summary>
     public bool ReadoutMoveMode { get; set; }
 
     /// <summary>Which colour the readout's arrow is drawn in. Applied on the next frame, with no
@@ -261,11 +261,11 @@ public sealed class QuestHelperConfig
     public bool DtrHidden { get; set; }
 
     /// <summary>Controls <see cref="ContextMenuActions"/>'s gating. Defaults to
-    /// <see cref="ContextMenuMode.ControllerOnly"/>: a controller gets the click-through readout,
-    /// which by construction carries no affordances, so it needs one native, d-pad-navigable place
-    /// to start a hunt, reach the checklist and take the teleport the readout is recommending — and
-    /// the game's own context menu is exactly that, with no new chrome and no cursor. Left off for
-    /// mouse players by default, where the readout itself is clickable and an entry in every
+    /// <see cref="ContextMenuMode.ControllerOnly"/>: the readout itself is now reachable with a pad,
+    /// but starting a hunt, starting an unlock route and the Duty Finder are not on it, and none of
+    /// it is reachable at all while the readout is hidden — so a controller still wants one native,
+    /// d-pad-navigable place for those, and the game's own context menu is exactly that, with no new
+    /// chrome and no cursor. Left off for mouse players by default, where an entry in every
     /// right-click menu is noise.</summary>
     public ContextMenuMode MenuMode { get; set; } = ContextMenuMode.ControllerOnly;
 }

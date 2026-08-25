@@ -2870,11 +2870,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// cannot reach is the exact trap this window exists to avoid. Here the quests are ordinary list
     /// rows: a mouse clicks them, a d-pad walks them.
     ///
-    /// <b>Teleport and Duty Finder</b> are here for the mouse player. The readout recommends
-    /// "Teleport to Horizon first" and the overlay it is drawn on is click-through by construction,
-    /// so before this the only way to act on that advice was the game's context menu — which is
-    /// off by default for a mouse. These are real buttons on a real window, reachable with either
-    /// device, and they run the same <see cref="TeleportAction"/> gate the context menu does.</summary>
+    /// <b>Teleport and Duty Finder</b> are here for whoever has this window open rather than the
+    /// readout in view. The readout recommends "Teleport to Horizon first" and its own line can be
+    /// pressed, but the Duty Finder has never been on it at all, and the game's context menu is off
+    /// by default for a mouse. These are real buttons on a real window, reachable with either device,
+    /// and they run the same <see cref="TeleportAction"/> gate the context menu does.</summary>
     private void BuildQuestControls()
     {
         questControls = new VerticalListNode

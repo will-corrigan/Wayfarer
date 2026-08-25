@@ -37,12 +37,12 @@ internal sealed class ReadoutFeed(
     private float? groundedHeight;
 
     /// <summary>The guidance snapshot's source, for the surfaces that need to act on it rather than
-    /// only read it — the clickable readout's teleport, for one. Read-only by construction: this is
+    /// only read it — the readout's teleport, for one. Read-only by construction: this is
     /// the same <see cref="INavigationProvider"/> every other consumer already has.</summary>
     public INavigationProvider Navigator => navigator;
 
     /// <summary>Builds this frame's content. The words are the same on every surface: what differs
-    /// between the click-through overlay and the clickable addon is whether the line can be pressed,
+    /// between the readout's own addon and the fallback overlay is whether the line can be pressed,
     /// which each host decides for itself from the line's own <see cref="ReadoutLineAction"/> mark.
     /// </summary>
     public ReadoutContent Compose()

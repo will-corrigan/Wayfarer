@@ -357,9 +357,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rectangle and the hand cursor over that one line.</summary>
     private readonly ResNode? teleportHitBox;
 
-    /// <summary>The settings cog, or null in a host that cannot be clicked. Drawing one on the
-    /// click-through overlay would be a lie: the controller's readout takes no input at all, and an
-    /// affordance that does nothing is worse than none.</summary>
+    /// <summary>The settings cog, or null in a host that takes no input at all. Drawing one on the
+    /// fallback overlay would be a lie — an affordance that does nothing is worse than none — but on
+    /// the readout's own host it is drawn for everyone, because a pointer and a pad reach it the
+    /// same way there.</summary>
     private readonly ImGuiImageNode? cogNode;
 
     /// <summary>The "choose what to follow" switcher: <b>an invisible click target over the chevron
@@ -381,9 +382,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// The hand cursor and a tooltip (<see cref="SwitcherTooltip"/>) are what say it is a control —
     /// which is the same pair the readout already relies on for the teleport line.</para>
     ///
-    /// <para>Mouse only, for the same reason as the cog. A controller reaches the same list through
-    /// the window's Following tab and through the Wayfarer entry in the game's own right-click
-    /// menu, both of which take no cursor.</para></summary>
+    /// <para>A controller reaches this cap the same way it reaches the cog — HUD Select, then along
+    /// the ring of anchors — and the same list is still on the window's Following tab and on the
+    /// Wayfarer entry in the game's own right-click menu.</para></summary>
     private readonly ResNode? switcherHitBox;
 
     /// <summary>An invisible box over the words of the subject line, or null in a host that takes no
@@ -426,10 +427,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// (see <see cref="subjectHitBox"/>) for the truncated-name tooltip that lives with them. Hitting
     /// either region opens the same Journal entry, so which one caught the click never matters.</para>
     ///
-    /// <para>Mouse only, like the cog and the switcher, and for the same reason — the controller's
-    /// host is click-through by construction. A pad reaches the Journal, settings and the follow list
-    /// through the window's own tabs, the game's own right-click menu and <c>/wayfarer settings</c>,
-    /// none of which need a pointer.</para></summary>
+    /// <para>It is also where the game's cursor lands first when a controller cycles to the readout,
+    /// so "HUD Select, then Confirm" opens the Journal at whatever is being followed — the shortest
+    /// route the readout has. The Journal, Settings and the follow list are all still on the window's
+    /// own tabs and on the game's right-click menu.</para></summary>
     private readonly ResNode? bannerHitBox;
 
     /// <summary>Whether this host was given somewhere to send a click on the quest name. False on

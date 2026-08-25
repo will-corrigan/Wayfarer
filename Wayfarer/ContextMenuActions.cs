@@ -10,12 +10,13 @@ namespace Wayfarer;
 /// <summary>Injects a "Wayfarer" submenu into the game's own Default context menu — a native row
 /// that inherits the game's own d-pad focus navigation, no cursor required.
 ///
-/// This is the controller's action surface. A controller gets the click-through readout, which by
-/// construction carries no affordances — not even the settings cog a mouse gets, because a cog on a
-/// surface that cannot be clicked would be a lie — so this is where starting a hunt, stopping one,
-/// reaching the unlocks list, opening settings and taking the teleport the readout is recommending
-/// all live without a cursor and without typing a command. A mouse clicks the readout itself, which
-/// is why this is off for a mouse by default. <see cref="QuestHelperConfig.MenuMode"/> therefore
+/// This is the controller's second route, and for several things its only one. The readout itself is
+/// now reachable with a pad — HUD Select, then along the ring of controls on it — so the Journal,
+/// Settings, the follow list and the teleport all have a shorter path than this menu. What still
+/// lives only here: starting a hunt, stopping one, starting an unlock route, the Duty Finder, the
+/// unlocks list and the hunting log — and every one of those actions while the readout is hidden or
+/// has nothing to say. A mouse operates the readout directly, which is why this is off for a mouse
+/// by default. <see cref="QuestHelperConfig.MenuMode"/> therefore
 /// defaults to <see cref="ContextMenuMode.ControllerOnly"/> — evaluated fresh via
 /// <see cref="InputModeService.Mode"/> on every
 /// menu open (not registered/unregistered on mode flips, since checking is cheap and avoids a
@@ -168,8 +169,8 @@ internal sealed class ContextMenuActions : IDisposable
         return items;
     }
 
-    /// <summary>"Follow" — the controller's parallel path to the window's Following tab and the
-    /// readout's own follow-switcher dropdown (mouse only), with the same word and the same choices,
+    /// <summary>"Follow" — the parallel path to the window's Following tab and to the readout's own
+    /// follow-switcher cap, with the same word and the same choices,
     /// so there is one concept with one name on every surface instead of three names for one
     /// feature.
     ///
@@ -250,9 +251,9 @@ internal sealed class ContextMenuActions : IDisposable
             });
         }
 
-        // The controller's answer to the readout's settings cog. A mouse clicks the cog on the
-        // readout itself; a controller cannot, because its readout is the click-through overlay —
-        // so the same one press lands here instead of behind a walk through the plugin list.
+        // The second door onto Settings, and the one that works while the readout is hidden. The
+        // readout's own cog is now pressable with either device, so this is no longer the pad's only
+        // way in — it is one press from the game's own menu instead of a walk through the plugin list.
         items.Add(new MenuItem
         {
             Name = "Open Settings",
