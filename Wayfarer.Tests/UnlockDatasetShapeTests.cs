@@ -244,8 +244,8 @@ public class UnlockDatasetShapeTests
         }
 
         var savage = all.FindAll(d => d.Unlock.Contains("(Savage)", StringComparison.Ordinal));
-        Assert.Equal(20, savage.Count);
-        Assert.Equal(8, savage.FindAll(d => d.Reward is not null).Count);
+        Assert.Equal(80, savage.Count);
+        Assert.Equal(68, savage.FindAll(d => d.Reward is not null).Count);
     }
 
     private static List<UnlockDefinition> Load() =>

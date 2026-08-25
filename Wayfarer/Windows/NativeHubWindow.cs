@@ -2481,11 +2481,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private string RewardLine(ResolvedUnlock u, UnlockReward? reward) => reward switch
     {
         { Kind: "ContentFinderCondition" } duty =>
-            UnlockRowText.DutyReward(DisplayNames.TitleCase(duty.Name), journalFacts.DutyLevel(duty.Id)),
+            UnlockRowText.DutyReward(DisplayNames.SheetCase(duty.Name), journalFacts.DutyLevel(duty.Id)),
 
         // Sheet text, cased the way the client cases it: Companion and Mount store 'wind-up
         // brickman' and 'company chocobo' in lower case. Same transform as UnlockRowText.Name.
-        not null => DisplayNames.TitleCase(reward.Name),
+        not null => DisplayNames.SheetCase(reward.Name),
         null => UnlockRowText.GrantedCapability(u),
     };
 

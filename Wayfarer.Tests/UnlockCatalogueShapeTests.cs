@@ -15,13 +15,18 @@ public class UnlockCatalogueShapeTests
     [Fact]
     public void Catalogue_HasTheExpectedSize()
     {
-        // Matches EXPECTED in data/validate-unlocks.mjs. Two entries were removed by the recovery:
-        // both belonged to the unreleased-expansion guide page and neither described real content.
-        // +1 for "Wings of Legacy (Mount)" (Quest#71005, "The Wing Spirit Cometh") — a real, live
-        // Dawntrail trophy-mount quest the wiki guide doesn't list, added via the generator's
-        // committed-overrides mechanism. See data/README.md and
-        // scripts/build-unlock-catalogue.mjs's NEW_TROPHY_MOUNT_ENTRIES.
-        Assert.Equal(587, Load().Count);
+        // Matches EXPECTED in data/validate-unlocks.mjs: 587 curated + 621 imported.
+        //
+        // The curated 587 are the wiki guide's rows, less the two the recovery removed (both on the
+        // unreleased-expansion page, neither describing real content) and plus "Wings of Legacy
+        // (Mount)" (Quest#71005), a live Dawntrail trophy-mount quest the guide does not list.
+        //
+        // The imported 621 come from the game's own enumeration: one entry per row the coverage
+        // policy says the catalogue lists and no curated entry covers. That half is a function of the
+        // installed sqpack, so this number moving is what a patch adding an unlock looks like — and
+        // data/validate-unlocks.mjs checks the two halves separately, so a change in one cannot hide
+        // inside the other. See data/README.md.
+        Assert.Equal(1208, Load().Count);
     }
 
     [Fact]
