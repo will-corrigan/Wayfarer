@@ -97,13 +97,16 @@ public class UnlockCatalogueShapeTests
 
     /// <summary>A previously-unverifiable entry that now grades: the catalogue had an NPC's name
     /// where the quest should be, so nothing about it was checkable. It now names the quest the
-    /// guide's own link points at.</summary>
+    /// guide's own link points at — and carries a curated <c>requires</c> block on top, because
+    /// naming the quest only fixed the identity, not the fact that finishing it still is not
+    /// enough: the ceremony itself needs a partner. See SocialRequirementTests for that half.</summary>
     [Fact]
     public void APreviouslyUnverifiableEntry_NowNamesARealQuest()
     {
         var e = Single("Ceremony of Eternal Bonding");
         Assert.Equal("The Ties That Bind", e.Quest);
-        Assert.Null(e.Requires);
+        Assert.NotNull(e.Requires);
+        Assert.True(e.Requires!.RequiresAnotherPlayer);
         Assert.Equal("verified", e.Confidence);
         Assert.Contains(e.Sources, s => string.Equals(s, "game-data:Quest#67114", StringComparison.Ordinal));
     }

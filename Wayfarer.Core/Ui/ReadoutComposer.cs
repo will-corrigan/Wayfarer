@@ -29,6 +29,16 @@ public static class ReadoutComposer
     /// unlock scan, and this is where it can be tested.</summary>
     public const int MaxNearbyUnlockLines = 3;
 
+    /// <summary>What the banner's header pill says when nothing is being followed, and the fallback
+    /// whenever the active source has not named itself. The plugin's own name is the honest answer to
+    /// "what is this element?" when the answer to "what is it tracking?" is nothing.</summary>
+    public const string PluginName = "Wayfarer";
+
+    /// <summary>The word the header pill puts in front of the module's own name. Kept here rather
+    /// than at either end of the sentence it makes: the module supplies "Quest", the pill says
+    /// "Current Quest", and neither half is complete on its own.</summary>
+    private const string CurrentlyTracking = "Current";
+
     public static ReadoutContent Compose(ReadoutInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
@@ -47,7 +57,32 @@ public static class ReadoutComposer
 
         return lines.Count == 0
             ? ReadoutContent.Empty
-            : new ReadoutContent(lines, showArrow, x, y, z, inputs.Elevation);
+            : new ReadoutContent(lines, showArrow, x, y, z, inputs.Elevation, StripLabel(state));
+    }
+
+    /// <summary>The header pill's words: "Current" plus whatever the active module calls itself, or
+    /// the plugin's own name when no module owns the arrow.
+    ///
+    /// <para><b>Why the module's name and not its mode label.</b> The mode label already exists
+    /// (<see cref="NavigationState.SourceLabel"/>) and names the objective's context — "Main
+    /// Scenario", "Hunting Log - Warrior". The pill is a different statement: it names the element
+    /// itself, the way the game's own pill says "Current Main Scenario Quest" above whichever quest
+    /// happens to be in the plate. So it takes the module's name, which the module supplies, and
+    /// nothing here or downstream ever maps a source id to a word.</para>
+    ///
+    /// <para>The route position rides along, because that is where it already was: it used to be
+    /// parenthesised onto the mode heading, and the pill is what that heading became.</para></summary>
+    private static string StripLabel(NavigationState state)
+    {
+        if (state.SourceName is not { Length: > 0 } module)
+        {
+            return PluginName;
+        }
+
+        var label = $"{CurrentlyTracking} {DisplayNames.TitleCase(module)}";
+        return state.RouteStop is { } stop && state.RouteTotal is { } total
+            ? $"{label} ({stop} of {total})"
+            : label;
     }
 
     private static void AddHeading(List<ReadoutLine> lines, NavigationState state)
@@ -73,9 +108,12 @@ public static class ReadoutComposer
 
     private static void AddObjective(List<ReadoutLine> lines, NavigationState state)
     {
+        // Idle is still a subject: "No quest followed" is precisely the line a player wants the
+        // switcher beside, and it is the only line the idle readout has.
         if (string.Equals(state.Mode, NavigationState.Modes.Idle, StringComparison.Ordinal))
         {
-            lines.Add(new ReadoutLine("No quest followed", ReadoutEmphasis.Muted));
+            lines.Add(new ReadoutLine(
+                "No quest followed", ReadoutEmphasis.Muted, Separated: false, ReadoutLineAction.None, Subject: true));
             return;
         }
 
@@ -85,7 +123,11 @@ public static class ReadoutComposer
             headline = $"{headline}  {progress}";
         }
 
-        lines.Add(new ReadoutLine(headline, ReadoutEmphasis.Primary));
+        // Marked as the door to the journal only when there is a quest row behind the name. A hunt
+        // and a bare "Current objective" have no journal entry, and marking them would put a hand
+        // cursor over words that then did nothing.
+        var action = state.QuestId is > 0 ? ReadoutLineAction.OpenJournal : ReadoutLineAction.None;
+        lines.Add(new ReadoutLine(headline, ReadoutEmphasis.Primary, Separated: false, action, Subject: true));
 
         if (state.StepLabel is { Length: > 0 } step
             && !string.Equals(step, state.QuestName, StringComparison.OrdinalIgnoreCase))
@@ -113,13 +155,26 @@ public static class ReadoutComposer
             return AddReasonOnly(lines, state);
         }
 
+        // Inside a search-area objective's circle, the centre coordinate is no longer a place to
+        // walk to — it never was the objective, only the middle of where the game says to look. An
+        // arrow still pointing at it a few yalms away would be the same confident-but-wrong
+        // precision this feature exists to remove, so the arrow is suppressed entirely rather than
+        // dimmed: there is no more useful direction to give than "look around you", and the readout
+        // already has precedent for no arrow when there is nothing precise to point at (see
+        // AddOtherZone's teleport-only case).
+        if (inputs.AreaHint == SearchAreaHint.Inside)
+        {
+            lines.Add(new ReadoutLine("You're in the search area — look around", ReadoutEmphasis.Primary));
+            return (false, null, null, null);
+        }
+
         AddDistance(lines, inputs);
 
         if (state.AethernetExitName is { Length: > 0 } exit)
         {
             // The arrow already points at the entry shard in this case, so say so rather than
             // leaving the player wondering why it points away from the objective.
-            lines.Add(new ReadoutLine($"To the {state.AethernetEntryName} aetheryte", ReadoutEmphasis.Secondary));
+            lines.Add(new ReadoutLine(EntryShard(state.AethernetEntryName), ReadoutEmphasis.Secondary));
             lines.Add(new ReadoutLine($"Aethernet to {exit}", ReadoutEmphasis.Secondary));
         }
 
@@ -136,7 +191,7 @@ public static class ReadoutComposer
             AddDistance(lines, inputs);
             if (state.AethernetExitName is { Length: > 0 } exit)
             {
-                lines.Add(new ReadoutLine($"To the {state.AethernetEntryName} aetheryte", ReadoutEmphasis.Secondary));
+                lines.Add(new ReadoutLine(EntryShard(state.AethernetEntryName), ReadoutEmphasis.Secondary));
                 lines.Add(new ReadoutLine($"Aethernet to {exit}{Remaining(state)}", ReadoutEmphasis.Secondary));
             }
             else
@@ -147,7 +202,10 @@ public static class ReadoutComposer
 
         AddTeleportAdvice(lines, inputs, hasEntrance);
 
-        if (state.ZoneName is { Length: > 0 } zone)
+        // One place name, said once — see AlreadySaid. The bare zone line's whole content IS the
+        // place name, so once any line above has said it there is nothing left for this line to
+        // add; every other line carries something the name alone does not.
+        if (state.ZoneName is { Length: > 0 } zone && !AlreadySaid(lines, zone))
         {
             lines.Add(new ReadoutLine(zone, ReadoutEmphasis.Muted));
         }
@@ -164,6 +222,14 @@ public static class ReadoutComposer
         {
             if (!hasEntrance && state.Reason is { Length: > 0 } reason)
             {
+                // "In Fortemps Manor — find the entrance" sitting directly under a step that reads
+                // "Enter Fortemps Manor." says the place name twice. What gets dropped is the clause
+                // that names it, never the instruction — see AlreadySaid.
+                if (state.ZoneName is { Length: > 0 } zone && AlreadySaid(lines, zone))
+                {
+                    reason = OtherZoneResolution.WithoutZoneName(reason, zone);
+                }
+
                 lines.Add(new ReadoutLine(reason, ReadoutEmphasis.Secondary));
             }
 
@@ -179,7 +245,7 @@ public static class ReadoutComposer
                 Separated: false,
                 ReadoutLineAction.Teleport)
             : new ReadoutLine(
-                $"Nearest aetheryte is {aetheryte}, and you are not attuned there.",
+                $"Not attuned to {aetheryte}",
                 ReadoutEmphasis.Secondary));
     }
 
@@ -212,7 +278,35 @@ public static class ReadoutComposer
             return;
         }
 
-        if (distance < 5f)
+        // A search-area objective (AreaHint.Outside here — Inside returns before this is ever
+        // called) is never "arrived at" and never gets the plain distance line: the arrow points at
+        // a circle's centre, not the thing itself, so the readout says so plainly rather than
+        // implying the precision a point objective actually has. Absent radius — the entire rest of
+        // this method — is completely unchanged, which is what keeps a point objective's output
+        // byte-identical to before this feature existed. TargetRadiusYalms is already gated to
+        // SearchAreaRadius.IsArea by GuidanceProjection, so this re-check is defensive, not load
+        // bearing — but it keeps this method correct on its own terms rather than trusting a caller.
+        if (inputs.State.TargetRadiusYalms is { } radius && SearchAreaRadius.IsArea(radius))
+        {
+            var areaText = $"Search the area · {NavMath.FormatDistance(distance)}";
+            if (Elevation.Words(inputs.Elevation) is { Length: > 0 } areaElevation)
+            {
+                areaText = $"{areaText} · {areaElevation}";
+            }
+
+            lines.Add(new ReadoutLine(areaText, ReadoutEmphasis.Primary));
+            return;
+        }
+
+        // Arrival is a claim about the OBJECTIVE, and this distance is only the objective's in
+        // same-zone mode. In other-zone mode it is the distance to the way in — ReadoutFeed measures
+        // it to (EntranceX, EntranceZ) — so a player standing on the entry shard is at the start of
+        // the route, not the end of it. The Forgotten Knight is reached through shard 80 in
+        // Foundation, and standing on that shard the readout said "You have arrived" in Primary above
+        // "Aethernet to The Last Vigil, then 42 yalms": the loudest line on screen contradicting the
+        // two beneath it. Zero yalms to the door you have not walked through yet is a distance, and
+        // the plain distance line says it without claiming anything.
+        if (distance < 5f && string.Equals(inputs.State.Mode, NavigationState.Modes.SameZone, StringComparison.Ordinal))
         {
             lines.Add(new ReadoutLine("You have arrived", ReadoutEmphasis.Primary));
             return;
@@ -274,10 +368,46 @@ public static class ReadoutComposer
                 return;
             }
 
-            lines.Add(new ReadoutLine(unlock, ReadoutEmphasis.Muted, first));
+            // The only lines the readout marks. Each one names a place with a quest at the end of
+            // it, which is exactly what the banner's medallion means — see ReadoutLine.Marked. The
+            // engaged case above is deliberately NOT marked: "3 unlocks nearby" is a count, and a
+            // count is not somewhere you can walk to.
+            lines.Add(new ReadoutLine(unlock, ReadoutEmphasis.Muted, first, Marked: true));
             first = false;
             shown++;
         }
+    }
+
+    /// <summary>"To the Brume aetheryte", but "To The Forgotten Knight aetheryte" — the game's shard
+    /// names carry their own article where they have one, so adding a second produces "To the The
+    /// Forgotten Knight aetheryte". Two of Ishgard's five Pillars shards and two of Foundation's
+    /// three are named this way, so the reported route hits it immediately.</summary>
+    private static string EntryShard(string? name) =>
+        name is not null && name.StartsWith("The ", StringComparison.OrdinalIgnoreCase)
+            ? $"To {name} aetheryte"
+            : $"To the {name} aetheryte";
+
+    /// <summary>Whether a place name has already appeared in the lines composed so far.
+    ///
+    /// <para>This enforces the readout's fourth invariant — <b>nothing appears twice</b> — for place
+    /// names, which is where it was being broken: an interior objective produced the zone's name in
+    /// the step line, again in the interior-entrance message, and a third time as the bare zone
+    /// line. The rule is that a place is named ONCE, at its first and most informative occurrence,
+    /// and every later line that would only repeat it either drops the clause that names it or drops
+    /// entirely. Matching is case-insensitive and by containment, because the repetitions are
+    /// inflected ("Enter Fortemps Manor." / "In Fortemps Manor — …") rather than
+    /// identical.</para></summary>
+    private static bool AlreadySaid(List<ReadoutLine> lines, string place)
+    {
+        foreach (var line in lines)
+        {
+            if (line.Text.Contains(place, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // "Aethernet to X, then 40 yalms" — the walk after the shard hop or door crossing.

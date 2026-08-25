@@ -24,6 +24,35 @@ public static class ReadoutLayout
     /// <summary>The gap left between the readout and a HUD element it has been pushed clear of.</summary>
     public const float ObstacleGap = 8f;
 
+    /// <summary>The vertical extent every placement decision is made against, <b>instead of the
+    /// readout's measured height</b>.
+    ///
+    /// <para><b>This is the whole of the "readout flies up and down the screen" fix, and it is worth
+    /// being explicit about why a constant is the right answer.</b> Every function in this class used
+    /// to take the readout's real, measured size, so where the readout sat was a function of how tall
+    /// its content happened to be that frame. Content is not stable: a hunting summary, a teleport
+    /// advice, an aethernet leg or a nearby-unlock line can each come and go as the world changes,
+    /// and every one of them moved the readout — because the travel range, the clamp, the bottom
+    /// anchors and the obstacle dodge all shrank or grew with it. A line that flickers on alternate
+    /// frames therefore did not merely flicker: it made the whole readout jump, once per frame, for
+    /// as long as it lasted.</para>
+    ///
+    /// <para>With the height fixed, the readout has a <b>slot</b> on the screen and grows downward
+    /// inside it. A line appearing or disappearing changes where the readout <i>ends</i> and nothing
+    /// else. There is no feedback path left from measured content to position, so no jitter in any
+    /// input — a distance on a rounding boundary, a target that flickers in and out of live tracking,
+    /// a HUD addon resizing — can move it at all.</para>
+    ///
+    /// <para>240 is the deepest readout the composer can produce (12 lines at the muted size, plus
+    /// its rules and gaps) with room to spare, so the slot is never smaller than its content.</para></summary>
+    public const float ReferenceHeight = 240f;
+
+    /// <summary>The rectangle a readout is <i>placed</i> as, given what it actually measured. Width
+    /// is real — it is a constant of the design, not of the content — and height is
+    /// <see cref="ReferenceHeight"/>. Everything that decides where the readout goes takes this
+    /// rather than the measurement.</summary>
+    public static Vector2 PlacementSize(Vector2 measured) => new(measured.X, ReferenceHeight);
+
     /// <summary>The usable rectangle for the readout's top-left corner: the screen, less the safe
     /// margins, less the readout's own size. Collapses to a point rather than inverting when the
     /// readout is larger than the screen allows, so nothing downstream ever divides by a negative.</summary>

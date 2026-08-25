@@ -45,6 +45,7 @@ internal sealed class ContextMenuActions : IDisposable
     private readonly IClientState clientState;
     private readonly InputModeService inputMode;
     private readonly Action openSettings;
+    private readonly Action openFollowing;
     private readonly IPluginLog log;
 
     private bool loggedMenuFailure;
@@ -57,6 +58,7 @@ internal sealed class ContextMenuActions : IDisposable
         IClientState clientState,
         InputModeService inputMode,
         Action openSettings,
+        Action openFollowing,
         IPluginLog log)
     {
         this.contextMenu = contextMenu;
@@ -66,6 +68,7 @@ internal sealed class ContextMenuActions : IDisposable
         this.clientState = clientState;
         this.inputMode = inputMode;
         this.openSettings = openSettings;
+        this.openFollowing = openFollowing;
         this.log = log;
         contextMenu.OnMenuOpened += OnMenuOpened;
     }
@@ -160,7 +163,70 @@ internal sealed class ContextMenuActions : IDisposable
             }
         }
 
+        AddFollowItem(items, navigator);
         AddWindowItems(items, navigator, state);
+        return items;
+    }
+
+    /// <summary>"Follow" — the controller's parallel path to the window's Following tab and the
+    /// readout's own follow-switcher dropdown (mouse only), with the same word and the same choices,
+    /// so there is one concept with one name on every surface instead of three names for one
+    /// feature.
+    ///
+    /// <para>A real submenu rather than a flat list: it inherits the game's own d-pad navigation,
+    /// which is the whole reason this menu is the controller's action surface at all.</para></summary>
+    private void AddFollowItem(List<IMenuItem> items, QuestNavigator navigator)
+    {
+        items.Add(new MenuItem
+        {
+            Name = "Follow",
+            IsSubmenu = true,
+            OnClicked = args => args.OpenSubmenu("Follow", BuildFollowItems(navigator)),
+        });
+    }
+
+    /// <summary>What Wayfarer can be told to follow. Built when the submenu opens rather than when
+    /// the menu does, so a slow player never confirms a choice built from state that has since gone
+    /// stale — the same reasoning as the outer submenu.</summary>
+    private List<IMenuItem> BuildFollowItems(QuestNavigator navigator)
+    {
+        var items = new List<IMenuItem>
+        {
+            // Wayfarer has no "following nothing" state: not following anything in particular IS
+            // the main scenario, which is why this is a choice rather than a way to clear one.
+            new MenuItem
+            {
+                Name = "Main Scenario",
+                OnClicked = _ =>
+                {
+                    navigator.ClearPickup();
+                    navigator.FollowedOverride = null;
+                },
+            },
+        };
+
+        if (modules.Get<UnlockChecklistModule>() is { Enabled: true } unlockModule)
+        {
+            var routable = unlockModule.Unlocks.Entries
+                .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null)
+                .ToList();
+            if (routable.Count > 0)
+            {
+                items.Add(new MenuItem
+                {
+                    Name = $"Unlock Route ({routable.Count})",
+                    OnClicked = _ => StartUnlockRoute(navigator, unlockModule, routable),
+                });
+            }
+        }
+
+        AddStartHuntItem(items, navigator);
+
+        // Choosing which quest needs a list of quests, which is a list and not a menu item — so it
+        // is the one choice that hands off to the window. The tab it opens is the same one the
+        // readout's own follow-switcher dropdown reads its rows from and the same one the Change
+        // button on the strip opens.
+        items.Add(new MenuItem { Name = "A Quest...", OnClicked = _ => openFollowing() });
         return items;
     }
 
@@ -170,7 +236,7 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem
             {
-                Name = "Open unlocks",
+                Name = "Open Unlocks",
                 OnClicked = _ => unlockModule.OpenChecklist(),
             });
         }
@@ -179,7 +245,7 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem
             {
-                Name = "Open hunting log",
+                Name = "Open Hunting Log",
                 OnClicked = _ => huntingModule.OpenLog(),
             });
         }
@@ -189,7 +255,7 @@ internal sealed class ContextMenuActions : IDisposable
         // so the same one press lands here instead of behind a walk through the plugin list.
         items.Add(new MenuItem
         {
-            Name = "Open settings",
+            Name = "Open Settings",
             OnClicked = _ => openSettings(),
         });
 
@@ -199,7 +265,7 @@ internal sealed class ContextMenuActions : IDisposable
         {
             items.Add(new MenuItem
             {
-                Name = "Follow MSQ",
+                Name = "Main Scenario",
                 OnClicked = _ => navigator.FollowedOverride = null,
             });
         }
@@ -252,7 +318,7 @@ internal sealed class ContextMenuActions : IDisposable
 
         items.Add(new MenuItem
         {
-            Name = $"Start hunting ({order.Count})",
+            Name = $"Start Hunting ({order.Count})",
             OnClicked = _ =>
             {
                 var targets = order.Select(huntingModule.Hunting.ToPickupTarget)
@@ -267,7 +333,7 @@ internal sealed class ContextMenuActions : IDisposable
         });
     }
 
-    /// <summary>"Start unlock route" when at least one available, locatable unlock exists to route
+    /// <summary>"Start Unlock Route" when at least one available, locatable unlock exists to route
     /// through — the same predicate and ordering (<see cref="RoutePlanner.Order"/>) as
     /// UnlockWindow's "Route me" button. Only ever offered while nothing is already engaged (see
     /// the caller) — the "Stop" item is what ends a route once one is running.</summary>
@@ -283,7 +349,7 @@ internal sealed class ContextMenuActions : IDisposable
 
         items.Add(new MenuItem
         {
-            Name = "Start unlock route",
+            Name = "Start Unlock Route",
             OnClicked = _ => StartUnlockRoute(navigator, unlockModule, routable),
         });
     }

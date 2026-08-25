@@ -27,8 +27,9 @@ const err = (m) => { console.error(m); errors++; };
 // canonical form, not decoration: without it a regeneration diff can show every entry as changed
 // because a serialiser emitted the same facts in a different order.
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
-  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
+  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
+  'sources',
 ];
 
 // ---------------------------------------------------------------- 1. canonical form

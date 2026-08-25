@@ -46,6 +46,29 @@ public sealed class UnlockDefinition
     /// they had. Empty for the ordinary case of one quest, one unlock.</para></summary>
     public List<uint> QuestAnyOf { get; set; } = [];
 
+    /// <summary>The sheet identity this entry actually grants, or <c>null</c> when the game has no
+    /// row for it.
+    ///
+    /// <para>The catalogue used to know only what an unlock is <i>called</i>, and a name cannot be
+    /// drawn: the picture of a mount lives on <c>Mount.Icon</c>, and "Firebird (Mount)" is a
+    /// sentence in a guide rather than a row in a sheet. This is the pair a lookup can start from —
+    /// see <see cref="UnlockReward"/>.</para>
+    ///
+    /// <para>Null for the many <c>system</c> entries that open a feature the game keeps no row for.
+    /// That is an answer, not a gap, and nothing downstream may present it as one.</para></summary>
+    public UnlockReward? Reward { get; set; }
+
+    /// <summary>The verified Consolegameswiki page for this entry's own quest — or, when it has no
+    /// bound quest, for whatever it genuinely is (a duty, most often) — or <c>null</c> when no such
+    /// page could be confirmed to exist.
+    ///
+    /// <para>Never a guessed URL built from a name: the generator checks the wiki's own API before
+    /// this is written, so a present value means the page was found, not assumed. This is what
+    /// backs the journal's wiki button, and the button does not render at all when this is
+    /// <c>null</c> — see <c>data/README.md</c> for how it is resolved, and for why a verified link is
+    /// preferred over curated prose when the game itself states nothing.</para></summary>
+    public string? WikiUrl { get; set; }
+
     public string? Notes { get; set; }
 
     public string? Description { get; set; }

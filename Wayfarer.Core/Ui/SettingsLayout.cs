@@ -11,9 +11,10 @@ namespace Wayfarer.Core.Ui;
 public static class SettingsLayout
 {
     /// <summary>The width KamiToolKit's <c>ScrollingNode</c> gives its scroll bar, plus the gap that
-    /// keeps a control's right edge off it. The bar's own thickness is fixed at 8 in the toolkit;
-    /// the rest is the same 4-pixel rhythm the tab's item spacing uses.</summary>
-    public const float ScrollGutter = 12f;
+    /// keeps a control's right edge off it. Eight is what the game's own scroll bars are — see
+    /// <see cref="GameMetrics.Scroll.BarWidth"/> — and the toolkit agrees; the rest is the same
+    /// four-pixel rhythm the game leaves below a rule.</summary>
+    public const float ScrollGutter = GameMetrics.Scroll.BarWidth + GameMetrics.Window.RuleGap;
 
     /// <summary>No control is ever narrowed below this. A slider thinner than its own handle plus
     /// its value text is not a control, it is a smear — better to overflow a pathologically narrow

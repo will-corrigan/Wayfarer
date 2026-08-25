@@ -24,7 +24,7 @@ internal sealed class QuestHelperModule(
 {
     public string Name => "Quest Helper";
 
-    public string Description => "An on-screen arrow that guides you to your quest objective, with teleport and aethernet routing.";
+    public string Description => "An arrow to your quest objective, with teleport and aethernet routing.";
 
     public bool Enabled { get; private set; }
 

@@ -27,6 +27,12 @@
          silently drift from the packaged data. -->
     <Content Include="../data/hunting-targets.json" Link="hunting-targets.json" CopyToOutputDirectory="PreserveNewest"/>
     <Content Include="../data/unlocks-by-level.json" Link="unlocks-by-level.json" CopyToOutputDirectory="PreserveNewest"/>
+
+    <!-- For UnlockRewardKindsTests, which reads the JavaScript half of the reward-kind list and
+         asserts the C# half says the same thing. Two copies of one closed set - the one the
+         generator writes and CI validates against, and the one the plugin draws from - can only be
+         kept honest by something that reads both. -->
+    <Content Include="../data/reward-kinds.mjs" Link="reward-kinds.mjs" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
 
 </Project>

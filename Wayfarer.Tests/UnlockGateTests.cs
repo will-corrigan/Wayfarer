@@ -1,3 +1,4 @@
+using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
@@ -107,6 +108,130 @@ public class UnlockGateTests
         Assert.Contains("talking to an NPC about Lakshmi", u.LockReason, StringComparison.Ordinal);
     }
 
+    /// <summary>The red-proof fixture: a player who has done everything this plugin CAN check —
+    /// the prerequisite quest, the level, no other gate in the way — must be told the ceremony is
+    /// <see cref="UnlockStatus.Available"/>, with the partner condition named alongside it rather
+    /// than used to withhold Available. A couple who both play the game are not told their own
+    /// wedding is out of reach for a fact this plugin will never be able to confirm.</summary>
+    [Fact]
+    public void EternalBonding_EverythingCheckableMet_IsAvailableWithTheConditionNamed()
+    {
+        var u = EternalBonding();
+        var all = new List<ResolvedUnlock> { u };
+
+        // Every gate ahead of the curated requirement is satisfied: no lockout, level met, the
+        // prerequisite quest ("The Scions of the Seventh Dawn") complete.
+        UnlockStatusCalculator.Compute(
+            all,
+            Gates.Ctx(playerLevel: 90, isQuestComplete: id => id == 66045));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("needs a partner", u.AvailableCondition);
+        Assert.NotNull(u.AvailableConditionDetail);
+        Assert.Contains("partner", UnlockStatusDisplay.Sentence(u), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Available", UnlockStatusDisplay.Sentence(u), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EternalBonding_PrerequisiteQuestIncomplete_IsQuestLocked_BeforeThePartnerGateIsEvenReached()
+    {
+        var u = EternalBonding();
+        u.PrereqRowIds = [66045];
+        u.PrereqNames = ["The Scions of the Seventh Dawn"];
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.QuestLocked, u.Status);
+        Assert.Contains("The Scions of the Seventh Dawn", u.LockReason, StringComparison.Ordinal);
+        Assert.Null(u.AvailableCondition);
+    }
+
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_IsAvailableWithCondition_NeverBlocked_AndDistinctFromUnverifiable()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.NotEqual(UnlockStatus.RequirementsUnknown, u.Status);
+        Assert.Null(u.LockReason);
+        Assert.Equal("needs a partner", u.AvailableCondition);
+        Assert.Equal("a partner", u.AvailableConditionDetail);
+    }
+
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_WithNoLabelOrConditionSource_HasAPlainFallbackDetail()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement { RequiresAnotherPlayer = true };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("needs a partner", u.AvailableCondition);
+        Assert.Equal("The game does not say more than that.", u.AvailableConditionDetail);
+    }
+
+    /// <summary>When a <see cref="GameTextRef"/> is curated, the runtime lookup is preferred over
+    /// the curated label — the whole point of quoting the game rather than paraphrasing it.</summary>
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_WithConditionSource_PrefersTheResolvedGameText()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        var source = new GameTextRef("HowToPage", 1861, 4);
+        u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true, ConditionSource = source };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(
+            all,
+            Gates.Ctx(playerLevel: 90, resolveGameText: r => r == source ? "You are currently in a party with your partner." : null));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("You are currently in a party with your partner.", u.AvailableConditionDetail);
+    }
+
+    /// <summary>A missed runtime lookup (a bad reference, a sheet Lumina can't resolve, the
+    /// resolver itself being null in a caller that never wires one) falls back to the curated
+    /// label rather than surfacing nothing.</summary>
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_WithConditionSourceThatMisses_FallsBackToLabel()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement
+        {
+            Label = "a partner",
+            RequiresAnotherPlayer = true,
+            ConditionSource = new GameTextRef("HowToPage", 1861, 4),
+        };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, resolveGameText: _ => null));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+        Assert.Equal("a partner", u.AvailableConditionDetail);
+    }
+
+    /// <summary>A partner requirement takes precedence over the generic Unverifiable fallback
+    /// when (mistakenly, or by a future data change) both are set — see the same rule enforced
+    /// at build time by data/validate-unlocks.mjs, which rejects the combination outright. The
+    /// calculator's own precedence is a second line of defence.</summary>
+    [Fact]
+    public void CuratedRequirement_RequiresAnotherPlayer_TakesPrecedenceOverUnverifiable()
+    {
+        var u = Make("Some Duo-Only Thing", 70002, 50);
+        u.Def.Requires = new UnlockRequirement { Label = "a partner", RequiresAnotherPlayer = true, Unverifiable = true };
+        var all = new List<ResolvedUnlock> { u };
+
+        UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
+
+        Assert.Equal(UnlockStatus.Available, u.Status);
+    }
+
     [Fact]
     public void NoDiscoverableGate_WithNothingCurated_IsRequirementsUnknown_NeverAvailable()
     {
@@ -168,7 +293,7 @@ public class UnlockGateTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, getClassJobLevel: _ => 1));
 
         Assert.Equal(UnlockStatus.LevelLocked, u.Status);
-        Assert.Equal("needs Fisher 61", u.LockReason);
+        Assert.Equal("needs Fisher Lv. 61", u.LockReason);
     }
 
     [Fact]
@@ -198,7 +323,7 @@ public class UnlockGateTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, getClassJobLevel: _ => 60));
 
         Assert.Equal(UnlockStatus.LevelLocked, u.Status);
-        Assert.Equal("needs Fisher 61", u.LockReason);
+        Assert.Equal("needs Fisher Lv. 61", u.LockReason);
     }
 
     [Fact]
@@ -270,7 +395,7 @@ public class UnlockGateTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90));
 
         Assert.Equal(UnlockStatus.RequirementsUnknown, u.Status);
-        Assert.Contains("3 quests with this name", u.LockReason, StringComparison.Ordinal);
+        Assert.Contains("3 quests share this name", u.LockReason, StringComparison.Ordinal);
     }
 
     /// <summary>The ordering, not just the outcome. Every gate below Accepted reads one Quest row,
@@ -366,6 +491,21 @@ public class UnlockGateTests
 
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 90, isMinionUnlocked: id => id == 42));
         Assert.Equal(UnlockStatus.Available, u.Status);
+    }
+
+    // Quest #67114 "The Ties That Bind", exactly as the sheet ships it: PreviousQuest points at
+    // "The Scions of the Seventh Dawn" (66045), which the ordinary prereq gate already checks —
+    // and still needs a second, physically present player to actually hold the ceremony, which
+    // no sheet column or client API records.
+    private static ResolvedUnlock EternalBonding()
+    {
+        var u = Make("Ceremony of Eternal Bonding", 67114, 50);
+        u.Def.Requires = new UnlockRequirement
+        {
+            Label = "same Home World, party of two, both wearing a Promise Wristlet, in East Shroud",
+            RequiresAnotherPlayer = true,
+        };
+        return u;
     }
 
     private static ResolvedUnlock Firebird()

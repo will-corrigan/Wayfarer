@@ -3,6 +3,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KamiToolKit;
+using KamiToolKit.Nodes;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Guidance;
 using Wayfarer.Guidance.Coordinators;
@@ -109,7 +110,7 @@ public sealed class Plugin : IDalamudPlugin
         // Built here, before the window that reads it: the readout, its ImGui fallback, the info-bar
         // entry and the window's Quests tab all compose their presentation from this one feed.
         feed = new ReadoutFeed(guidance.Navigator, modules, config.QuestHelper, objects);
-        hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, inputMode, log);
+        hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, textureProvider, dataManager);
 
         var readoutHosts = new ReadoutHosts(framework, clientState, objects, inputMode, textureProvider);
         modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
@@ -239,11 +240,7 @@ public sealed class Plugin : IDalamudPlugin
 
         commands.AddHandler("/wayfarer", new(OnCommand)
         {
-            HelpMessage = "Shortcut for the Wayfarer window and its Stop button — everything here is also a click or "
-                + "a d-pad press away: the server info bar entry, the plugin list, and the window's own controls. "
-                + "\"/wayfarer unlocks\" opens what you can unlock now, \"/wayfarer hunt\" the hunting log, "
-                + "\"/wayfarer quests\" the quest list and its teleport button, \"/wayfarer settings\" the settings, "
-                + "\"/wayfarer stop\" ends the current route or hunt.",
+            HelpMessage = "Opens Wayfarer. Also: unlocks, hunt, quests, settings, stop.",
         });
     }
 
@@ -251,6 +248,14 @@ public sealed class Plugin : IDalamudPlugin
     /// than on a separate ImGui panel — there is one window, and settings are a tab in it. The
     /// ImGui config window remains only as the fallback when the native one cannot be opened.</summary>
     private void OpenConfig() => OpenHub(HubTab.Settings, () => configWindow.IsOpen = true);
+
+    /// <summary>What the game's own Follow submenu hands off to for "A Quest..." — the one tab
+    /// listing every followable thing, for the controller player that menu is built for. The
+    /// readout's own follow caret no longer opens this: on a mouse it drops its own list in place
+    /// (see <see cref="Windows.Native.ClickableReadoutAddon"/>), reading the same
+    /// <see cref="NativeHubWindow.GetFollowChoices"/> this tab does — one source of truth for what
+    /// is followable, two doors onto it.</summary>
+    private void OpenFollowing() => OpenHub(HubTab.Quests, () => configWindow.IsOpen = true);
 
     /// <summary>The plugin list's main button opens what the plugin is FOR — the unlocks list —
     /// rather than its settings, which have their own button right beside it.</summary>
@@ -317,7 +322,7 @@ public sealed class Plugin : IDalamudPlugin
         IClientState clientState,
         Configuration config,
         IPluginLog log) =>
-        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, log);
+        new(contextMenu, objects, modules, config.QuestHelper, clientState, inputMode, OpenConfig, OpenFollowing, log);
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.</summary>
     private NativeHubWindow BuildHub(
@@ -327,9 +332,24 @@ public sealed class Plugin : IDalamudPlugin
         IClientState clientState,
         IFramework framework,
         Configuration config,
-        InputModeService inputMode,
-        IPluginLog log) =>
-        new(unlocks, hunting, feed, modules, objects, clientState, framework, config, settings, inputMode, log)
+        ITextureProvider textures,
+        IDataManager dataManager) =>
+        new(
+            unlocks,
+            hunting,
+            feed,
+            modules,
+            objects,
+            clientState,
+            framework,
+            config,
+            settings,
+            inputMode,
+            new HubStatusIcons(textures, log),
+            new HubRewardIcons(dataManager, log),
+            new HubJournalFacts(dataManager, textures, log),
+            BuildJournal(dataManager, framework),
+            log)
         {
             InternalName = "WayfarerHubNative",
             Title = "Wayfarer",
@@ -339,6 +359,40 @@ public sealed class Plugin : IDalamudPlugin
             // read "Wayfarer Wayfarer" — its own guidance is to drop the subtitle when the window's
             // title is already the plugin's name, and here it is.
             Subtitle = string.Empty,
+        };
+
+    /// <summary>The journal page's own window — the second half of the game's own Journal, which is
+    /// a plain list beside an ornate parchment page rather than one rectangle.
+    ///
+    /// <para>Chromeless: the window node is supplied already invisible, so the frame, the title bar
+    /// and the draggable header are all allocated and none of them drawn. That is deliberate and it
+    /// is what <c>JournalDetail</c> itself does — the page's chrome <i>is</i> its parchment and its
+    /// gilt border, and a standard window frame around that would be a frame inside a frame. The
+    /// same trick, for the same reason, as the readout's clickable host.</para>
+    ///
+    /// <para>Handed to the hub window, which owns its lifetime: it is opened, moved, and closed
+    /// entirely in response to what is happening in that window's list.</para></summary>
+    private JournalWindow BuildJournal(IDataManager dataManager, IFramework framework) =>
+        new(new JournalWords(dataManager, log), framework, log)
+        {
+            InternalName = "WayfarerJournal",
+            Title = "Wayfarer",
+            Subtitle = string.Empty,
+            CreateWindowNode = () => new WindowNode { NodeId = 2, IsVisible = false },
+            EnableContextMenu = false,
+            RememberClosePosition = false,
+
+            // The page is positioned by the hub window, exactly as the game's own detail page is
+            // positioned by its list — so it must not be clamped away from the deliberate overlap
+            // that lets the border's ornament cross the seam between the two.
+            OpenInBounds = false,
+
+            // No fade on the way out. A closing addon stays allocated until its hide transition
+            // finishes, and for those frames it reports itself not-open while Open() still refuses
+            // to do anything — so a Cancel followed straight away by a Confirm on another row would
+            // ask for a page that could not be built. The hub retries the open regardless; this
+            // narrows the window it has to retry across from many frames to one.
+            DisableCloseTransition = true,
         };
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.
@@ -376,6 +430,7 @@ public sealed class Plugin : IDalamudPlugin
             services.Framework,
             services.Textures,
             OpenConfig,
+            hub.GetFollowChoices,
             log);
         var arrowWindow = new ArrowWindow(
             guidance.Navigator,

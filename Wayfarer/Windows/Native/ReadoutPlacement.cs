@@ -42,9 +42,15 @@ internal sealed unsafe class ReadoutPlacement(QuestHelperConfig cfg, Action save
     /// <summary>This frame's position for a readout of <paramref name="size"/> pixels. Called from
     /// both hosts' per-frame paths, so it does no allocation beyond the obstacle list and never
     /// throws — a missing addon simply is not an obstacle.</summary>
-    public Vector2 Resolve(Vector2 size)
+    public Vector2 Resolve(Vector2 measured)
     {
         var screen = ScreenSize();
+
+        // The measurement is deliberately thrown away here except for the width. Placing the readout
+        // against its own measured height is what let a single line appearing and disappearing on
+        // alternate frames throw the whole readout up and down the screen — see
+        // ReadoutLayout.ReferenceHeight. Nothing below this line can see how tall the content is.
+        var size = ReadoutLayout.PlacementSize(measured);
         lastSize = size;
         lastScreen = screen;
 

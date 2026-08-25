@@ -245,7 +245,7 @@ public class UnlockStatusTests
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
-        Assert.Equal("needs Weaver 50", all[0].LockReason);
+        Assert.Equal("needs Weaver Lv. 50", all[0].LockReason);
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class UnlockStatusTests
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
-        Assert.Equal("needs Weaver or Culinarian 50", all[0].LockReason);
+        Assert.Equal("needs Weaver or Culinarian Lv. 50", all[0].LockReason);
     }
 
     [Fact]
@@ -315,7 +315,7 @@ public class UnlockStatusTests
         UnlockStatusCalculator.Compute(all, ctx);
 
         Assert.Equal(UnlockStatus.LevelLocked, all[0].Status);
-        Assert.Equal("needs Botanist 50", all[0].LockReason);
+        Assert.Equal("needs Botanist Lv. 50", all[0].LockReason);
     }
 
     [Fact]

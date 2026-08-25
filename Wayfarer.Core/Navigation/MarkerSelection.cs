@@ -33,7 +33,12 @@ public enum MarkerMatch
 
 /// <summary>One live quest marker's position and the map/territory it belongs to, in
 /// that map's own coordinate space.</summary>
-public sealed record MarkerPoint(float X, float Y, float Z, uint TerritoryId, uint MapId);
+/// <param name="Radius">The game's own marker radius, in yalms, carried verbatim from
+/// <c>MapMarkerData.Radius</c> — see <see cref="Guidance.Sources.QuestObjectiveSource"/>. Every
+/// marker has SOME radius; whether that radius means "this is a search-area circle, not a precise
+/// waypoint" is decided by <see cref="SearchAreaRadius.IsArea"/>, not by comparing it to zero — see
+/// that type for the measured threshold and why.</param>
+public sealed record MarkerPoint(float X, float Y, float Z, uint TerritoryId, uint MapId, float Radius = 0f);
 
 /// <summary>Picks which of the game's live quest markers the readout should point at, and how it
 /// relates to where the player is standing. Extracted from the marker scan so the tie-break rules
@@ -41,10 +46,17 @@ public sealed record MarkerPoint(float X, float Y, float Z, uint TerritoryId, ui
 public static class MarkerSelection
 {
     /// <summary>Picks the tier (<see cref="MarkerMatch"/>) and, within that tier, the
-    /// nearest marker to the player. An exact (territory+map) match always wins over a
-    /// closer territory-only marker — exactness is a hard precedence, not something
-    /// distance can override, because only an exact match is safe to arrow straight
-    /// at. Ties within a tier are broken by straight-line distance to the player.
+    /// best marker for the player to be pointed at. An exact (territory+map) match
+    /// always wins over a closer territory-only marker — exactness is a hard
+    /// precedence, not something distance can override, because only an exact match is
+    /// safe to arrow straight at. Within a tier, a precise point marker (<see
+    /// cref="MarkerPoint.Radius"/> below <see cref="SearchAreaRadius.ThresholdYalms"/>) always wins
+    /// over a search-area marker: a point is unambiguous evidence of exactly where the objective is, while
+    /// an area marker's own position is only ever the CENTRE of a circle the true
+    /// objective could be anywhere inside — treating it as equally precise just because
+    /// it happens to sit closer would be exactly the kind of confident, misleading
+    /// exactness this fix exists to remove. Ties within the same precision class are
+    /// then broken by straight-line distance to the player, as before.
     /// Returns (<see cref="MarkerMatch.None"/>, null) when <paramref name="markers"/>
     /// has nothing in the player's current territory (it may still have entries for
     /// other territories — the caller's cross-territory fallback path handles those,
@@ -72,13 +84,13 @@ public static class MarkerSelection
             var d = NavMath.Distance(m.X - px, m.Y - py, m.Z - pz);
             if (m.MapId == currentMapId)
             {
-                if (d < bestExactDist)
+                if (IsBetter(m, d, bestExact, bestExactDist))
                 {
                     bestExact = m;
                     bestExactDist = d;
                 }
             }
-            else if (d < bestTerritoryOnlyDist)
+            else if (IsBetter(m, d, bestTerritoryOnly, bestTerritoryOnlyDist))
             {
                 bestTerritoryOnly = m;
                 bestTerritoryOnlyDist = d;
@@ -96,5 +108,20 @@ public static class MarkerSelection
         }
 
         return (MarkerMatch.None, null);
+    }
+
+    /// <summary>Whether <paramref name="candidate"/> should replace <paramref name="current"/> as
+    /// the tier's pick: a point beats an area regardless of distance, and only markers of the same
+    /// precision class are compared by distance.</summary>
+    private static bool IsBetter(MarkerPoint candidate, float candidateDist, MarkerPoint? current, float currentDist)
+    {
+        if (current is null)
+        {
+            return true;
+        }
+
+        var candidateIsArea = SearchAreaRadius.IsArea(candidate.Radius);
+        var currentIsArea = SearchAreaRadius.IsArea(current.Radius);
+        return candidateIsArea != currentIsArea ? currentIsArea : candidateDist < currentDist;
     }
 }

@@ -17,15 +17,32 @@ public readonly record struct ObjectiveKey(string SourceId, string Value)
 }
 
 /// <summary>The player-facing words for an objective, owned by the source that produced it.</summary>
-/// <param name="Headline">Quest name, "Pick up: A Self-improving Man from Mahenne", "Ornery
-/// Karakul".</param>
-/// <param name="Detail">"Speak to Momodi", "Unlocks: Glamours". Null when the headline says it
-/// all.</param>
+/// <param name="Headline">A name the GAME itself would print, never a label of ours: the quest's
+/// name, the monster's name. It goes in the readout's bar, which is the game's own Main Scenario
+/// Guide plate, and a player reads whatever sits on that plate as a game element — see
+/// <see cref="UnlockRoutePlan.Headline"/>, which is where this rule was broken and put back.</param>
+/// <param name="Detail">Our own words about the headline, and the only place they belong: "Speak to
+/// Momodi", "Speak with Claribel to unlock Ceremony of Eternal Bonding". Null when the headline says
+/// it all.</param>
 /// <param name="SourceLabel">The MODE indicator: "Main Scenario", "Unlock route", "Hunting Log ·
 /// Gladiator". Required whenever the objective is <see cref="GuidanceEngagement.Engaged"/> — the
 /// readout IS the mode indicator, so an engaged objective with no label would leave the player in
 /// a mode with nothing naming it. <see cref="GuidanceArbiter"/> throws rather than publish one.</param>
-public sealed record ObjectiveCopy(string Headline, string? Detail, string? SourceLabel);
+/// <param name="SourceName">What the MODULE calls itself, in Title Case and in the singular:
+/// "Quest", "Unlock", "Hunting Log". Not the mode label — <paramref name="SourceLabel"/> describes
+/// this objective's context ("Main Scenario", "Hunting Log - Warrior"), while this names the feature
+/// that produced it and is the same string every time that feature speaks.
+///
+/// <para>It exists so the readout's banner can print "Current Quest" above whatever is in the plate,
+/// the way the game's own banner prints "Current Main Scenario Quest". The SOURCE supplies it
+/// because nothing on the guidance path — not the arbiter, not the projection, not the composer, not
+/// the renderer — may map a source id to a word. A switch over ids anywhere along that chain is the
+/// same coupling this interface exists to prevent, moved one file along.</para>
+///
+/// <para>Null is legal and means "say nothing about the module": the readout falls back to the
+/// plugin's own name, which is what an idle readout wants anyway.</para></param>
+public sealed record ObjectiveCopy(
+    string Headline, string? Detail, string? SourceLabel, string? SourceName = null);
 
 /// <summary>Position within the SOURCE's own plan: "Stop 2 of 5", "4 of 10 targets", "2/3 kills",
 /// "68%". One shape, source-supplied text, so the readout never learns which feature it

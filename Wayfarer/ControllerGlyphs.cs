@@ -39,7 +39,15 @@ internal static class ControllerGlyphs
     /// <param name="reverseConfirmCancel">The player's own PadReverseConfirmCancel setting, which
     /// swaps which physical button confirms. This is a genuinely separate concern from which glyph
     /// is drawn, and is the only reason that setting still needs reading at all.</param>
-    public static ReadOnlySeString WindowHint(bool reverseConfirmCancel)
+    public static ReadOnlySeString WindowHint(bool reverseConfirmCancel) =>
+        Hint(reverseConfirmCancel, "Back");
+
+    // There used to be a second hint here — "Close" rather than "Back" — for while the journal page
+    // was open, because the page was drawn inside the hub window and Cancel shuts the addon that has
+    // focus, which was the whole window. The page is its own addon now, so Cancel closes the page and
+    // "Back" is true on both surfaces; a wording that only existed to warn about that arrangement went
+    // with the arrangement.
+    private static ReadOnlySeString Hint(bool reverseConfirmCancel, string cancelVerb)
     {
         var confirm = reverseConfirmCancel ? East : South;
         var cancel = reverseConfirmCancel ? South : East;
@@ -47,7 +55,7 @@ internal static class ControllerGlyphs
         var builder = new SeStringBuilder();
         builder.AddIcon(BitmapFontIcon.ControllerDPadAll).AddText(" Move   ");
         builder.AddIcon(confirm).AddText(" Select   ");
-        builder.AddIcon(cancel).AddText(" Back");
+        builder.AddIcon(cancel).AddText($" {cancelVerb}");
         return new ReadOnlySeString(builder.Build().Encode());
     }
 }

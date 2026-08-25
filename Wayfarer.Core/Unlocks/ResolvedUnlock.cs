@@ -1,9 +1,19 @@
+using Wayfarer.Core.Unlocks.Gates;
+
 namespace Wayfarer.Core.Unlocks;
 
 /// <summary>What the checklist says about one entry. Everything except <see cref="Available"/>
 /// and <see cref="Done"/> is a specific reason the player is not going anywhere yet, and the
 /// several flavours of "unknown" are deliberately distinct: they are the difference between a gate
-/// this plugin can see and one it merely suspects.</summary>
+/// this plugin can see and one it merely suspects.
+///
+/// <para>There is no status for "known but unverifiable" (a partner, or a future requirement of the
+/// same shape) — that is not a reason to withhold Available, it is a fact to state alongside it.
+/// An entry with every checkable gate met reports <see cref="Available"/> and carries the condition
+/// in <see cref="ResolvedUnlock.AvailableCondition"/> / <see cref="ResolvedUnlock.AvailableConditionDetail"/>
+/// instead. That keeps it distinct from <see cref="RequirementsUnknown"/>, which means the opposite
+/// thing: "we cannot even say what this needs", not "we cannot see whether you meet the stated
+/// condition".</para></summary>
 public enum UnlockStatus
 {
     Unverified,
@@ -52,6 +62,21 @@ public sealed class ResolvedUnlock
 {
     public UnlockDefinition Def { get; set; } = new();
 
+    /// <summary>A gate that reads the entry's OWN identity rather than a prerequisite for it —
+    /// "is this duty open to you", asked of the very duty the entry is about.
+    ///
+    /// <para>This is what closed the largest class of "requirements unknown" in the catalogue. A
+    /// third of the ungradeable entries were duty access: the guide says the Ultimate opens after
+    /// clearing the Savage tier, the clear is readable, but whether the player then went and took
+    /// the unlock was recorded as unknowable. It is not — the client keeps a bit per duty saying
+    /// exactly that, and this is it. Satisfied means the player already has the thing, which is
+    /// <see cref="UnlockStatus.Done"/>; blocked means they demonstrably do not, which is what lets
+    /// the rest of the chain grade the entry instead of shrugging.</para>
+    ///
+    /// <para>Derived from <see cref="UnlockDefinition.Reward"/> by the host at load time, generically
+    /// from the reward's sheet kind. Nothing here or downstream knows which entry it belongs to.</para></summary>
+    public GateNode? IdentityGate { get; set; }
+
     public uint? QuestRowId { get; set; }
 
     /// <summary>Every Quest row the catalogue's name could equally well mean, when the game ships
@@ -88,6 +113,15 @@ public sealed class ResolvedUnlock
 
     public List<string> RequiredJobNames { get; set; } = [];
 
+    /// <summary>The <c>ClassJobCategory0</c> row's own <c>Name</c> — "Disciple of War or Magic",
+    /// "Disciple of the Land", or a single job's name on a job quest.
+    ///
+    /// <para>This is what the gate is <b>called</b>, as against
+    /// <see cref="RequiredJobNames"/>, which is what it is <b>made of</b>. The game prints the
+    /// name; printing the members instead is how a level-70 combat gate came to be said as a
+    /// thirty-job sentence. See <see cref="JobGateText"/>.</para></summary>
+    public string? RequiredJobCategoryName { get; set; }
+
     /// <summary>ClassJob row ids allowed by <c>ClassJobCategory1</c> — a genuine alternative to
     /// <see cref="RequiredJobRowIds"/>, checked against <see cref="AltRequiredJobLevel"/>
     /// (<c>ClassJobLevel[1]</c>). Populated only when <see cref="AltRequiredJobLevel"/> is
@@ -98,6 +132,9 @@ public sealed class ResolvedUnlock
     public List<uint> AltRequiredJobRowIds { get; set; } = [];
 
     public List<string> AltRequiredJobNames { get; set; } = [];
+
+    /// <inheritdoc cref="RequiredJobCategoryName"/>
+    public string? AltRequiredJobCategoryName { get; set; }
 
     /// <summary><c>ClassJobLevel[1]</c>. Zero means <see cref="AltRequiredJobRowIds"/> is empty/
     /// unused — there is no genuine category1 alternative for this quest.</summary>
@@ -188,6 +225,22 @@ public sealed class ResolvedUnlock
 
     public string? LockReason { get; set; }
 
+    /// <summary>Set only when <see cref="Status"/> is <see cref="UnlockStatus.Available"/> and the
+    /// curated requirement still carries a knowable-but-unverifiable condition (see
+    /// <see cref="UnlockRequirement.RequiresAnotherPlayer"/>) — a short, terse phrase in the game's
+    /// own register ("needs a partner"), for the list row: "Available — needs a partner." Null for
+    /// every ordinary Available entry, where nothing is left to say.</summary>
+    public string? AvailableCondition { get; set; }
+
+    /// <summary>The full statement of <see cref="AvailableCondition"/>, for the detail pane /
+    /// journal page where the requirement list lives. Preferably the game's own words, resolved at
+    /// runtime through <see cref="UnlockGateContext.ResolveGameText"/> from
+    /// <see cref="UnlockRequirement.ConditionSource"/>; falls back to the curated
+    /// <see cref="UnlockRequirement.Label"/> when that lookup misses, and to a plain admission that
+    /// the game does not say more when even that is absent. Null whenever
+    /// <see cref="AvailableCondition"/> is.</summary>
+    public string? AvailableConditionDetail { get; set; }
+
     /// <summary>Member-wise copy for cross-thread hand-off (e.g. MCP serialization while
     /// the framework thread may concurrently call <c>UnlockStatusCalculator.Compute</c> on
     /// the live instance). <see cref="Def"/> and the gate lists are shared, not deep-copied —
@@ -196,6 +249,7 @@ public sealed class ResolvedUnlock
     public ResolvedUnlock Snapshot() => new()
     {
         Def = Def,
+        IdentityGate = IdentityGate,
         QuestRowId = QuestRowId,
         AlternativeQuestRowIds = AlternativeQuestRowIds,
         QuestLevel = QuestLevel,
@@ -207,8 +261,10 @@ public sealed class ResolvedUnlock
         LockoutJoin = LockoutJoin,
         RequiredJobRowIds = RequiredJobRowIds,
         RequiredJobNames = RequiredJobNames,
+        RequiredJobCategoryName = RequiredJobCategoryName,
         AltRequiredJobRowIds = AltRequiredJobRowIds,
         AltRequiredJobNames = AltRequiredJobNames,
+        AltRequiredJobCategoryName = AltRequiredJobCategoryName,
         AltRequiredJobLevel = AltRequiredJobLevel,
         InstanceContentRowIds = InstanceContentRowIds,
         InstanceContentNames = InstanceContentNames,
@@ -239,5 +295,7 @@ public sealed class ResolvedUnlock
         GiverName = GiverName,
         Status = Status,
         LockReason = LockReason,
+        AvailableCondition = AvailableCondition,
+        AvailableConditionDetail = AvailableConditionDetail,
     };
 }

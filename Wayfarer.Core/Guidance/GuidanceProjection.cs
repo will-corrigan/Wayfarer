@@ -30,6 +30,7 @@ public static class GuidanceProjection
             StepLabel = objective.Copy.Detail,
             SourceId = objective.Key.SourceId,
             SourceLabel = objective.Copy.SourceLabel,
+            SourceName = objective.Copy.SourceName,
             Engaged = engaged,
 
             // Wire meaning unchanged from when this was "guiding to an unlock-quest pickup": true
@@ -58,6 +59,7 @@ public static class GuidanceProjection
                 DistanceYalms = s.DistanceYalms,
                 AethernetEntryName = s.AethernetEntryName,
                 AethernetExitName = s.AethernetExitName,
+                TargetRadiusYalms = SearchAreaRadius.IsArea(s.Radius) ? s.Radius : null,
             },
             RouteResult.OtherZone o => identity with
             {

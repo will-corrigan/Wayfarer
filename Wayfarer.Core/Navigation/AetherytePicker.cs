@@ -39,6 +39,13 @@ public static class AetherytePicker
     }
 
     public static bool ShouldRouteViaAethernet(float playerToObjective, float playerToEntry, float exitToObjective) =>
-        playerToObjective > MinPlayerDistance
-        && playerToEntry + exitToObjective + RouteSlack < playerToObjective;
+        ShouldRouteViaAethernet(playerToObjective, playerToEntry + exitToObjective + RouteSlack);
+
+    /// <summary>The same rule asked of an ALREADY-COSTED aethernet candidate, whose
+    /// <see cref="RouteCandidate.Cost"/> is by construction the two walking legs plus
+    /// <see cref="RouteSlack"/> — so a caller holding a candidate does not have to take it apart
+    /// (and cannot get the slack wrong) to ask whether the hop is worth it. The three-argument
+    /// overload above delegates here, so there is one rule, not two.</summary>
+    public static bool ShouldRouteViaAethernet(float playerToObjective, float aethernetCost) =>
+        playerToObjective > MinPlayerDistance && aethernetCost < playerToObjective;
 }

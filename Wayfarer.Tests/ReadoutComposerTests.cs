@@ -78,7 +78,7 @@ public class ReadoutComposerTests
     {
         var content = ReadoutComposer.Compose(new ReadoutInputs
         {
-            State = Engaged("Unlock route") with { QuestName = "Unlocks: Chocobo racing" },
+            State = Engaged("Unlock route") with { QuestName = "The Ties That Bind" },
             HuntingSummary = "Ornery Karakul 2/3",
             HuntingIsPrimary = false,
         });
@@ -179,6 +179,33 @@ public class ReadoutComposerTests
         Assert.True(content.ShowArrow);
         Assert.Equal(5f, content.TargetX);
         Assert.Equal(6f, content.TargetZ);
+        Assert.Contains(content.Lines, line => line.Text.Contains("Through Gate of Nald", StringComparison.Ordinal));
+    }
+
+    /// <summary>Arrival is a claim about the objective, and in other-zone mode the distance is not
+    /// the objective's — it is measured to the way in. Standing on the door, or on the aethernet
+    /// shard that reaches it, is the START of the route: the player has arrived at nothing yet. Said
+    /// here it was the loudest line on screen directly contradicting the two lines underneath it
+    /// telling them how much further to go.</summary>
+    [Fact]
+    public void Standing_on_the_way_in_is_not_arriving_at_the_objective()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "The Ul'dahn Envoy",
+            EntranceName = "Gate of Nald",
+            EntranceX = 5f,
+            EntranceZ = 6f,
+            ZoneName = "Western Thanalan",
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 0f });
+
+        Assert.DoesNotContain(
+            content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "0 yalms", StringComparison.Ordinal));
         Assert.Contains(content.Lines, line => line.Text.Contains("Through Gate of Nald", StringComparison.Ordinal));
     }
 
@@ -295,6 +322,299 @@ public class ReadoutComposerTests
         Assert.Contains(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
     }
 
+    // --- Search-area objectives: the reported bug was an arrow sent 66 yalms at the CENTRE of a
+    // "search this area" quest step with a precise-looking distance, as though it were a waypoint. ---
+    [Fact]
+    public void Outside_a_search_area_the_readout_says_it_is_an_area_and_gives_the_distance_to_it()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 66f, AreaHint = SearchAreaHint.Outside });
+
+        Assert.True(content.ShowArrow);
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Search the area · 66 yalms", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "66 yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Outside_a_search_area_the_elevation_words_still_ride_along()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with
+            {
+                DistanceYalms = 66f,
+                AreaHint = SearchAreaHint.Outside,
+                Elevation = ElevationHint.Above,
+            });
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Search the area · 66 yalms · above you", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Outside_a_search_area_never_says_arrived_no_matter_how_close_the_centre_is()
+    {
+        // The centre is not the objective, so being near it is not "arriving" — that would imply a
+        // precision the game itself did not give.
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 2f, AreaHint = SearchAreaHint.Outside });
+
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.StartsWith("Search the area", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Inside_a_search_area_the_readout_stops_pointing_at_the_centre()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 4f, AreaHint = SearchAreaHint.Inside });
+
+        Assert.False(content.ShowArrow);
+        Assert.Null(content.TargetX);
+        Assert.Null(content.TargetZ);
+    }
+
+    [Fact]
+    public void Inside_a_search_area_the_readout_says_to_look_around_rather_than_naming_a_distance()
+    {
+        var content = ReadoutComposer.Compose(
+            Inputs(SearchAreaState()) with { DistanceYalms = 4f, AreaHint = SearchAreaHint.Inside });
+
+        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("yalms", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.Contains("look around", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void A_zero_radius_objective_is_byte_identical_to_before_this_feature_existed()
+    {
+        // TargetRadiusYalms null (the default for every objective this field did not exist for) and
+        // AreaHint left at its default (NotApplicable) must reproduce EXACTLY the pre-existing
+        // point-objective output — this is the compatibility guarantee the whole feature depends on.
+        var pointState = SameZone();
+        var withoutArea = ReadoutComposer.Compose(Inputs(pointState) with { DistanceYalms = 56f });
+        var explicitlyNotApplicable = ReadoutComposer.Compose(
+            Inputs(pointState) with { DistanceYalms = 56f, AreaHint = SearchAreaHint.NotApplicable });
+
+        Assert.Contains(withoutArea.Lines, line => string.Equals(line.Text, "56 yalms", StringComparison.Ordinal));
+        Assert.Equal(
+            withoutArea.Lines.Select(l => l.Text),
+            explicitlyNotApplicable.Lines.Select(l => l.Text),
+            StringComparer.Ordinal);
+        Assert.Equal(withoutArea.ShowArrow, explicitlyNotApplicable.ShowArrow);
+        Assert.Equal(withoutArea.TargetX, explicitlyNotApplicable.TargetX);
+        Assert.Equal(withoutArea.TargetZ, explicitlyNotApplicable.TargetZ);
+    }
+
+    [Fact]
+    public void The_line_that_names_what_is_followed_is_marked_as_the_subject()
+    {
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 80f });
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal("The Ul'dahn Envoy", subject.Text);
+    }
+
+    [Fact]
+    public void The_subject_is_never_the_heading_or_the_distance()
+    {
+        // Both are near neighbours that could be mistaken for it — the heading is the first line,
+        // and the distance carries the same Primary weight the name does.
+        var content = ReadoutComposer.Compose(Inputs(SameZone()) with { DistanceYalms = 80f });
+
+        Assert.DoesNotContain(content.Lines, line => line.Subject && line.Emphasis == ReadoutEmphasis.Heading);
+        Assert.DoesNotContain(
+            content.Lines,
+            line => line.Subject && line.Text.Contains("yalms", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void An_idle_readout_still_has_a_subject_to_hang_the_switcher_off()
+    {
+        // "No quest followed" is exactly the moment a player wants to choose one, so the line that
+        // says it has to be a subject too — otherwise the one readout that most needs a switcher is
+        // the one readout without one.
+        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal("No quest followed", subject.Text);
+    }
+
+    [Fact]
+    public void The_quest_name_is_marked_as_the_door_to_the_journal()
+    {
+        var state = SameZone() with { QuestId = 65_600 };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 80f });
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal(ReadoutLineAction.OpenJournal, subject.Action);
+    }
+
+    [Fact]
+    public void A_name_with_no_quest_behind_it_offers_no_journal()
+    {
+        // A hunt has a name worth reading and no journal entry to open. Marking it would put a hand
+        // cursor over words that then politely did nothing.
+        var content = ReadoutComposer.Compose(Inputs(Engaged("Hunting Log · Gladiator")));
+
+        var subject = Assert.Single(content.Lines, line => line.Subject);
+        Assert.Equal(ReadoutLineAction.None, subject.Action);
+    }
+
+    [Fact]
+    public void The_journal_is_never_offered_on_a_line_that_is_not_the_name()
+    {
+        var state = SameZone() with { QuestId = 65_600 };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 80f });
+
+        Assert.All(
+            content.Lines.Where(line => line.Action == ReadoutLineAction.OpenJournal),
+            line => Assert.True(line.Subject));
+    }
+
+    [Fact]
+    public void There_is_never_more_than_one_subject()
+    {
+        var content = ReadoutComposer.Compose(new ReadoutInputs
+        {
+            State = Engaged("Unlock route"),
+            HuntingSummary = "Ornery Karakul 2/3",
+            NearbyUnlocks = ["Chocobo racing"],
+            DistanceYalms = 120f,
+        });
+
+        Assert.Single(content.Lines, line => line.Subject);
+    }
+
+    /// <summary>Reported live: following "Heroes of the Hour" with its objective inside Fortemps
+    /// Manor, the readout said "Fortemps Manor" three times over — in the step line, in the
+    /// interior-entrance message, and again as the zone line. A place name is said ONCE.</summary>
+    [Fact]
+    public void A_place_name_already_said_is_not_said_again()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Enter Fortemps Manor.",
+            ZoneName = "Fortemps Manor",
+            Reason = OtherZoneResolution.InteriorMessage("Fortemps Manor"),
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        var said = content.Lines.Count(
+            line => line.Text.Contains("Fortemps Manor", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, said);
+
+        // The instruction survives; only the clause that repeats the name is dropped.
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Find the entrance", StringComparison.Ordinal));
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "Fortemps Manor", StringComparison.Ordinal));
+    }
+
+    /// <summary>The same rule on the routed shape: with a shard hop to the manor's door, the zone
+    /// line is redundant beside a step that already names the place.</summary>
+    [Fact]
+    public void The_zone_line_is_dropped_when_the_step_already_named_the_zone()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Enter Fortemps Manor.",
+            ZoneName = "Fortemps Manor",
+            EntranceX = 45f,
+            EntranceZ = 1f,
+            AethernetEntryName = "The Forgotten Knight",
+            AethernetExitName = "The Last Vigil",
+            RemainingYalms = 42f,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "Fortemps Manor", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.Contains("Aethernet to The Last Vigil", StringComparison.Ordinal));
+    }
+
+    /// <summary>Shard names carry their own article where they have one, so the readout must not add
+    /// a second: the reported route boards The Forgotten Knight, which read "To the The Forgotten
+    /// Knight aetheryte".</summary>
+    [Theory]
+    [InlineData("The Forgotten Knight", "To The Forgotten Knight aetheryte")]
+    [InlineData("The Last Vigil", "To The Last Vigil aetheryte")]
+    [InlineData("The Brume", "To The Brume aetheryte")]
+    [InlineData("Skysteel Manufactory", "To the Skysteel Manufactory aetheryte")]
+    [InlineData("Hawkers' Alley", "To the Hawkers' Alley aetheryte")]
+    public void The_entry_shard_line_does_not_double_the_article(string entry, string expected)
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            EntranceX = 45f,
+            EntranceZ = 1f,
+            AethernetEntryName = entry,
+            AethernetExitName = "The Last Vigil",
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, expected, StringComparison.Ordinal));
+    }
+
+    /// <summary>A zone the readout has NOT already named still gets its line — the rule removes
+    /// repetition, not information. Here the step names a person and the route is a teleport, so
+    /// nothing above has said where the objective is.</summary>
+    [Fact]
+    public void The_zone_line_stays_when_nothing_above_has_named_it()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Speak with Lucia.",
+            ZoneName = "Foundation",
+            AetheryteName = "Foundation",
+            AetheryteId = 70,
+            AetheryteUnlocked = true,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(content.Lines, line => line.Text.Contains("Teleport to Foundation", StringComparison.Ordinal));
+
+        // Said by the teleport line already — so the bare zone line beneath it is dropped.
+        Assert.DoesNotContain(content.Lines, line => string.Equals(line.Text, "Foundation", StringComparison.Ordinal));
+    }
+
+    /// <summary>And when genuinely nothing above names the zone, the zone line is the only thing
+    /// telling the player where they are being sent, so it must survive.</summary>
+    [Fact]
+    public void The_zone_line_is_the_last_word_on_where_the_objective_is()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "Heroes of the Hour",
+            StepLabel = "Speak with Lucia.",
+            ZoneName = "The Pillars",
+            EntranceName = "Gates of Judgement",
+            EntranceX = 5f,
+            EntranceZ = 6f,
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state));
+
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "The Pillars", StringComparison.Ordinal));
+    }
+
     private static NavigationState Engaged(string sourceLabel) => new()
     {
         Mode = NavigationState.Modes.SameZone,
@@ -316,4 +636,6 @@ public class ReadoutComposerTests
         TargetY = 30f,
         TargetZ = -40f,
     };
+
+    private static NavigationState SearchAreaState() => SameZone() with { TargetRadiusYalms = 20f };
 }

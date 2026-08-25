@@ -36,7 +36,7 @@ internal sealed class HuntingWindow(
     {
         if (!hunting.Loaded)
         {
-            ImGui.TextWrapped("Hunting log data failed to load — see the Dalamud log.");
+            ImGui.TextWrapped("Hunting log data failed to load.");
             return;
         }
 
@@ -51,7 +51,7 @@ internal sealed class HuntingWindow(
 
         if (hunting.RemainingOnPage.Count == 0)
         {
-            ImGui.TextWrapped("Nothing remaining on this page.");
+            ImGui.TextWrapped("Nothing left on this rank.");
             return;
         }
 

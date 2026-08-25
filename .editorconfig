@@ -278,6 +278,14 @@ dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.SA1649.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
+[Wayfarer.Core/Navigation/InteriorRoute.cs]
+# InteriorEntrance is the place InteriorRoute routes to and is meaningless apart
+# from it - one interior-approach concept, kept in one file rather than two
+# near-empty ones (same rationale as RouteCosting.cs above).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Navigation/OtherZoneResolution.cs]
 # OtherZoneOutcome is a small companion enum to OtherZoneResolution itself
 # (task-fix-interior-report.md fix round 3) - one decision concept, kept in
@@ -312,6 +320,34 @@ dotnet_diagnostic.MA0048.severity = none
 [Wayfarer.Core/Unlocks/ResolvedUnlock.cs]
 # Ported as a single file with its companion UnlockStatus enum, matching the
 # source repo's port map (task-2-brief.md) exactly.
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Unlocks/Gates/GateResult.cs]
+# GateOutcome is the three-valued answer GateResult carries and has no meaning
+# apart from it - splitting them would let a fourth outcome be added in one file
+# without the record that publishes it ever mentioning the change.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Unlocks/Live/ILiveState.cs]
+# ICharacterReader/IProgressReader/IInventoryReader/IContentReader and the three
+# discriminator enums are the vocabulary of the ILiveState contract itself and
+# are meaningless apart from it - one contract concept, kept in one file (same
+# rationale as IGuidanceSource.cs above). Keeping them together is also what
+# makes the "a member that can be unknown is TryX(out T)" rule readable as one
+# rule rather than as eight files that each happen to follow it.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+[Wayfarer.Core/Unlocks/UnlockReward.cs]
+# UnlockRewardKinds is the closed set of values UnlockReward.Kind may hold - one
+# reward-identity concept, kept in one file rather than two near-empty ones. The
+# pairing is the point: a kind list living apart from the record it constrains
+# would be free to disagree with it.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
 [Wayfarer/QuestNavigator.cs]

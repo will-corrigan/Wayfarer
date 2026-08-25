@@ -30,6 +30,7 @@ public class ApiContractTests
             TargetY = 2.5f,
             TargetZ = 3.5f,
             DistanceYalms = 42.1f,
+            TargetRadiusYalms = 20.5f,
             AetheryteId = 9,
             AetheryteName = "Ul'dah - Steps of Nald",
             AetheryteUnlocked = true,
@@ -46,6 +47,7 @@ public class ApiContractTests
             DutyContentFinderConditionId = 456,
             SourceId = "unlocks",
             SourceLabel = "Unlock route",
+            SourceName = "Unlock",
             Engaged = true,
             ObjectiveKey = "unlocks:65821",
             ProgressText = "2 of 5 targets",
@@ -70,6 +72,7 @@ public class ApiContractTests
         Assert.Equal(state.TargetY, dto.TargetY);
         Assert.Equal(state.TargetZ, dto.TargetZ);
         Assert.Equal(state.DistanceYalms, dto.DistanceYalms);
+        Assert.Equal(state.TargetRadiusYalms, dto.TargetRadiusYalms);
         Assert.Equal(state.AetheryteId, dto.AetheryteId);
         Assert.Equal(state.AetheryteName, dto.AetheryteName);
         Assert.Equal(state.AetheryteUnlocked, dto.AetheryteUnlocked);
@@ -86,6 +89,7 @@ public class ApiContractTests
         Assert.Equal(state.DutyContentFinderConditionId, dto.DutyContentFinderConditionId);
         Assert.Equal(state.SourceId, dto.SourceId);
         Assert.Equal(state.SourceLabel, dto.SourceLabel);
+        Assert.Equal(state.SourceName, dto.SourceName);
         Assert.Equal(state.Engaged, dto.Engaged);
         Assert.Equal(state.ObjectiveKey, dto.ObjectiveKey);
         Assert.Equal(state.ProgressText, dto.ProgressText);
@@ -110,10 +114,12 @@ public class ApiContractTests
         Assert.True(dto.IsPickup);
         Assert.Null(dto.SourceId);
         Assert.Null(dto.SourceLabel);
+        Assert.Null(dto.SourceName);
         Assert.False(dto.Engaged);
         Assert.Null(dto.ObjectiveKey);
         Assert.Null(dto.ProgressText);
         Assert.False(dto.IsLiveTarget);
+        Assert.Null(dto.TargetRadiusYalms);
     }
 
     /// <summary>The other half of the additive-change argument: a NEWER provider sending fields
@@ -155,6 +161,7 @@ public class ApiContractTests
         Assert.Null(dto.RouteStop);
         Assert.Null(dto.RouteTotal);
         Assert.Null(dto.DutyContentFinderConditionId);
+        Assert.Null(dto.TargetRadiusYalms);
     }
 
     [Fact]
@@ -270,6 +277,29 @@ public class ApiContractTests
 
         Assert.Equal(wireValue, row.Status);
         Assert.Contains("Rose Lanner", row.LockReason, StringComparison.Ordinal);
+    }
+
+    // AvailableCondition is the wire counterpart of ResolvedUnlock.AvailableCondition: an
+    // Available row that still carries a knowable-but-unverifiable condition (a partner, or a
+    // future requirement of the same shape). Additive on the wire, same as any new status —
+    // absent (null) on every ordinary Available row, so an old consumer sees nothing new unless
+    // it looks for the field.
+    [Fact]
+    public void GetUnlocks_CarriesAvailableCondition_OnAnAvailableRow()
+    {
+        const string json = """
+            [{"unlock":"Ceremony of Eternal Bonding","status":"Available","lockReason":null,
+              "availableCondition":"needs a partner","quest":"The Ties That Bind","giver":null,
+              "level":50,"zone":"East Shroud","priority":"nice","category":"system",
+              "description":"Unlocks in-game weddings."}]
+            """;
+        var client = new WayfarerClient(() => WayfarerIpc.ApiVersion, () => "{}", (_, _) => json);
+
+        var row = Assert.Single(client.GetUnlocks());
+
+        Assert.Equal("Available", row.Status);
+        Assert.Null(row.LockReason);
+        Assert.Equal("needs a partner", row.AvailableCondition);
     }
 
     [Fact]

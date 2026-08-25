@@ -17,13 +17,18 @@ public abstract record RouteResult
     /// picks in the shard's travel menu.</summary>
     /// <param name="TargetY">Null when the arrow points at an aethernet entry shard: shard
     /// positions carry no vertical axis, so the widget uses the player's own Y.</param>
+    /// <param name="Radius">The objective's search-area radius in yalms, or 0 for a point. Never set
+    /// when the arrow has been retargeted to an aethernet entry shard — that shard is a precise
+    /// place to stand, not the objective itself, so it must never inherit the objective's
+    /// area-search wording.</param>
     public sealed record SameZone(
         float TargetX,
         float? TargetY,
         float TargetZ,
         float DistanceYalms,
         string? AethernetEntryName = null,
-        string? AethernetExitName = null) : RouteResult;
+        string? AethernetExitName = null,
+        float Radius = 0f) : RouteResult;
 
     /// <summary>Off the player's current map. At most one of the aethernet / entrance / teleport
     /// candidate sets is populated — whichever route costing chose. <paramref name="Reason"/> is

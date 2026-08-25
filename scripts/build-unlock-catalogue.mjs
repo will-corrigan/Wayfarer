@@ -35,6 +35,15 @@
 // The guide's own value for level and type IS read every run and compared against the curated
 // one. Disagreements are recorded in the report, never silently resolved.
 //
+// THE COMPLETENESS CHECK
+// The guide decides what EXISTS, which means anything the guide omits is something this pipeline
+// can never learn about — a sixth trophy-mount quest was missing until another plugin's data
+// revealed it. So every run also asks the game what IT thinks is unlockable, across the 36
+// channels that state a quest gate, and writes the diff to data/coverage.json. That artefact is
+// committed and data/validate-coverage.mjs holds it against the committed catalogue in CI, with no
+// game installation. Nothing in this step changes the catalogue's contents; it only makes the gap
+// measurable and self-policing.
+//
 // DETERMINISM
 // -----------
 // Same cache in, byte-identical file out: sheet resolution is ordered by row id, entries keep the
@@ -45,9 +54,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { buildCoverage, canonicaliseCoverage, catalogueFingerprint } from '../data/coverage-diff.mjs';
+import { ALL as REWARD_KINDS, drawsAnIcon } from '../data/reward-kinds.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATASET = path.join(REPO, 'data', 'unlocks-by-level.json');
+const COVERAGE = path.join(REPO, 'data', 'coverage.json');
 const TOOL = path.join(REPO, 'tools', 'Wayfarer.CatalogueGen', 'Wayfarer.CatalogueGen.csproj');
 
 const API = 'https://ffxiv.gamerescape.com/w/api.php';
@@ -62,7 +74,10 @@ const USER_AGENT =
   'WayfarerCatalogueGenerator/1.0 (https://github.com/will-corrigan/Wayfarer; unlock catalogue regeneration)';
 const MIN_REQUEST_INTERVAL_MS = 250;
 
-const DEFAULT_SQPACK = '/mnt/d/SteamLibrary/steamapps/common/FINAL FANTASY XIV Online/game/sqpack';
+// No default. There is no portable answer — the game lives wherever this machine's launcher put
+// it — and a hard-coded one is both wrong for everybody else and a disclosure of one developer's
+// disk layout. Pass --sqpack or set WAYFARER_SQPACK; the failure below says so.
+const DEFAULT_SQPACK = '';
 
 const args = parseArgs(process.argv.slice(2));
 const CACHE = path.resolve(args.cache ?? path.join(REPO, '.catalogue-cache'));
@@ -87,12 +102,13 @@ function parseArgs(argv) {
 if (args.help) {
   process.stdout.write(`Usage: node scripts/build-unlock-catalogue.mjs [options]
 
-  --write            overwrite data/unlocks-by-level.json with the candidate (default: don't)
+  --write            overwrite data/unlocks-by-level.json and data/coverage.json with the
+                     candidates (default: don't)
   --offline          use only what is already cached; never contact the wiki
   --no-cross-check   skip the per-quest infobox second source (much faster, weaker evidence)
   --out DIR          where to write the candidate and the report (default <cache>/out)
   --cache DIR        wikitext cache directory (default .catalogue-cache)
-  --sqpack PATH      the game's sqpack directory (default the Steam install, or WAYFARER_SQPACK)
+  --sqpack PATH      the game's sqpack directory (or set WAYFARER_SQPACK; there is no default)
 
 Generation needs a local game installation. CI validates the committed dataset instead; see
 data/README.md.
@@ -219,6 +235,109 @@ function discoverGuidePages() {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+// --------------------------------------------------------------------------- wiki links (player-facing backup)
+//
+// When Wayfarer cannot explain a requirement — "the game does not say" — the player has nowhere
+// to go. A link to the entry's own page on Consolegameswiki (chosen over Gamer Escape: it is the
+// genuinely independent source, and its Prerequisites sections carry exactly the conditions this
+// pipeline cannot derive) is the backup. This section resolves and CHECKS one such page per entry
+// at generation time, alongside the wiki fetches the generator already makes — never a URL
+// assembled from a name and never written unless the wiki's own API confirms the page exists.
+
+// NOT /wiki/api.php: this wiki serves its content under /wiki/<title> and its API script from a
+// separate /mediawiki/ path — asking for /wiki/api.php returns the ARTICLE named "Api.php" (a
+// real HTML page, not JSON), which is a very quiet way to think every title is missing.
+const WIKILINK_API = 'https://ffxiv.consolegameswiki.com/mediawiki/api.php';
+const WIKILINK_USER_AGENT =
+  'WayfarerCatalogueGenerator/1.0 (https://github.com/will-corrigan/Wayfarer; wiki link verification)';
+let lastWikilinkRequestAt = 0;
+
+/** The same politeness contract as {@link api} — a contactable identity, a floor on the request
+ * interval, a cache that means a re-run asks again for nothing already checked — kept against a
+ * separate clock because this is a different site with its own rate to respect. */
+function wikilinkApi(params) {
+  const wait = MIN_REQUEST_INTERVAL_MS - (Date.now() - lastWikilinkRequestAt);
+  if (wait > 0) {
+    const until = Date.now() + wait;
+    while (Date.now() < until) { /* spin briefly; the interval is a floor, not a schedule */ }
+  }
+  lastWikilinkRequestAt = Date.now();
+
+  const argv = ['-sS', '--fail', '-L', '--compressed', '--max-time', '90', '-A', WIKILINK_USER_AGENT, '--get'];
+  for (const [k, v] of Object.entries(params)) argv.push('--data-urlencode', `${k}=${v}`);
+  argv.push(WIKILINK_API);
+
+  const run = spawnSync('curl', argv, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  if (run.status !== 0) throw new Error(`curl failed (${run.status}) for consolegameswiki ${JSON.stringify(params)}: ${run.stderr?.trim()}`);
+  return JSON.parse(run.stdout);
+}
+
+const readCachedWikilink = (title) => {
+  const slot = cacheSlot('wikilink', title);
+  return fs.existsSync(slot) ? JSON.parse(fs.readFileSync(slot, 'utf8')) : null;
+};
+
+function writeCachedWikilink(title, record) {
+  const slot = cacheSlot('wikilink', title);
+  fs.mkdirSync(path.dirname(slot), { recursive: true });
+  fs.writeFileSync(slot, JSON.stringify(record, null, 1));
+}
+
+/** The page's canonical URL: spaces become underscores, as the wiki's own links are written, and
+ * everything else is percent-encoded except the colon and apostrophe MediaWiki titles routinely
+ * carry unescaped ("The Minstrel's Ballad: Thordan's Reign") — encoding those would still be a
+ * valid URL and a far less readable one. Built from the RESOLVED title a lookup actually landed
+ * on, never from the name that was asked for. */
+function wikiPageUrl(resolvedTitle) {
+  const encoded = encodeURIComponent(resolvedTitle.replace(/ /g, '_'))
+    .replace(/%3A/g, ':')
+    .replace(/%27/g, "'");
+  return `https://ffxiv.consolegameswiki.com/wiki/${encoded}`;
+}
+
+/** Checks each candidate name against Consolegameswiki's own API and returns only what the wiki
+ * itself confirms, keyed by the name asked for. A redirect is followed to the page it actually
+ * lands on — a quest whose wiki title differs slightly from the game's own name should not lose
+ * its link over that — but the URL recorded is always built from the title the lookup landed on,
+ * never the one that was asked for. Names the wiki has no page for come back mapped to `null`,
+ * which is what tells the caller to omit `wikiUrl` rather than write a link to nothing. */
+function verifyWikiLinks(names) {
+  const todo = [...new Set(names)].filter((n) => !readCachedWikilink(n)).sort();
+  if (todo.length && args.offline) {
+    throw new Error(`--offline but ${todo.length} wiki link(s) are not cached, e.g. '${todo[0]}'`);
+  }
+
+  for (let i = 0; i < todo.length; i += TITLES_PER_REQUEST) {
+    const batch = todo.slice(i, i + TITLES_PER_REQUEST);
+    const j = wikilinkApi({
+      action: 'query', titles: batch.join('|'), redirects: '1', format: 'json', formatversion: '2',
+    });
+
+    const origin = {};
+    for (const n of j.query?.normalized ?? []) origin[n.to] = n.from;
+    for (const r of j.query?.redirects ?? []) origin[r.to] = origin[r.from] ?? r.from;
+
+    const seen = new Set();
+    for (const p of j.query?.pages ?? []) {
+      const asked = origin[p.title] ?? p.title;
+      seen.add(asked);
+      writeCachedWikilink(asked, p.missing
+        ? { title: asked, missing: true, fetched: today() }
+        : { title: asked, resolvedTitle: p.title, missing: false, url: wikiPageUrl(p.title), fetched: today() });
+    }
+    for (const t of batch) if (!seen.has(t)) writeCachedWikilink(t, { title: t, missing: true, fetched: today() });
+    process.stderr.write(`  wiki links checked ${Math.min(i + batch.length, todo.length)}/${todo.length}\r`);
+  }
+  if (todo.length) process.stderr.write('\n');
+
+  const out = new Map();
+  for (const n of new Set(names)) {
+    const rec = readCachedWikilink(n);
+    out.set(n, rec && !rec.missing ? rec.url : null);
+  }
+  return out;
+}
 
 // --------------------------------------------------------------------------- wikitext parsing
 
@@ -411,6 +530,137 @@ function resolveNames(names, sqpack, questRowIds = []) {
     );
   }
   return JSON.parse(fs.readFileSync(resPath, 'utf8'));
+}
+
+/** Asks the resolver what each entry actually GRANTS — the sheet row behind the prose in `unlock`.
+ *
+ * A second round trip rather than another field on the first, because the join needs the facts the
+ * first call is what produces: the Quest rows an entry is finally bound to, and the duty its label
+ * link resolved to. The rules that pick one reward out of a quest's several live in
+ * tools/Wayfarer.CatalogueGen/RewardIndex.cs, next to the sheets they read — this script
+ * deliberately owns none of that reasoning. */
+function resolveRewards(joins, sqpack) {
+  fs.mkdirSync(OUT, { recursive: true });
+  const reqPath = path.join(OUT, 'rewards-request.json');
+  const resPath = path.join(OUT, 'rewards-response.json');
+  fs.writeFileSync(reqPath, JSON.stringify({ sqpack, joins }, null, 1));
+
+  const run = spawnSync(
+    'dotnet',
+    ['run', '--project', TOOL, '-c', 'Debug', '--', 'rewards', reqPath, resPath],
+    { stdio: ['ignore', 'inherit', 'inherit'], encoding: 'utf8' },
+  );
+  if (run.status !== 0) {
+    throw new Error(
+      `tools/Wayfarer.CatalogueGen rewards exited ${run.status}. Generation needs a local game ` +
+        'installation; pass --sqpack or set WAYFARER_SQPACK. CI validates the committed dataset ' +
+        'instead — see data/README.md.',
+    );
+  }
+  return JSON.parse(fs.readFileSync(resPath, 'utf8')).rewards ?? {};
+}
+
+/** Everything the GAME says is unlockable, with no wiki input — the other half of the answer.
+ *
+ * The catalogue's EXISTENCE set comes from one guide, so anything the guide omits is something
+ * this pipeline can never learn about on its own. That is not hypothetical: a sixth trophy-mount
+ * quest was missing until another plugin's data revealed it. This walks the 36 channels the game
+ * states a quest gate for and hands back the row ids; the diff against the catalogue about to be
+ * emitted is written to data/coverage.json, which CI can then hold against the committed catalogue
+ * with no game data at all. See tools/Wayfarer.CatalogueGen/UnlockEnumeration.cs. */
+function enumerateUnlocks(sqpack) {
+  fs.mkdirSync(OUT, { recursive: true });
+  const reqPath = path.join(OUT, 'enumerate-request.json');
+  const resPath = path.join(OUT, 'enumerate-response.json');
+  fs.writeFileSync(reqPath, JSON.stringify({ sqpack }, null, 1));
+
+  const run = spawnSync(
+    'dotnet',
+    ['run', '--project', TOOL, '-c', 'Debug', '--', 'enumerate', reqPath, resPath],
+    { stdio: ['ignore', 'inherit', 'inherit'], encoding: 'utf8' },
+  );
+  if (run.status !== 0) {
+    throw new Error(
+      `tools/Wayfarer.CatalogueGen enumerate exited ${run.status}. Generation needs a local game ` +
+        'installation; pass --sqpack or set WAYFARER_SQPACK. CI validates the committed coverage ' +
+        'artefact instead — see data/README.md.',
+    );
+  }
+  return JSON.parse(fs.readFileSync(resPath, 'utf8'));
+}
+
+/** The completeness check's committed artefact.
+ *
+ * Generated beside the catalogue CANDIDATE rather than beside the committed file, so what it
+ * records is the diff for the entries that are about to be written. It carries the whole
+ * enumeration, so data/validate-coverage.mjs can recompute the classification of every row from
+ * the same inputs and require the same answer without ever touching sqpack.
+ *
+ * @returns {number} 0 when the committed artefact already matches, 1 when it does not.
+ */
+function writeCoverage(enumeration, unlocks) {
+  const committed = fs.existsSync(COVERAGE)
+    ? JSON.parse(fs.readFileSync(COVERAGE, 'utf8'))
+    : null;
+
+  // A channel that has silently gone to zero is the schema-drift failure that matters. The
+  // ItemAction type numbers and the sheet column names are community-reverse-engineered and DO
+  // move between Lumina releases, and a join that stops matching raises no error of its own — it
+  // produces a coverage artefact saying the game has nothing in that channel, and a catalogue that
+  // therefore looks complete. Caught here, against the counts the last generation recorded.
+  for (const [channel, was] of Object.entries(committed?.game?.channelCounts ?? {})) {
+    if (was > 0 && (enumeration.channelCounts[channel] ?? 0) === 0) {
+      throw new Error(
+        `channel '${channel}' enumerated ${was} rows last time and 0 now. A join has stopped ` +
+          'matching — check its columns in tools/Wayfarer.CatalogueGen/UnlockEnumeration.cs ' +
+          'against this Lumina build before accepting a coverage artefact that drops it.',
+      );
+    }
+  }
+
+  const coverage = buildCoverage(enumeration.unlocks, unlocks);
+  const candidate = canonicaliseCoverage({
+    generated: today(),
+    purpose:
+      'What the GAME says is unlockable, against what the catalogue ships. Generated locally ' +
+      'beside the catalogue, committed, and checked in CI by data/validate-coverage.mjs with no ' +
+      'game installation. Every row the catalogue does not cover is classified recommended / ' +
+      'excluded / undecided by data/coverage-policy.mjs.',
+    policy: 'data/coverage-policy.mjs',
+    catalogue: { entries: unlocks.length, identityFingerprint: catalogueFingerprint(unlocks) },
+    game: {
+      // Deliberately no sqpack path: it is one developer's disk layout and it would be the only
+      // thing in data/ that changes with whose machine ran the generator.
+      questRows: enumeration.questRowCount,
+      rows: enumeration.unlocks.length,
+      channelCounts: enumeration.channelCounts,
+    },
+    totals: coverage.totals,
+    channels: coverage.channels,
+    reasons: coverage.reasons,
+    shipped: coverage.shipped,
+    unlocks: coverage.rows,
+  });
+  fs.writeFileSync(path.join(OUT, 'coverage.json'), candidate);
+
+  const t = coverage.totals;
+  const identical = committed !== null && fs.readFileSync(COVERAGE, 'utf8') === candidate;
+  console.log('');
+  console.log(`coverage: the game proposes ${t.gameRows} rows across ${t.gameChannels} channels; ` +
+    `the catalogue covers ${t.covered}`);
+  console.log(`  missing: ${t.recommended} recommended, ${t.undecided} undecided, ` +
+    `${t.excluded} excluded by policy`);
+  console.log(`  entries: ${t.entriesTiedToAnEnumeratedRow} tied to an enumerated row, ` +
+    `${t.entriesAllowedByRule} allowed by rule, ${t.entriesUnaccountedFor} unaccounted for`);
+  console.log(identical
+    ? 'coverage REPRODUCES the committed artefact byte for byte.'
+    : `coverage DIFFERS from the committed artefact. Candidate: ${path.join(OUT, 'coverage.json')}`);
+
+  if (args.write) {
+    fs.writeFileSync(COVERAGE, candidate);
+    console.log(`written to ${COVERAGE}`);
+  }
+  return identical ? 0 : 1;
 }
 
 /** Every link on the requirement side of a row, plus the ones the colon split could not place.
@@ -683,9 +933,14 @@ function infoboxQuestNumber(record) {
 
 // --------------------------------------------------------------------------- emit
 
+// `reward` sits beside `unlock` and `type` because it is the same statement in a form a machine
+// can use: those two say what the thing is called and which list it lands in, and this says which
+// row in which sheet it actually is. `quest`/`questAnyOf` are the other half of the entry — how
+// you get it — and stay together after it.
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'quest', 'questAnyOf', 'questKind',
-  'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
+  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
+  'sources',
 ];
 
 // The guide types each row with an icon, and that icon is a statement by the source about what
@@ -720,8 +975,7 @@ const withoutLevelDispute = (notes) =>
  * that the accept level of the quest it is bound to. When neither does, it has NO level. It is
  * not level 1 and it is not the expansion cap; it is a reward with no level requirement, and it
  * is presented under its own category instead of being sorted among low-level content.
- * (USER RULING 2026-08-23: "Things with no level requirement should just have their own
- * category.")
+ * A reward with no level requirement gets its own category rather than a number nothing states.
  *
  * The bound quest's level is only meaningful above 1: the trophy-mount rewards — Firebird, Kirin,
  * Kamuy of the Nine Tails, Landerwaffe, Apocryphal Bahamut — are hidden level-1 rows whose real
@@ -933,6 +1187,116 @@ function applyMountRequirementOverrides(curated) {
   return applied;
 }
 
+/** Corrections that mark a curated entry's requirement as involving a second player, keyed by the
+ * Quest row id the entry is bound to — same shape and same reason for existing as
+ * {@link MOUNT_REQUIREMENT_OVERRIDES}: the fact is real, the Quest sheet does not (and structurally
+ * cannot) encode it, and it survives the "clear `unverifiable` once a quest resolves" step in the
+ * build loop below because `requiresAnotherPlayer` is not `unverifiable` — it is not a gap in this
+ * plugin's reading of the sheet, it is a fact that lives on someone else's computer.
+ *
+ * Triggered by a live report: the checklist sent a player to "Ceremony of Eternal Bonding" as
+ * something to go and get, when the game's own accept message says it needs a partner. Verified
+ * three ways, all required to agree before this was accepted: live game data (Lumina over sqpack
+ * — Quest#67114 "The Ties That Bind" has `PreviousQuest=66045` "The Scions of the Seventh Dawn",
+ * confirming that half is already a checkable PreviousQuest gate, and `ItemCatalyst`/
+ * `ItemCountCatalyst` are `[0,0,0]` — the sheet records NO item requirement on this row, so the
+ * wristlet is not a readable gate we were ignoring); consolegameswiki's prose prerequisites for
+ * both "The Ties That Bind" and "Ceremony of Eternal Bonding"; and the game's own on-screen accept
+ * message, which the reporting player photographed, naming "The Scions of the Seventh Dawn" and a
+ * promise wristlet directly.
+ *
+ * `conditionSource`, not a hand-written `label`, is what the player actually reads for this
+ * requirement now. The wiki's own "same Home World, party of two, both wearing a Promise Wristlet, in
+ * East Shroud" prose is itself a transcription of Lodestone's requirements checklist, not an
+ * editor's invention — but the client ships a *better* source for the same facts:
+ * `HowToPage` row 1861, column 4 is Square Enix's own structured requirement checklist for this
+ * exact quest, rendered in the in-game How To guide (`HowTo` row 193, "The Ceremony of Eternal
+ * Bonding"). Citing that reference beats curating a paraphrase of it: it is quoted rather than
+ * translated, it is already in whatever language the player's own client runs, and it can never
+ * drift out of date with a patch the way hand-written prose can. `label` becomes a fallback only —
+ * short, honestly ours, for the runtime lookup missing — not the source of truth.
+ *
+ * The one wiki condition with no client string of its own is Home World: the report searched all
+ * 7,181 string-bearing sheets and found only a generic cross-World restriction list (`Addon` row
+ * 12514), never one scoped to this quest. `HowToPage` 1861's three-item checklist (party with your
+ * partner, both wearing promise wristlets, both having completed "The Scions of the Seventh Dawn")
+ * is what ships to the player instead — narrower than the wiki's six-line table, and for that
+ * reason more honest: every word in it is directly attributable to a game sheet. */
+const SOCIAL_REQUIREMENT_OVERRIDES = new Map([
+  [67114, { // The Ties That Bind -> Ceremony of Eternal Bonding
+    reason: 'The catalogue had no requires block at all, so the calculator fell through to '
+      + 'Available for any player who had completed "The Scions of the Seventh Dawn" — the one '
+      + "prerequisite the Quest sheet does carry. The ceremony itself needs a second, physically "
+      + 'present player, which is not a fact about this character and never will be readable from '
+      + "this client. requiresAnotherPlayer is distinct from unverifiable on purpose: the "
+      + "requirement is not unknown, it is known and permanently outside anything an API on this "
+      + 'machine can check — so once every checkable part of it (the prerequisite quest, the level) '
+      + 'is met, the entry now reports Available with the condition named alongside it, rather than '
+      + 'staying blocked forever for a fact this plugin will never be able to confirm. In passing: '
+      + 'the previous curated `notes` on this entry named a second prerequisite quest, "Sanctum '
+      + 'Acolyte", that does not exist in the game\'s Quest sheet under that name — dropped rather '
+      + 'than carried forward unverified.',
+    // The game's own structured checklist for this quest — see the file-level comment above for
+    // how this was found and why it is preferred over a curated paraphrase.
+    conditionSource: { sheet: 'HowToPage', row: 1861, column: 4 },
+    // Only used if the runtime lookup above misses (a future patch moves the row, say). Short and
+    // plainly ours on purpose — see requires.label in data/validate-unlocks.mjs, which now rejects
+    // a long label alongside requiresAnotherPlayer for exactly this reason.
+    label: 'needs a partner',
+    // The catalogue's previous description claimed an NPC/no-partner option exists. It does not:
+    // consolegameswiki is explicit that the ceremony requires two players throughout, with no
+    // alternative described anywhere on the page. Corrected alongside the gate fix rather than
+    // left standing next to a status it directly contradicted. Deliberately does not use the word
+    // this replaces, so a future search for the old, wrong claim finds nothing to find.
+    description: 'Unlocks in-game weddings — the Ceremony of Eternal Bonding lets two players hold '
+      + 'a formal wedding ceremony with exclusive attire and rewards. Always needs a partner, '
+      + 'present with you, at the same time; there is no way to do it by yourself.',
+    // Deliberately does not restate the incorrect quest name this replaces — see `reason` above
+    // for the record of what was wrong and why.
+    notes: "\"The Ties That Bind\" (Quest#67114) only unlocks the ability to arrange a ceremony; "
+      + "its own PreviousQuest prerequisite, \"The Scions of the Seventh Dawn\" (Quest#66045), is "
+      + 'already checked by the ordinary quest-prerequisite gate. Performing the Ceremony of '
+      + 'Eternal Bonding itself additionally needs a partner physically present with you — not '
+      + "something this or any plugin can verify, so this entry reads as Available with that "
+      + "condition named rather than as done-and-dusted.",
+    sources: [
+      'consolegameswiki:The_Ties_That_Bind',
+      'consolegameswiki:Ceremony_of_Eternal_Bonding',
+      'player-report:eternal-bonding-ceremony-accept-message',
+      'game-data:HowToPage#1861',
+    ],
+  }],
+]);
+
+/** Applies {@link SOCIAL_REQUIREMENT_OVERRIDES} to whichever curated entry cites the matching
+ * Quest row, the same way {@link applyMountRequirementOverrides} does. Sets `requires` and
+ * `notes` before the build loop runs so both flow through the ordinary pipeline (the notes'
+ * "level disputed" scrub, the requires-stripping step) exactly as if they had always been
+ * curated that way, and appends the override's source tags onto whatever the entry already
+ * cites, deduplicated by `buildSources`. */
+function applySocialRequirementOverrides(curated) {
+  const applied = [];
+  for (const entry of curated) {
+    const source = (entry.sources ?? []).find((s) => s.startsWith('game-data:Quest#'));
+    if (!source) continue;
+    const questRowId = Number(source.slice('game-data:Quest#'.length));
+    const override = SOCIAL_REQUIREMENT_OVERRIDES.get(questRowId);
+    if (!override) continue;
+
+    entry.requires = {
+      ...entry.requires,
+      label: override.label,
+      conditionSource: override.conditionSource,
+      requiresAnotherPlayer: true,
+    };
+    entry.notes = override.notes;
+    if (override.description) entry.description = override.description;
+    entry.sources = [...new Set([...(entry.sources ?? []), ...override.sources])];
+    applied.push({ unlock: entry.unlock, questRowId, reason: override.reason });
+  }
+  return applied;
+}
+
 /** A trophy-mount quest the catalogue does not contain an entry for at all. Unlike
  * {@link MOUNT_REQUIREMENT_OVERRIDES}, which corrects an existing curated entry, this seeds one —
  * so it needs everything a curated entry normally carries, plus the Quest row id up front so the
@@ -1000,8 +1364,10 @@ async function main() {
   const committed = JSON.parse(fs.readFileSync(DATASET, 'utf8'));
   const curated = committed.unlocks;
   const mountRequirementOverrides = applyMountRequirementOverrides(curated);
+  const socialRequirementOverrides = applySocialRequirementOverrides(curated);
   const newTrophyMountEntries = applyNewTrophyMountEntries(curated);
   for (const o of mountRequirementOverrides) console.log(`mount requirement override: ${o.unlock} (Quest#${o.questRowId})`);
+  for (const o of socialRequirementOverrides) console.log(`social requirement override: ${o.unlock} (Quest#${o.questRowId})`);
   for (const n of newTrophyMountEntries) console.log(`new trophy-mount entry: ${n.unlock} (Quest#${n.questRowId})`);
 
   const titles = discoverGuidePages();
@@ -1083,8 +1449,12 @@ async function main() {
     alternativeSets: [],
     gates: [],
     levelless: [],
+    rewards: [],
+    entriesWithoutAReward: [],
+    wikiLinkMisses: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
     mountRequirementOverrides,
+    socialRequirementOverrides,
     newTrophyMountEntries,
   };
 
@@ -1189,7 +1559,18 @@ async function main() {
   const shipping = proposals.filter((p) => !p.row?.unreleased);
 
   // ------------------------------------------------------------------ build the entries
-  const unlocks = shipping.map(({ entry, row, questRows, basis, fromGuide }) => {
+  //
+  // One join request per entry, filled in as each entry is built and sent in a single batch once
+  // they all are — see resolveRewards. The `ref` is the entry's position in `shipping`, which is
+  // the only handle on a catalogue entry guaranteed unique (two entries can share a name).
+  const rewardJoins = [];
+
+  // The wiki-link candidate per entry, index-aligned with `unlocks` below. Filled in alongside the
+  // entry it belongs to and checked against Consolegameswiki in one batch afterwards — see
+  // "wiki links" after the entries are built.
+  const wikiCandidates = [];
+
+  const unlocks = shipping.map(({ entry, row, questRows, basis, fromGuide }, entryIndex) => {
     const curatedExtras = entry.sources.filter((s) => s !== GUIDE_SOURCE && !s.startsWith('game-data:Quest#'));
 
     // Gates that are not quests. Only reached when nothing bound a Quest row: a quest completion
@@ -1198,6 +1579,11 @@ async function main() {
     // and the difference between "status unknown" and "requires clearing Sigmascape V4.0
     // (Savage)" is the whole value of reading it.
     const labelDuties = row && !questRows.length ? dutyRows(labelLinks(row), resolved) : [];
+    // The same label-side duties, read whether or not a Quest row was bound. They are the entry's
+    // IDENTITY — "[[The Aery]] Dungeon Access" is that duty however it was gated — which is what
+    // the reward join needs; `labelDuties` above stays restricted to the no-quest case because it
+    // feeds `sources`, and widening it there would rewrite provenance for 500 entries.
+    const identityDuties = row ? dutyRows(labelLinks(row), resolved) : [];
     const gateDuties = row && !questRows.length ? dutyRows(requirementLinks(row), resolved) : [];
     const gateItems = row && !questRows.length ? itemRowsFromRequirement(row, resolved, mapChestTypes) : [];
     // A duty the entry is ABOUT is its identity, not its gate: "[[The Aquapolis]] Access" names
@@ -1358,8 +1744,94 @@ async function main() {
         });
       }
     }
+
+    // Everything the reward join is allowed to reason from. `out.type` rather than `entry.type`
+    // because the guide's row icon may just have corrected it, and a duty typed `mount` would send
+    // the join looking in the wrong sheet.
+    rewardJoins.push({
+      ref: String(entryIndex),
+      unlock: out.unlock,
+      type: out.type,
+      questRowIds: [...questRows],
+      duties: identityDuties.map((d) => ({ rowId: d.cfcId, name: d.name })),
+    });
+
+    // The wiki-link candidate: the entry's own bound quest, and only when it is unambiguous — an
+    // entry with `questAnyOf` names a SET of quests, and picking one of their pages to link would
+    // be exactly the guess this whole feature exists not to make. Where there is no bound quest at
+    // all, the entry's own duty identity stands in for it, and only when there is exactly one: a
+    // page for one duty out of several would misname what the entry actually is.
+    wikiCandidates.push(
+      !out.questAnyOf && out.quest ? out.quest
+        : (!out.quest && identityDuties.length === 1 ? identityDuties[0].name : null),
+    );
     return out;
   });
+
+  // ------------------------------------------------------------------ the player-facing backup
+  //
+  // One verified Consolegameswiki link per entry, where the entry names something the wiki
+  // actually has a page for. Checked, not assembled: `verifyWikiLinks` hits the wiki's own API and
+  // only a name it confirms comes back with a URL, so an entry never carries a link to a page that
+  // does not exist.
+  const wikiLinkCandidateNames = [...new Set(wikiCandidates.filter(Boolean))];
+  console.log(`checking ${wikiLinkCandidateNames.length} consolegameswiki page(s) for a wiki link...`);
+  const wikiLinks = verifyWikiLinks(wikiLinkCandidateNames);
+  unlocks.forEach((e, i) => {
+    const candidate = wikiCandidates[i];
+    const url = candidate ? wikiLinks.get(candidate) : null;
+    if (url) e.wikiUrl = url;
+    else delete e.wikiUrl;
+
+    if (candidate && !url) {
+      report.wikiLinkMisses.push({ unlock: e.unlock, level: e.level ?? null, candidate });
+    }
+  });
+
+  // ------------------------------------------------------------------ what each entry grants
+  //
+  // The reward is a GENERATED field: it is the row id behind the entry's own name, and the sheets
+  // are the only thing that can state it. An entry the game names no reward for keeps none — most
+  // `system` entries open a feature the game has no row for at all, and that is an answer rather
+  // than a gap (see data/README.md).
+  const rewards = resolveRewards(rewardJoins, sqpack);
+  unlocks.forEach((e, i) => {
+    const r = rewards[String(i)];
+    if (!r) {
+      delete e.reward;
+      return;
+    }
+
+    // A kind nothing downstream knows is worse than no reward at all: the validator would reject
+    // it in CI and the plugin would have no arm for it. Fail here, where the sheet walk that
+    // produced it can be corrected, rather than committing it.
+    if (!REWARD_KINDS.includes(r.kind)) {
+      throw new Error(
+        `${e.unlock}: the reward join produced kind '${r.kind}', which is not in data/reward-kinds.mjs. ` +
+          'Add it there and to Wayfarer.Core/Unlocks/UnlockReward.cs, with an icon decision, or stop emitting it.',
+      );
+    }
+
+    // The spec's rule, enforced where it can be: a kind the catalogue says draws an icon whose row
+    // has none is a data bug, and it is caught at generation rather than shipping as a blank
+    // square. The id itself is not written into the file — icon ids move between patches, so the
+    // plugin looks them up live — this only asks whether one exists at all.
+    if (drawsAnIcon(r.kind) && !r.iconId) {
+      throw new Error(
+        `${e.unlock}: reward ${r.kind}#${r.id} ("${r.name}") is an icon-bearing kind but that row has no icon. ` +
+          'Either the join picked the wrong row, or the kind belongs in WITHOUT_ICON in data/reward-kinds.mjs.',
+      );
+    }
+
+    e.reward = { kind: r.kind, id: r.id, name: r.name };
+    report.rewards.push({
+      unlock: e.unlock, level: e.level ?? null, type: e.type,
+      kind: r.kind, id: r.id, name: r.name, how: r.how, via: r.via, iconId: r.iconId,
+    });
+  });
+  for (const e of unlocks) {
+    if (!e.reward) report.entriesWithoutAReward.push({ unlock: e.unlock, level: e.level ?? null, type: e.type });
+  }
 
   // ------------------------------------------------------------------ order
   //
@@ -1442,6 +1914,16 @@ async function main() {
     entriesWithAQuestAnyOfSet: unlocks.filter((e) => (e.questAnyOf?.length ?? 0) > 0).length,
     entriesGatedOnADutyClear: unlocks.filter((e) => (e.requires?.duties?.length ?? 0) > 0).length,
     entriesGatedOnAnItem: unlocks.filter((e) => (e.requires?.items?.length ?? 0) > 0).length,
+    entriesWithAReward: unlocks.filter((e) => e.reward).length,
+    entriesWithoutAReward: report.entriesWithoutAReward.length,
+    entriesWithAWikiCandidate: wikiCandidates.filter(Boolean).length,
+    entriesWithAVerifiedWikiLink: unlocks.filter((e) => e.wikiUrl).length,
+    entriesWhoseRewardHasAnIcon: unlocks.filter((e) => e.reward && drawsAnIcon(e.reward.kind)).length,
+    rewardKinds: report.rewards.reduce((a, r) => ({ ...a, [r.kind]: (a[r.kind] ?? 0) + 1 }), {}),
+    rewardJoinRules: report.rewards.reduce((a, r) => ({ ...a, [r.how]: (a[r.how] ?? 0) + 1 }), {}),
+    entriesWithoutARewardByType: report.entriesWithoutAReward.reduce(
+      (a, e) => ({ ...a, [e.type]: (a[e.type] ?? 0) + 1 }), {}),
+    entriesGatedOnAnotherPlayer: unlocks.filter((e) => e.requires?.requiresAnotherPlayer === true).length,
     entriesDroppedAsUnreleased: report.droppedEntries.length,
     entriesRetypedByTheGuideIcon: report.retypedEntries.length,
     confidence: unlocks.reduce((a, e) => ({ ...a, [e.confidence]: (a[e.confidence] ?? 0) + 1 }), {}),
@@ -1470,6 +1952,11 @@ async function main() {
   for (const d of report.droppedEntries) console.log(`dropped as unreleased: ${d.unlock} (${d.page})`);
   for (const t of report.retypedEntries) console.log(`retyped by the guide's row icon: ${t.unlock} ${t.from} -> ${t.to} (${t.icon})`);
   console.log(`entries with no grounded level, categorised instead: ${report.levelless.length} ${JSON.stringify(report.counts.levellessCategories)}`);
+  console.log(`entries with a reward: ${report.counts.entriesWithAReward} of ${unlocks.length} (${report.counts.entriesWhoseRewardHasAnIcon} of those draw an icon)`);
+  console.log(`  by kind:      ${JSON.stringify(report.counts.rewardKinds)}`);
+  console.log(`  by join rule: ${JSON.stringify(report.counts.rewardJoinRules)}`);
+  console.log(`entries with no reward the game states: ${report.counts.entriesWithoutAReward} ${JSON.stringify(report.counts.entriesWithoutARewardByType)}`);
+  console.log(`entries with a verified wiki link: ${report.counts.entriesWithAVerifiedWikiLink} of ${report.counts.entriesWithAWikiCandidate} candidates (${unlocks.length} entries total)`);
   console.log('');
   console.log(identical
     ? 'REPRODUCES the committed dataset byte for byte.'
@@ -1481,7 +1968,18 @@ async function main() {
   } else if (!identical) {
     console.log('Re-run with --write to accept, after reviewing the diff (see data/README.md).');
   }
-  return identical ? 0 : 1;
+
+  // ------------------------------------------------------------------ completeness
+  //
+  // Runs on the candidate, not on the committed file, so the artefact always describes the
+  // catalogue it was generated beside. It is a separate exit condition from the catalogue's: a
+  // catalogue that reproduces byte for byte can still have a stale coverage artefact next to it
+  // when a patch has added unlocks, and that is precisely the case this exists to make loud.
+  const coverageStale = writeCoverage(enumerateUnlocks(sqpack), JSON.parse(candidate).unlocks);
+  if (coverageStale && !args.write) {
+    console.log('Re-run with --write to accept the coverage artefact too.');
+  }
+  return identical && !coverageStale ? 0 : 1;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

@@ -38,7 +38,10 @@ public class UnlockGateKindTests
             Gates.Ctx(playerLevel: 100, isInstanceContentCompleted: id => id == SigmascapeInstanceContentId));
 
         Assert.Equal(UnlockStatus.RequirementsUnknown, all[0].Status);
-        Assert.Contains("status unknown", all[0].LockReason, StringComparison.Ordinal);
+
+        // The hedge lives in the sentence the pane draws, not in the reason: "Requirements unknown —
+        // {reason}." The reason's job is to name the requirement, once.
+        Assert.Contains("Sigmascape V4.0 (Savage)", all[0].LockReason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -104,7 +107,7 @@ public class UnlockGateKindTests
         UnlockStatusCalculator.Compute(all, Gates.Ctx(playerLevel: 30));
 
         Assert.Equal(UnlockStatus.RequirementsUnknown, all[0].Status);
-        Assert.Contains("only your character knows which is yours", all[0].LockReason, StringComparison.Ordinal);
+        Assert.Contains("quests share this name", all[0].LockReason, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -31,8 +31,12 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
     private readonly Dictionary<uint, List<AetherytePoint>> aethernetCache = [];
     private readonly Dictionary<(uint FromMap, uint ToMap), List<MapLinkPoint>> entranceCache = [];
     private readonly Dictionary<uint, HashSet<uint>> aethernetGroupCache = [];
+    private readonly Dictionary<uint, List<InteriorEntrance>> interiorEntranceCache = [];
     private List<AethernetSheetRow>? aethernetSheetRows;
     private Dictionary<uint, DutyInfo>? dutyByTerritory;
+    private Dictionary<uint, List<(uint MapId, float X, float Z)>>? placeNameLabels;
+    private Dictionary<uint, uint>? hostTerritoryByMap;
+    private HashSet<uint>? territoriesWithAetherytes;
 
     /// <summary>Routes <paramref name="objective"/> from where the player currently stands.
     /// Framework thread only (it reads Lumina sheets and UIState).</summary>
@@ -46,9 +50,9 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         // deserves.
         ObjectiveDestination.TerritoryOnly t => OtherZone(objective, t.Territory, t.MapId ?? 0, 0f, 0f, ctx),
         ObjectiveDestination.InstancedDuty d => (RouteResult?)DutyRoute(objective, d.DutyTerritory)
-            ?? new RouteResult.NoLocation("this objective is inside instanced duty content"),
+            ?? new RouteResult.NoLocation("this objective is inside a duty"),
         ObjectiveDestination.Unresolved u => new RouteResult.NoLocation(u.Reason),
-        _ => new RouteResult.NoLocation("this step has no map location (it may take place inside a duty or cutscene)"),
+        _ => new RouteResult.NoLocation("no map location for this step"),
     };
 
     /// <summary>Where the player would arrive in <paramref name="territory"/> if they teleported
@@ -74,7 +78,7 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         if (p.Territory == ctx.Territory && p.MapId == ctx.MapId)
         {
             var d = NavMath.Distance(p.X - ctx.PlayerX, p.Y - ctx.PlayerY, p.Z - ctx.PlayerZ);
-            return SameZone(p.X, p.Y, p.Z, d, ctx);
+            return SameZone(p.X, p.Y, p.Z, d, ctx, p.Radius);
         }
 
         // Same territory, different map — a different floor, OR an entrance marker for a
@@ -88,7 +92,7 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         if (p.Territory == ctx.Territory)
         {
             var fallbackDist = NavMath.Distance(p.X - ctx.PlayerX, p.Y - ctx.PlayerY, p.Z - ctx.PlayerZ);
-            fallback = SameZone(p.X, p.Y, p.Z, fallbackDist, ctx);
+            fallback = SameZone(p.X, p.Y, p.Z, fallbackDist, ctx, p.Radius);
         }
 
         return OtherZone(objective, p.Territory, p.MapId, p.X, p.Z, ctx, fallback);
@@ -97,7 +101,11 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
     /// <summary>City aethernet routing: if hopping the entry shard nearest the player and out of
     /// the shard nearest the objective beats the direct run, retarget the arrow to the entry shard
     /// and surface the exit shard's name for the travel menu.</summary>
-    private RouteResult.SameZone SameZone(float tx, float ty, float tz, float dist, GuidanceContext ctx)
+    /// <param name="radius">The objective's own search-area radius. Deliberately NOT attached to the
+    /// aethernet-retargeted result below: once the arrow is pointing at a shard, the shard — not
+    /// the objective's circle — is what "distance" and "arrived" mean, so the area wording must not
+    /// follow it there.</param>
+    private RouteResult.SameZone SameZone(float tx, float ty, float tz, float dist, GuidanceContext ctx, float radius = 0f)
     {
         if (AethernetRoute(ctx.Territory, ctx.PlayerX, ctx.PlayerZ, tx, tz, dist) is { } route)
         {
@@ -111,7 +119,7 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
                 AethernetExitName: route.Exit.Name);
         }
 
-        return new RouteResult.SameZone(tx, ty, tz, dist);
+        return new RouteResult.SameZone(tx, ty, tz, dist, Radius: radius);
     }
 
     /// <summary>Returns (entry shard nearest the player, exit shard nearest the target)
@@ -189,7 +197,29 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
             currentTerritoryGroups,
             aetheryteTerritoryGroups);
 
-        var chosen = RouteCosting.Choose(aethernet, entrance, teleport);
+        // An interior objective's DOOR is a third place, in a third coordinate space — see
+        // InteriorRoute. Until it was represented here this shape produced no candidate at all (an
+        // interior owns no shards, no aetheryte and no map-link doors of its own, and the only
+        // teleport on offer is correctly suppressed as same-network), so the router fell through to
+        // the interior message even from the far side of the city. Costed as an ordinary leg, so a
+        // genuine cross-city teleport still wins whenever there is no free way across.
+        RouteCandidate? interior = null;
+        foreach (var door in ResolveInteriorEntrances(targetTerritory))
+        {
+            interior = RouteCosting.Choose(
+                interior,
+                InteriorRoute.Route(
+                    door,
+                    currentTerritory,
+                    ctx.PlayerX,
+                    ctx.PlayerZ,
+                    currentTerritoryShards,
+                    GetAetherytePoints(door.HostTerritory, aethernet: true),
+                    FindEntrances(ctx.MapId, door.HostMapId),
+                    FindEntrances(door.HostMapId, ctx.MapId)));
+        }
+
+        var chosen = RouteCosting.Choose(aethernet, entrance, teleport, interior);
 
         // The three-way choice (real route / marker fallback / plain interior message) is a pure
         // Core decision (OtherZoneResolution.Resolve) — see its doc comment.
@@ -273,6 +303,143 @@ internal sealed unsafe class GuidanceRouter(IDataManager dataManager)
         aethernetGroupCache[territory] = groups;
         return groups;
     }
+
+    /// <summary>The door(s) into <paramref name="targetTerritory"/> when it is an INTERIOR: a
+    /// territory with no Aetheryte rows homed in it at all, whose own map carries no markers, so
+    /// nothing about it can be costed on its own terms and its coordinates live in a private space
+    /// that cannot be compared with the player's. <see cref="InteriorRoute"/>'s doc comment sets out
+    /// why that door is a third place the route model has to represent rather than a case to bail
+    /// on.
+    ///
+    /// <para>Both gate conditions are raw SHEET facts and deliberately not derived from
+    /// position-resolved point lists: a territory whose shard positions merely fail to resolve must
+    /// never be mistaken for an interior. That is the same distinction <see
+    /// cref="GetAethernetGroups"/> exists to preserve, and getting it wrong there is what produced
+    /// three earlier live defects in this area.</para>
+    ///
+    /// <para>The door itself is the place-name label the enclosing city map draws for the interior —
+    /// a MapMarker whose PlaceNameSubtext is the target territory's own PlaceName row. Those are
+    /// DataType 0 markers carrying no DataKey, which is precisely why <see cref="FindEntrances"/>,
+    /// which matches DataType 1/2 by destination map, can never see them. A label can appear on more
+    /// than one map, so every one is returned and route costing picks whichever is actually
+    /// reachable.</para></summary>
+    private List<InteriorEntrance> ResolveInteriorEntrances(uint targetTerritory)
+    {
+        if (interiorEntranceCache.TryGetValue(targetTerritory, out var cached))
+        {
+            return cached;
+        }
+
+        var found = new List<InteriorEntrance>();
+        if (dataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(targetTerritory) is { } tt
+            && tt.PlaceName.RowId != 0
+            && !TerritoriesWithAetherytes().Contains(targetTerritory)
+            && !HasMapMarkers(tt.Map.RowId)
+            && tt.PlaceName.ValueNullable?.Name.ExtractText() is { Length: > 0 } name
+            && PlaceNameLabels().TryGetValue(tt.PlaceName.RowId, out var labels))
+        {
+            foreach (var (mapId, x, z) in labels)
+            {
+                // A label drawn on the interior's own map would be the interior pointing at itself.
+                if (HostTerritoryForMap(mapId) is { } host && host != targetTerritory)
+                {
+                    found.Add(new(host, mapId, name, x, z));
+                }
+            }
+        }
+
+        interiorEntranceCache[targetTerritory] = found;
+        return found;
+    }
+
+    /// <summary>PlaceName row → every plain place-name label (MapMarker DataType 0) drawn for it,
+    /// with the hosting map and the label's world position in that map's coordinate space. Built
+    /// once, on the first interior lookup.</summary>
+    private Dictionary<uint, List<(uint MapId, float X, float Z)>> PlaceNameLabels()
+    {
+        if (placeNameLabels != null)
+        {
+            return placeNameLabels;
+        }
+
+        var index = new Dictionary<uint, List<(uint MapId, float X, float Z)>>();
+        var markerSheet = dataManager.GetSubrowExcelSheet<MapMarker>();
+        foreach (var map in dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>())
+        {
+            if (map.MapMarkerRange == 0 || !markerSheet.HasRow(map.MapMarkerRange))
+            {
+                continue;
+            }
+
+            foreach (var m in markerSheet[map.MapMarkerRange])
+            {
+                if (m.DataType != 0 || m.PlaceNameSubtext.RowId == 0)
+                {
+                    continue;
+                }
+
+                var (x, z) = MapCoords.MarkerPixelToWorld(m.X, m.Y, map.SizeFactor, map.OffsetX, map.OffsetY);
+                if (!index.TryGetValue(m.PlaceNameSubtext.RowId, out var labels))
+                {
+                    index[m.PlaceNameSubtext.RowId] = labels = [];
+                }
+
+                labels.Add((map.RowId, x, z));
+            }
+        }
+
+        placeNameLabels = index;
+        return index;
+    }
+
+    /// <summary>Which territory's coordinate space a map's markers belong to. Several TerritoryType
+    /// rows share one map — live sheet: map 219 is both The Pillars (419) and a duplicate row 499,
+    /// map 11 is the Limsa Lominsa Upper Decks (128) plus three more — and only one of them owns
+    /// Aetheryte rows. That is the one whose shard list can actually be routed to, so it wins
+    /// outright; picking a duplicate row instead would silently produce an empty shard list, which
+    /// is the exact failure mode of the earlier defects in this area.</summary>
+    private uint? HostTerritoryForMap(uint mapId)
+    {
+        if (hostTerritoryByMap == null)
+        {
+            var homed = TerritoriesWithAetherytes();
+            var byMap = new Dictionary<uint, uint>();
+            foreach (var tt in dataManager.GetExcelSheet<TerritoryType>())
+            {
+                if (tt.Map.RowId != 0 && homed.Contains(tt.RowId))
+                {
+                    byMap.TryAdd(tt.Map.RowId, tt.RowId);
+                }
+            }
+
+            hostTerritoryByMap = byMap;
+        }
+
+        return hostTerritoryByMap.TryGetValue(mapId, out var territory) ? territory : null;
+    }
+
+    /// <summary>Every territory with at least one Aetheryte row homed in it — a pure sheet fact,
+    /// position-free by design (see <see cref="ResolveInteriorEntrances"/>).</summary>
+    private HashSet<uint> TerritoriesWithAetherytes()
+    {
+        if (territoriesWithAetherytes != null)
+        {
+            return territoriesWithAetherytes;
+        }
+
+        var set = new HashSet<uint>();
+        foreach (var a in dataManager.GetExcelSheet<Aetheryte>())
+        {
+            set.Add(a.Territory.RowId);
+        }
+
+        territoriesWithAetherytes = set;
+        return set;
+    }
+
+    private bool HasMapMarkers(uint mapId) =>
+        dataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>().GetRowOrDefault(mapId) is { MapMarkerRange: not 0 } map
+        && dataManager.GetSubrowExcelSheet<MapMarker>().HasRow(map.MapMarkerRange);
 
     /// <summary>Resolves the aetheryte to recommend teleporting to for an objective in
     /// <paramref name="targetTerritory"/>: that territory's own nearest (unlocked

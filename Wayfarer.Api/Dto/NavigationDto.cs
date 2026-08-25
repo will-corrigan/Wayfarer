@@ -24,6 +24,10 @@ public sealed class NavigationDto
 
     public float? DistanceYalms { get; init; }
 
+    /// <summary>SameZone mode only: the game's own search-area radius in yalms for a "search this
+    /// area" quest step, or null for an ordinary point objective.</summary>
+    public float? TargetRadiusYalms { get; init; }
+
     public uint? AetheryteId { get; init; }
 
     public string? AetheryteName { get; init; }
@@ -52,6 +56,11 @@ public sealed class NavigationDto
 
     /// <summary>Mode indicator text, non-null whenever <see cref="Engaged"/> is true.</summary>
     public string? SourceLabel { get; init; }
+
+    /// <summary>What the owning module calls itself — "Quest", "Unlock", "Hunting Log" — as against
+    /// <see cref="SourceLabel"/>, which describes this objective's context. Null when nothing owns
+    /// the arrow.</summary>
+    public string? SourceName { get; init; }
 
     /// <summary>An explicit mode (a route, a hunt) is active rather than the followed quest.</summary>
     public bool Engaged { get; init; }

@@ -26,6 +26,13 @@ public sealed record NavigationState
 
     public float? DistanceYalms { get; init; }
 
+    /// <summary>SameZone mode only: the game's own search-area radius around
+    /// (<see cref="TargetX"/>, <see cref="TargetZ"/>), in yalms, for a quest step drawn as a circle
+    /// on the map rather than a precise waypoint. Null for an ordinary point objective — including
+    /// every objective this field did not exist for, so an older or unaware consumer sees exactly
+    /// the point-objective behaviour it always had.</summary>
+    public float? TargetRadiusYalms { get; init; }
+
     public uint? AetheryteId { get; init; }
 
     public string? AetheryteName { get; init; }
@@ -69,6 +76,13 @@ public sealed record NavigationState
     /// Non-null whenever <see cref="Engaged"/> is true: an explicit mode must always name itself,
     /// because this readout is the only mode indicator the player has.</summary>
     public string? SourceLabel { get; init; }
+
+    /// <summary>What the owning MODULE calls itself, in Title Case and in the singular — "Quest",
+    /// "Unlock", "Hunting Log" — as against <see cref="SourceLabel"/>, which describes this
+    /// particular objective's context. Supplied by the source; see
+    /// <see cref="Guidance.ObjectiveCopy.SourceName"/> for why it is never derived from
+    /// <see cref="SourceId"/> anywhere downstream. Null when nothing owns the arrow.</summary>
+    public string? SourceName { get; init; }
 
     /// <summary>An explicit mode is active (a route, a hunt) rather than the ambient followed
     /// quest. Presentations MUST offer a reachable exit whenever this is true.</summary>

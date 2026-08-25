@@ -57,7 +57,7 @@ internal sealed class UnlockWindow(
     {
         if (!unlocks.Loaded)
         {
-            ImGui.TextWrapped("Wayfarer could not read its unlock catalogue, so this list is empty for that reason and not because there is nothing left to do.");
+            ImGui.TextWrapped("The unlock catalogue could not be read.");
             if (unlocks.LoadError is { Length: > 0 } why)
             {
                 ImGui.TextWrapped(why);
@@ -172,14 +172,31 @@ internal sealed class UnlockWindow(
     /// <see cref="DrawRow"/>, so it shares this text too.</summary>
     private static string StatusTagTooltip(UnlockStatus status) => status switch
     {
-        UnlockStatus.Available => "Ready to pick up from the quest giver.",
-        UnlockStatus.Accepted => "Picked up but not finished — check your Journal for the next step.",
+        UnlockStatus.Available => "Ready to pick up.",
+        UnlockStatus.Accepted => "In progress. See your Journal.",
         UnlockStatus.Done => "Completed.",
-        UnlockStatus.LockedOut => "No longer obtainable — a quest that locks it out was completed.",
-        UnlockStatus.CollectionLocked => "Needs a set of collectibles first — hover the row for the list.",
-        UnlockStatus.RequirementsUnknown => "This plugin can't work out what this takes, so it won't guess — treat it as not yet available.",
-        UnlockStatus.UnknownGate => "Gated behind something this plugin can't check — treat as not yet available.",
-        _ => "Locked — requirements not yet met.",
+        UnlockStatus.LockedOut => "No longer obtainable.",
+        UnlockStatus.CollectionLocked => "Needs a set of collectibles. Hover for the list.",
+        UnlockStatus.RequirementsUnknown => "Requirements unknown. Treat as not available.",
+        UnlockStatus.UnknownGate => "Requirements unknown. Treat as not available.",
+        _ => "Locked.",
+    };
+
+    /// <summary>The row's status tag and its colour. Split out of <see cref="DrawRow"/> so that
+    /// method stays under the analyzer's line budget — the tag/colour pairing itself is pure and
+    /// easy to reason about on its own.</summary>
+    private static (string Icon, Vector4 Color) RowTag(UnlockStatus status) => status switch
+    {
+        UnlockStatus.Done => ("[done]", new Vector4(0.5f, 0.8f, 0.5f, 1f)),
+        UnlockStatus.Accepted => ("[accepted]", new Vector4(0.6f, 0.8f, 1f, 1f)),
+        UnlockStatus.Available => ("[grab]", new Vector4(1f, 0.82f, 0.25f, 1f)),
+        UnlockStatus.LockedOut => ("[gone]", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
+
+        // Both "we don't know" states share the existing unknown-gate amber; the tag text is
+        // what separates them, so no new colour has to be learned.
+        UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
+        UnlockStatus.CollectionLocked => ("[collect]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
+        _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
     };
 
     private void DrawFilterBar()
@@ -195,7 +212,7 @@ internal sealed class UnlockWindow(
 
         ImGui.SameLine();
         var showDone = filter.ShowDone;
-        if (ImGui.Checkbox("Done", ref showDone))
+        if (ImGui.Checkbox("Complete", ref showDone))
         {
             filter.ShowDone = showDone;
         }
@@ -212,11 +229,11 @@ internal sealed class UnlockWindow(
         var routable = visible.Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null).ToList();
         if (navigator == null)
         {
-            ImGui.TextDisabled($"Route me ({routable.Count}) — enable Quest Helper to navigate");
+            ImGui.TextDisabled($"Route Me ({routable.Count}) — enable Quest Helper");
             return;
         }
 
-        if (ImGui.Button($"Route me ({routable.Count})") && routable.Count > 0)
+        if (ImGui.Button($"Route Me ({routable.Count})") && routable.Count > 0)
         {
             var player = objects.LocalPlayer;
             var ordered = RoutePlanner.Order(
@@ -233,13 +250,13 @@ internal sealed class UnlockWindow(
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Guides you through picking up every quest shown above, nearest first. The arrow advances automatically as you accept each one.");
+            ImGui.SetTooltip("Walks every quest above, nearest first.");
         }
 
         DrawStopButton();
 
         ImGui.SameLine();
-        ImGui.TextDisabled("chains the arrow through every available pickup shown");
+        ImGui.TextDisabled("nearest first");
     }
 
     // The universal exit, mirrored from the hub window's own Stop button — this window is only
@@ -293,19 +310,7 @@ internal sealed class UnlockWindow(
 
     private void DrawRow(ResolvedUnlock u)
     {
-        var (icon, color) = u.Status switch
-        {
-            UnlockStatus.Done => ("[done]", new Vector4(0.5f, 0.8f, 0.5f, 1f)),
-            UnlockStatus.Accepted => ("[accepted]", new Vector4(0.6f, 0.8f, 1f, 1f)),
-            UnlockStatus.Available => ("[grab]", new Vector4(1f, 0.82f, 0.25f, 1f)),
-            UnlockStatus.LockedOut => ("[gone]", new Vector4(0.8f, 0.4f, 0.4f, 1f)),
-
-            // Both "we don't know" states share the existing unknown-gate amber; the tag text is
-            // what separates them, so no new colour has to be learned.
-            UnlockStatus.UnknownGate or UnlockStatus.RequirementsUnknown => ("[?]", new Vector4(0.7f, 0.6f, 0.3f, 1f)),
-            UnlockStatus.CollectionLocked => ("[collect]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
-            _ => ("[locked]", new Vector4(0.55f, 0.55f, 0.55f, 1f)),
-        };
+        var (icon, color) = RowTag(u.Status);
         var greyed = u.Status is not (UnlockStatus.Available or UnlockStatus.Accepted);
         if (greyed)
         {
@@ -371,6 +376,14 @@ internal sealed class UnlockWindow(
             ImGui.TextDisabled(reason);
         }
 
+        // Available with a knowable-but-unverifiable condition still outstanding (a partner, or a
+        // future requirement of the same shape) — the terse note is already in the status
+        // sentence/tag; this is the full detail, the game's own words where one was resolved.
+        if (u.AvailableConditionDetail is { Length: > 0 } conditionDetail)
+        {
+            ImGui.TextDisabled(conditionDetail);
+        }
+
         // The whole missing list, not just the blocker the reason names: being told you need
         // "Rose Lanner" when you need seven mounts is the same failure in miniature.
         if (u.Status == UnlockStatus.CollectionLocked && u.MissingRequirements.Count > 1)
@@ -386,32 +399,43 @@ internal sealed class UnlockWindow(
             ImGui.TextDisabled(notes);
         }
 
+        DrawRowTooltipFooter(u);
+
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
+    }
+
+    /// <summary>The status-specific closing line(s): what clicking this row will do. Split out of
+    /// <see cref="DrawRowTooltip"/> so that method stays under the analyzer's line budget.</summary>
+    private void DrawRowTooltipFooter(ResolvedUnlock u)
+    {
         if (u.Status == UnlockStatus.Available)
         {
             ImGui.TextDisabled(u.GiverTerritory == null
                 ? "Location unknown — find the quest giver manually."
                 : navigator != null
-                    ? "Click to have the arrow guide you there."
+                    ? "Click to be guided there."
                     : "Enable Quest Helper to navigate.");
+            return;
         }
-        else if (u.Status == UnlockStatus.Accepted)
+
+        if (u.Status != UnlockStatus.Accepted)
         {
-            ImGui.TextDisabled(navigator != null
-                ? "In your journal — click to follow it with the arrow."
-                : "In your journal — enable Quest Helper to follow it with the arrow.");
-
-            // Live objective: only available while Quest Helper is enabled
-            // (navigator != null) and only once the game has published a marker for this step.
-            if (navigator != null
-                && u.QuestRowId is { } questRowId
-                && navigator.GetAcceptedQuestObjective(questRowId - QuestRowIdOffset) is { Length: > 0 } objective)
-            {
-                ImGui.TextDisabled($"Next: {objective}");
-            }
+            return;
         }
 
-        ImGui.PopTextWrapPos();
-        ImGui.EndTooltip();
+        ImGui.TextDisabled(navigator != null
+            ? "In your journal — click to follow it."
+            : "In your journal — enable Quest Helper to follow it.");
+
+        // Live objective: only available while Quest Helper is enabled
+        // (navigator != null) and only once the game has published a marker for this step.
+        if (navigator != null
+            && u.QuestRowId is { } questRowId
+            && navigator.GetAcceptedQuestObjective(questRowId - QuestRowIdOffset) is { Length: > 0 } objective)
+        {
+            ImGui.TextDisabled($"Next: {objective}");
+        }
     }
 
     private void DrawUnverified()
@@ -427,7 +451,7 @@ internal sealed class UnlockWindow(
             return;
         }
 
-        ImGui.TextWrapped("Nothing in the game's data backs these entries, so their status can't be checked. Each says what is known about it instead of being graded.");
+        ImGui.TextWrapped("Nothing in the game's data backs these up, so they cannot be checked.");
         foreach (var u in unverified)
         {
             ImGui.BulletText($"{u.Def.Unlock} ({LevelOrCategory(u.Def)})");

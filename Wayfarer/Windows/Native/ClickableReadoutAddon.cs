@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
@@ -35,27 +36,53 @@ namespace Wayfarer.Windows.Native;
 /// that can receive the click. The overlay deliberately does not draw one — see
 /// <see cref="ReadoutBodyNode"/>.
 ///
-/// <b>Scale.</b> The game renders a normal addon at the player's interface scale, while the body
-/// multiplies that scale in by hand (it was written for an overlay, which is de-scaled to raw
-/// pixels). Applying the same de-scaling here is what keeps the two hosts identical instead of
-/// double-scaled.</summary>
+/// <b>The follow switcher's list.</b> Also only here, and for the same reason as the cog — a
+/// controller's readout is click-through by construction and cannot host anything interactive at
+/// all. It is the game's own context menu rather than a panel of ours, so its depth, its input, its
+/// scrolling and its dismissal are all the game's; see <see cref="FollowSwitcherMenu"/> for what
+/// that fixed and what it costs.
+///
+/// <b>Scale — and this host now does nothing whatsoever about it.</b> The game renders a normal
+/// addon at the player's interface scale, which is exactly what is wanted: the addon that draws the
+/// game's own Main Scenario Guide is rendered the same way, so a banner built from the same ULD
+/// units cannot come out a different size from it. This used to force
+/// <c>SetScale(1 / GetGlobalUIScale())</c> and have the body multiply every dimension back up by
+/// <c>GetGlobalUIScale()</c>, on the belief that the two cancelled. They do not — the toolkit's own
+/// addon-config code reads a user scale back as <c>InternalAddon-&gt;Scale / GetGlobalUIScale()</c>,
+/// so a normally-scaled addon's raw <c>Scale</c> IS <c>GetGlobalUIScale()</c>, and forcing
+/// <c>1/g</c> rendered the readout at <c>1/g</c> against the game's own <c>g</c>. Identical only at
+/// exactly 100% interface size, and visibly larger below it. That was "it is still bigger than the
+/// game's banner".
+///
+/// The one consequence to keep in mind: <see cref="ReadoutBodyNode.Layout"/> returns a size in
+/// addon UNITS here, while <see cref="ReadoutPlacement"/> works in screen PIXELS, so
+/// <see cref="Render"/> converts between them.</summary>
 internal sealed unsafe class ClickableReadoutAddon(
     Func<ReadoutFrame?> provider,
     ReadoutPlacement placement,
     Action onTeleportClicked,
     Action onSettingsClicked,
+    Func<IReadOnlyList<FollowChoice>> getFollowChoices,
+    Action onQuestNameClicked,
     ITextureProvider textures,
     IFramework framework,
     IPluginLog log,
     Func<bool> diagnosticsEnabled) : NativeAddon
 {
+    /// <summary>The follow switcher's list. Not a node and not a child of anything here — it asks the
+    /// game to open its own context menu, which the game then owns entirely. See
+    /// <see cref="FollowSwitcherMenu"/>.</summary>
+    private readonly FollowSwitcherMenu followMenu = new(log);
+
     private ReadoutBodyNode? body;
+
     private Vector2 lastSize;
     private Vector2 lastPosition;
 
     /// <summary>The set of clickable nodes the collision list was last built for. Starts at -1,
     /// which no real set can equal, so the first frame always builds one.</summary>
     private int lastClickTargets = -1;
+
     private bool broken;
 
     /// <inheritdoc/>
@@ -65,15 +92,27 @@ internal sealed unsafe class ClickableReadoutAddon(
 
         // Same marshalling as the hub window, and for the same reason: Dalamud unloads plugins on a
         // thread-pool thread while Close() asserts the main thread.
+        //
+        // EVERYTHING that gives memory back to the game belongs below this check, and the follow
+        // menu is easy to miss: its context menu owns an AtkEventInterface allocated out of the
+        // game's UI heap and handed back with two IMemorySpace.Free calls. Freeing that heap from a
+        // thread-pool thread is unsynchronised mutation of a structure the game is using — nothing
+        // throws, nothing is logged, and the corruption surfaces later somewhere else. It was
+        // disposed four lines above this check until the review that found it.
         if (framework.IsInFrameworkUpdateThread)
         {
+            followMenu.Dispose();
             base.Dispose();
             return;
         }
 
         try
         {
-            framework.RunOnFrameworkThread(() => base.Dispose()).Wait(TimeSpan.FromSeconds(2));
+            framework.RunOnFrameworkThread(() =>
+            {
+                followMenu.Dispose();
+                base.Dispose();
+            }).Wait(TimeSpan.FromSeconds(2));
         }
         catch (Exception ex)
         {
@@ -109,13 +148,20 @@ internal sealed unsafe class ClickableReadoutAddon(
         // every time would be the loudest thing about a readout that is meant to be furniture.
         addon->DisableShowHideSoundEffects = true;
 
+        // hostIsHudScaled: this is an ordinary addon, so the game already renders it at the player's
+        // interface size — exactly as it renders the addon that draws the game's own Main Scenario
+        // Guide. The body therefore lays out in plain ULD units and must not scale them itself. See
+        // ReadoutBodyNode.hostIsHudScaled for the arithmetic that was wrong before.
         body = new ReadoutBodyNode(
             log,
             textures,
             diagnosticsEnabled,
             onTeleportClicked,
             onMoved: delta => placement.MoveTo(lastPosition + delta),
-            onSettingsClicked: onSettingsClicked)
+            onSettingsClicked: onSettingsClicked,
+            onFollowClicked: OpenFollowMenu,
+            onQuestNameClicked: onQuestNameClicked,
+            hostIsHudScaled: true)
         {
             Position = Vector2.Zero,
         };
@@ -158,6 +204,16 @@ internal sealed unsafe class ClickableReadoutAddon(
         broken = false;
     }
 
+    /// <summary>What the follow switcher's click does: ask the game to open its own context menu, at
+    /// the cursor, with the same list the Following tab shows — see
+    /// <see cref="Windows.NativeHubWindow.GetFollowChoices"/> and <see cref="FollowSwitcherMenu"/>.
+    ///
+    /// <para>There is nothing to toggle. The game owns the menu once it is open, including closing
+    /// it, so a second click on the caret is a click outside the menu and dismisses it — which is
+    /// what a player expects and what the hand-rolled version had to implement (badly) for
+    /// itself.</para></summary>
+    private void OpenFollowMenu() => followMenu.Open(getFollowChoices());
+
     private void OnFrameworkUpdate(IFramework tick)
     {
         if (broken || body is null || InternalAddon is null)
@@ -179,8 +235,6 @@ internal sealed unsafe class ClickableReadoutAddon(
 
     private void Render()
     {
-        ApplyRawPixelScale();
-
         if (provider() is not { } frame || frame.Content.IsEmpty)
         {
             body!.HideAll();
@@ -188,8 +242,9 @@ internal sealed unsafe class ClickableReadoutAddon(
             return;
         }
 
+        // In ADDON UNITS — the same units the game's own banner is authored in, because this addon
+        // is left at the scale the game gives it. See ReadoutBodyNode.hostIsHudScaled.
         var size = body!.Layout(frame);
-        var position = placement.Resolve(size);
 
         // Only when it actually changed: SetWindowSize writes through to the game's own sizing path,
         // and rebuilding the collision list every frame for an unchanged rectangle is pure waste.
@@ -204,6 +259,11 @@ internal sealed unsafe class ClickableReadoutAddon(
         }
 
         RefreshCollision();
+
+        // Placement is screen pixels — the safe area, the minimap's rectangle and the clamp are all
+        // measured in them — so the addon's extent has to be converted out of units first, or a
+        // readout at any interface size but 100% would be clamped against a box the wrong size.
+        var position = placement.Resolve(size * AtkUnitBase.GetGlobalUIScale());
 
         // Remembered because a drag is reported as an offset from wherever the host currently is,
         // and the body has no way to ask the addon where that was.
@@ -224,18 +284,5 @@ internal sealed unsafe class ClickableReadoutAddon(
 
         lastClickTargets = live;
         InternalAddon->UpdateCollisionNodeList(false);
-    }
-
-    /// <summary>Undoes the interface scale the game applies to a normal addon, so one addon unit is
-    /// one screen pixel — the frame of reference <see cref="ReadoutBodyNode"/> and
-    /// <see cref="ReadoutPlacement"/> are both written in. Re-applied when it drifts, because the
-    /// game rewrites the scale on a resolution or interface-size change.</summary>
-    private void ApplyRawPixelScale()
-    {
-        var target = 1.0f / Math.Max(AtkUnitBase.GetGlobalUIScale(), 0.1f);
-        if (Math.Abs(InternalAddon->Scale - target) > 0.001f)
-        {
-            InternalAddon->SetScale(target, true);
-        }
     }
 }

@@ -1,5 +1,6 @@
 using System.Numerics;
 using KamiToolKit.Classes;
+using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Windows.Native;
 
@@ -29,6 +30,31 @@ internal static class GameColors
     /// <summary>List text, warm cream — the Duty Finder's own row colour.</summary>
     public static Vector4 ListText => Get(8, new Vector4(0.933f, 0.882f, 0.773f, 1f));
 
+    /// <summary>The headline written across the readout's banner plate.
+    ///
+    /// <para><b>Dark, which nothing else in this file is, and the one value here not backed by
+    /// evidence.</b> Every other HUD text role in the plugin is light-on-transparent because it is
+    /// drawn over the 3D world. The banner's plate is a sheet of cream parchment — mean
+    /// (200, 195, 174), sampled straight off <c>ui/uld/ScenarioTree.tex (0,0) 300x48</c> across the
+    /// whole of its stretchable band — so a white headline on it would be invisible.
+    /// The game's own headline node resolves its colour through <c>IsUIColor</c> like everything else
+    /// on that layout, but WHICH <c>UIColor</c> row could not be established from the files, and
+    /// guessing a row would be worse than admitting a literal: a wrong row id looks deliberate and
+    /// reads as evidence.</para>
+    ///
+    /// <para>So this is a literal, chosen against the sampled parchment: a dark warm brown, in the
+    /// same family as the bronze the plate's own bevel is drawn in, and 8.8:1 against that mean —
+    /// comfortably past the 4.5:1 a body size needs, which is the one thing about it that IS
+    /// measured. <b>The hue is not.</b> The check is one screenshot of the game's own Main Scenario
+    /// Guide beside ours; until somebody takes it, this is a legible value rather than the right
+    /// one.</para></summary>
+    public static Vector4 BannerHeadline { get; } = new(0.180f, 0.129f, 0.075f, 1f);
+
+    /// <summary>The headline's outline — less a colour than a halo. The parchment has visible noise
+    /// in it, and a pale edge under dark letters is what keeps them crisp on a textured ground.
+    /// Paired with <see cref="BannerHeadline"/>, and unverified for the same reason.</summary>
+    public static Vector4 BannerHeadlineEdge { get; } = new(0.925f, 0.906f, 0.831f, 1f);
+
     /// <summary>Reserved for genuinely bad states only. Never the sole signal for one.</summary>
     public static Vector4 Bad => Get(17, new Vector4(0.863f, 0f, 0f, 1f));
 
@@ -46,5 +72,40 @@ internal static class GameColors
             // A colour lookup must never be the thing that stops a window from being built.
             return fallback;
         }
+    }
+
+    /// <summary>The journal page's text, which is dark-on-cream and so cannot use any of the roles
+    /// above.
+    ///
+    /// <para><b>Why this is a separate set at all.</b> Every other text role in this file is
+    /// light-on-transparent, because everything else Wayfarer draws sits over the 3D world. The
+    /// journal page is a sheet of parchment, and the page shipped wearing the readout's colours: a
+    /// near-white giver line on cream, which the player photographed and could not read. Never white
+    /// on parchment.</para>
+    ///
+    /// <para><b>The values live in Core.</b> They are literals rather than <c>UIColor</c> rows — see
+    /// <see cref="JournalPalette"/> for what that admits and why — and being literals is exactly what
+    /// lets them be checked without a client attached, which is what <c>JournalPaletteTests</c> does.
+    /// This class is the seam: everything else Wayfarer draws asks the game for its colour, so the
+    /// four that cannot are reached through the same door as the rest.</para>
+    ///
+    /// <para><b>The one exception is not here.</b> The level badge's numeral stays light —
+    /// <see cref="Heading"/> over <see cref="HeadingEdge"/>, exactly as JournalDetail <c>#9</c> —
+    /// because the badge is the game's own black disc (<c>Journal_Detail.tex</c> (420,124)) and not
+    /// parchment. There is deliberately no value for it below: it is not a parchment role.</para>
+    /// </summary>
+    public static class JournalPage
+    {
+        /// <inheritdoc cref="JournalPalette.Title"/>
+        public static Vector4 Title => JournalPalette.Title;
+
+        /// <inheritdoc cref="JournalPalette.Body"/>
+        public static Vector4 Body => JournalPalette.Body;
+
+        /// <inheritdoc cref="JournalPalette.Heading"/>
+        public static Vector4 Heading => JournalPalette.Heading;
+
+        /// <inheritdoc cref="JournalPalette.Meta"/>
+        public static Vector4 Meta => JournalPalette.Meta;
     }
 }

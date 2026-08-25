@@ -23,10 +23,11 @@ namespace Wayfarer.Windows.Native;
 /// away on the game's own context menu and on the window's Quests tab.</description></item>
 /// </list>
 ///
-/// The same asymmetry decides where the settings cog goes: onto the clickable host only. Nothing on
-/// the overlay can be clicked, so a cog there would be an affordance that does nothing. A controller
-/// reaches Settings through the game's own context menu, through the Wayfarer window's Settings tab,
-/// and through <c>/wayfarer settings</c>.
+/// The same asymmetry decides where the settings cog and the follow switcher's dropdown go: onto the
+/// clickable host only. Nothing on the overlay can be clicked, so either would be an affordance that
+/// does nothing there. A controller reaches Settings through the game's own context menu, through
+/// the Wayfarer window's Settings tab, and through <c>/wayfarer settings</c> — and reaches what to
+/// follow through that same context menu's Follow submenu and the window's Following tab.
 ///
 /// The failure modes are what make this safe to do at all: a host that never attaches draws nothing,
 /// and "nothing appears" is recoverable. If the clickable addon cannot be created the overlay covers
@@ -44,6 +45,7 @@ internal sealed class GuidanceOverlay(
     IFramework framework,
     ITextureProvider textures,
     Action onSettingsClicked,
+    Func<IReadOnlyList<FollowChoice>> getFollowChoices,
     IPluginLog log) : IDisposable
 {
     private OverlayController? controller;
@@ -199,6 +201,8 @@ internal sealed class GuidanceOverlay(
                 placement,
                 Teleport,
                 onSettingsClicked,
+                getFollowChoices,
+                OpenJournal,
                 textures,
                 framework,
                 log,
@@ -278,6 +282,18 @@ internal sealed class GuidanceOverlay(
         if (feed.Navigator.Current.AetheryteId is { } aetheryteId)
         {
             TeleportAction.Execute(aetheryteId, cfg, clientState, log);
+        }
+    }
+
+    /// <summary>Opens the game's own Journal at whatever is being followed right now. Read off the
+    /// live snapshot at the moment of the click rather than captured when the readout was drawn,
+    /// exactly as the teleport above is: the readout is a view of that snapshot and the snapshot is
+    /// the only thing that knows which quest the name belongs to.</summary>
+    private void OpenJournal()
+    {
+        if (feed.Navigator.Current.QuestId is { } questId)
+        {
+            QuestJournalAction.Execute(questId);
         }
     }
 

@@ -39,7 +39,7 @@ public class OtherZoneResolutionTests
     public void InteriorMessage_UsesZoneName_WhenPresent()
     {
         Assert.Equal(
-            "Objective is inside Foundation — find the entrance nearby.",
+            "In Foundation — find the entrance",
             OtherZoneResolution.InteriorMessage("Foundation"));
     }
 
@@ -47,7 +47,7 @@ public class OtherZoneResolutionTests
     public void InteriorMessage_FallsBackToGenericPhrase_WhenZoneNameIsNull()
     {
         Assert.Equal(
-            "Objective is inside another zone — find the entrance nearby.",
+            "In another zone — find the entrance",
             OtherZoneResolution.InteriorMessage(null));
     }
 }

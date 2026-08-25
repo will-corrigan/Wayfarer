@@ -5,6 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Wayfarer.Core.Unlocks;
+using Wayfarer.Core.Unlocks.Gates;
 
 namespace Wayfarer;
 
@@ -27,6 +28,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly IDataManager dataManager;
     private readonly List<ResolvedUnlock> entries = [];
+    private readonly UnlockLiveProgress liveProgress;
+
+    /// <summary>Every gate kind the loaded catalogue names. It decides whether asking the server
+    /// for anything is warranted at all: fetching data no entry would read is the definition of a
+    /// speculative request, so an absent kind means no packet.</summary>
+    private HashSet<string> catalogueGateKinds = [];
 
     /// <summary>(level, territory) as of the last time a recompute was triggered from the
     /// framework-update change detector. Null means "never triggered" — including right after
@@ -36,6 +43,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     // A recompute runs on every zone change, level-up and pickup, so a repeatable fault here would
     // write a line for each. The first one carries the whole story; the rest are noise.
     private bool recomputeFailureLogged;
+
+    // Same reasoning as recomputeFailureLogged, for the same-shaped failure in ResolveGameText: a
+    // bad GameTextRef would otherwise spam the log every recompute rather than once.
+    private bool gameTextResolveFailureLogged;
 
     public UnlockService(
         IPluginLog log,
@@ -49,6 +60,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         this.clientState = clientState;
         this.pluginInterface = pluginInterface;
         this.dataManager = dataManager;
+        liveProgress = new UnlockLiveProgress();
         try
         {
             Load();
@@ -65,10 +77,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             // checklist reads as "you have done everything" — the same lie in a different shape.
             // Every surface that would have shown entries shows this instead.
             LoadError = ex.Message;
-            const string message =
-                "Wayfarer unlocks: the unlock catalogue could not be read, so the unlocks list is empty and "
-                + "says so rather than pretending there is nothing left to do.";
-            log.Error(ex, message);
+            log.Error(ex, "Wayfarer: the unlock catalogue could not be read.");
         }
     }
 
@@ -132,6 +141,29 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var ps = PlayerState.Instance();
         var ui = UIState.Instance();
         var inventory = InventoryManager.Instance();
+
+        // The one promise the whole gate model rests on: when this is true, every plainly-returning
+        // read below is authoritative. When it is false the pass does not run at all, because an
+        // unloaded player state answers "no" to every "do you own this" and would rewrite a correct
+        // checklist into the claim that the player owns nothing.
+        //
+        // Every manager any plainly-returning reader below depends on has to be named here, and two
+        // were not. IsQuestAccepted answers false with no QuestManager, which turns a quest already
+        // sitting in the player's journal into "not accepted" and can then print Available for
+        // something they have started; the item readers answer zero with no InventoryManager, which
+        // is a confident "you do not have it". A reader that can only answer by guessing must make
+        // this false rather than guess.
+        var ready = clientState.IsLoggedIn
+            && ps != null
+            && ps->IsLoaded
+            && ui != null
+            && qm != null
+            && inventory != null;
+        if (ready)
+        {
+            liveProgress.RequestOwnProgressOnce(catalogueGateKinds);
+        }
+
         var ctx = new UnlockGateContext(
             PlayerLevel: level,
             PlayerGrandCompany: ps != null ? ps->GrandCompany : (byte)0,
@@ -145,7 +177,16 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             IsMountUnlocked: mountId => ps != null && ps->IsMountUnlocked(mountId),
             IsMinionUnlocked: minionId => ui != null && ui->IsCompanionUnlocked(minionId),
             GetOwnedItemCount: itemId => inventory != null ? inventory->GetInventoryItemCount(itemId) : 0,
-            GetKeyItemCount: itemId => inventory != null ? KeyItemCount(inventory, itemId) : 0);
+            GetKeyItemCount: itemId => inventory != null ? KeyItemCount(inventory, itemId) : 0,
+            ResolveGameText: ResolveGameText,
+            LiveStateReady: ready,
+            IsPublicContentUnlocked: UIState.IsPublicContentUnlocked,
+            IsPublicContentCompleted: UIState.IsPublicContentCompleted,
+            IsAchievementComplete: liveProgress.IsAchievementComplete,
+            IsAetherCurrentZoneComplete: id => ps != null ? ps->IsAetherCurrentZoneComplete(id) : null,
+            SharedFateRankAtLeast: liveProgress.SharedFateRankAtLeast,
+            ZoneProgressAtLeast: liveProgress.ZoneProgressAtLeast,
+            GetSaddlebagItemCount: itemId => inventory != null ? SaddlebagCount(inventory, itemId) : 0);
 
         UnlockStatusCalculator.Compute(entries, ctx);
         var territory = clientState.TerritoryType;
@@ -160,6 +201,14 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     /// requirement says which container to look in rather than guessing.</summary>
     private static int KeyItemCount(InventoryManager* inventory, uint itemId) =>
         inventory->GetItemCountInContainer(itemId, InventoryType.KeyItems);
+
+    /// <summary>Both saddlebag pages. The premium pair is only readable for a player who has it,
+    /// and reads as empty otherwise, which is the right answer for someone who does not.</summary>
+    private static int SaddlebagCount(InventoryManager* inventory, uint itemId) =>
+        inventory->GetItemCountInContainer(itemId, InventoryType.SaddleBag1)
+        + inventory->GetItemCountInContainer(itemId, InventoryType.SaddleBag2)
+        + inventory->GetItemCountInContainer(itemId, InventoryType.PremiumSaddleBag1)
+        + inventory->GetItemCountInContainer(itemId, InventoryType.PremiumSaddleBag2);
 
     /// <summary>Which ClassJob abbreviations a <see cref="ClassJobCategory"/> row flags: Lumina
     /// generates one bool property per abbreviation on that struct, so there's no reflection-free
@@ -211,6 +260,25 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         "PCT" => cat.PCT,
         _ => false,
     };
+
+    /// <summary>A <see cref="ClassJobCategory"/> row's own <c>Name</c> — "Disciple of War or Magic",
+    /// "Disciple of the Land", or a single job's name on a job quest.
+    ///
+    /// <para>This is the string the game itself prints for a job gate, and reading it is the whole
+    /// of the fix for a requirement line that used to enumerate thirty jobs. Row 0 is the
+    /// unrestricted category and names nobody; some rows carry a blank name, which is why the
+    /// caller still has the member list to fall back to. See
+    /// <see cref="JobGateText"/>.</para></summary>
+    private static string? CategoryName(RowRef<ClassJobCategory> categoryRef)
+    {
+        if (categoryRef.RowId == 0 || categoryRef.ValueNullable is not { } cat)
+        {
+            return null;
+        }
+
+        var name = cat.Name.ExtractText();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
 
     /// <summary>Adds the ClassJob row ids/names a category flags into <paramref name="rowIds"/>/
     /// <paramref name="names"/> (row 0 means unrestricted — nothing to add). Called separately for
@@ -339,6 +407,36 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         return byKey;
     }
 
+    /// <summary>Reads a <see cref="GameTextRef"/> against the running client's own sheets, in
+    /// whatever client language the player is using — see <see cref="GameTextRef"/> for why a
+    /// reference is stored rather than a copy of the text. The sheet read itself is
+    /// <see cref="GameSheetText.Read"/>; see <c>tools/Wayfarer.CatalogueGen</c>'s offline use of the
+    /// same <c>RawRow</c> API over sqpack directly.</summary>
+    private string? ResolveGameText(GameTextRef reference)
+    {
+        try
+        {
+            return GameSheetText.Read(dataManager, reference.Sheet, reference.Row, reference.Column);
+        }
+        catch (Exception ex)
+        {
+            LogGameTextResolveFailure(ex, reference);
+            return null;
+        }
+    }
+
+    private void LogGameTextResolveFailure(Exception ex, GameTextRef reference)
+    {
+        if (gameTextResolveFailureLogged)
+        {
+            return;
+        }
+
+        gameTextResolveFailureLogged = true;
+        var where = $"{reference.Sheet}#{reference.Row} col {reference.Column}";
+        log.Warning(ex, $"Wayfarer: could not resolve game text {where} — falling back to the curated label.");
+    }
+
     private void RecomputeSafe()
     {
         try
@@ -372,12 +470,14 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var enpcSheet = dataManager.GetExcelSheet<ENpcResident>();
         var sheet = dataManager.GetExcelSheet<Quest>();
         var acceptConditions = dataManager.GetExcelSheet<QuestAcceptAdditionCondition>();
+        var duties = dataManager.GetExcelSheet<ContentFinderCondition>();
         var byKey = BuildNameIndex(sheet);
 
+        catalogueGateKinds = CatalogueGateKinds.Of(defs);
         entries.Clear();
         foreach (var def in defs)
         {
-            var r = new ResolvedUnlock { Def = def };
+            var r = new ResolvedUnlock { Def = def, IdentityGate = UnlockIdentityGate.For(def.Reward, duties) };
             if (Bind(def, sheet, byKey) is { } bound)
             {
                 QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level ?? 0);
@@ -401,8 +501,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         byte LockoutJoin,
         List<uint> RequiredJobRowIds,
         List<string> RequiredJobNames,
+        string? RequiredJobCategoryName,
         List<uint> AltRequiredJobRowIds,
         List<string> AltRequiredJobNames,
+        string? AltRequiredJobCategoryName,
         int AltRequiredJobLevel,
         List<uint> InstanceContentRowIds,
         List<string> InstanceContentNames,
@@ -600,8 +702,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 LockoutJoin: q.QuestLockJoin,
                 RequiredJobRowIds: jobRowIds,
                 RequiredJobNames: jobNames,
+                RequiredJobCategoryName: CategoryName(q.ClassJobCategory0),
                 AltRequiredJobRowIds: altJobRowIds,
                 AltRequiredJobNames: altJobNames,
+                AltRequiredJobCategoryName: lvl1 != 0 ? CategoryName(q.ClassJobCategory1) : null,
                 AltRequiredJobLevel: lvl1,
                 InstanceContentRowIds: icIds,
                 InstanceContentNames: icNames,
@@ -643,8 +747,10 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.LockoutJoin = LockoutJoin;
             r.RequiredJobRowIds = RequiredJobRowIds;
             r.RequiredJobNames = RequiredJobNames;
+            r.RequiredJobCategoryName = RequiredJobCategoryName;
             r.AltRequiredJobRowIds = AltRequiredJobRowIds;
             r.AltRequiredJobNames = AltRequiredJobNames;
+            r.AltRequiredJobCategoryName = AltRequiredJobCategoryName;
             r.AltRequiredJobLevel = AltRequiredJobLevel;
             r.InstanceContentRowIds = InstanceContentRowIds;
             r.InstanceContentNames = InstanceContentNames;
