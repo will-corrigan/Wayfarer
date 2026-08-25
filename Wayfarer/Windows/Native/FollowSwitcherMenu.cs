@@ -55,9 +55,11 @@ internal sealed class FollowSwitcherMenu(IPluginLog log) : IDisposable
     private ContextMenu? menu;
     private bool broken;
 
-    /// <summary>Opens the game's context menu at the cursor with one entry per choice. Choices with
-    /// nothing to activate are listed and disabled rather than hidden — the same rule the Following
-    /// tab follows, because a choice that vanishes when it is empty cannot be learned.</summary>
+    /// <summary>Opens the game's context menu at the cursor with one entry per choice. Every choice
+    /// is listed, including the ones with nothing to start right now — the same rule the Following tab
+    /// follows, because a choice that vanishes when it is empty cannot be learned — and each one acts:
+    /// the ones with nothing to start open the tab that says so. The only entry ever disabled is the
+    /// one already being followed.</summary>
     public void Open(IReadOnlyList<FollowChoice> choices)
     {
         ArgumentNullException.ThrowIfNull(choices);
@@ -106,9 +108,14 @@ internal sealed class FollowSwitcherMenu(IPluginLog log) : IDisposable
     }
 
     /// <summary>One follow choice as a row of the game's menu. Shared with the menu the readout
-    /// drops for a controller (<see cref="ReadoutMenu"/>), which lists the same choices in a
-    /// submenu: the words, and the rule that a choice with nothing behind it is shown disabled
-    /// rather than hidden, are decided once here.</summary>
+    /// drops for a controller (<see cref="ReadoutMenu"/>), which lists the same choices in a submenu:
+    /// the words, and the rule for when a row is disabled, are decided once here.
+    ///
+    /// <para>Disabled means one thing only: this is what is already being followed. It used to also
+    /// mean "there is nothing behind this entry", which during a hunt disabled the Main Scenario row —
+    /// because the list believed the main scenario was already being followed — and disabled the
+    /// Hunting Log row too, whenever the rest of the rank was in another zone. Between them that left
+    /// a controller player a menu with nothing in it she could press.</para></summary>
     internal static ContextMenuItem Entry(FollowChoice choice)
     {
         var activate = choice.Activate;

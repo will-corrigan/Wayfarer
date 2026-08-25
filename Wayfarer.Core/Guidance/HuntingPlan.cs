@@ -20,6 +20,29 @@ public static class HuntingPlan
 
     public static string ProgressText(int killed, int required) => $"{killed}/{required}";
 
+    /// <summary>What the control that starts a hunt says, given how much of the RANK is left.
+    ///
+    /// <para><b>The rank, and not the zone.</b> Starting a hunt plans every remaining target on the
+    /// current log page, grouped by zone — see <c>HuntingSource.BuildLegs</c> — so this is the number
+    /// of stops the press will actually attempt. It used to be counted from the targets in the
+    /// player's current zone, which is a different and much smaller set: the window's Hunting tab
+    /// showed thirteen monsters over a button that said "Start Hunting (3)", and both numbers were
+    /// internally correct. The label and the count are computed here, once, so the two surfaces that
+    /// offer this press cannot come to disagree again.</para>
+    ///
+    /// <para><b>Duty-gated targets are included.</b> They have no overworld coordinate, but they are
+    /// not dropped from the plan either — <see cref="Destination"/> turns them into an instanced-duty
+    /// objective with the Duty Finder affordance behind it, so the press does attempt them and the
+    /// count would be a lie without them.</para></summary>
+    public static string StartLabel(int remainingOnRank) =>
+        remainingOnRank > 0 ? $"Start Hunting ({remainingOnRank})" : "Start Hunting";
+
+    /// <summary>Whether starting a hunt would do anything. Read from the same number
+    /// <see cref="StartLabel"/> prints, so a lit button and a non-zero count are one decision — the
+    /// button used to be disabled whenever the player stood in a zone with nothing left in it, while
+    /// the list beside it still showed the rest of the rank waiting.</summary>
+    public static bool CanStart(int remainingOnRank) => remainingOnRank > 0;
+
     /// <summary>"Hunting Log - Gladiator" — the mode indicator. Falls back to the bare log name
     /// when the active log has not resolved yet.
     ///

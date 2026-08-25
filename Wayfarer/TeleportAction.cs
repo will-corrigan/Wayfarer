@@ -29,6 +29,12 @@ internal static unsafe class TeleportAction
         var telepo = Telepo.Instance();
         if (telepo == null)
         {
+            // Said, not swallowed. Every other refusal on this path explains itself, and a press that
+            // returns in silence is indistinguishable from a control that was never wired up — which
+            // is the fault this surface has just been audited for.
+            log.Warning(
+                "Wayfarer: no teleport was cast — the game's own teleport service could not be reached. The route "
+                + "still stands; try again in a moment, or teleport with the game's own map.");
             return;
         }
 

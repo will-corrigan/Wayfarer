@@ -1,4 +1,5 @@
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Guidance;
 using Wayfarer.Guidance.Sources;
@@ -49,6 +50,22 @@ internal sealed class QuestNavigator(
         set => questSource.FollowedQuest = value;
     }
 
+    /// <summary>What returning to the main scenario has to do from here — see
+    /// <see cref="MainScenarioReturn"/>. Read by every surface that offers that return, so the
+    /// condition deciding whether the control is live and the operations the control performs are one
+    /// thing rather than four independent readings of two fields.</summary>
+    public FollowReset MainScenarioReset =>
+        MainScenarioReturn.From(Current.Engaged, FollowedOverride is not null);
+
+    /// <summary>Which of the four follow modes is running — see <see cref="MainScenarioReturn"/>.
+    /// Exactly one, always, and "nothing in particular" is <see cref="Core.Guidance.FollowMode.MainScenario"/>.
+    ///
+    /// <para>The engaged source is identified by asking each source for its own <c>SourceId</c> rather
+    /// than by comparing against a written-down string, so a renamed source cannot leave a surface
+    /// silently reporting the wrong mode.</para></summary>
+    public FollowMode FollowMode =>
+        MainScenarioReturn.ModeOf(EngagedMode(), FollowedOverride is not null);
+
     /// <summary>The active explicit selection, whichever feature owns it — an unlock stop, or a
     /// hunting target rendered back into the old shape. Transitional, like
     /// <see cref="PickupTarget"/> itself.</summary>
@@ -84,6 +101,17 @@ internal sealed class QuestNavigator(
         unlockSource.StartRoute(route);
     }
 
+    /// <summary>Starts a hunt through every remaining target on the current log page.
+    ///
+    /// <para>The direct call, because the pickup shape cannot express this plan. The three surfaces
+    /// that offer "Start Hunting" used to build a list of <see cref="PickupTarget"/>s out of the
+    /// targets in the player's current zone and hand it to <see cref="SetRoute"/>, which recognised
+    /// them as hunting targets and threw the list away in favour of the whole rank — so the list was
+    /// a fiction, and worse than a fiction: an empty one (every remaining target in another zone, or
+    /// every one of them duty-gated) made <see cref="SetRoute"/> return without starting anything,
+    /// which is a press that does nothing.</para></summary>
+    public void StartHunt() => huntingSource.StartHunt();
+
     /// <summary>The universal exit: whichever explicit mode is engaged, this ends it and drops the
     /// player back to the quest they were following.</summary>
     public void ClearPickup() => guidance.Arbiter.ReleaseAll();
@@ -93,4 +121,23 @@ internal sealed class QuestNavigator(
     public List<(ushort Id, string Name)> GetAcceptedQuests() => questSource.GetAcceptedQuests();
 
     public string? GetAcceptedQuestObjective(uint rawQuestId) => questSource.GetAcceptedQuestObjective(rawQuestId);
+
+    /// <summary>The mode the engaged source stands for, or null when nothing is engaged. The one
+    /// place a source id is turned into a follow mode, and it does it by asking the sources.</summary>
+    private FollowMode? EngagedMode()
+    {
+        if (Current is not { Engaged: true, SourceId: { } sourceId })
+        {
+            return null;
+        }
+
+        if (string.Equals(sourceId, huntingSource.SourceId, StringComparison.Ordinal))
+        {
+            return Core.Guidance.FollowMode.Hunting;
+        }
+
+        return string.Equals(sourceId, unlockSource.SourceId, StringComparison.Ordinal)
+            ? Core.Guidance.FollowMode.UnlockRoute
+            : null;
+    }
 }

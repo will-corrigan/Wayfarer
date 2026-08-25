@@ -69,7 +69,7 @@ internal sealed unsafe class ReadoutAddon(
     Action onDutyClicked,
     Action onSettingsClicked,
     Func<IReadOnlyList<FollowChoice>> getFollowChoices,
-    Action onQuestNameClicked,
+    Action onSubjectClicked,
     GuidanceActions actions,
     ITextureProvider textures,
     IFramework framework,
@@ -178,7 +178,7 @@ internal sealed unsafe class ReadoutAddon(
             onMoved: delta => placement.MoveTo(lastPosition + delta),
             onSettingsClicked: onSettingsClicked,
             onFollowClicked: OpenFollowMenu,
-            onQuestNameClicked: onQuestNameClicked,
+            onSubjectClicked: onSubjectClicked,
             onPlateSubcommand: actionMenu.Open,
             hostIsHudScaled: true)
         {

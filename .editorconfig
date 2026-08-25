@@ -263,6 +263,15 @@ dotnet_diagnostic.MA0048.severity = none
 dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
+[Wayfarer.Core/Guidance/MainScenarioReturn.cs]
+# FollowMode and FollowReset are the vocabulary of the one decision this file
+# makes - which of the four follow modes is running, and what going back to the
+# main scenario has to do from it. Meaningless apart from it, so kept in one file
+# rather than three near-empty ones (same rationale as ChainPlanner.cs above).
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer.Core/Navigation/AetherytePicker.cs]
 # Ported as a single file with its companion AetherytePoint record, matching
 # the source repo's port map (task-2-brief.md) exactly.

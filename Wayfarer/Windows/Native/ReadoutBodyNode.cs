@@ -449,25 +449,26 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// as wide as the words drew.</para>
     ///
     /// <para><b>Its click and the plate's now agree.</b> Since <see cref="bannerHitBox"/> took over
-    /// opening the Journal for the whole parchment, this narrower box over the name does the exact
-    /// same click when it has one — it is above the plate in hit-test order, so it still catches the
-    /// pointer first, but there is no longer a different answer underneath it to disagree with. What
-    /// this box is still for on its own is the tooltip: revealing a name the plate cut short.</para>
+    /// opening what is being followed for the whole parchment, this narrower box over the name does
+    /// the exact same press — it is above the plate in hit-test order, so it still catches the pointer
+    /// first, but there is no longer a different answer underneath it to disagree with. What this box
+    /// is still for on its own is the tooltip: revealing a name the plate cut short.</para>
     /// </summary>
     private readonly ResNode? subjectHitBox;
 
-    /// <summary>The whole plate as a click target for the Journal, at whatever is being followed —
-    /// bounded to the parchment itself, not the readout's full width — or null in a host that takes
-    /// no mouse.
+    /// <summary>The whole plate as a click target for whatever is being followed — the game's own
+    /// Journal at the quest, or Wayfarer's own page for a hunt or an unlock route; see
+    /// <c>GuidanceActions.Subject</c>. Bounded to the parchment itself, not the readout's full width —
+    /// or null in a host that takes no mouse.
     ///
     /// <para><b>Why the plate and not only the words of the name.</b> Reported live: the plate used
     /// to open Settings, which was the large, obvious target doing the incidental thing, while the
-    /// Journal — the useful thing — was a strip the width of the name's own text. This is the fix:
+    /// subject — the useful thing — was a strip the width of the name's own text. This is the fix:
     /// the parchment is the readout's face and the obvious click on it should be the obvious action,
     /// which is "go look at the thing I am following", not the plugin's own settings.</para>
     ///
     /// <para><b>Settings moved off the plate entirely.</b> It was never anywhere else, but with the
-    /// plate now claimed by the Journal it would be a second control fighting the same parchment for
+    /// plate now claimed by the subject it would be a second control fighting the same parchment for
     /// the same click. The cog beside the header pill is the only settings affordance left on the
     /// readout — see <see cref="cogNode"/> — and it was never removed, so there was nothing to
     /// restore.</para>
@@ -477,18 +478,26 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// before the words of the name, so both of those still sit above it in hit-test order: the caret
     /// still drops the follow list, and the words of the name still carry their own, narrower click
     /// (see <see cref="subjectHitBox"/>) for the truncated-name tooltip that lives with them. Hitting
-    /// either region opens the same Journal entry, so which one caught the click never matters.</para>
+    /// either region opens the same destination, so which one caught the click never matters.</para>
     ///
     /// <para>It is also where the game's cursor lands first when a controller cycles to the readout,
-    /// so "HUD Select, then Confirm" opens the Journal at whatever is being followed — the shortest
-    /// route the readout has. And it is the one control that answers a second press: the game's own
+    /// so "HUD Select, then Confirm" opens whatever is being followed — the shortest route the readout
+    /// has. <b>Whatever</b> is being followed: this press was wired to the Journal alone, so on a hunt
+    /// or an unlock route the cursor came to rest on a control that accepted Confirm and did nothing at
+    /// all. And it is the one control that answers a second press: the game's own
     /// <b>Display Subcommands</b> drops a menu with everything else Wayfarer can be asked to do —
     /// see <see cref="AddSubcommand"/> and <see cref="ReadoutMenu"/>.</para></summary>
     private readonly ResNode? bannerHitBox;
 
-    /// <summary>Whether this host was given somewhere to send a click on the quest name. False on
-    /// the overlay, where nothing is clickable at all.</summary>
-    private readonly bool journalClickable;
+    /// <summary>Whether this host was given somewhere to send a press on the subject — the plate and
+    /// the words of the name alike. False on the overlay, where nothing is clickable at all.
+    ///
+    /// <para>It is the ONLY condition on offering that press now. It used to be paired with "and this
+    /// line is marked as a Journal entry", which is false for a hunt and for an unlock route — while
+    /// the plate offered the press regardless, so the two targets over the same parchment disagreed
+    /// and the larger of them lied. The destination is the callback's business, and it always has
+    /// one.</para></summary>
+    private readonly bool subjectClickable;
 
     /// <summary>The four controls as the game's controller cursor sees them: zero-sized component
     /// nodes parked on the same rectangles the hit boxes above cover, in the order the cursor walks
@@ -563,7 +572,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Action<Vector2>? onMoved = null,
         Action? onSettingsClicked = null,
         Action? onFollowClicked = null,
-        Action? onQuestNameClicked = null,
+        Action? onSubjectClicked = null,
         Action? onPlateSubcommand = null,
         bool hostIsHudScaled = false)
     {
@@ -593,9 +602,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         crestNode = BuildCrest();
 
         // The parchment's own click target: the obvious, large thing on the readout opens the
-        // Journal at whatever is being followed — see the field's own note for why settings moved
+        // subject at whatever is being followed — see the field's own note for why settings moved
         // off the plate entirely and lives on the cog alone.
-        bannerHitBox = onQuestNameClicked is null ? null : BuildHitBox(onQuestNameClicked, bannerSection);
+        bannerHitBox = onSubjectClicked is null ? null : BuildHitBox(onSubjectClicked, bannerSection);
         headlineNode = BuildHeadline();
 
         arrowWordsNode = BuildArrowWords();
@@ -612,11 +621,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // rest of them — everything that answers a press is built together, there.
         arrowNode = BuildArrow(BaseArrow);
         elevationNode = BuildArrow(BaseArrow / 2f);
-        subjectHitBox = BuildSubjectHitBox(onFollowClicked, onQuestNameClicked);
-        journalClickable = onQuestNameClicked is not null;
+        subjectHitBox = BuildSubjectHitBox(onFollowClicked, onSubjectClicked);
+        subjectClickable = onSubjectClicked is not null;
         BuildInteractions(
             onSettingsClicked,
-            onQuestNameClicked,
+            onSubjectClicked,
             onFollowClicked,
             onTeleportClicked,
             onDutyClicked,
@@ -624,7 +633,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     }
 
     /// <summary>Where the game should put the controller cursor when this readout is the focused
-    /// addon: on the plate, whose press opens the Journal at whatever is being followed. Null in a
+    /// addon: on the plate, whose press opens whatever is being followed. Null in a
     /// host that takes no input, and null before the plate has ever been drawn.
     ///
     /// <para>It is the plate rather than the cog because that is the readout's answer to "what am I
@@ -705,7 +714,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             subject,
             subjectContent?.Text,
             GameMetrics.Banner.HeadlineLeft * factor,
-            journalClickable && subjectContent?.Action == ReadoutLineAction.OpenJournal);
+            subjectClickable && subjectContent is not null);
 
         SettleClickTargets();
         SettleNav();
@@ -1048,7 +1057,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// remaps this, because what is matched here is the input's id and not a button.
     ///
     /// <para>Registered as a second handler for the event the anchor already listens to, so Confirm
-    /// keeps doing exactly what a mouse click on the plate does — open the Journal — and this is
+    /// keeps doing exactly what a mouse click on the plate does — open what is being followed — and
+    /// this is
     /// strictly an addition beside it.</para>
     ///
     /// <para>What no source could settle is whether the game routes this id to a focused node
@@ -1177,13 +1187,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// the plate keeps the index <see cref="ControllerFocusNode"/> hands the game.</para></summary>
     private void BuildNavAnchors(
         Action? onSettingsClicked,
-        Action? onQuestNameClicked,
+        Action? onSubjectClicked,
         Action? onFollowClicked,
         Action? onTeleportClicked,
         Action? onDutyClicked)
     {
         navTargets[NavCog] = BuildNavAnchor(onSettingsClicked, bannerSection);
-        navTargets[NavBanner] = BuildNavAnchor(onQuestNameClicked, bannerSection);
+        navTargets[NavBanner] = BuildNavAnchor(onSubjectClicked, bannerSection);
         navTargets[NavSwitcher] = BuildNavAnchor(onFollowClicked, bannerSection);
         navTargets[NavTeleport] = BuildNavAnchor(onTeleportClicked, this);
         navTargets[NavDuty] = BuildNavAnchor(onDutyClicked, this);
@@ -1384,9 +1394,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <summary>The box over the words of the name, in the banner's own section and last of its
     /// children, so the words of the name sit above the plate's own click target in hit-test order.
     /// Null in a host that takes no mouse.</summary>
-    private ResNode? BuildSubjectHitBox(Action? onFollowClicked, Action? onQuestNameClicked)
+    private ResNode? BuildSubjectHitBox(Action? onFollowClicked, Action? onSubjectClicked)
     {
-        if (onFollowClicked is null && onQuestNameClicked is null)
+        if (onFollowClicked is null && onSubjectClicked is null)
         {
             return null;
         }
@@ -1396,9 +1406,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // Registered once, offered per frame. The cursor is what says whether the click is on offer
         // this frame — see LayoutSubjectHitBox — because the same box is also what a truncated name is
         // hovered over, and a hunt has a name to reveal but no journal entry.
-        if (onQuestNameClicked is not null)
+        if (onSubjectClicked is not null)
         {
-            box.AddEvent(AtkEventType.MouseClick, onQuestNameClicked);
+            box.AddEvent(AtkEventType.MouseClick, onSubjectClicked);
         }
 
         box.AttachNode(bannerSection);
