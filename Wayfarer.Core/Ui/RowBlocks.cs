@@ -9,8 +9,9 @@ public readonly record struct RowBlocks(
     ScreenRect Icon,
     ScreenRect Label,
     ScreenRect Trailing,
-    ScreenRect Description)
+    ScreenRect Description,
+    ScreenRect Status)
 {
     /// <summary>Every part, for a caller that wants to check them all at once.</summary>
-    public IEnumerable<ScreenRect> Blocks => [Icon, Label, Trailing, Description];
+    public IEnumerable<ScreenRect> Blocks => [Icon, Label, Trailing, Description, Status];
 }

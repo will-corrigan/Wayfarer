@@ -109,6 +109,81 @@ public class LayoutContainmentTests
         Assert.False(blocks.Icon.Overlaps(blocks.Label), $"at {width}");
     }
 
+    /// <summary>The row's right-hand rail. The level and the state each own a fixed column the game
+    /// itself uses, and neither may be reached by the words to its left — the field report was a
+    /// three-character level rendered "Lv 53…", which happened because the level was sharing its 48
+    /// pixels with a zone name. Nothing may share either column with anything.</summary>
+    [Theory]
+    [MemberData(nameof(Widths))]
+    public void A_rows_two_captions_keep_their_own_columns(float width)
+    {
+        var height = RowLayout.Height(RowShape.Entry);
+        var blocks = RowLayout.Compose(RowShape.Entry, width, height, hasIcon: false, hasStatus: true);
+
+        Assert.False(blocks.Label.Overlaps(blocks.Trailing), $"at {width}: the name reaches the level");
+        Assert.False(
+            blocks.Description.Overlaps(blocks.Status), $"at {width}: the description reaches the state");
+        Assert.False(blocks.Trailing.Overlaps(blocks.Status), $"at {width}: the two captions collide");
+
+        // Wide enough to hold both and the columns are the game's own widths, undiminished.
+        if (width >= 460f)
+        {
+            Assert.Equal(GameMetrics.Row.TrailingWidth, blocks.Trailing.Width);
+            Assert.Equal(GameMetrics.Row.StatusWidth, blocks.Status.Width);
+            Assert.Equal(blocks.Trailing.Right, blocks.Status.Right);
+        }
+    }
+
+    /// <summary>A heading has to sit in the row the list actually gives it. The list virtualizes on
+    /// one height — the 48 of an entry — while the game's own header row is 28, and anchoring the
+    /// words at the entry row's own two-pixel inset left twenty-six pixels of nothing beneath every
+    /// heading. That void is what "a heading with nothing under it" was.</summary>
+    [Fact]
+    public void A_section_heading_sits_in_the_middle_of_the_row_the_list_gives_it()
+    {
+        var slot = GameMetrics.Row.EntryHeight;
+        var blocks = RowLayout.Compose(RowShape.Section, 460f, slot, hasIcon: false);
+
+        var above = blocks.Label.Y;
+        var below = slot - blocks.Label.Bottom;
+        Assert.Equal(above, below, 3);
+        Assert.True(above > GameMetrics.Row.TextTop, "the heading is still parked against the top");
+    }
+
+    /// <summary>A glyph is an accent on words and never stands alone. The pane draws the Journal's
+    /// own section discs in a gutter the text is indented past; when the pane is too narrow to leave
+    /// anything after that indent, the disc has to go with the line rather than be left floating.
+    /// </summary>
+    [Fact]
+    public void A_section_glyph_is_never_drawn_without_the_words_it_decorates()
+    {
+        foreach (var width in new[] { 1f, 40f, 120f, 240f, 320f, 460f, 507f, 640f, 760f, 1200f })
+        {
+            foreach (var height in PaneHeights)
+            {
+                var blocks = DetailPaneLayout.Compose(
+                    width,
+                    height,
+                    hasStatusIcon: true,
+                    hasLevel: true,
+                    bodyLines: DetailPaneLayout.MaxBodyLines,
+                    requirementLines: DetailPaneLayout.MaxRequirementLines,
+                    hasReward: true,
+                    hasFrom: true,
+                    hasProvenance: true);
+
+                Assert.False(
+                    !blocks.BodyGlyph.IsEmpty && blocks.Body.IsEmpty, $"{width}x{height}: a lone book");
+                Assert.False(
+                    !blocks.RequirementsGlyph.IsEmpty && blocks.RequirementsLabel.IsEmpty,
+                    $"{width}x{height}: a lone document");
+                Assert.False(
+                    !blocks.RewardGlyph.IsEmpty && blocks.RewardLabel.IsEmpty,
+                    $"{width}x{height}: a lone chest");
+            }
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Widths))]
     public void Every_pane_block_stays_inside_the_panes_content_box(float width)

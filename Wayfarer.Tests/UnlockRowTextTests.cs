@@ -56,8 +56,12 @@ public class UnlockRowTextTests
         Assert.Equal(string.Empty, UnlockRowText.Description(bare));
     }
 
+    /// <summary>The caption column is 48 pixels wide (Journal <c>1023 #4</c>) and the level is the
+    /// only thing that fits it. Joining the zone on with a middle dot is what produced the field
+    /// report's "Lv 53…" — a three-character number being ellipsised — so nothing may share the
+    /// column with it, and neither the zone nor the state word is allowed back in.</summary>
     [Fact]
-    public void The_gutter_carries_the_level_and_the_zone_and_not_the_state_word()
+    public void The_caption_column_carries_the_level_and_nothing_else()
     {
         var unlock = new ResolvedUnlock
         {
@@ -69,20 +73,40 @@ public class UnlockRowTextTests
 
         var trailing = UnlockRowText.Trailing(unlock);
 
-        Assert.Equal("Lv 5 · Lower La Noscea", trailing);
+        Assert.Equal("Lv 5", trailing);
+        Assert.DoesNotContain("Lower La Noscea", trailing, StringComparison.Ordinal);
         Assert.DoesNotContain("Available", trailing, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void A_missing_zone_or_level_drops_its_token_rather_than_leaving_a_separator()
+    public void An_entry_with_no_level_leaves_the_caption_column_empty()
     {
         var noZone = new ResolvedUnlock { Def = new UnlockDefinition(), QuestLevel = 30 };
         var noLevel = new ResolvedUnlock { Def = new UnlockDefinition(), ZoneName = "Ul'dah" };
         var neither = new ResolvedUnlock { Def = new UnlockDefinition() };
 
         Assert.Equal("Lv 30", UnlockRowText.Trailing(noZone));
-        Assert.Equal("Ul'dah", UnlockRowText.Trailing(noLevel));
+
+        // A zone is not a level and never stood in for one: an empty column says "this has no level
+        // requirement", which is the fact, where a zone name there said nothing at all.
+        Assert.Equal(string.Empty, UnlockRowText.Trailing(noLevel));
         Assert.Equal(string.Empty, UnlockRowText.Trailing(neither));
+    }
+
+    /// <summary>The trophy mounts have no level anywhere, and the catalogue's own section name — the
+    /// substitute the badge uses — is far too long for a 48-pixel column. The row therefore shows
+    /// nothing rather than an ellipsised category masquerading as a level.</summary>
+    [Fact]
+    public void A_level_less_entry_never_puts_its_category_in_the_level_column()
+    {
+        var unlock = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition { Unlock = "Rose Lanner", Category = "Heavensward Unique Quest Rewards" },
+            QuestLevel = 0,
+        };
+
+        Assert.Equal("Heavensward Unique Quest Rewards", UnlockRowText.LevelToken(unlock));
+        Assert.Equal(string.Empty, UnlockRowText.Trailing(unlock));
     }
 
     /// <summary>The trophy mounts: no level exists for them anywhere, and the previous row printed

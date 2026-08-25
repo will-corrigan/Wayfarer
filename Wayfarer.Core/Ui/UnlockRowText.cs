@@ -46,22 +46,22 @@ public static class UnlockRowText
         return unlock.Def.Requires?.Label is { Length: > 0 } label ? label : string.Empty;
     }
 
-    /// <summary>The right-hand gutter: two short tokens and no more. It used to carry three facts
-    /// including the state word, which is why none of them were readable — the state is the row's
-    /// icon now, and the zone and level are the only things left that vary per row and fit.</summary>
+    /// <summary>The right-hand caption on line one: the level, and nothing else.
+    ///
+    /// <para>It used to carry the zone as well, joined by a middle dot, and the two of them did not
+    /// fit: the game gives that column 48 pixels (Journal <c>1023 #4</c>) and "Lv 53 · Central
+    /// Thanalan" at Axis 12 is four times that, so the engine cut it to "Lv 53…" and the row ended
+    /// up truncating a three-character number. A level is the one thing on a row that can be
+    /// guaranteed to fit a fixed column, which is why it is the only thing left in it.</para>
+    ///
+    /// <para>The zone is not lost. Grouping by zone — the checklist's default — puts it on the
+    /// section heading directly above the row, and the entry's own page carries it in full beside
+    /// the quest giver's name. An ellipsis was never showing it.</para></summary>
     public static string Trailing(ResolvedUnlock unlock)
     {
         ArgumentNullException.ThrowIfNull(unlock);
 
-        var level = LevelToken(unlock);
-        var zone = unlock.ZoneName is { Length: > 0 } name ? name : string.Empty;
-
-        if (level.Length == 0)
-        {
-            return zone;
-        }
-
-        return zone.Length == 0 ? level : $"{level} · {zone}";
+        return unlock.QuestLevel > 0 || unlock.Def.Level is > 0 ? LevelToken(unlock) : string.Empty;
     }
 
     /// <summary>Just the number — "25" — for the Journal's level badge, or empty when no source
