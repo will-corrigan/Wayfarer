@@ -302,6 +302,21 @@ internal static class JournalNodes
     ///
     /// <para>So every container on the journal's surfaces is filled through here rather than through
     /// <c>AddNode</c> directly, and a node that is already in the container is skipped.</para>
+    ///
+    /// <para><b>The second guard, for a different failure shape.</b> <c>LayoutListNode.AddNode</c>
+    /// calls <c>RecalculateLayout</c> on <paramref name="list"/>, which cascades into every child of
+    /// <paramref name="list"/> that is itself a layout container — including the node being attached
+    /// right here, before whatever the caller meant to put inside <i>it</i> has landed. A
+    /// <c>HorizontalListNode</c> with <c>FitToContentHeight</c> set measures its own height as the
+    /// tallest of its children (<c>NodeList.Max(node => node.Height)</c>), and "tallest of none" is
+    /// not zero to that LINQ call — it throws <c>InvalidOperationException: Sequence contains no
+    /// elements</c>. That is exactly how <c>JournalSectionNode</c>'s empty body row took the journal
+    /// page down: the section attaches its heading row and its (not yet filled) body row to itself in
+    /// one constructor, and the body row's own content arrives after the constructor returns. A
+    /// hidden, zero-size filler gives an as-yet-empty row something safe to measure until its real
+    /// content arrives — nothing later depends on a row never having had one, and the filler takes no
+    /// visible room (<c>HorizontalListNode.OnRecalculateLayout</c> skips invisible nodes when placing
+    /// content, and a zero-height node can never be the tallest of anything real next to it).</para>
     /// </summary>
     public static void AddOnce(LayoutListNode list, params NodeBase?[] nodes)
     {
@@ -315,6 +330,11 @@ internal static class JournalNodes
             if (node is null || list.Nodes.Contains(node))
             {
                 continue;
+            }
+
+            if (node is HorizontalListNode { FitToContentHeight: true } row && row.Nodes.Count == 0)
+            {
+                row.AddNode(new ResNode { Size = Vector2.Zero, IsVisible = false });
             }
 
             list.AddNode(node);
