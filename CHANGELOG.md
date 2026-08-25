@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/will-corrigan/Wayfarer/compare/v0.8.0...v0.8.1) (2026-08-25)
+
+
+### Fixed
+
+* the hunting log, the readout's spacing, and the settings cursor ([#31](https://github.com/will-corrigan/Wayfarer/issues/31)) ([40e3279](https://github.com/will-corrigan/Wayfarer/commit/40e3279b052d4884f4cbd2e53ee0340a3e874e2d))
+
 ## [0.8.0](https://github.com/will-corrigan/Wayfarer/compare/v0.7.0...v0.8.0) (2026-08-25)
 
 
