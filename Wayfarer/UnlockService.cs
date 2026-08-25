@@ -362,21 +362,14 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
     /// <summary>Reads a <see cref="GameTextRef"/> against the running client's own sheets, in
     /// whatever client language the player is using — see <see cref="GameTextRef"/> for why a
-    /// reference is stored rather than a copy of the text. <c>RawRow</c> is the generic escape
-    /// hatch for sheets Lumina has no strongly-typed wrapper for (<c>HowToPage</c> among them);
-    /// see <c>tools/Wayfarer.CatalogueGen</c>'s offline use of the same API over sqpack directly.</summary>
+    /// reference is stored rather than a copy of the text. The sheet read itself is
+    /// <see cref="GameSheetText.Read"/>; see <c>tools/Wayfarer.CatalogueGen</c>'s offline use of the
+    /// same <c>RawRow</c> API over sqpack directly.</summary>
     private string? ResolveGameText(GameTextRef reference)
     {
         try
         {
-            var sheet = dataManager.Excel.GetSheet<RawRow>(null, reference.Sheet);
-            if (!sheet.TryGetRow(reference.Row, out var row))
-            {
-                return null;
-            }
-
-            var text = row.ReadStringColumn(reference.Column).ExtractText();
-            return string.IsNullOrWhiteSpace(text) ? null : text;
+            return GameSheetText.Read(dataManager, reference.Sheet, reference.Row, reference.Column);
         }
         catch (Exception ex)
         {
