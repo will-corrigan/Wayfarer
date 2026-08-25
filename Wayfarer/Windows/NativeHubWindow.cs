@@ -1908,7 +1908,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (!config.InputMode.CursorNavigation)
         {
-            RemoveFromCursorGraph();
+            RemoveFromCursorGraph(controls);
             return;
         }
 
@@ -1920,7 +1920,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var populated = PopulatedRowCount();
-        var firstRow = populated > 0 ? NavListBlock.RowIndex(HubNavPlan.List, 0) : HubNavPlan.TabBar;
+
+        // A hidden list is not a destination. IsVisible is asked as well as the row count because
+        // the two disagree on the Settings tab: SelectTab hides the list without emptying it, so the
+        // count is still whatever the previous tab published, and "down" from the last setting
+        // pointed at the first row of a list that is not on screen.
+        var firstRow = populated > 0 && list.IsVisible
+            ? NavListBlock.RowIndex(HubNavPlan.List, 0)
+            : HubNavPlan.TabBar;
 
         var regionEnd = HubNavPlan.Region;
         if (controls is not null)
@@ -1934,7 +1941,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var lastRegionIndex = regionEnd > HubNavPlan.Region ? regionEnd - 1 : HubNavPlan.TabBar;
-        var paneEntry = ApplyDetailPaneNavigation(firstRow);
+        ApplyListNavigation(populated, lastRegionIndex, ApplyDetailPaneNavigation(firstRow));
+        LogGraph(controls, regionEnd, populated);
+    }
+
+    /// <summary>The list's own two exits, published and then repaired, in that order.</summary>
+    private void ApplyListNavigation(int populated, int lastRegionIndex, int paneEntry)
+    {
+        if (list is null)
+        {
+            return;
+        }
+
         if (list.IsVisible)
         {
             list.NavUp = lastRegionIndex;
@@ -1944,10 +1962,44 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             // that is the escape hatch no graph defect can take away, and the pane must not become
             // a second way to get stuck.
             list.NavDown = paneEntry;
-            RepairLastPopulatedRow(populated, lastRegionIndex);
         }
 
-        LogGraph(controls, regionEnd, populated);
+        // Publish before repairing, never after: publishing renumbers every row node from the list's
+        // own values, which would undo the repair.
+        PublishOwnLinks();
+
+        if (list.IsVisible)
+        {
+            RepairLastPopulatedRow(populated, lastRegionIndex);
+        }
+    }
+
+    /// <summary>Makes the tab bar's and the list's own <c>Nav*</c> assignments actually take effect.
+    ///
+    /// <para>Neither type acts on the assignment. <c>TabBarNode</c> copies its values onto its radio
+    /// buttons inside a <b>private</b> <c>RecalculateLayout()</c>, and <c>ListNode</c> copies its own
+    /// onto its two scroll sentinels inside a <b>private</b> <c>RecalculateScroll()</c>; the only
+    /// public trigger for either is a size change, and this window's layout pass fires that
+    /// <i>before</i> the numbering rather than after. So every value written above was one generation
+    /// stale: on the first open the tab bar's "up" was still the <c>NoNavigation</c> it was built
+    /// with, which made the Following strip — and the Stop button, the universal exit — unreachable
+    /// by pad until the player happened to switch tab; and after a tab switch "up" out of the list
+    /// still carried the previous tab's last control index, which is a dead direction.</para>
+    ///
+    /// <para>Re-assigning the size is the trigger, and it is safe to do every time: the setter fires
+    /// unconditionally rather than on a change, the recalculations are idempotent, and neither
+    /// rebuilds anything while the size is the size it already was.</para></summary>
+    private void PublishOwnLinks()
+    {
+        if (hubTabs is not null)
+        {
+            hubTabs.Size = new Vector2(hubTabs.Width, hubTabs.Height);
+        }
+
+        if (list is not null)
+        {
+            list.Size = new Vector2(list.Width, list.Height);
+        }
     }
 
     /// <summary>Numbers the Following strip, and points the tab bar's "up" at it. The strip is above
@@ -2003,9 +2055,29 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// still navigable but with a hole in the middle of it: down from the tabs pointed at index 10,
     /// nothing occupied index 10, and the list was unreachable from the tab bar. Someone turning
     /// this off to fix a problem got a worse window, not a plainer one. Now they get the mouse
-    /// window, which is what the setting says.</para></summary>
-    private void RemoveFromCursorGraph()
+    /// window, which is what the setting says.</para>
+    ///
+    /// <para>Which means every region has to be unwired and not merely left unnumbered. The Following
+    /// strip, the control region and the detail pane's buttons all keep whatever indices the last
+    /// numbering pass gave them, so declining to renumber leaves live nav targets with nothing
+    /// pointing at them — the same half-wired window from the other direction.</para></summary>
+    private void RemoveFromCursorGraph(NodeBase? controls)
     {
+        if (stripControls is not null)
+        {
+            NavigationWalker.Remove(stripControls);
+        }
+
+        if (controls is not null)
+        {
+            NavigationWalker.Remove(controls);
+        }
+
+        if (detailPane is not null)
+        {
+            NavigationWalker.Remove(detailPane.ActionRow);
+        }
+
         if (hubTabs is not null)
         {
             hubTabs.NavIndex = NavGraphPlanner.NoNavigation;

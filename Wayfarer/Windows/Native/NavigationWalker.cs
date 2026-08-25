@@ -70,6 +70,38 @@ internal static class NavigationWalker
         return NavGraphPlanner.HighestIndex(sizes, startIndex) + 1;
     }
 
+    /// <summary>Takes every element under <paramref name="root"/> back out of the graph — the exact
+    /// inverse of <see cref="Apply"/>, over the same walk, so it cannot miss a target
+    /// <see cref="Apply"/> would have numbered.
+    ///
+    /// <para>Needed because "not in the graph" is a state that has to be written, not merely left
+    /// unwritten: a region numbered on a previous pass keeps those indices for ever, and a window
+    /// that stops numbering is not a window with no cursor navigation — it is a window whose live
+    /// nav targets have nothing pointing at them.</para>
+    ///
+    /// <para>Hidden subtrees are skipped, as in <see cref="Apply"/>, and for the same reason: they
+    /// were never numbered, so there is nothing of theirs to undo.</para></summary>
+    public static void Remove(NodeBase root)
+    {
+        var rows = new List<List<NavTarget>>();
+        CollectRows(root, rows);
+
+        var unwired = new NavLink(
+            NavGraphPlanner.NoNavigation,
+            NavGraphPlanner.NoNavigation,
+            NavGraphPlanner.NoNavigation,
+            NavGraphPlanner.NoNavigation,
+            NavGraphPlanner.NoNavigation);
+
+        foreach (var row in rows)
+        {
+            foreach (var target in row)
+            {
+                target.Apply(unwired);
+            }
+        }
+    }
+
     /// <summary>The number of rows <see cref="Apply"/> would produce, for the one-line graph
     /// summary logged after every rebuild.</summary>
     public static int CountTargets(NodeBase root)
