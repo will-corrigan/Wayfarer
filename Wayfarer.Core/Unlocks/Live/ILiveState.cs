@@ -91,14 +91,22 @@ public interface IProgressReader
     /// timer and never retried.</summary>
     bool TryAchievementComplete(uint achievementId, out bool complete);
 
-    /// <summary>False until the FATE progress tab has arrived. Same round-trip discipline as
-    /// <see cref="TryAchievementComplete"/>.</summary>
-    bool TrySharedFateRank(uint territoryTypeId, out byte rank);
+    /// <summary>Whether the zone's Shared FATE rank is at least <paramref name="rank"/>. False
+    /// until the FATE progress tab has arrived, with the same round-trip discipline as
+    /// <see cref="TryAchievementComplete"/>.
+    ///
+    /// <para>The threshold is a parameter rather than the rank being returned, because the answer
+    /// may come from a remembered observation rather than a live read, and a remembered value can
+    /// prove a requirement met but never prove one unmet — see
+    /// <see cref="ObservedFloor{TId}.TryAtLeast"/>.</para></summary>
+    bool TrySharedFateRankAtLeast(uint territoryTypeId, int rank, out bool met);
 
-    /// <summary>False outside the zone that owns the director. Bozja's rank survives a session
-    /// through the observation store; Eureka's elemental level deliberately does not, because it
-    /// can decrease.</summary>
-    bool TryZoneProgressRank(ZoneProgressKind kind, out int rank);
+    /// <summary>Whether elemental level or resistance rank is at least <paramref name="rank"/>.
+    /// False outside the zone that owns the director. Bozja's rank survives the session through
+    /// the observation store; Eureka's elemental level deliberately does not, because it can
+    /// decrease. Threshold-shaped for the same reason as
+    /// <see cref="TrySharedFateRankAtLeast"/>.</summary>
+    bool TryZoneProgressAtLeast(ZoneProgressKind kind, int rank, out bool met);
 }
 
 public interface IInventoryReader

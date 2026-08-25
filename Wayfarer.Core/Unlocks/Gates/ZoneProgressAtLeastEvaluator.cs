@@ -19,12 +19,12 @@ public sealed class ZoneProgressAtLeastEvaluator : IGateEvaluator
             return GateResult.Unknown("malformed zone progress requirement");
         }
 
-        if (!state.Progress.TryZoneProgressRank(kind, out var rank))
+        if (!state.Progress.TryZoneProgressAtLeast(kind, node.Amount, out var met))
         {
             return GateResult.Unknown($"Wayfarer can only read this inside {node.Describe()}");
         }
 
-        return rank >= node.Amount
+        return met
             ? GateResult.Ok()
             : GateResult.Blocked(
                 UnlockStatus.CollectionLocked,

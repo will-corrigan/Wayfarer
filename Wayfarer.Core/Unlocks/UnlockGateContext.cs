@@ -33,10 +33,12 @@ namespace Wayfarer.Core.Unlocks;
 /// server; an unfetched table reads as "you have earned nothing".</param>
 /// <param name="IsAetherCurrentZoneComplete">Whether every current in one zone's completion flag
 /// set is collected — the "can you fly here" question.</param>
-/// <param name="SharedFateRank">Per-zone Shared FATE rank. Null until the progress tab has
-/// arrived, which matters because rank 0 is itself a legal answer.</param>
-/// <param name="ZoneProgressRank">Eureka elemental level or Bozja resistance rank. Null outside
-/// the zone that owns the director.</param>
+/// <param name="SharedFateRankAtLeast">Whether a zone's Shared FATE rank reaches a threshold. Null
+/// until the progress tab has arrived, which matters because rank 0 is itself a legal answer — and
+/// threshold-shaped rather than returning the rank because the answer may come from a remembered
+/// observation, which can prove a requirement met but never prove one unmet.</param>
+/// <param name="ZoneProgressAtLeast">Whether Eureka elemental level or Bozja resistance rank
+/// reaches a threshold. Null outside the zone that owns the director.</param>
 /// <param name="GetSaddlebagItemCount">The chocobo saddlebags, which an ordinary inventory count
 /// does not include.</param>
 public sealed record UnlockGateContext(
@@ -59,8 +61,8 @@ public sealed record UnlockGateContext(
     Func<uint, bool>? IsPublicContentCompleted = null,
     Func<uint, bool?>? IsAchievementComplete = null,
     Func<uint, bool?>? IsAetherCurrentZoneComplete = null,
-    Func<uint, byte?>? SharedFateRank = null,
-    Func<ZoneProgressKind, int?>? ZoneProgressRank = null,
+    Func<uint, int, bool?>? SharedFateRankAtLeast = null,
+    Func<ZoneProgressKind, int, bool?>? ZoneProgressAtLeast = null,
     Func<uint, int>? GetSaddlebagItemCount = null)
 {
     /// <summary>The kinds this build can evaluate. Defaults to the shipped registry; a test may

@@ -59,29 +59,11 @@ internal sealed class GateContextLiveState(UnlockGateContext ctx)
     public bool TryAchievementComplete(uint achievementId, out bool complete) =>
         Unwrap(ctx.IsAchievementComplete?.Invoke(achievementId), out complete);
 
-    public bool TrySharedFateRank(uint territoryTypeId, out byte rank)
-    {
-        rank = 0;
-        if (ctx.SharedFateRank?.Invoke(territoryTypeId) is not { } value)
-        {
-            return false;
-        }
+    public bool TrySharedFateRankAtLeast(uint territoryTypeId, int rank, out bool met) =>
+        Unwrap(ctx.SharedFateRankAtLeast?.Invoke(territoryTypeId, rank), out met);
 
-        rank = value;
-        return true;
-    }
-
-    public bool TryZoneProgressRank(ZoneProgressKind kind, out int rank)
-    {
-        rank = 0;
-        if (ctx.ZoneProgressRank?.Invoke(kind) is not { } value)
-        {
-            return false;
-        }
-
-        rank = value;
-        return true;
-    }
+    public bool TryZoneProgressAtLeast(ZoneProgressKind kind, int rank, out bool met) =>
+        Unwrap(ctx.ZoneProgressAtLeast?.Invoke(kind, rank), out met);
 
     public bool TryCount(uint itemId, ItemScope scope, out int count)
     {

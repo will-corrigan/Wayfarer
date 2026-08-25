@@ -14,16 +14,26 @@ public sealed class ObservedFloor<TId>(
     Func<TId, uint> idKey,
     Func<DateTimeOffset> clock)
 {
-    /// <summary>The live value when it can be read, otherwise the highest ever observed for this
-    /// character. False only when neither is available — the honest "never observed".</summary>
-    public bool TryValue(string characterKey, TId id, out int value)
+    /// <summary>Whether the value is at least <paramref name="atLeast"/>, answered from the live
+    /// read when there is one and from the remembered floor otherwise.
+    ///
+    /// <para><b>The threshold is here, not in the caller, and that is the point.</b> A remembered
+    /// floor can prove a requirement IS met — the value was that high once and cannot have fallen.
+    /// It can never prove one is NOT met: it is a lower bound, and the value may have risen since
+    /// it was recorded. So a floor at or above the threshold answers, a floor below it does not,
+    /// and the gate reports "cannot tell" rather than sending a player back to content they have
+    /// already finished. Handing the caller a bare number instead would make the second case look
+    /// exactly like the first.</para></summary>
+    public bool TryAtLeast(string characterKey, TId id, int atLeast, out bool met)
     {
-        if (source.TryReadLive(id, out value))
+        if (source.TryReadLive(id, out var live))
         {
-            store.Observe(characterKey, kind, idKey(id), value, clock());
+            store.Observe(characterKey, kind, idKey(id), live, clock());
+            met = live >= atLeast;
             return true;
         }
 
-        return store.TryFloor(characterKey, kind, idKey(id), out value);
+        met = store.TryFloor(characterKey, kind, idKey(id), out var floor) && floor >= atLeast;
+        return met;
     }
 }

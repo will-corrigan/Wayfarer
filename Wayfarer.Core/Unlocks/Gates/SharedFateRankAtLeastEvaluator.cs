@@ -22,12 +22,12 @@ public sealed class SharedFateRankAtLeastEvaluator : IGateEvaluator
             return GateResult.Unknown("malformed Shared FATE requirement");
         }
 
-        if (!state.Progress.TrySharedFateRank(node.Ids[0], out var rank))
+        if (!state.Progress.TrySharedFateRankAtLeast(node.Ids[0], node.Amount, out var met))
         {
             return GateResult.Unknown("your Shared FATE progress hasn't loaded yet");
         }
 
-        return rank >= node.Amount
+        return met
             ? GateResult.Ok()
             : GateResult.Blocked(
                 UnlockStatus.CollectionLocked,
