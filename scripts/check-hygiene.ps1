@@ -4,6 +4,14 @@
 # set either in the process environment (CI uses a repository secret) or in a
 # git-ignored .env file at the repository root (dotenv format).
 # Matched patterns are never echoed; output shows only file locations.
+#
+# -RequirePatterns turns "no patterns, nothing to do" from a pass into a failure. Skipping is right
+# on a machine that has no pattern source — a fork's pull request cannot read repository secrets, and
+# there is nothing a contributor can do about that — but it must never be how a push or a same-repo
+# pull request comes out green. Without this switch the gate passed vacuously wherever the secret was
+# missing, which is indistinguishable from passing.
+param([switch]$RequirePatterns)
+
 $value = $env:WAYFARER_HYGIENE_PATTERNS
 if (-not $value) {
     $envFile = Join-Path (Split-Path $PSScriptRoot -Parent) '.env'
@@ -18,6 +26,10 @@ if (-not $value) {
 }
 $patterns = ($value -split ';') | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim() } | Select-Object -Unique
 if (-not $patterns) {
+    if ($RequirePatterns) {
+        Write-Host 'hygiene: no pattern source available, and this run is required to have one'
+        exit 1
+    }
     Write-Host 'hygiene: no pattern source available, skipping'
     exit 0
 }
