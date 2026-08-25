@@ -176,6 +176,31 @@ into a packaging job: it builds the plugin, attaches `Wayfarer.zip` to the GitHu
 the updated `repo.json` so the in-game plugin installer picks up the new version. There is no manual
 tagging step.
 
+### Testing builds
+
+Dalamud's plugin installer has a second, opt-in channel for exactly this kind of fix-before-release
+need: a "testing" version an individual tester can pick up without a stable release, while everyone
+else on the public repo stays on stable. `.github/workflows/testing-publish.yml` publishes one,
+`workflow_dispatch`-triggered — Actions tab → **Testing Publish** → **Run workflow**, or
+`gh workflow run testing-publish.yml`. It builds `main` (or another ref you give it), tags a unique
+prerelease, and updates only `TestingAssemblyVersion` and `DownloadLinkTesting` in `repo.json` —
+`AssemblyVersion` and `DownloadLinkInstall` are untouched, so stable installs are never affected.
+
+Dalamud only shows a testing build once `TestingAssemblyVersion` is strictly greater than
+`AssemblyVersion`; equal or lower and the channel is silently unavailable, which is why the workflow
+computes an always-ahead version and fails outright if that guarantee is ever violated. A stable
+release resets the two channels back together automatically (`release.yml`'s packaging step sets
+both to the same new version), so testing goes quiet on its own until the next dispatch.
+
+A tester picks this up entirely from her own Dalamud install, once:
+
+1. `/xlsettings` → **Experimental** tab → check **"Get plugin testing builds"**.
+2. `/xlplugins` → **Installed Plugins** tab → right-click **Wayfarer** → **"Receive plugin testing
+   versions"**.
+
+No new repo URL, no reinstall — the next update through the normal installer just picks up the
+testing build.
+
 ## License
 
 Wayfarer is licensed under the [GNU Affero General Public License v3.0](LICENSE).
