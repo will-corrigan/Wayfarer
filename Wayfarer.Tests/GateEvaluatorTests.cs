@@ -120,6 +120,20 @@ public class GateEvaluatorTests
             GateKinds.ItemHeld, [12243u], scope: GateKinds.ScopeSaddlebag, display: "Timeworn Dragonskin Map");
         Assert.Equal(GateOutcome.Indeterminate, Outcome(saddlebag, Gates.Ctx(60, getOwnedItemCount: _ => 5)));
         Assert.Equal(GateOutcome.Satisfied, Outcome(saddlebag, Gates.Ctx(60, getSaddlebagItemCount: _ => 1)));
+
+        // 'any', and the absent scope that means the same thing, are the confident path: they answer
+        // from what the client can enumerate, and a zero is reported as blocked rather than as
+        // "we cannot tell". Pinned because it is the one definite answer in the gate language that
+        // is a shade stronger than the read underneath it — a tradeable item may be in a retainer —
+        // and it must be a decision somebody made, not something that drifted. See
+        // IInventoryReader.TryCount.
+        foreach (var scope in (string?[])[GateKinds.ScopeAny, null])
+        {
+            var bags = Gates.Node(GateKinds.ItemHeld, [12243u], scope: scope, display: "Timeworn Dragonskin Map");
+            Assert.Equal(GateOutcome.Satisfied, Outcome(bags, Gates.Ctx(60, getOwnedItemCount: _ => 1)));
+            Assert.Equal(GateOutcome.Blocked, Outcome(bags, Gates.Ctx(60, getOwnedItemCount: _ => 0)));
+            Assert.Equal(GateOutcome.Indeterminate, Outcome(bags, Gates.Ctx(60, liveStateReady: false)));
+        }
     }
 
     [Fact]

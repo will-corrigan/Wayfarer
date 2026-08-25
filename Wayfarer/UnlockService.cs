@@ -146,7 +146,19 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         // read below is authoritative. When it is false the pass does not run at all, because an
         // unloaded player state answers "no" to every "do you own this" and would rewrite a correct
         // checklist into the claim that the player owns nothing.
-        var ready = clientState.IsLoggedIn && ps != null && ps->IsLoaded && ui != null;
+        //
+        // Every manager any plainly-returning reader below depends on has to be named here, and two
+        // were not. IsQuestAccepted answers false with no QuestManager, which turns a quest already
+        // sitting in the player's journal into "not accepted" and can then print Available for
+        // something they have started; the item readers answer zero with no InventoryManager, which
+        // is a confident "you do not have it". A reader that can only answer by guessing must make
+        // this false rather than guess.
+        var ready = clientState.IsLoggedIn
+            && ps != null
+            && ps->IsLoaded
+            && ui != null
+            && qm != null
+            && inventory != null;
         if (ready)
         {
             liveProgress.RequestOwnProgressOnce(catalogueGateKinds);

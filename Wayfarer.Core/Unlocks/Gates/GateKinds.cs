@@ -14,6 +14,11 @@ public static class GateKinds
     public const string MountOwned = "mountOwned";
     public const string MinionOwned = "minionOwned";
     public const string ItemHeld = "itemHeld";
+
+    /// <summary>Compares against the <b>active job's</b> level, because that is the only level the
+    /// game has — there is no character-wide one. The name reads as though there were; see
+    /// <see cref="CharacterLevelAtLeastEvaluator"/> before writing data that uses it, and prefer
+    /// <see cref="JobLevelAtLeast"/> whenever a specific job is what the requirement means.</summary>
     public const string CharacterLevelAtLeast = "characterLevelAtLeast";
     public const string JobLevelAtLeast = "jobLevelAtLeast";
     public const string TribeRankAtLeast = "tribeRankAtLeast";

@@ -111,9 +111,22 @@ public interface IProgressReader
 
 public interface IInventoryReader
 {
-    /// <summary>False when the scope cannot answer for this item — chiefly a tradeable item that
-    /// may be sitting in a retainer, a Free Company chest or house storage, none of which are
-    /// enumerable while closed.</summary>
+    /// <summary>False when the scope has no reader at all — today, <see cref="ItemScope.Saddlebag"/>
+    /// on a host that did not wire one.
+    ///
+    /// <para><b>What a true with a count of zero does and does not mean.</b>
+    /// <see cref="ItemScope.Any"/> counts the inventories the client can enumerate: the bags, the
+    /// armoury, the currency and crystal tabs. It does <i>not</i> reach a retainer, a Free Company
+    /// chest or house storage, none of which are enumerable while closed. So a positive count is
+    /// proof the player has the item, and a zero is proof only that it is not on them — which for a
+    /// tradeable item is a weaker statement than "they do not have it".</para>
+    ///
+    /// <para>That is deliberate rather than overlooked, and it is a live choice rather than an
+    /// abstract one: the six treasure-map entries are gated on maps, and maps are exactly the thing
+    /// players keep in a retainer. Answering "we cannot tell" on every zero would turn the common
+    /// case — a player who genuinely has not got one — from a requirement they can go and satisfy
+    /// into a shrug. Callers that need the distinction must ask for it, not infer it from a
+    /// false.</para></summary>
     bool TryCount(uint itemId, ItemScope scope, out int count);
 }
 
