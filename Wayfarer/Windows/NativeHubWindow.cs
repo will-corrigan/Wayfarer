@@ -125,11 +125,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// each entry deciding for itself.</summary>
     private const string Following = "Following";
 
-    /// <summary>Domain first, because a domain is a window the game already has and the other two
-    /// are ways of slicing one. It is also the default, which "Zone" used to be — a zone is where
-    /// you are, not what you are looking for.</summary>
+    /// <summary>Available first, and it is the default: the player's question is "what should I do
+    /// next", and the default view used to be "Zone", which answers "what is near me" whether or not
+    /// any of it can be done. Then the three browse axes, domain first because a domain is a window
+    /// the game already has and the other two are ways of slicing one.</summary>
     private static readonly UnlockGrouping[] GroupModes =
-        [UnlockGrouping.Domain, UnlockGrouping.Zone, UnlockGrouping.Level];
+        [UnlockGrouping.AvailableNow, UnlockGrouping.Domain, UnlockGrouping.Zone, UnlockGrouping.Level];
 
     /// <summary>The seven domain chips, generated from <see cref="UnlockDomains"/> rather than
     /// written out here. Written out, this list could omit a domain — and a domain missing from the
@@ -2360,7 +2361,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (rows.Count == 0)
         {
-            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing to show with these filters." });
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = EmptyListNote() });
         }
 
         PublishRows(checklistControls);
@@ -2383,11 +2384,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
             foreach (var band in group.Bands)
             {
-                // A band heading on every band, including the one whose name is the good news. The
-                // "Not known" band is the reason the headings exist at all — those rows have to say
-                // that nothing checked them, and a row cannot say it about itself without repeating
-                // the same sentence down the whole band.
-                rows.Add(BuildBandHeadingRow(band));
+                // A band heading on every band, including the one whose name is the good news — the
+                // "Not known" band is the reason the headings exist at all, and a row cannot say
+                // "nothing checked this" about itself without repeating the sentence down the whole
+                // band. Suppressed only in the Available-now view, whose own heading already said it.
+                if (group.ShowBandHeadings)
+                {
+                    rows.Add(BuildBandHeadingRow(band));
+                }
 
                 foreach (var u in band.Entries)
                 {
@@ -2711,9 +2715,36 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// <see cref="UnlockSections"/> — this window cannot be tested and that can, and the ImGui
     /// fallback calls the same thing so the two cannot order the list differently.</summary>
     private List<UnlockGroupSection> ChecklistSections(List<ResolvedUnlock> visible) =>
-        UnlockSections.Build(visible, GroupModes[groupMode], CurrentZoneName());
+        UnlockSections.Build(visible, GroupModes[groupMode], ViewPoint());
 
-    private string GroupButtonLabel() => $"Group: {GroupModes[groupMode]}";
+    /// <summary>Where the player is, for the zone group that floats to the top and for what "nearest
+    /// first" means in the Available-now view. Falls back to <see cref="UnlockViewPoint.Unknown"/>
+    /// with no local player, which is a state this window can be drawn in.</summary>
+    private UnlockViewPoint ViewPoint()
+    {
+        var player = objects.LocalPlayer;
+        return new UnlockViewPoint(
+            CurrentZoneName(),
+            clientState.TerritoryType,
+            player?.Position.X ?? 0f,
+            player?.Position.Z ?? 0f);
+    }
+
+    /// <summary>What an empty list says. In the Available-now view an empty list is not a filter
+    /// problem and must not be reported as one: it means every entry Wayfarer can check is either
+    /// done or waiting on something, which is a real state and a different instruction — switch views
+    /// to see what is in the way, rather than go and loosen a filter that is not set.</summary>
+    private string EmptyListNote() =>
+        GroupModes[groupMode] == UnlockGrouping.AvailableNow
+            ? "Nothing is available right now. Switch views to see what is blocked."
+            : "Nothing to show with these filters.";
+
+    /// <summary>"Available now" is a view rather than a grouping, so the button does not call it one.
+    /// Naming it "Group: AvailableNow" would say the list is grouped by something it is not.</summary>
+    private string GroupButtonLabel() =>
+        GroupModes[groupMode] == UnlockGrouping.AvailableNow
+            ? UnlockSections.AvailableNowHeading
+            : $"Group: {GroupModes[groupMode]}";
 
     private string? CurrentZoneName()
     {

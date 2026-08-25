@@ -28,10 +28,12 @@ internal sealed class UnlockWindow(
     // QuestNavigator/UnlockService, which redeclare the same constant for the same reason.
     private const uint QuestRowIdOffset = 65536;
 
+    /// <summary>The same views, in the same order, as the native window's — Available first and by
+    /// default.</summary>
     private static readonly UnlockGrouping[] GroupModes =
-        [UnlockGrouping.Domain, UnlockGrouping.Zone, UnlockGrouping.Level];
+        [UnlockGrouping.AvailableNow, UnlockGrouping.Domain, UnlockGrouping.Zone, UnlockGrouping.Level];
 
-    private static readonly string[] GroupModeLabels = [.. GroupModes.Select(m => m.ToString())];
+    private static readonly string[] GroupModeLabels = ["Available", "Domain", "Zone", "Level"];
 
     /// <summary>The seven domain chips, from <see cref="UnlockDomains"/> — the same source the
     /// native window's are built from, so the fallback cannot offer a different set.</summary>
@@ -280,7 +282,14 @@ internal sealed class UnlockWindow(
     /// about the order of the same list; neither of them can be tested, and that can.</summary>
     private void DrawSections(List<ResolvedUnlock> visible)
     {
-        foreach (var group in UnlockSections.Build(visible, GroupModes[groupMode], CurrentZoneName()))
+        var player = objects.LocalPlayer;
+        var at = new UnlockViewPoint(
+            CurrentZoneName(),
+            clientState.TerritoryType,
+            player?.Position.X ?? 0f,
+            player?.Position.Z ?? 0f);
+
+        foreach (var group in UnlockSections.Build(visible, GroupModes[groupMode], at))
         {
             if (!ImGui.CollapsingHeader(
                 $"{group.Heading} ({group.Count})###grp{group.Heading}",
@@ -295,10 +304,13 @@ internal sealed class UnlockWindow(
                 // not somewhere to put things away, and "Not known" folded shut is exactly the
                 // silence the band exists to break.
                 ImGui.Indent();
-                ImGui.TextDisabled($"{UnlockBands.Label(band.Band)} ({band.Entries.Count})");
-                if (ImGui.IsItemHovered())
+                if (group.ShowBandHeadings)
                 {
-                    ImGui.SetTooltip(UnlockBands.Explanation(band.Band));
+                    ImGui.TextDisabled($"{UnlockBands.Label(band.Band)} ({band.Entries.Count})");
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip(UnlockBands.Explanation(band.Band));
+                    }
                 }
 
                 foreach (var u in band.Entries)

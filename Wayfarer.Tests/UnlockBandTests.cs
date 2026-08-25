@@ -22,6 +22,10 @@ public class UnlockBandTests
 
     private static readonly string[] DutiesCapabilitiesTitles = ["Duties", "Capabilities", "Titles"];
 
+    private static readonly string[] NearThenFar = ["Near", "Far"];
+
+    private static readonly string[] LocatedThenNowhere = ["Located", "Nowhere"];
+
     /// <summary>Available, then Blocked, then Not known. The order is what the whole band idea is
     /// for — it is the order the player can act on — so it is pinned rather than left to the enum's
     /// declaration order to imply.</summary>
@@ -191,6 +195,91 @@ public class UnlockBandTests
 
         Assert.Equal(UnlockSections.NoZoneHeading, Assert.Single(sections).Heading);
     }
+
+    /// <summary>The default view is not a domain: one flat list of everything available, across every
+    /// domain, with no band headings because its own heading already said which band it is.</summary>
+    [Fact]
+    public void TheAvailableNowViewIsOneFlatListAcrossEveryDomain()
+    {
+        var sections = UnlockSections.Build(
+            [
+                Entry("A title", UnlockStatus.Available, level: 10, channel: "title"),
+                Entry("A duty", UnlockStatus.LevelLocked, level: 20, channel: "duty"),
+                Entry("A feature", UnlockStatus.Available, level: 15, channel: "system"),
+                Entry("A mount", UnlockStatus.RequirementsUnknown, level: 30, channel: "mount"),
+            ],
+            UnlockGrouping.AvailableNow);
+
+        var group = Assert.Single(sections);
+        Assert.Equal(UnlockSections.AvailableNowHeading, group.Heading);
+        Assert.False(group.ShowBandHeadings);
+
+        var band = Assert.Single(group.Bands);
+        Assert.Equal(UnlockBand.Available, band.Band);
+
+        // The blocked duty and the ungradeable mount are not in it, and both available entries are —
+        // whatever domain they came from.
+        Assert.Equal(2, band.Entries.Count);
+        Assert.All(band.Entries, e => Assert.Equal(UnlockBand.Available, UnlockBands.Of(e.Status)));
+    }
+
+    /// <summary>Nearest first, from where the player is standing — the route's own ordering rather
+    /// than by level, because "what should I do next" is a question about where you are.</summary>
+    [Fact]
+    public void TheAvailableNowViewIsOrderedNearestFirst()
+    {
+        var far = Located("Far", level: 1, territory: 132, x: 500f);
+        var near = Located("Near", level: 90, territory: 132, x: 10f);
+
+        var sections = UnlockSections.Build(
+            [far, near],
+            UnlockGrouping.AvailableNow,
+            new UnlockViewPoint("Ul'dah", 132, 0f, 0f));
+
+        var entries = Assert.Single(sections).Bands[0].Entries;
+        Assert.Equal(NearThenFar, entries.Select(e => e.Def.Unlock), StringComparer.Ordinal);
+    }
+
+    /// <summary>An available entry with no locatable giver still appears — it is available, it just
+    /// has nowhere to walk to. Dropping it would leave a view headed "Available now" listing less
+    /// than what is available, which is the class of quiet omission this whole design removes.</summary>
+    [Fact]
+    public void AnAvailableEntryWithNoGiverIsStillListed()
+    {
+        var located = Located("Located", level: 10, territory: 132, x: 5f);
+        var nowhere = Entry("Nowhere", UnlockStatus.Available, level: 20);
+
+        var sections = UnlockSections.Build(
+            [nowhere, located],
+            UnlockGrouping.AvailableNow,
+            new UnlockViewPoint("Ul'dah", 132, 0f, 0f));
+
+        var entries = Assert.Single(sections).Bands[0].Entries;
+        Assert.Equal(LocatedThenNowhere, entries.Select(e => e.Def.Unlock), StringComparer.Ordinal);
+    }
+
+    /// <summary>Nothing available produces no sections at all, so the caller writes its own sentence
+    /// rather than drawing a heading that claims a count of zero.</summary>
+    [Fact]
+    public void TheAvailableNowViewIsEmptyWhenNothingIsAvailable()
+    {
+        var sections = UnlockSections.Build(
+            [Entry("Blocked", UnlockStatus.LevelLocked, level: 50)],
+            UnlockGrouping.AvailableNow);
+
+        Assert.Empty(sections);
+    }
+
+    private static ResolvedUnlock Located(string name, int level, uint territory, float x) => new()
+    {
+        Def = new UnlockDefinition { Unlock = name, Channel = "system", Type = "system" },
+        QuestRowId = 1,
+        QuestLevel = level,
+        GiverTerritory = territory,
+        GiverX = x,
+        GiverZ = 0f,
+        Status = UnlockStatus.Available,
+    };
 
     private static ResolvedUnlock Entry(
         string name, UnlockStatus status, int level, string channel = "system") => new()
