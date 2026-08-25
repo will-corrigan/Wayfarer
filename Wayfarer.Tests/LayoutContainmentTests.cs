@@ -134,6 +134,38 @@ public class LayoutContainmentTests
         }
     }
 
+    /// <summary>One left edge down the whole list. The icon column is reserved whether or not this
+    /// particular row's icon resolved, so a list in which most entries are locked — and therefore
+    /// most icons missing — does not come out indented two different ways.</summary>
+    [Theory]
+    [MemberData(nameof(Widths))]
+    public void Every_rows_words_start_at_the_same_left_edge(float width)
+    {
+        var slot = GameMetrics.Row.EntryHeight;
+        var withIcon = RowLayout.Compose(RowShape.Entry, width, slot, hasIcon: true);
+        var without = RowLayout.Compose(RowShape.Entry, width, slot, hasIcon: false);
+        var note = RowLayout.Compose(RowShape.Note, width, slot, hasIcon: false);
+
+        // A row too narrow to hold anything drops the block whole rather than moving it, so the
+        // comparison is only meaningful where both survived.
+        if (withIcon.Label.IsEmpty)
+        {
+            return;
+        }
+
+        Assert.Equal(withIcon.Label.X, without.Label.X);
+        Assert.Equal(withIcon.Description.X, without.Description.X);
+        Assert.Equal(withIcon.Label.X, note.Label.X);
+
+        // A section header tucks one pixel under, which is the game's own offset (Journal 1021 #4
+        // is at x=23 against an entry's x=24) and not a second left edge.
+        var section = RowLayout.Compose(RowShape.Section, width, slot, hasIcon: false);
+        if (!section.Label.IsEmpty && !withIcon.Label.IsEmpty)
+        {
+            Assert.Equal(withIcon.Label.X - 1f, section.Label.X);
+        }
+    }
+
     /// <summary>A heading has to sit in the row the list actually gives it. The list virtualizes on
     /// one height — the 48 of an entry — while the game's own header row is 28, and anchoring the
     /// words at the entry row's own two-pixel inset left twenty-six pixels of nothing beneath every

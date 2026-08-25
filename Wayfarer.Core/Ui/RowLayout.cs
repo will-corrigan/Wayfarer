@@ -16,6 +16,13 @@ namespace Wayfarer.Core.Ui;
 /// happens to be. That rail is why the description no longer truncates at an arbitrary place, and
 /// the separate columns are why neither caption can ever be squeezed by the other.</para>
 ///
+/// <para><b>One left edge.</b> Every row's words start at the same x whatever the row is and
+/// whatever it carries — an entry at <see cref="GameMetrics.Row.TextLeft"/> (24, the game's icon
+/// column plus its gap) and a section header at <see cref="GameMetrics.Row.SectionTextLeft"/> (23,
+/// one pixel under it, which is the tuck Journal's own header icon art has). The icon column is
+/// reserved rather than earned: a row whose icon did not resolve keeps the column and simply draws
+/// nothing in it.</para>
+///
 /// <para>Every rectangle returned is clipped to the row's own box, so no caller can put a node
 /// outside it however narrow the window gets.</para></summary>
 public static class RowLayout
@@ -75,9 +82,13 @@ public static class RowLayout
 
         var height = Math.Min(GameMetrics.Row.TextHeight, box.Height);
         var top = (box.Height - height) / 2f;
-        var left = hasIcon ? GameMetrics.Row.SectionTextLeft : GameMetrics.Row.Padding;
         var trailing = Caption(box, top, height, GameMetrics.Row.TrailingWidth);
-        return new RowBlocks(icon, Label(box, left, top, height, trailing), trailing, default, default);
+        return new RowBlocks(
+            icon,
+            Label(box, GameMetrics.Row.SectionTextLeft, top, height, trailing),
+            trailing,
+            default,
+            default);
     }
 
     private static RowBlocks ComposeEntry(ScreenRect box, bool hasIcon, bool hasStatus)
@@ -90,7 +101,12 @@ public static class RowLayout
                 box)
             : default;
 
-        var left = hasIcon ? GameMetrics.Row.TextLeft : GameMetrics.Row.Padding;
+        // The icon column is reserved whether or not this row's own icon could be drawn. It is a
+        // column, not a decoration: letting a row without one start twenty-two pixels to the left
+        // of the row above it gives a list two left edges, and on the Unlocks tab — where the
+        // locked entries are exactly the ones whose icon does not resolve — that meant most of the
+        // list was indented differently from the rest of it.
+        var left = GameMetrics.Row.TextLeft;
         var trailing = Caption(
             box, GameMetrics.Row.TextTop, GameMetrics.Row.TextHeight, GameMetrics.Row.TrailingWidth);
         var status = hasStatus
