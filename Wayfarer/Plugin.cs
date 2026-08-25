@@ -386,6 +386,13 @@ public sealed class Plugin : IDalamudPlugin
             // positioned by its list — so it must not be clamped away from the deliberate overlap
             // that lets the border's ornament cross the seam between the two.
             OpenInBounds = false,
+
+            // No fade on the way out. A closing addon stays allocated until its hide transition
+            // finishes, and for those frames it reports itself not-open while Open() still refuses
+            // to do anything — so a Cancel followed straight away by a Confirm on another row would
+            // ask for a page that could not be built. The hub retries the open regardless; this
+            // narrows the window it has to retry across from many frames to one.
+            DisableCloseTransition = true,
         };
 
     /// <summary>Factored out of the constructor purely to stay under the method-length analyzer.

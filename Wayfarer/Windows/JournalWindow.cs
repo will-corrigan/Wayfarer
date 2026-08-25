@@ -106,6 +106,12 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
     /// writing a position every tick.</summary>
     private Vector2 placedAt = new(float.NaN, float.NaN);
 
+    /// <summary>Whether this window can still be opened at all. False once a step has thrown and the
+    /// page has switched itself off for the session (<see cref="Step"/>), in which case
+    /// <see cref="Show"/> is a no-op for good and a caller waiting for the page to appear should stop
+    /// waiting rather than retry a call that can never succeed.</summary>
+    public bool IsAvailable => !disabled;
+
     /// <summary>What Back does — set by the hub, which owns "which row this page is for".</summary>
     public Action? OnBack { get; set; }
 

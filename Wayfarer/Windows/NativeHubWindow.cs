@@ -111,6 +111,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private const float MinWindowHeight = 300f;
     private const float ViewportFraction = 0.9f;
 
+    /// <summary>How many frames a page that was asked for and did not appear is retried across.
+    /// Roughly half a second at 60fps: far longer than the addon needs to finish a close it is in the
+    /// middle of, and short enough that a page which can never open stops being asked for.</summary>
+    private const int PendingPageFrames = 30;
+
     private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
 
     private static readonly (string Key, string Label)[] CategoryChips =
@@ -193,8 +198,24 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     /// <summary>The row the journal window is currently showing, or null when it is closed. Kept so
     /// the cursor can be put back on that row when the window goes away, by whatever route it went.
+    ///
+    /// <para>Only ever set for a page that is genuinely on screen. It is read as "the page is open",
+    /// and that answer stops the tab refreshing — so a row recorded here for a page that never
+    /// appeared would freeze the tab on stale rows while the rest of the window carried on looking
+    /// alive. <see cref="pendingPage"/> is where a requested-but-not-yet-open page lives.</para>
     /// </summary>
     private HubListRow? pageRow;
+
+    /// <summary>A page that has been asked for but is not open yet, retried once per frame until it
+    /// is. Both of the ways an open can fail are transient or terminal rather than instantaneous:
+    /// the addon refuses to reopen while its previous close is still finishing, and the page switches
+    /// itself off permanently if one of its steps throws. Retrying covers the first; the frame budget
+    /// and <see cref="JournalWindow.IsAvailable"/> stop the second turning into a retry every frame
+    /// for the rest of the session.</summary>
+    private (HubListRow Row, HubRowDetail Detail)? pendingPage;
+
+    /// <summary>Frames left to keep retrying <see cref="pendingPage"/>.</summary>
+    private int pendingPageFrames;
 
     /// <summary>The row the pane is currently describing, by reference. A held d-pad fires the
     /// hover callback once per step and every pane assignment builds SeStrings, so the guard is
@@ -279,8 +300,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         journal.OnClosed = OnJournalClosed;
     }
 
-    /// <summary>Whether the journal window is open on one of this list's rows.</summary>
-    private bool IsPageOpen => pageRow is not null;
+    /// <summary>Whether the journal window is open on one of this list's rows. Both halves are asked
+    /// every time, because this is what stops the tab refreshing: the row is what this window
+    /// believes, and the other window's own open state is what is actually on screen. Trusting the
+    /// belief alone is how the tab wedged — a page that failed to open left the refresh switched off
+    /// with nothing to switch it back on, and the tab went on saying a finished unlock was Available
+    /// and a dead hunting target was still there.</summary>
+    private bool IsPageOpen => pageRow is not null && journal.IsOpen;
 
     /// <summary>Where this window actually is on screen, in screen pixels — which is the space the
     /// journal window has to be positioned in, because a second addon's own position is set in the
@@ -919,6 +945,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         list = null;
         detailPane = null;
         pageRow = null;
+        pendingPage = null;
         hoveredRow = null;
         checklistControls = null;
         groupButton = null;
@@ -1236,10 +1263,62 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// mouse, so taking their focus would be taking it from under them.</para></summary>
     private void OpenJournal(HubListRow row, HubRowDetail detail)
     {
-        pageRow = row;
         journal.Show(detail, TakesFocus);
+
+        // Asked, not necessarily done. Open() allocates the addon on the frame it is called, but it
+        // refuses outright while a previous close is still finishing, and the page switches itself
+        // off if one of its own steps throws. So the row is only recorded as the open page once the
+        // page says it is open; otherwise it is parked and retried, and until then the tab keeps
+        // refreshing rather than freezing on rows the player can no longer trust.
+        if (journal.IsOpen)
+        {
+            pageRow = row;
+            pendingPage = null;
+        }
+        else
+        {
+            pageRow = null;
+            pendingPage = (row, detail);
+            pendingPageFrames = PendingPageFrames;
+        }
+
         journal.PlaceBeside(ScreenPosition, Size * UiScale());
         RefreshButtonHint();
+    }
+
+    /// <summary>One more attempt at a page that was asked for and did not appear, run per frame
+    /// until it does or the budget runs out.
+    ///
+    /// <para>The budget exists so that a page which can never open does not turn into a
+    /// <c>Show</c> call every frame for the rest of the session. Half a second at 60fps is far more
+    /// than a hide transition needs and short enough that a player who pressed confirm and got
+    /// nothing is not left wondering.</para></summary>
+    private void RetryPendingPage()
+    {
+        if (pendingPage is not { } pending)
+        {
+            return;
+        }
+
+        if (journal.IsOpen)
+        {
+            pageRow = pending.Row;
+            pendingPage = null;
+            RefreshButtonHint();
+            return;
+        }
+
+        pendingPageFrames--;
+        if (pendingPageFrames <= 0 || !journal.IsAvailable)
+        {
+            pendingPage = null;
+            log.Warning(
+                $"Wayfarer hub: the journal page for '{pending.Detail.Title}' did not open, so the list is left as "
+                + "it was. Press confirm again to retry.");
+            return;
+        }
+
+        journal.Show(pending.Detail, TakesFocus);
     }
 
     /// <summary>Keeps the open journal window on whatever the cursor is now over — the game's own
@@ -1266,6 +1345,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         var row = pageRow;
         pageRow = null;
+
+        // A page still waiting to open is a page the player has since closed. Dropping it here is
+        // what stops the retry re-opening a window that has just been dismissed.
+        pendingPage = null;
 
         // The page can be closed while this window is on its way out — DismissJournalPage runs from
         // OnFinalize — and the game's close is not instantaneous, so the callback can land after this
@@ -1307,6 +1390,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// very row the page was built from.</summary>
     private void DismissJournalPage()
     {
+        // A page that was asked for and has not appeared yet is dropped too: it was built from a row
+        // this caller is about to replace, so letting the retry succeed later would put a page on
+        // screen describing an object that no longer exists.
+        pendingPage = null;
+
         if (pageRow is null)
         {
             return;
@@ -1670,6 +1758,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             DismissJournalPage();
             return;
         }
+
+        // Before the refresh, because it is what decides whether there is a page open to refresh
+        // around: a page asked for on the frame the previous one was still closing arrives here.
+        RetryPendingPage();
 
         RefreshTab();
         RestoreListDownwardExit();
