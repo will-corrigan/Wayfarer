@@ -363,18 +363,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// installer's mark and not a new one.</summary>
     private readonly ImGuiImageNode crestNode;
 
-    /// <summary>The direction arrow. An <c>ImGuiImageNode</c> rather than a texture-sheet crop
-    /// because the arrow is <b>generated</b> — see <see cref="ArrowBitmap"/> for what was wrong with
-    /// cropping the minimap's sheet, which is the defect this replaces. The node owns and disposes
-    /// the texture wrap it is given.</summary>
-    private readonly ImGuiImageNode arrowNode;
+    /// <summary>The compass's dial: the hairline ring and its four cardinal ticks. <b>Its rotation is
+    /// never written.</b> That is the whole reason the compass is two nodes rather than one — a dial
+    /// baked into the same texture as the needle would turn with it, which is not what a compass
+    /// does.
+    ///
+    /// <para>An <c>ImGuiImageNode</c> rather than a texture-sheet crop because the art is
+    /// <b>generated</b> — see <see cref="CompassBitmap"/>, and <see cref="ArrowBitmap"/> for what was
+    /// wrong with cropping the minimap's sheet. The node owns and disposes the texture wrap it is
+    /// given.</para></summary>
+    private readonly ImGuiImageNode ringNode;
+
+    /// <summary>The compass's needle — the part that turns, and the direct replacement for the
+    /// readout's old direction arrow. Attached after the ring so it draws over it, concentric with it,
+    /// and given the same bearing the arrow was given: <c>NavMath.ArrowAngle</c>, where 0 is straight
+    /// ahead, because the needle is drawn pointing straight up unrotated.</summary>
+    private readonly ImGuiImageNode needleNode;
 
     /// <summary>The up/down mark that hangs off the arrow when the target is on a different level of
     /// the world. The game's own minimap does exactly this to a marker on another floor, and copying
     /// the placement convention is the point — a player already reads a badge on a marker without
     /// being told.
     ///
-    /// <para><b>It is deliberately not the arrow's art.</b> It used to be: the same generated
+    /// <para><b>It is deliberately not the pointer's own art.</b> It used to be: the same generated
     /// arrowhead, half size, turned through half a turn for "below". Direction and elevation are two
     /// different meanings and they were being drawn as the same shape, which the player read as a
     /// second heading to travel in. It is a stacked double chevron now
@@ -527,9 +538,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// frame always builds one.</summary>
     private int lastNavTargets = -1;
 
-    private ArrowIconVariant? loadedVariant;
+    private ArrowIconVariant? loadedNeedleVariant;
+    private ArrowIconVariant? loadedRingVariant;
     private ArrowIconVariant? loadedElevationVariant;
-    private bool arrowFailed;
+    private bool needleFailed;
+    private bool ringFailed;
     private bool elevationFailed;
     private bool cogLoaded;
     private bool cogFailed;
@@ -619,8 +632,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // The floating parts, over the stack. None of them takes vertical room, so none belongs in the
         // flow; they are parked from where the flow put the sections. See BuildInteractions for the
         // rest of them — everything that answers a press is built together, there.
-        arrowNode = BuildArrow(BaseArrow);
-        elevationNode = BuildArrow(BaseArrow / 2f);
+        ringNode = BuildGlyph(BaseArrow, CompassBitmap.Size);
+        needleNode = BuildGlyph(BaseArrow, CompassBitmap.Size);
+        elevationNode = BuildGlyph(BaseArrow / 2f, ChevronBitmap.Size);
         subjectHitBox = BuildSubjectHitBox(onFollowClicked, onSubjectClicked);
         subjectClickable = onSubjectClicked is not null;
         BuildInteractions(
@@ -688,9 +702,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         var hud = hostIsHudScaled ? 1f : AtkUnitBase.GetGlobalUIScale();
         var factor = hud * Math.Clamp(frame.Scale, 0.5f, 3f);
         var width = BaseWidth * factor;
-        var arrowSize = BaseArrow * factor * Math.Clamp(frame.ArrowScale, 0.5f, 2f);
 
-        var drawable = frame.ArrowRadians is not null && EnsureArrowTexture(frame.ArrowIcon);
+        // Two boxes, concentric: the dial's, which is the element's whole footprint, and the needle's
+        // inside it. Both are the old arrow's box times a factor the compass derives from the arrow's
+        // own proportions, so the needle is provably not smaller than the arrow it replaced — see
+        // CompassBitmap.NeedleScale.
+        var ringSize = ReadoutBodyLayout.CompassRingBox(factor, frame.ArrowScale);
+        var needleSize = ReadoutBodyLayout.CompassNeedleBox(factor, frame.ArrowScale);
+
+        var drawable = frame.ArrowRadians is not null && EnsureNeedleTexture(frame.ArrowIcon);
 
         // Every section is filled in against its OWN top edge — nothing here knows or asks where the
         // section will end up. Then the container places them, in one walk, from the heights they have
@@ -707,8 +727,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         // And only now the floating parts, from where the flow actually put the sections. This is a
         // read of a placed position, not a measurement of a string, which is the whole difference.
-        LayoutArrow(frame, drawable, arrowSize, factor, ArrowCentre(arrowSlot, factor));
-        LayoutElevation(frame, arrowSize);
+        LayoutCompass(frame, drawable, ringSize, needleSize, factor, ArrowCentre(arrowSlot, factor));
+        LayoutElevation(frame, ringSize, needleSize);
         SettleLineHitBoxes(LayoutLineHitBoxes());
         LayoutSubjectHitBox(
             subject,
@@ -753,7 +773,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// rather than drawing a frame around emptiness.</summary>
     public void HideAll()
     {
-        arrowNode.IsVisible = false;
+        HideCompass();
         elevationNode.IsVisible = false;
         arrowWordsNode.IsVisible = false;
         plateNode.IsVisible = false;
@@ -889,13 +909,24 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <see cref="GameMetrics.Type.CapHeightCentre"/> of <paramref name="fontSize"/> down from the
     /// top, then pulled back up by half the control's own size. Shared by the cog and the switcher
     /// so both centre on the text beside them the same way; the arrow uses the same fraction
-    /// directly in <see cref="LayoutArrow"/>, where it already has a line centre in hand rather than
+    /// directly in <see cref="LayoutCompass"/>, where it already has a line centre in hand rather than
     /// a line top.
     ///
     /// <para>Clamped to never go negative: a control taller than the line it sits beside centres as
     /// low as the line's own top rather than climbing above it.</para></summary>
     private static float OpticalCentreOffset(float fontSize, float size) =>
         Math.Max((fontSize * ArrowOpticalCentre) - (size / 2f), 0f);
+
+    /// <summary>Sizes one of the compass's two nodes and hangs it off a shared centre point, with its
+    /// rotation origin in the middle of itself — which is what makes the needle spin in place rather
+    /// than swing around a corner, and what keeps the two pieces concentric at every size.</summary>
+    private static void Park(ImGuiImageNode node, Vector2 centre, float size)
+    {
+        node.Size = new Vector2(size, size);
+        node.OriginX = size / 2f;
+        node.OriginY = size / 2f;
+        node.Position = centre - new Vector2(size / 2f, size / 2f);
+    }
 
     /// <summary>An invisible rectangle that turns a region of the readout into a click.
     ///
@@ -1287,8 +1318,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
     }
 
-    /// <summary>An image node that holds one of the generated arrow textures — the bearing arrow, or
-    /// the smaller up/down chevron beside it.
+    /// <summary>An image node that holds one of the generated textures — the compass's dial, its
+    /// needle, or the smaller up/down chevron beside them.
     ///
     /// <para>The game's own direction indicator is a plain image node whose rotation is written every
     /// frame (<c>AtkImageNode PlayerCone / PlayerConeRotation</c> on the minimap), so this copies the
@@ -1298,13 +1329,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <para><c>FitTexture</c> — AutoFit plus Stretch — means "fit the whole loaded TEXTURE into this
     /// node". That is now exactly right, and it is worth saying why it was catastrophic before: with
     /// a 448x212 texture sheet loaded and a 24x24 part selected, the part was ignored and the whole
-    /// sheet was drawn squashed into 34 pixels. The arrow's texture is generated and contains nothing
-    /// but the arrow, so there is no part to ignore.</para></summary>
-    private ImGuiImageNode BuildArrow(float side)
+    /// sheet was drawn squashed into 34 pixels. Each generated texture contains nothing but its own
+    /// glyph, so there is no part to ignore.</para></summary>
+    private ImGuiImageNode BuildGlyph(float side, int texture)
     {
         var node = new ImGuiImageNode
         {
-            TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size),
+            TextureSize = new Vector2(texture, texture),
             Size = new Vector2(side, side),
             OriginX = side / 2f,
             OriginY = side / 2f,
@@ -1612,26 +1643,37 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         EnableMoving = true;
     }
 
-    /// <summary>Puts the arrow in the marker column — the gutter the banner reserves for the
+    /// <summary>Puts the compass in the marker column — the gutter the banner reserves for the
     /// medallions that hang to the left of a subordinate line — level with the middle of the first
     /// subordinate line, which is the objective it is pointing at. It takes no vertical space of its
     /// own, so this runs after the lines have been placed and simply parks it beside them.
     ///
+    /// <para><b>The dial does not move and the needle does.</b> Both nodes are centred on the same
+    /// point, so the needle turns about the dial's centre; the ring's rotation is never written at
+    /// all, here or anywhere else. The needle is given exactly the bearing the old arrow was given,
+    /// because it is drawn pointing straight up unrotated — see <see cref="CompassBitmap"/>.</para>
+    ///
     /// <para>Centred in the medallion's own 32-wide column rather than given a column of its own, so
-    /// the arrow and the markers below it share one left edge whatever the player's arrow-size
-    /// setting is.</para></summary>
-    private void LayoutArrow(ReadoutFrame frame, bool drawable, float size, float factor, float lineCentre)
+    /// the compass and the markers below it share one left edge whatever the player's arrow-size
+    /// setting is.</para>
+    ///
+    /// <para><b>A missing dial costs the dial only.</b> If the ring's texture cannot be generated the
+    /// needle is still drawn and still points the right way — a pointer without its reference marks
+    /// is degraded, not useless — and the failure is logged once. It is the needle that the readout
+    /// falls back to words without.</para></summary>
+    private void LayoutCompass(
+        ReadoutFrame frame, bool drawable, float ringSize, float needleSize, float factor, float lineCentre)
     {
         if (frame.ArrowRadians is not { } radians)
         {
-            arrowNode.IsVisible = false;
+            HideCompass();
             ReportArrow(frame.ArrowHidden);
             return;
         }
 
         if (!drawable)
         {
-            arrowNode.IsVisible = false;
+            HideCompass();
             ReportArrow(ArrowHiddenReason.TextureUnavailable);
             return;
         }
@@ -1640,22 +1682,29 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // it moved nothing at all on the readout that is actually on screen, because only the ImGui
         // fallback ever read it.
         // Centred in the medallion's own column, but never allowed to reach the words — see
-        // ReadoutBodyLayout's own note. Identical to plain centring at the arrow's authored size and at
-        // every size below it; above that, the arrow grows leftward into the empty margin rather than
-        // over the sentence it is pointing for.
+        // ReadoutBodyLayout's own note. Above the authored size the element grows leftward into the
+        // empty margin rather than over the sentence it is pointing for.
         var centred = ReadoutBodyLayout.GutterLeft(factor)
-            + ((ReadoutBodyLayout.GutterWidth(factor) - size) / 2f);
-        var clear = ReadoutBodyLayout.SubLineLeft(factor) - size;
+            + ((ReadoutBodyLayout.GutterWidth(factor) - ringSize) / 2f);
+        var clear = ReadoutBodyLayout.SubLineLeft(factor) - ringSize;
+        var centre = new Vector2(Math.Max(Math.Min(centred, clear), 0f) + (ringSize / 2f), lineCentre);
 
-        arrowNode.Size = new Vector2(size, size);
-        arrowNode.OriginX = size / 2f;
-        arrowNode.OriginY = size / 2f;
-        arrowNode.Position = new Vector2(
-            Math.Max(Math.Min(centred, clear), 0f), lineCentre - (size / 2f));
-        arrowNode.Rotation = radians;
-        arrowNode.IsVisible = true;
+        Park(ringNode, centre, ringSize);
+        ringNode.IsVisible = EnsureRingTexture(frame.ArrowIcon);
+
+        Park(needleNode, centre, needleSize);
+        needleNode.Rotation = radians;
+        needleNode.IsVisible = true;
         ReportArrow(ArrowHiddenReason.None);
         ReportBearing(radians);
+    }
+
+    /// <summary>Takes the whole compass down — both pieces, because half a compass is worse than
+    /// none.</summary>
+    private void HideCompass()
+    {
+        ringNode.IsVisible = false;
+        needleNode.IsVisible = false;
     }
 
     /// <summary>Draws the banner: the plate at the readout's full width, the header pill over its top
@@ -2104,13 +2153,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// — and by the time it arrives here it is a fact about the frame. The distance line says it in
     /// words as well, because a chevron is a convention the player has to already know.</para>
     ///
-    /// <para>The offset parks it clear of the arrow's lower-right corner rather than overlapping it.
-    /// The old art overlapped deliberately, to read as one compound mark — which was the mistake:
-    /// two meanings fused into one glyph. A small gap is what says "this is a second, separate
-    /// thing about the same target".</para></summary>
-    private void LayoutElevation(ReadoutFrame frame, float arrowSize)
+    /// <para>The offset parks it clear of the compass's lower-right rather than overlapping it — off
+    /// the <b>ring's</b> box, since the ring is the outer edge of what is drawn there, while its own
+    /// size follows the needle's, the glyph it is a sibling of. The old art overlapped deliberately,
+    /// to read as one compound mark — which was the mistake: two meanings fused into one glyph. A
+    /// small gap is what says "this is a second, separate thing about the same target".</para>
+    /// </summary>
+    private void LayoutElevation(ReadoutFrame frame, float ringSize, float needleSize)
     {
-        if (!arrowNode.IsVisible
+        if (!needleNode.IsVisible
             || frame.Content.Elevation == ElevationHint.Level
             || !EnsureElevationTexture(frame.ArrowIcon))
         {
@@ -2118,15 +2169,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return;
         }
 
-        var size = Math.Max(arrowSize * 0.6f, 8f);
+        var size = Math.Max(needleSize * 0.6f, 8f);
         elevationNode.Size = new Vector2(size, size);
         elevationNode.OriginX = size / 2f;
         elevationNode.OriginY = size / 2f;
 
         // The art points straight up unrotated, so "above" needs no rotation at all and "below" is
-        // half a turn. Same guarantee ArrowBitmap gives the bearing arrow.
+        // half a turn. Same guarantee CompassBitmap gives the needle.
         elevationNode.Rotation = frame.Content.Elevation == ElevationHint.Above ? 0f : MathF.PI;
-        elevationNode.Position = arrowNode.Position + new Vector2(arrowSize * 0.74f, arrowSize * 0.52f);
+        elevationNode.Position = ringNode.Position + new Vector2(ringSize * 0.74f, ringSize * 0.52f);
         elevationNode.IsVisible = true;
     }
 
@@ -2564,43 +2615,43 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             : stack.Y + bannerSection.Y + bannerSection.Height
               + (GameMetrics.Banner.AnnotationBlock * factor / 2f);
 
-    /// <summary>Generates the arrow for the chosen colour and hands it to the image node, if it is
-    /// not already loaded. Reloading on a variant change is what makes the setting apply live.
+    /// <summary>Generates the compass needle for the chosen colour and hands it to the image node, if
+    /// it is not already loaded. Reloading on a variant change is what makes the colour setting apply
+    /// live.
     ///
     /// <para>Unlike a texture read out of the game's resource system, this one cannot be merely
     /// <i>late</i> — the pixels are computed here and uploaded synchronously — so there is no retry
     /// loop and no "not ready yet" state. It either works or it throws, and if it throws the readout
     /// falls back to saying the direction in words and never tries again this session.</para></summary>
-    private bool EnsureArrowTexture(ArrowIconVariant variant)
+    private bool EnsureNeedleTexture(ArrowIconVariant variant)
     {
-        if (arrowFailed)
+        if (needleFailed)
         {
             return false;
         }
 
-        if (loadedVariant == variant)
+        if (loadedNeedleVariant == variant)
         {
             return true;
         }
 
         try
         {
-            var pixels = ArrowBitmap.Render(variant);
             var wrap = textures.CreateFromRaw(
-                RawImageSpecification.Rgba32(ArrowBitmap.Size, ArrowBitmap.Size),
-                pixels,
-                $"Wayfarer arrow ({variant})");
+                RawImageSpecification.Rgba32(CompassBitmap.Size, CompassBitmap.Size),
+                CompassBitmap.RenderNeedle(variant),
+                $"Wayfarer compass needle ({variant})");
 
             // Takes ownership: the node disposes the previous wrap and this one with itself.
-            arrowNode.LoadTexture(wrap);
-            arrowNode.TextureSize = new Vector2(ArrowBitmap.Size, ArrowBitmap.Size);
-            loadedVariant = variant;
+            needleNode.LoadTexture(wrap);
+            needleNode.TextureSize = new Vector2(CompassBitmap.Size, CompassBitmap.Size);
+            loadedNeedleVariant = variant;
 
-            if (arrowNode.ActualTextureSize == Vector2.Zero)
+            if (needleNode.ActualTextureSize == Vector2.Zero)
             {
                 log.Warning(
-                    "Wayfarer readout: the generated direction arrow reports no texture size after being "
-                    + "uploaded. It is still being drawn; if there is a blank space where the arrow should "
+                    "Wayfarer readout: the generated compass needle reports no texture size after being "
+                    + "uploaded. It is still being drawn; if there is a blank space where the compass should "
                     + "be, this line is why.");
             }
 
@@ -2608,8 +2659,47 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
         catch (Exception ex)
         {
-            arrowFailed = true;
-            log.Error(ex, "Wayfarer readout: the direction arrow could not be generated — showing the direction in words instead.");
+            needleFailed = true;
+            log.Error(ex, "Wayfarer readout: the compass needle could not be generated — showing the direction in words instead.");
+            return false;
+        }
+    }
+
+    /// <summary>Generates the compass's dial — the ring and its ticks — in the same colour, if it is
+    /// not already loaded.
+    ///
+    /// <para><b>Its own texture and its own failure.</b> The ring is a separate image because it must
+    /// not rotate with the needle, and it therefore fails separately: losing it leaves a needle
+    /// pointing the right way with no reference marks around it, which is a degraded compass rather
+    /// than a broken readout. Losing the needle is what costs the mark altogether.</para></summary>
+    private bool EnsureRingTexture(ArrowIconVariant variant)
+    {
+        if (ringFailed)
+        {
+            return false;
+        }
+
+        if (loadedRingVariant == variant)
+        {
+            return true;
+        }
+
+        try
+        {
+            var wrap = textures.CreateFromRaw(
+                RawImageSpecification.Rgba32(CompassBitmap.Size, CompassBitmap.Size),
+                CompassBitmap.RenderRing(variant),
+                $"Wayfarer compass ring ({variant})");
+
+            ringNode.LoadTexture(wrap);
+            ringNode.TextureSize = new Vector2(CompassBitmap.Size, CompassBitmap.Size);
+            loadedRingVariant = variant;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ringFailed = true;
+            log.Error(ex, "Wayfarer readout: the compass ring could not be generated, so the needle is drawn without its dial. It still points the same way.");
             return false;
         }
     }
@@ -2660,10 +2750,10 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// cannot be settled by reading the code can be settled by looking at the screen once.
     ///
     /// <para><c>NavMath.ArrowAngle</c> is defined as "0 = straight up", and the words fallback is
-    /// built from the same number. The arrow art is now generated by <see cref="ArrowBitmap"/>,
-    /// which draws it pointing straight up and centred in its own image, so the rest orientation is
-    /// a property of this codebase rather than an assumption about a game asset — there is no offset
-    /// to get wrong. This line stays anyway, because "the arrow and the words disagree" is still the
+    /// built from the same number. The needle is generated by <see cref="CompassBitmap"/>, which
+    /// draws it pointing straight up and centred on its own hub, so the rest orientation is a
+    /// property of this codebase rather than an assumption about a game asset — there is no offset to
+    /// get wrong. This line stays anyway, because "the needle and the words disagree" is still the
     /// cheapest possible check that the bearing itself is right.</para></summary>
     private void ReportBearing(float radians)
     {
@@ -2681,7 +2771,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         lastBearingWords = words;
         var degrees = radians * 180f / MathF.PI;
         log.Debug(
-            $"Wayfarer readout: arrow rotation {degrees:F0}° = {words}. The arrow is drawn pointing straight " +
-            "up unrotated; if the arrow on screen and these words disagree, the bearing is what is wrong.");
+            $"Wayfarer readout: needle rotation {degrees:F0}° = {words}. The needle is drawn pointing straight " +
+            "up unrotated; if the needle on screen and these words disagree, the bearing is what is wrong.");
     }
 }

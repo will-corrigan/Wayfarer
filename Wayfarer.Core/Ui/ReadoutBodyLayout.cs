@@ -172,6 +172,25 @@ public static class ReadoutBodyLayout
     /// in whatever the player's arrow-size setting is.</summary>
     public static float GutterWidth(float factor) => GameMetrics.Banner.MarkerSize * factor;
 
+    /// <summary>The box the readout's old direction arrow was drawn in, at this scale and this
+    /// arrow-size setting: the quest tracker's own 24, scaled. It is no longer drawn, and it is kept
+    /// as the <b>yardstick</b> the compass is sized against — the whole of "the new mark is not
+    /// smaller than the one it replaces" is this number and the two below it.</summary>
+    public static float ArrowBox(float factor, float arrowScale) =>
+        GameMetrics.Hud.IconSize * factor * Math.Clamp(arrowScale, 0.5f, 2f);
+
+    /// <summary>The compass ring's box — the element's whole footprint, and what the gutter proof is
+    /// about.</summary>
+    public static float CompassRingBox(float factor, float arrowScale) =>
+        ArrowBox(factor, arrowScale) * CompassBitmap.RingScale;
+
+    /// <summary>The needle's box, concentric inside the ring's. Smaller than the ring's, and slightly
+    /// smaller than <see cref="ArrowBox"/> — while the needle's <i>ink</i> is taller than the arrow's
+    /// was, because the needle fills more of its own texture. See
+    /// <see cref="CompassBitmap.NeedleScale"/>.</summary>
+    public static float CompassNeedleBox(float factor, float arrowScale) =>
+        ArrowBox(factor, arrowScale) * CompassBitmap.NeedleScale;
+
     /// <summary>The room a subordinate line's words have. Never less than a hair, so a readout caught
     /// mid-resize has a column rather than a negative one.</summary>
     public static float SubLineWidth(float factor) =>
@@ -387,19 +406,24 @@ public static class ReadoutBodyLayout
             GameMetrics.Banner.PlateHeight * factor);
     }
 
-    /// <summary>The arrow, centred in the medallion's own column so that it and the marks below it
-    /// share one left edge — but never allowed to reach the words it belongs to.
+    /// <summary>The direction indicator's whole footprint — the compass ring — centred in the
+    /// medallion's own column so that it and the marks below it share one left edge, but never
+    /// allowed to reach the words it belongs to.
     ///
-    /// <para><b>Why the second rule exists.</b> Centring alone is only safe up to the arrow's own
-    /// authored size: the gutter is 32 wide and the words start 28 past its left edge, so an arrow
-    /// larger than 24 grows straight into the objective line. The player's arrow-size setting goes to
-    /// double, so at anything above the default the arrow was drawn over the sentence it was pointing
-    /// for. Past that size the arrow grows leftward into the margin instead, which is empty. The two
-    /// rules agree exactly at the default size and at every size below it, so this is a no-op for the
-    /// arrow the readout actually ships with.</para></summary>
+    /// <para><b>Why the second rule exists.</b> Centring alone is only safe up to the mark's own
+    /// authored size: the gutter is 32 wide and the words start 28 past its left edge, so anything
+    /// larger grows straight into the objective line. The player's arrow-size setting goes to double,
+    /// so at anything above the default the old arrow was drawn over the sentence it was pointing
+    /// for. Past that size it grows leftward into the margin instead, which is empty. The two rules
+    /// agree exactly at the default size and at every size below it.</para>
+    ///
+    /// <para>The ring rather than the needle, because the ring is the outer edge of what is drawn —
+    /// the needle is concentric inside it (see <see cref="CompassNeedleBox"/>) and cannot reach
+    /// anything the ring does not. That makes the containment proof a proof about the whole
+    /// element.</para></summary>
     private static ScreenRect Arrow(float centre, float factor, float arrowScale)
     {
-        var size = GameMetrics.Hud.IconSize * factor * Math.Clamp(arrowScale, 0.5f, 2f);
+        var size = CompassRingBox(factor, arrowScale);
         var centred = GutterLeft(factor) + ((GutterWidth(factor) - size) / 2f);
         var clear = SubLineLeft(factor) - size;
 

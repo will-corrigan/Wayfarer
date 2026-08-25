@@ -40,7 +40,9 @@ public sealed record ReadoutBodyBlocks
     /// <summary>The switcher's click target, over the chevron the plate's own art carries.</summary>
     public ScreenRect Switcher { get; init; }
 
-    /// <summary>The bearing arrow, in the gutter beside the line it points for.</summary>
+    /// <summary>The direction indicator, in the gutter beside the line it points for: the compass
+    /// ring's box, which is the outer edge of everything drawn there — the needle is concentric
+    /// inside it and reaches nothing the ring does not.</summary>
     public ScreenRect Arrow { get; init; }
 
     /// <summary>One section per subordinate line — the box that line's rule, medallion and words all

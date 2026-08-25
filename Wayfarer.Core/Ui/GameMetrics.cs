@@ -119,7 +119,7 @@ public static class GameMetrics
         /// small mark beside a line of text aligns to, so two controls beside two different lines
         /// (the readout's follow switcher beside the quest name, its settings cog beside the
         /// heading) read as siblings rather than each having found its own answer. See
-        /// <c>ReadoutBodyNode.LayoutArrow</c> for where this was first tuned in.</para></summary>
+        /// <c>ReadoutBodyNode.LayoutCompass</c> for where this was first tuned in.</para></summary>
         public const float CapHeightCentre = 0.58f;
     }
 

@@ -32,7 +32,14 @@ namespace Wayfarer.Core.Ui;
 /// The shape is the game's own HUD vocabulary rather than a generic triangle: a tall isosceles head
 /// with a notched tail, filled with a vertical gold gradient and ringed in a near-black outline, the
 /// same fill-plus-dark-edge treatment the game's own gold HUD glyphs use so it reads against bright
-/// terrain.</summary>
+/// terrain.
+///
+/// <para><b>What draws it now.</b> Nothing on screen: the readout's direction indicator is a compass
+/// — a static ring with a needle turning in it, <see cref="CompassBitmap"/> — and this is what it
+/// replaced. The arrow is kept because it is the <b>yardstick</b> the compass is sized against, and
+/// that is a claim about pixels rather than about intent: <see cref="GlyphHeightFraction"/> is read
+/// straight out of the geometry below, and the test that proves the needle is no smaller than the
+/// arrow measures the ink in this image against the ink in the needle's.</para></summary>
 public static class ArrowBitmap
 {
     /// <summary>The generated texture is square and this is its side, in pixels. Larger than the
@@ -44,17 +51,33 @@ public static class ArrowBitmap
     /// premultiplied) alpha.</summary>
     public const int ByteCount = Size * Size * 4;
 
+    /// <summary>How much of the image's height the arrow's own ink fills — its point down to the ends
+    /// of its tail, as a fraction of <see cref="Size"/>.
+    ///
+    /// <para>Public because it is the yardstick anything that replaces this arrow has to measure up
+    /// to. The readout draws its direction indicator in a fixed box beside a line, so a glyph that
+    /// fills less of its own texture is a glyph that is smaller on screen at the same setting — which
+    /// for a player who has turned the arrow-size setting up to read the readout across a room is a
+    /// regression, not a redesign. <see cref="CompassBitmap.NeedleScale"/> is derived from this number
+    /// rather than guessed against it.</para></summary>
+    public const float GlyphHeightFraction = (TailY - TipY) / 2f;
+
     private const float OutlineWidth = 2.6f;
     private const float EdgeSoftness = 1.1f;
 
     // The arrow, in units of half the image, with +Y down and the origin at the image's centre.
     // Deliberately a hair inside the edges so the outline below still fits inside the texture.
+    private const float TipY = -0.88f;
+    private const float TailY = 0.70f;
+    private const float NotchY = 0.28f;
+    private const float ShoulderX = 0.78f;
+
     private static readonly Vector2[] Outline =
     [
-        new(0f, -0.88f),
-        new(0.78f, 0.70f),
-        new(0f, 0.28f),
-        new(-0.78f, 0.70f),
+        new(0f, TipY),
+        new(ShoulderX, TailY),
+        new(0f, NotchY),
+        new(-ShoulderX, TailY),
     ];
 
     /// <summary>Renders the arrow for one colour variant as straight-alpha RGBA bytes, row-major
@@ -82,7 +105,7 @@ public static class ArrowBitmap
 
                 // 1 inside the arrow proper, 0 out in the outline ring, soft across the boundary.
                 var fill = Coverage(distance);
-                var gradient = Math.Clamp((point.Y + 0.88f) / 1.58f, 0f, 1f);
+                var gradient = Math.Clamp((point.Y - TipY) / (TailY - TipY), 0f, 1f);
                 var color = Vector3.Lerp(ArrowPalette.OutlineColor, Vector3.Lerp(tip, tail, gradient), fill);
 
                 pixels[offset] = Channel(color.X);
