@@ -227,6 +227,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private bool lastReverseConfirmCancel;
     private string lastTeleportLabel = string.Empty;
 
+    /// <summary>What <see cref="LogDragDiagnostics"/> last wrote, so it only writes again when one
+    /// of the three actually changed — the same signature-gating every other per-tick refresh here
+    /// uses, and for the same reason: this runs every frame the window is open.</summary>
+    private Vector2 lastDiagnosticPosition = new(float.NaN, float.NaN);
+    private Vector2 lastDiagnosticSize = new(float.NaN, float.NaN);
+    private bool lastDiagnosticOpen = true;
+
     public NativeHubWindow(
         IUnlockProvider unlocks,
         HuntingLogService hunting,
@@ -1647,6 +1654,22 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private void OnFrameworkUpdate(IFramework fw)
     {
+        LogDragDiagnostics();
+
+        // Belt-and-suspenders against a defect neither side of this window's own code can cause:
+        // NativeAddon's Hide() hook forces a Close() on ANY native call to the addon's Hide vtable
+        // slot, and that Close() only starts the closing animation — the deallocation that would
+        // unsubscribe this handler (OnFinalize) runs several frames later. So there is a real window
+        // in which this addon has gone not-visible but this method keeps being called. A journal
+        // page left open beside a host that is no longer there is worse than no page — it looks
+        // alive — so it is put away the moment this is noticed, and nothing else here touches native
+        // state for an addon that is on its way out.
+        if (!IsOpen)
+        {
+            DismissJournalPage();
+            return;
+        }
+
         RefreshTab();
         RestoreListDownwardExit();
         UpdateStopButton();
@@ -1666,6 +1689,37 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             journal.PlaceBeside(ScreenPosition, Size * UiScale());
         }
+    }
+
+    /// <summary>Writes this window's position, size and open state to the log the moment any of
+    /// them changes, so a report of the window disappearing mid-drag can be matched against exactly
+    /// what the addon was doing at the time — hidden outright, or merely moved somewhere degenerate
+    /// (off-screen, zero-sized). Gated behind the same verbose-diagnostics switch the readout's own
+    /// per-change logging uses, and cheap enough to call unconditionally: the early-out is a handful
+    /// of comparisons, and the game is only ever asked to format a string when one of them differs
+    /// from the last tick's.</summary>
+    private unsafe void LogDragDiagnostics()
+    {
+        if (!config.QuestHelper.LogDiagnostics || InternalAddon is null)
+        {
+            return;
+        }
+
+        var position = ScreenPosition;
+        var open = InternalAddon->IsVisible;
+
+        if (position == lastDiagnosticPosition && Size == lastDiagnosticSize && open == lastDiagnosticOpen)
+        {
+            return;
+        }
+
+        lastDiagnosticPosition = position;
+        lastDiagnosticSize = Size;
+        lastDiagnosticOpen = open;
+
+        log.Information(
+            $"Wayfarer hub: pos={position.X:0}x{position.Y:0} size={Size.X:0}x{Size.Y:0} "
+            + $"scale={InternalAddon->Scale:0.###} visible={open} journalOpen={journal.IsOpen}.");
     }
 
     /// <summary>The open tab's per-tick refresh.
