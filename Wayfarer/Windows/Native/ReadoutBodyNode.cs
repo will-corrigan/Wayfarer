@@ -56,6 +56,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// game's own journal and tooltips grow downward instead of truncating.</summary>
     private const TextFlags BodyFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
 
+    /// <summary>One row of letters, for the single purpose of asking a line's own node how tall one
+    /// row of it actually draws — see <see cref="WrappedLines"/>. An ascender and a descender, so the
+    /// answer is the tallest a row of words gets rather than the height of whichever letters this
+    /// particular line happens to start with.</summary>
+    private const string RowProbe = "Ag";
+
     /// <summary>How the line that names what is being followed behaves instead: cut short with the
     /// engine's own ellipsis rather than wrapped.
     ///
@@ -773,7 +779,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// because a node that is already wrapping reports a wrapped height while one that is not
     /// reports its full unwrapped width, and taking the larger estimate is right in either case. A
     /// measurement that comes back as nothing falls back to one row, which is the old behaviour and
-    /// is never worse than it.</para></summary>
+    /// is never worse than it.</para>
+    ///
+    /// <para><b>Both comparisons here are unit-domain traps, and both of them were sprung.</b> This
+    /// is what "the readout is still way too spread out" was, and it was never a metric: a line the
+    /// layout says is worth 14 was reporting two rows and taking 28, so every line on the readout
+    /// was double-spaced. The two mistakes are called out where they are made below. Neither can be
+    /// seen at an interface size of exactly 100% with a face whose rows happen to fit their leading,
+    /// which is why the arithmetic in <see cref="ReadoutBodyLayout"/> kept auditing as
+    /// correct.</para></summary>
     private static float WrappedLines(TextNode node, float width)
     {
         if (width <= 1f)
@@ -781,14 +795,41 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return 1f;
         }
 
-        var drawn = node.GetTextDrawSize();
+        // Trap one: the measurement's own units. The readout bakes the interface scale into the
+        // FontSize, LineSpacing and Size it hands each node and leaves every node's Scale at 1 —
+        // see hostIsHudScaled — so `width` and node.LineSpacing below are in the units the node was
+        // given. The engine's default is to scale what it hands back, which put the measurement one
+        // whole interface scale above the numbers it is divided by; at any size over 100% the
+        // ceilings below then rounded every single-row line up to two. MeasuredTextNode.Measure
+        // already asks the same question the same way.
+        var drawn = node.GetTextDrawSize(considerScale: false);
         if (drawn.X <= 0f && drawn.Y <= 0f)
         {
             return 1f;
         }
 
+        var step = Math.Max(node.LineSpacing, 1f);
+
+        // Trap two: a row is taller than a step. The readout leads its lines two over the face —
+        // Axis 12 over 14, the quest tracker's own pairing — while the font's own row carries an
+        // ascender and a descender besides, so one drawn row is reliably taller than one leading.
+        // That is the tightness that makes this a heads-up element rather than a window, and it
+        // means the row count can never be the drawn height over the leading: that reads a single
+        // row as two. It is one row, plus however many further steps the drawn height ran on for.
+        // Measured off this same node rather than assumed, so it holds at every text size.
+        var one = node.GetTextDrawSize(RowProbe, considerScale: false).Y;
+
+        // Rounded rather than ceilinged, which buys half a step of tolerance: a line carrying one of
+        // the game's own glyph payloads draws a row slightly taller than a row of letters, and a
+        // ceiling would call that a second row. A real second row is a whole step.
+        var byHeight = one > 0f
+            ? 1f + MathF.Round(Math.Max(drawn.Y - one, 0f) / step)
+            : 1f;
+
+        // Only meaningful while the node has not wrapped: once it has, this axis is the widest row
+        // rather than the whole string. Kept for the frame a line's words change, where the node
+        // still reports the unwrapped width.
         var byWidth = MathF.Ceiling(drawn.X / width);
-        var byHeight = MathF.Ceiling(drawn.Y / Math.Max(node.LineSpacing, 1f));
 
         // Capped: a line that wants five rows is a content problem, and letting it push the rest of
         // the readout off the bottom of its slot would be trading a clipped line for a lost one.
@@ -2089,7 +2130,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // The UNTRUNCATED width, measured with the font the node has just been given: that overload
         // measures arbitrary text rather than whatever the node last drew, so it answers on the
         // frame the name changes and it answers about the whole name.
-        var full = node.GetTextDrawSize(line.Text).X;
+        //
+        // Unscaled, because `width` above is: the readout hands its nodes sizes that already carry
+        // the interface scale and leaves their Scale at 1 — see WrappedLines for the same trap in its
+        // more expensive form. Scaled, this called every name truncated at any interface size over
+        // 100%, which is what parks the switcher against a shortened name that is not shortened.
+        var full = node.GetTextDrawSize(line.Text, considerScale: false).X;
         return new SubjectLine(top, height, fontSize, Math.Min(full, width), full > width);
     }
 
