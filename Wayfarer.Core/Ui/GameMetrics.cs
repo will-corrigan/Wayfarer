@@ -870,7 +870,16 @@ public static class GameMetrics
         public const uint SubLineLeading = Hud.MetaLeading;
 
         /// <summary>The settings cog's side. Sized against the heading it sits beside rather than
-        /// against the readout: it is a mark on the pill's line, not a button on a panel.</summary>
+        /// against the readout: it is a mark on the pill's line, not a button on a panel.
+        ///
+        /// <para><b>Chosen, not measured.</b> Alone in this file it cites no <c>.uld</c>, no node
+        /// number and no component id, because there is nothing to cite: the game draws no cog at
+        /// this size beside a heading of this size, so there was no measurement to take. 13 is one
+        /// less than the <see cref="Type.BodySize"/> of the heading it sits on, which is what keeps
+        /// it reading as a mark on that line rather than as a control of its own — a cog the same
+        /// height as the words competes with them, and the next size down disappears. Anything that
+        /// reads better on a screen is a better value than this one; that is what "chosen" means
+        /// here.</para></summary>
         public const float CogSize = 13f;
     }
 }

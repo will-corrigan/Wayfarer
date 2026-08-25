@@ -2,10 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace Wayfarer.Tests;
 
-/// <summary>Pins what a FRESH INSTALL switches on for the player without being asked. The rule the
-/// player set is that the essentials are on — the arrow, the objective, the distance, the routing
-/// advice — and everything that adds a mark to the screen or a line to the readout waits to be
-/// asked for.
+/// <summary>Pins what a FRESH INSTALL switches on. The rule is that the plugin arrives working:
+/// everything a player installed it for — the arrow, the objective, the distance, the routing advice,
+/// the map flag, the nameplate markers, the nearby unlocks, the hunting summary — is on, and the
+/// settings are where you go to have less rather than to have anything at all.
 ///
 /// <para>Read out of the source file rather than out of the object, for the same reason
 /// <see cref="SettingsCopyTests"/> is: <c>Configuration</c> lives in the plugin assembly, which
@@ -22,14 +22,17 @@ namespace Wayfarer.Tests;
 /// about.</para></summary>
 public partial class ConfigurationDefaultsTests
 {
-    /// <summary>Everything a first run must have switched ON. The user asked for these explicitly:
-    /// "I want them all on by default."
+    /// <summary>The four surfaces a first run must have switched on. Each of them is the only way a
+    /// player who has not opened the window learns that part of the plugin exists, which is why none
+    /// of them waits to be asked for.
     ///
     /// <list type="bullet">
-    /// <item><description><c>MarkObjectiveWithMapFlag</c> moves the player's own map flag.</description></item>
-    /// <item><description><c>MarkTargetsOnNameplates</c> puts markers over characters in the world.</description></item>
+    /// <item><description><c>MarkObjectiveWithMapFlag</c> — the guidance the game itself
+    /// draws.</description></item>
+    /// <item><description><c>MarkTargetsOnNameplates</c> — the marker over a giver's head, read
+    /// without opening anything.</description></item>
     /// <item><description><c>ShowOnWidget</c> — both of them, the nearby unlocks and the hunting
-    /// summary — adds extra lines to a readout whose appeal is that it is short.</description></item>
+    /// summary, which is how a player finds either feature at all.</description></item>
     /// </list></summary>
     public static TheoryData<string> OnByDefault =>
         ["MarkObjectiveWithMapFlag", "MarkTargetsOnNameplates", "ShowOnWidget"];
@@ -51,26 +54,34 @@ public partial class ConfigurationDefaultsTests
     [Fact]
     public void The_quest_guidance_loop_is_still_on_for_a_new_install()
     {
-        // The other half of "fewer options on by default": leaner must not mean emptier. These are
-        // what the plugin IS, and a first run that has to switch the arrow on has missed the point.
+        // The core of it, held separately from the four above so that a change of mind about the
+        // surfaces can never reach the arrow. A first run that has to switch the arrow on has missed
+        // the point of the plugin.
         var source = ConfigurationSource();
 
         Assert.Contains("UseNativeReadout { get; set; } = true", source, StringComparison.Ordinal);
         Assert.Contains("ClickTeleportEnabled { get; set; } = true", source, StringComparison.Ordinal);
     }
 
+    /// <summary>The version only ever goes forwards. Nothing here claims a reason for the number it
+    /// is at — version 4 was bumped for a default change that was reverted before it shipped, and
+    /// walking a version stamp backwards would make an already-migrated config file look old. What is
+    /// worth pinning is the direction: a config written by this build must never claim to be older
+    /// than one written by a previous build, because Migrate short-circuits on
+    /// <c>Version >= CurrentVersion</c> and would then silently stop running.</summary>
     [Fact]
-    public void Leaning_the_defaults_bumped_the_configuration_version()
+    public void The_configuration_version_never_goes_backwards()
     {
-        // Without the bump an existing configuration is never rewritten, and the version stamp is
-        // the only record that the shipped defaults are no longer what an old file was written
-        // against.
         var version = VersionPattern().Match(ConfigurationSource());
 
         Assert.True(version.Success, "Configuration.CurrentVersion was not found.");
+
+        var message = "Configuration.CurrentVersion must not go below 4: version 4 has shipped in a build, and a "
+            + "stamp that moves backwards makes an already-migrated file look older than it is.";
+
         Assert.True(
             int.Parse(version.Groups["value"].Value, System.Globalization.CultureInfo.InvariantCulture) >= 4,
-            "Configuration.CurrentVersion must be at least 4 — the version that leaned the first-run defaults.");
+            message);
     }
 
     [GeneratedRegex(

@@ -74,7 +74,10 @@ const USER_AGENT =
   'WayfarerCatalogueGenerator/1.0 (https://github.com/will-corrigan/Wayfarer; unlock catalogue regeneration)';
 const MIN_REQUEST_INTERVAL_MS = 250;
 
-const DEFAULT_SQPACK = '/mnt/d/SteamLibrary/steamapps/common/FINAL FANTASY XIV Online/game/sqpack';
+// No default. There is no portable answer — the game lives wherever this machine's launcher put
+// it — and a hard-coded one is both wrong for everybody else and a disclosure of one developer's
+// disk layout. Pass --sqpack or set WAYFARER_SQPACK; the failure below says so.
+const DEFAULT_SQPACK = '';
 
 const args = parseArgs(process.argv.slice(2));
 const CACHE = path.resolve(args.cache ?? path.join(REPO, '.catalogue-cache'));
@@ -105,7 +108,7 @@ if (args.help) {
   --no-cross-check   skip the per-quest infobox second source (much faster, weaker evidence)
   --out DIR          where to write the candidate and the report (default <cache>/out)
   --cache DIR        wikitext cache directory (default .catalogue-cache)
-  --sqpack PATH      the game's sqpack directory (default the Steam install, or WAYFARER_SQPACK)
+  --sqpack PATH      the game's sqpack directory (or set WAYFARER_SQPACK; there is no default)
 
 Generation needs a local game installation. CI validates the committed dataset instead; see
 data/README.md.
@@ -972,8 +975,7 @@ const withoutLevelDispute = (notes) =>
  * that the accept level of the quest it is bound to. When neither does, it has NO level. It is
  * not level 1 and it is not the expansion cap; it is a reward with no level requirement, and it
  * is presented under its own category instead of being sorted among low-level content.
- * (USER RULING 2026-08-23: "Things with no level requirement should just have their own
- * category.")
+ * A reward with no level requirement gets its own category rather than a number nothing states.
  *
  * The bound quest's level is only meaningful above 1: the trophy-mount rewards — Firebird, Kirin,
  * Kamuy of the Nine Tails, Landerwaffe, Apocryphal Bahamut — are hidden level-1 rows whose real
@@ -1204,8 +1206,7 @@ function applyMountRequirementOverrides(curated) {
  * promise wristlet directly.
  *
  * `conditionSource`, not a hand-written `label`, is what the player actually reads for this
- * requirement now — see the requirement-text survey. That
- * report found the wiki's own "same Home World, party of two, both wearing a Promise Wristlet, in
+ * requirement now. The wiki's own "same Home World, party of two, both wearing a Promise Wristlet, in
  * East Shroud" prose is itself a transcription of Lodestone's requirements checklist, not an
  * editor's invention — but the client ships a *better* source for the same facts:
  * `HowToPage` row 1861, column 4 is Square Enix's own structured requirement checklist for this

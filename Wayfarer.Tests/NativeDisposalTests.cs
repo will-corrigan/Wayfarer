@@ -50,8 +50,8 @@ public class NativeDisposalTests
     {
         var dispose = ReadoutDispose();
 
-        var menus = Occurrences(dispose, "followMenu.Dispose()");
-        var trees = Occurrences(dispose, "base.Dispose()");
+        var menus = SourceGuard.Occurrences(dispose, "followMenu.Dispose()");
+        var trees = SourceGuard.Occurrences(dispose, "base.Dispose()");
 
         Assert.True(trees > 0, "ClickableReadoutAddon.Dispose no longer disposes the addon itself.");
         Assert.Equal(trees, menus);
@@ -74,17 +74,4 @@ public class NativeDisposalTests
 
     private static string ReadoutDispose() =>
         SourceGuard.Body(SourceGuard.SourceOf(ReadoutHost), "public override void Dispose()");
-
-    private static int Occurrences(string code, string needle)
-    {
-        var count = 0;
-        var at = code.IndexOf(needle, StringComparison.Ordinal);
-        while (at >= 0)
-        {
-            count++;
-            at = code.IndexOf(needle, at + needle.Length, StringComparison.Ordinal);
-        }
-
-        return count;
-    }
 }

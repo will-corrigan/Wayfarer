@@ -50,6 +50,21 @@ internal static class SourceGuard
         return code[arrow..end];
     }
 
+    /// <summary>How many times <paramref name="needle"/> appears. For the guards whose rule is "as
+    /// many of these as of those" rather than "this one is present".</summary>
+    public static int Occurrences(string code, string needle)
+    {
+        var count = 0;
+        var at = code.IndexOf(needle, StringComparison.Ordinal);
+        while (at >= 0)
+        {
+            count++;
+            at = code.IndexOf(needle, at + needle.Length, StringComparison.Ordinal);
+        }
+
+        return count;
+    }
+
     /// <summary>The file's code with its comment lines taken out. The rule is about what the code
     /// does; the prose that explains the rule must stay free to name what it forbids.</summary>
     public static string SourceOf(string relativePath)

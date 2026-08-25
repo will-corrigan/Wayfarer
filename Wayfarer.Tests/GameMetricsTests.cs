@@ -2,11 +2,18 @@ using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Tests;
 
-/// <summary>Guards the one <see cref="GameMetrics"/> constant that is not a <c>.uld</c> measurement
-/// — see its own doc comment. It is shared by three call sites in <c>ReadoutBodyNode</c> (the
-/// direction arrow, the settings cog and the follow switcher), all of which read it rather than
-/// carrying their own copy, so a change here changes all three alignments together rather than
-/// letting one drift from the others.</summary>
+/// <summary>Guards <see cref="GameMetrics.Type.CapHeightCentre"/> — a font-rendering constant tuned
+/// once rather than read out of a <c>.uld</c>; see its own doc comment. It is shared by three call
+/// sites in <c>ReadoutBodyNode</c> (the direction arrow, the settings cog and the follow switcher),
+/// all of which read it rather than carrying their own copy, so a change here changes all three
+/// alignments together rather than letting one drift from the others.
+///
+/// <para>It is not the only value in that file which is not a direct measurement — <c>Row.Spacing</c>,
+/// <c>Control.ButtonGap</c>, <c>Journal.MinTextColumn</c>, <c>JournalFrame.ColumnLeft</c> and several
+/// of the <c>Banner</c> values each declare their own deviation. <c>Banner.CogSize</c> is the one that
+/// cites nothing at all, because there was nothing to cite; it says so, and it has no test here
+/// because there is no property to assert about a number that was chosen by
+/// looking.</para></summary>
 public class GameMetricsTests
 {
     [Fact]

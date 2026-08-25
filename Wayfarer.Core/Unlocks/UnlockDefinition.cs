@@ -65,9 +65,8 @@ public sealed class UnlockDefinition
     /// <para>Never a guessed URL built from a name: the generator checks the wiki's own API before
     /// this is written, so a present value means the page was found, not assumed. This is what
     /// backs the journal's wiki button, and the button does not render at all when this is
-    /// <c>null</c> — see <c>data/README.md</c> for how it is resolved and
-    /// <c>2026-08-24-requirement-text-provenance.md</c> for why a link is preferred over curated
-    /// prose here.</para></summary>
+    /// <c>null</c> — see <c>data/README.md</c> for how it is resolved, and for why a verified link is
+    /// preferred over curated prose when the game itself states nothing.</para></summary>
     public string? WikiUrl { get; set; }
 
     public string? Notes { get; set; }

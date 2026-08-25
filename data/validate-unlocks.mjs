@@ -137,8 +137,8 @@ const checkGateNode = (where, n, depth = 0) => {
 };
 
 // A reference into the game's own sheets — sheet name, row, column — rather than a copy of the
-// text living there. See the requirement-text survey: the
-// client ships its own explanations for why something is unavailable, and quoting a pointer to
+// text living there. See data/README.md: the client ships its own explanations for why something is
+// unavailable, and quoting a pointer to
 // one of those beats curating prose that paraphrases it. Resolved at runtime, in the player's own
 // client language, by UnlockGateContext.ResolveGameText — this file never sees the resolved text.
 const conditionSourceKeys = new Set(['sheet', 'row', 'column']);
@@ -188,7 +188,7 @@ const checkRequires = (where, r) => {
   if ('label' in r && (typeof r.label !== 'string' || r.label.length < 4)) err(`${where}: requires.label too short`);
   if ('conditionSource' in r) checkConditionSource(`${where} requires`, r.conditionSource);
 
-  // Quote the game, don't paraphrase it (2026-08-24-requirement-text-provenance.md §6): a
+  // Quote the game, don't paraphrase it (see data/README.md): a
   // requiresAnotherPlayer entry must point at where the game itself states the condition, not
   // rely on curated prose as its primary source. 'label' stays allowed alongside it, but only as
   // the short, honestly-ours fallback for a runtime lookup miss — a long label here is exactly
@@ -210,7 +210,7 @@ const entryKeys = new Set([
   'sources',
 ]);
 
-// The player-facing backup for "the game does not say" (2026-08-24-requirement-text-provenance.md):
+// The player-facing backup for "the game does not say" (see data/README.md):
 // a link to the entry's own page. It is only ever written by the generator once
 // scripts/build-unlock-catalogue.mjs has checked, against Consolegameswiki's own API, that the page
 // exists — a URL assembled from a name and never verified is exactly what this field must not

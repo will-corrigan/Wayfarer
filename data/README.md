@@ -113,8 +113,7 @@ no icon fails the generator on the spot, where the sheet walk that produced it c
 When Wayfarer cannot explain a requirement — "the game does not say" — the player has nowhere to
 go. `wikiUrl` is the backup: a link to the entry's own page on Consolegameswiki (chosen over Gamer
 Escape, the site this catalogue is otherwise built from, because it is the genuinely independent
-source and its Prerequisites sections carry exactly the conditions this pipeline cannot derive; see
-`2026-08-24-requirement-text-provenance.md` and `2026-08-23-ecosystem-data-sources.md`).
+source and its Prerequisites sections carry exactly the conditions this pipeline cannot derive).
 
 It links the entry's own **quest** page, never the catalogue's label — the quest is what the
 player is actually sent to do, and `unlock` is this repo's own name for it, not a wiki title. Where

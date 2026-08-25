@@ -108,18 +108,27 @@ public class ObservationStoreTests
         Assert.False(Floor(new StubSource(), new ObservationStore()).TryAtLeast(Alice, Zone, 1, out _));
     }
 
-    /// <summary>Eureka's elemental level can decrease, so it is excluded from remembering — the
-    /// evaluator that reads it is the same one Bozja uses, and the difference lives entirely in the
-    /// adapter, which is why this is asserted against the gate rather than against a reader.</summary>
+    /// <summary>Eureka's elemental level can DECREASE — a death takes it away — so it is the one
+    /// context-limited reading that must never be remembered. Bozja's resistance rank, read through
+    /// the same gate kind and the same evaluator, may be: the whole difference lives in the adapter.
+    ///
+    /// <para><b>Why this is a structural guard.</b> The adapter is in the plugin assembly, which this
+    /// test project cannot reference — it links against the game. The previous version of this test
+    /// evaluated a <c>zoneProgressAtLeast</c> gate against a context with no reader wired and
+    /// asserted Indeterminate: true, and true for the wrong reason. No <see cref="ObservationStore"/>,
+    /// no <see cref="ObservedFloor{TId}"/> and no Eureka source took part, so it would have stayed
+    /// green with Eureka wrapped in a floor tomorrow — precisely the unsoundness it was named after.
+    /// Counting the remembered reads in the one method that answers both zones is crude, but it is
+    /// about the code that actually decides.</para></summary>
     [Fact]
-    public void EurekaZoneProgress_OutsideTheZone_IsNeverAnsweredFromMemory()
+    public void EurekaZoneProgress_IsNeverAnsweredFromARememberedValue()
     {
-        var node = Gates.Node(
-            GateKinds.ZoneProgressAtLeast, amount: 60, scope: GateKinds.ScopeEureka, display: "Eureka");
+        var body = SourceGuard.Body(
+            SourceGuard.SourceOf("Wayfarer/UnlockLiveProgress.cs"),
+            "public bool? ZoneProgressAtLeast(ZoneProgressKind kind, int rank)");
 
-        var result = GateEvaluatorRegistry.Standard.Evaluate(node, Gates.Ctx(70).Live);
-
-        Assert.Equal(GateOutcome.Indeterminate, result.Outcome);
+        Assert.Contains("bozja.TryAtLeast(", body, StringComparison.Ordinal);
+        Assert.Equal(1, SourceGuard.Occurrences(body, "TryAtLeast("));
     }
 
     private static ObservedFloor<uint> Floor(IMonotonicSource<uint> source, ObservationStore store) =>

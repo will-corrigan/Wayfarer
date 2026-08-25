@@ -502,8 +502,8 @@ public static class UnlockStatusCalculator
         return true;
     }
 
-    /// <summary>The three-tier fallback from <c>2026-08-24-requirement-text-provenance.md</c> §6,
-    /// as far as this codebase currently wires it: prefer the game's own words
+    /// <summary>The three-tier fallback for requirement text, as far as this codebase currently
+    /// wires it (see <c>data/README.md</c>): prefer the game's own words
     /// (<see cref="UnlockRequirement.ConditionSource"/>, resolved live against the player's own
     /// client), then the curated <see cref="UnlockRequirement.Label"/> — which must stay short and
     /// honestly ours, never a paraphrased list of conditions — and only when both miss, an
