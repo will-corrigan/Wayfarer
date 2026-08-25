@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/will-corrigan/Wayfarer/compare/v0.7.0...v0.8.0) (2026-08-25)
+
+
+### New
+
+* a window that reads like the game's, and a catalogue that tells the truth ([#27](https://github.com/will-corrigan/Wayfarer/issues/27)) ([df20176](https://github.com/will-corrigan/Wayfarer/commit/df2017628da719824b530ecfa258884f2a3a76b8))
+
 ## [0.7.0](https://github.com/will-corrigan/Wayfarer/compare/v0.6.0...v0.7.0) (2026-08-23)
 
 
