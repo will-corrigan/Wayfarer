@@ -1160,13 +1160,33 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         lineHitBoxes[LineTeleport] = BuildLineHitBox(onTeleportClicked, LineTeleport);
         lineHitBoxes[LineDuty] = BuildLineHitBox(onDutyClicked, LineDuty);
 
+        BuildNavAnchors(
+            onSettingsClicked,
+            onQuestNameClicked,
+            onFollowClicked,
+            onTeleportClicked,
+            onDutyClicked);
+
+        AddSubcommand(navTargets[NavBanner], onPlateSubcommand);
+    }
+
+    /// <summary>Grows one controller anchor per control, each on the same parent as the rectangle it
+    /// shadows, because an anchor is positioned from that rectangle's own coordinates.
+    ///
+    /// <para>The banner's three first, then one per pressable line — appended, never renumbered, so
+    /// the plate keeps the index <see cref="ControllerFocusNode"/> hands the game.</para></summary>
+    private void BuildNavAnchors(
+        Action? onSettingsClicked,
+        Action? onQuestNameClicked,
+        Action? onFollowClicked,
+        Action? onTeleportClicked,
+        Action? onDutyClicked)
+    {
         navTargets[NavCog] = BuildNavAnchor(onSettingsClicked, bannerSection);
         navTargets[NavBanner] = BuildNavAnchor(onQuestNameClicked, bannerSection);
         navTargets[NavSwitcher] = BuildNavAnchor(onFollowClicked, bannerSection);
         navTargets[NavTeleport] = BuildNavAnchor(onTeleportClicked, this);
         navTargets[NavDuty] = BuildNavAnchor(onDutyClicked, this);
-
-        AddSubcommand(navTargets[NavBanner], onPlateSubcommand);
     }
 
     /// <summary>Takes every anchor down with the controls they shadow: a cursor resting on a control

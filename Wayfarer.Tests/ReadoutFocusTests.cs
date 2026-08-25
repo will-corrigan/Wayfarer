@@ -83,10 +83,16 @@ public class ReadoutFocusTests
     [Fact]
     public void EveryControlOnTheReadoutIsReachableWithAPad()
     {
-        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildInteractions(");
+        // Scoped to the whole class, not to whichever method currently holds the anchors: moving them
+        // into a helper is a refactor, and a guard that fails on a refactor teaches people to delete
+        // guards. What must stay true is that the class builds one anchor per slot — anchors are built
+        // in exactly one place, so file scope costs this nothing.
+        var anchors = SourceGuard.SourceOf(Body);
         var slots = new[] { "NavCog", "NavBanner", "NavSwitcher", "NavTeleport", "NavDuty" };
 
-        Assert.Equal(slots.Length, SourceGuard.Occurrences(anchors, "BuildNavAnchor("));
+        // "= BuildNavAnchor(" counts call sites only; a bare "BuildNavAnchor(" also matches the
+        // helper's own declaration.
+        Assert.Equal(slots.Length, SourceGuard.Occurrences(anchors, "= BuildNavAnchor("));
         foreach (var slot in slots)
         {
             Assert.Contains($"navTargets[{slot}]", anchors, StringComparison.Ordinal);
@@ -158,10 +164,12 @@ public class ReadoutFocusTests
         Assert.Contains("AtkEventType.InputReceived", subcommand, StringComparison.Ordinal);
         Assert.DoesNotContain("InputId.OK", subcommand, StringComparison.Ordinal);
 
-        // The plate's Confirm is still the Journal: its anchor is built from the same callback the
-        // plate's own mouse hit box is.
-        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildInteractions(");
-        Assert.Contains("BuildNavAnchor(onQuestNameClicked", anchors, StringComparison.Ordinal);
+        // The plate's Confirm does whatever a click on it does: its anchor is built from the same
+        // callback the plate's own mouse hit box is. Class scope for the same reason as above.
+        Assert.Contains(
+            "navTargets[NavBanner] = BuildNavAnchor(onQuestNameClicked",
+            SourceGuard.SourceOf(Body),
+            StringComparison.Ordinal);
     }
 
     /// <summary>Both menus onto Wayfarer's actions render the one source, so neither can offer
