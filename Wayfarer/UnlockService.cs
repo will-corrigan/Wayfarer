@@ -5,6 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Wayfarer.Core.Unlocks;
+using Wayfarer.Core.Unlocks.Gates;
 
 namespace Wayfarer;
 
@@ -27,6 +28,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly IDataManager dataManager;
     private readonly List<ResolvedUnlock> entries = [];
+    private readonly UnlockLiveProgress liveProgress;
+
+    /// <summary>Every gate kind the loaded catalogue names. It decides whether asking the server
+    /// for anything is warranted at all: fetching data no entry would read is the definition of a
+    /// speculative request, so an absent kind means no packet.</summary>
+    private HashSet<string> catalogueGateKinds = [];
 
     /// <summary>(level, territory) as of the last time a recompute was triggered from the
     /// framework-update change detector. Null means "never triggered" — including right after
@@ -53,6 +60,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         this.clientState = clientState;
         this.pluginInterface = pluginInterface;
         this.dataManager = dataManager;
+        liveProgress = new UnlockLiveProgress();
         try
         {
             Load();
@@ -133,6 +141,17 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var ps = PlayerState.Instance();
         var ui = UIState.Instance();
         var inventory = InventoryManager.Instance();
+
+        // The one promise the whole gate model rests on: when this is true, every plainly-returning
+        // read below is authoritative. When it is false the pass does not run at all, because an
+        // unloaded player state answers "no" to every "do you own this" and would rewrite a correct
+        // checklist into the claim that the player owns nothing.
+        var ready = clientState.IsLoggedIn && ps != null && ps->IsLoaded && ui != null;
+        if (ready)
+        {
+            liveProgress.RequestOwnProgressOnce(catalogueGateKinds);
+        }
+
         var ctx = new UnlockGateContext(
             PlayerLevel: level,
             PlayerGrandCompany: ps != null ? ps->GrandCompany : (byte)0,
@@ -147,7 +166,15 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             IsMinionUnlocked: minionId => ui != null && ui->IsCompanionUnlocked(minionId),
             GetOwnedItemCount: itemId => inventory != null ? inventory->GetInventoryItemCount(itemId) : 0,
             GetKeyItemCount: itemId => inventory != null ? KeyItemCount(inventory, itemId) : 0,
-            ResolveGameText: ResolveGameText);
+            ResolveGameText: ResolveGameText,
+            LiveStateReady: ready,
+            IsPublicContentUnlocked: UIState.IsPublicContentUnlocked,
+            IsPublicContentCompleted: UIState.IsPublicContentCompleted,
+            IsAchievementComplete: liveProgress.IsAchievementComplete,
+            IsAetherCurrentZoneComplete: id => ps != null ? ps->IsAetherCurrentZoneComplete(id) : null,
+            SharedFateRankAtLeast: liveProgress.SharedFateRankAtLeast,
+            ZoneProgressAtLeast: liveProgress.ZoneProgressAtLeast,
+            GetSaddlebagItemCount: itemId => inventory != null ? SaddlebagCount(inventory, itemId) : 0);
 
         UnlockStatusCalculator.Compute(entries, ctx);
         var territory = clientState.TerritoryType;
@@ -162,6 +189,14 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     /// requirement says which container to look in rather than guessing.</summary>
     private static int KeyItemCount(InventoryManager* inventory, uint itemId) =>
         inventory->GetItemCountInContainer(itemId, InventoryType.KeyItems);
+
+    /// <summary>Both saddlebag pages. The premium pair is only readable for a player who has it,
+    /// and reads as empty otherwise, which is the right answer for someone who does not.</summary>
+    private static int SaddlebagCount(InventoryManager* inventory, uint itemId) =>
+        inventory->GetItemCountInContainer(itemId, InventoryType.SaddleBag1)
+        + inventory->GetItemCountInContainer(itemId, InventoryType.SaddleBag2)
+        + inventory->GetItemCountInContainer(itemId, InventoryType.PremiumSaddleBag1)
+        + inventory->GetItemCountInContainer(itemId, InventoryType.PremiumSaddleBag2);
 
     /// <summary>Which ClassJob abbreviations a <see cref="ClassJobCategory"/> row flags: Lumina
     /// generates one bool property per abbreviation on that struct, so there's no reflection-free
@@ -423,12 +458,14 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var enpcSheet = dataManager.GetExcelSheet<ENpcResident>();
         var sheet = dataManager.GetExcelSheet<Quest>();
         var acceptConditions = dataManager.GetExcelSheet<QuestAcceptAdditionCondition>();
+        var duties = dataManager.GetExcelSheet<ContentFinderCondition>();
         var byKey = BuildNameIndex(sheet);
 
+        catalogueGateKinds = CatalogueGateKinds.Of(defs);
         entries.Clear();
         foreach (var def in defs)
         {
-            var r = new ResolvedUnlock { Def = def };
+            var r = new ResolvedUnlock { Def = def, IdentityGate = UnlockIdentityGate.For(def.Reward, duties) };
             if (Bind(def, sheet, byKey) is { } bound)
             {
                 QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level ?? 0);

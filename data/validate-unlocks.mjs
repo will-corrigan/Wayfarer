@@ -68,7 +68,73 @@ const checkCollectible = (where, kind, c) => {
 // found" is not the same fact as "no gate exists" — quest row 67086 has every gate column empty
 // and still needs seven Extreme-trial mounts.
 const lists = ['mounts', 'minions', 'items', 'jobs', 'duties'];
-const requiresKeys = new Set([...lists, 'label', 'unverifiable', 'minLevel', 'requiresAnotherPlayer', 'conditionSource']);
+const requiresKeys = new Set([...lists, 'gates', 'label', 'unverifiable', 'minLevel', 'requiresAnotherPlayer', 'conditionSource']);
+
+// The declarative gate language. Kept in step with Wayfarer.Core/Unlocks/Gates/GateKinds.cs: the
+// runtime degrades an unknown kind to "we can't check this", which is safe but silent, and this is
+// the fence that makes it loud instead. A kind misspelt in the data file would otherwise ship as an
+// entry that quietly says nothing.
+const gateCombinators = new Set(['allOf', 'anyOf']);
+const gateLeafKinds = new Set([
+  'questComplete', 'questAnyOf', 'dutyUnlocked', 'dutyComplete', 'mountOwned', 'minionOwned',
+  'itemHeld', 'characterLevelAtLeast', 'jobLevelAtLeast', 'tribeRankAtLeast',
+  'grandCompanyRankAtLeast', 'achievementComplete', 'aetherCurrentsComplete',
+  'sharedFateRankAtLeast', 'zoneProgressAtLeast', 'unverifiable',
+]);
+const gateNodeKeys = new Set(['kind', 'ids', 'amount', 'scope', 'display', 'from', 'children']);
+
+// Which scope values each kind gives meaning to. A duty id means nothing without the id space it
+// belongs to - handing a public-content id to the instance-content reader reads a DIFFERENT duty's
+// bit and answers confidently - so the scope is required rather than defaulted, here and at
+// runtime both. This is the check that would have caught the Diadem.
+const gateScopes = {
+  dutyUnlocked: { values: ['instance', 'public'], required: true },
+  dutyComplete: { values: ['instance', 'public'], required: true },
+  itemHeld: { values: ['any', 'keyItem', 'saddlebag'], required: false },
+  zoneProgressAtLeast: { values: ['eureka', 'bozja'], required: true },
+};
+
+const checkGateNode = (where, n, depth = 0) => {
+  if (typeof n !== 'object' || n === null || Array.isArray(n)) { err(`${where}: a gate must be an object`); return; }
+  checkKeys(where, n, gateNodeKeys);
+  if (depth > 4) { err(`${where}: gate tree nested more than four deep`); return; }
+
+  const kind = n.kind;
+  const isCombinator = gateCombinators.has(kind);
+  if (!isCombinator && !gateLeafKinds.has(kind)) {
+    err(`${where}: '${kind}' is not a gate kind this build implements - see Wayfarer.Core/Unlocks/Gates/GateKinds.cs`);
+    return;
+  }
+
+  if ('ids' in n) {
+    if (!Array.isArray(n.ids)) err(`${where}: gate 'ids' must be an array`);
+    else for (const id of n.ids) if (!Number.isInteger(id) || id < 0) err(`${where}: gate id '${id}' is not a row id`);
+  }
+  if ('amount' in n && (!Number.isInteger(n.amount) || n.amount < 0)) err(`${where}: gate 'amount' must be a non-negative integer`);
+  if ('display' in n && n.display !== null && typeof n.display !== 'string') err(`${where}: gate 'display' must be a string`);
+  if ('from' in n && n.from !== null && typeof n.from !== 'string') err(`${where}: gate 'from' must be a string`);
+
+  const scope = gateScopes[kind];
+  if (scope) {
+    if (n.scope == null) {
+      if (scope.required) err(`${where}: gate kind '${kind}' needs a 'scope' of ${scope.values.join(' or ')}`);
+    } else if (!scope.values.includes(n.scope)) {
+      err(`${where}: gate scope '${n.scope}' is not one of ${scope.values.join(', ')} for kind '${kind}'`);
+    }
+  } else if (n.scope != null) {
+    err(`${where}: gate kind '${kind}' takes no 'scope'`);
+  }
+
+  if (isCombinator) {
+    if (!Array.isArray(n.children) || n.children.length === 0) {
+      err(`${where}: combinator '${kind}' needs children`);
+      return;
+    }
+    n.children.forEach((c, i) => checkGateNode(`${where}.children[${i}]`, c, depth + 1));
+  } else if ((n.children?.length ?? 0) > 0) {
+    err(`${where}: leaf kind '${kind}' takes no children`);
+  }
+};
 
 // A reference into the game's own sheets — sheet name, row, column — rather than a copy of the
 // text living there. See the requirement-text survey: the
@@ -102,6 +168,10 @@ const checkRequires = (where, r) => {
   for (const j of r.jobs ?? []) {
     if (!Number.isInteger(j.level) || j.level < 1 || j.level > MAX_LEVEL) err(`${where}: requires.jobs level out of range`);
   }
+  if ('gates' in r) {
+    if (!Array.isArray(r.gates)) err(`${where}: requires.gates must be an array`);
+    else r.gates.forEach((n, i) => checkGateNode(`${where} requires.gates[${i}]`, n));
+  }
   if ('minLevel' in r && (!Number.isInteger(r.minLevel) || r.minLevel < 1 || r.minLevel > MAX_LEVEL))
     err(`${where}: requires.minLevel out of range`);
   if ('unverifiable' in r && typeof r.unverifiable !== 'boolean') err(`${where}: requires.unverifiable must be a boolean`);
@@ -128,7 +198,7 @@ const checkRequires = (where, r) => {
   if (r.requiresAnotherPlayer === true && typeof r.label === 'string' && r.label.length > 40)
     err(`${where}: requires.label alongside requiresAnotherPlayer must be a short fallback (<=40 chars) — put the real detail in conditionSource, not in curated prose`);
 
-  const hasConcrete = lists.some((k) => (r[k]?.length ?? 0) > 0) || 'minLevel' in r;
+  const hasConcrete = lists.some((k) => (r[k]?.length ?? 0) > 0) || 'minLevel' in r || (r.gates?.length ?? 0) > 0;
   const hasEnforcement = hasConcrete || r.unverifiable === true || r.requiresAnotherPlayer === true;
   if (!hasEnforcement) err(`${where}: 'requires' has neither a concrete requirement, unverifiable:true, nor requiresAnotherPlayer:true`);
   if (!hasConcrete && !r.label && !r.conditionSource) err(`${where}: an unverifiable or partner-gated 'requires' must say what is missing, in 'label' or 'conditionSource'`);

@@ -1,3 +1,5 @@
+using Wayfarer.Core.Unlocks.Gates;
+
 namespace Wayfarer.Core.Unlocks;
 
 /// <summary>What the checklist says about one entry. Everything except <see cref="Available"/>
@@ -59,6 +61,21 @@ public enum UnlockStatus
 public sealed class ResolvedUnlock
 {
     public UnlockDefinition Def { get; set; } = new();
+
+    /// <summary>A gate that reads the entry's OWN identity rather than a prerequisite for it —
+    /// "is this duty open to you", asked of the very duty the entry is about.
+    ///
+    /// <para>This is what closed the largest class of "requirements unknown" in the catalogue. A
+    /// third of the ungradeable entries were duty access: the guide says the Ultimate opens after
+    /// clearing the Savage tier, the clear is readable, but whether the player then went and took
+    /// the unlock was recorded as unknowable. It is not — the client keeps a bit per duty saying
+    /// exactly that, and this is it. Satisfied means the player already has the thing, which is
+    /// <see cref="UnlockStatus.Done"/>; blocked means they demonstrably do not, which is what lets
+    /// the rest of the chain grade the entry instead of shrugging.</para>
+    ///
+    /// <para>Derived from <see cref="UnlockDefinition.Reward"/> by the host at load time, generically
+    /// from the reward's sheet kind. Nothing here or downstream knows which entry it belongs to.</para></summary>
+    public GateNode? IdentityGate { get; set; }
 
     public uint? QuestRowId { get; set; }
 
@@ -232,6 +249,7 @@ public sealed class ResolvedUnlock
     public ResolvedUnlock Snapshot() => new()
     {
         Def = Def,
+        IdentityGate = IdentityGate,
         QuestRowId = QuestRowId,
         AlternativeQuestRowIds = AlternativeQuestRowIds,
         QuestLevel = QuestLevel,
