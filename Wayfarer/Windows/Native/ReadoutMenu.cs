@@ -63,9 +63,12 @@ internal sealed class ReadoutMenu(
             menu ??= new ContextMenu();
             menu.Clear();
 
-            // The Journal first: it is what the plate itself does, so the list it drops opens with
-            // the same thing rather than burying it.
-            Add(actions.Journal());
+            // What the plate itself does, first: the list it drops opens with the same thing rather
+            // than burying it. Always present now — see GuidanceActions.Subject, which is the
+            // Journal for a followed quest and Wayfarer's own page for whatever else is being
+            // followed, because the plate was taking the press and doing nothing during a hunt.
+            var subject = actions.Subject();
+            Add(subject);
             AddFollowSubmenu();
 
             foreach (var action in actions.Route())
@@ -73,9 +76,15 @@ internal sealed class ReadoutMenu(
                 Add(action);
             }
 
+            // Skipped where it would repeat the entry above: what the plate opens during a hunt is
+            // the hunting log, and this list offers that door too. Two identical rows in one menu is
+            // a menu that looks broken.
             foreach (var action in actions.Windows())
             {
-                Add(action);
+                if (!string.Equals(action.Label, subject.Label, StringComparison.Ordinal))
+                {
+                    Add(action);
+                }
             }
 
             menu.Open();

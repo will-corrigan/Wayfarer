@@ -3,6 +3,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Input;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Modules;
@@ -60,17 +61,23 @@ internal sealed class HuntingWindow(
 
         if (ImGui.BeginChild("huntinglist"))
         {
-            foreach (var target in hunting.HuntHereOrder)
+            // The whole rank, which is what the button above plans and what the native tab lists.
+            // This drew HuntHereOrder — the player's own zone — so the list and the button counted
+            // different things, and most of a rank was simply absent.
+            //
+            // HuntHereOrder is still what says which of them a distance can be measured to: it is the
+            // current-zone set, and a yalm count to a coordinate in another territory is a number that
+            // means nothing.
+            var here = hunting.HuntHereOrder.Select(t => t.Monster).ToHashSet();
+            foreach (var target in hunting.RemainingTargets)
             {
-                DrawRow(target);
+                DrawRow(target, here.Contains(target.Monster));
             }
 
-            // Remaining targets not resolved into HuntHereOrder (different zone, or duty-gated) —
-            // still shown, just without a distance.
-            var shown = hunting.HuntHereOrder.Select(t => t.Monster).ToHashSet();
+            var shown = hunting.RemainingTargets.Select(t => t.Monster).ToHashSet();
             if (hunting.CurrentTarget is { } current && !shown.Contains(current.Monster))
             {
-                DrawRow(current);
+                DrawRow(current, here.Contains(current.Monster));
             }
         }
 
@@ -125,30 +132,29 @@ internal sealed class HuntingWindow(
     private void DrawHuntHereButton()
     {
         var navigator = ResolveNavigator();
-        var count = hunting.HuntHereOrder.Count;
 
-        // "Hunt here" was the old label from when chaining stopped at the zone boundary, which is
-        // also why it appeared to do nothing in a zone with nothing left. A hunt now works through
-        // the whole rank, grouped by zone, so the label says what it does.
+        // "Hunt here" was the old label from when chaining stopped at the zone boundary. A hunt works
+        // through the whole rank, grouped by zone — so the count is the RANK's, read from the same
+        // HuntingPlan the native tab and both menus read, and the label is that one label. Counted
+        // from the current zone, as this was, it disagreed with the plan the press actually makes.
+        var count = hunting.RemainingTargets.Count;
+        var label = HuntingPlan.StartLabel(count);
+
         if (navigator == null)
         {
-            ImGui.TextDisabled($"Start hunting ({count}) — enable Quest Helper to navigate");
+            ImGui.TextDisabled($"{label} — enable Quest Helper to navigate");
             return;
         }
 
-        if (ImGui.Button($"Start hunting ({count})") && count > 0)
+        if (ImGui.Button(label) && HuntingPlan.CanStart(count))
         {
-            var targets = hunting.HuntHereOrder.Select(hunting.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
-            if (targets.Count > 0)
-            {
-                navigator.SetRoute(targets);
-            }
+            navigator.StartHunt();
         }
 
         DrawStopButton(navigator);
     }
 
-    private void DrawRow(HuntingTargetView target)
+    private void DrawRow(HuntingTargetView target, bool inThisZone)
     {
         ImGui.TextUnformatted($"{target.MonsterName}  ({target.Killed}/{target.Required})");
 
@@ -160,7 +166,7 @@ internal sealed class HuntingWindow(
         }
 
         var player = objects.LocalPlayer;
-        if (player != null)
+        if (player != null && inThisZone)
         {
             var distance = NavMath.Distance(target.WorldX - player.Position.X, target.WorldY - player.Position.Y, target.WorldZ - player.Position.Z);
             ImGui.SameLine();

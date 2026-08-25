@@ -1,4 +1,5 @@
 using Dalamud.Plugin.Services;
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
@@ -18,8 +19,15 @@ namespace Wayfarer;
 /// <para><b>Hidden, not disabled.</b> Every action that does not apply right now is absent: no
 /// teleport suggestion, no routable unlock, nothing engaged to stop. That is the rule the game's
 /// menu already followed and the readout's menu inherits it. The one exception is the follow list,
-/// where a choice with nothing behind it is listed and disabled instead, because a choice that
-/// vanishes cannot be learned — that rule lives with the follow choices themselves.</para>
+/// where a choice is listed even when it has nothing to start, because a choice that vanishes cannot
+/// be learned — that rule lives with the follow choices themselves, and so does the guarantee that
+/// every one of them still does something when it is pressed.</para>
+///
+/// <para><b>What is never absent.</b> <see cref="Subject"/> and the Main Scenario entry. Those two
+/// are the readout's answers to "what am I doing" and "get me out of this", and both used to be
+/// conditional: the first on the followed thing having a Journal page, the second on nothing being
+/// engaged. A hunt has neither property, which is how a controller player ended up on a readout whose
+/// plate did nothing and whose way home was greyed out.</para>
 ///
 /// <para>Every list is rebuilt at the moment a menu opens, never cached: a player who opens a menu,
 /// walks into another zone and then confirms must not act on what was true when they opened
@@ -33,6 +41,10 @@ internal sealed class GuidanceActions(
     Action openFollowing,
     IPluginLog log)
 {
+    /// <summary>The one word for going back to the default loop, on every surface that offers it.
+    /// </summary>
+    private const string MainScenarioLabel = "Main Scenario";
+
     /// <summary>The guidance the actions read and drive, or null when Quest Helper is switched off —
     /// in which case there is nothing to offer at all, since every action below ultimately reads or
     /// drives it.</summary>
@@ -80,12 +92,11 @@ internal sealed class GuidanceActions(
         }
 
         // Wayfarer has no "following nothing" state: not following anything in particular IS the
-        // main scenario, which is why this is a choice rather than a way to clear one.
-        actions.Add(new GuidanceAction("Main Scenario", () =>
-        {
-            navigator.ClearPickup();
-            navigator.FollowedOverride = null;
-        }));
+        // main scenario, which is why this is a choice rather than a way to clear one. Listed
+        // unconditionally and performing BOTH halves of the reset — see MainScenarioReturn for why
+        // the two are independent, and why the surfaces that decided this for themselves got it
+        // wrong during a hunt.
+        actions.Add(new GuidanceAction(MainScenarioLabel, ReturnToMainScenario));
 
         Add(actions, StartUnlockRoute(navigator, null));
         Add(actions, StartHunting(navigator));
@@ -113,28 +124,65 @@ internal sealed class GuidanceActions(
 
         actions.Add(new GuidanceAction("Open Settings", openSettings));
 
-        // Nothing to reset when nothing is engaged and no override is set — following the main
-        // scenario is already exactly what is happening, and Stop covers the engaged case.
-        if (Navigator is { } navigator && !navigator.Current.Engaged && navigator.FollowedOverride is not null)
+        // Nothing to reset when following the main scenario is already exactly what is happening.
+        // Otherwise it is offered — including mid-hunt, which this used to exclude on the reasoning
+        // that "Stop covers the engaged case". Stop does cover it, but the player asking to go back
+        // to the main scenario should not have to know that the way to do it is called Stop, and the
+        // condition that excluded it is the same one that greyed the switcher's own entry out.
+        if (Navigator is { MainScenarioReset.Acts: true })
         {
-            actions.Add(new GuidanceAction("Main Scenario", () => navigator.FollowedOverride = null));
+            actions.Add(new GuidanceAction(MainScenarioLabel, ReturnToMainScenario));
         }
 
         return actions;
     }
 
-    /// <summary>The game's own Journal, at whatever is being followed — the readout's plate does this
-    /// on a click, and this is the same action as an entry for the menu a controller gets. Absent
-    /// when what is being followed is not a quest, which is when there is no Journal page to open.
-    /// </summary>
-    public GuidanceAction? Journal()
+    /// <summary>What the readout's plate opens, and the first entry of the menu it drops: the game's
+    /// own Journal when a quest is being followed, and otherwise Wayfarer's own page for whatever IS
+    /// being followed.
+    ///
+    /// <para><b>Never null, and that is the point.</b> This used to be <c>Journal()</c>, absent
+    /// whenever what was being followed had no quest row — a hunting target, an unlock stop, an idle
+    /// readout. The readout's plate called it anyway: the callback existed, so the plate grew its hit
+    /// box and its controller anchor, took the press, and did nothing at all. A control that looks
+    /// live and is not is worse than one that is visibly unavailable, so there is now always
+    /// somewhere for the press to go.</para>
+    ///
+    /// <para><b>Why not the game's own Monster Note for a hunt.</b> The project prefers the game's
+    /// own UI wherever the game has one, which is why a quest still goes to
+    /// <see cref="QuestJournalAction"/> — but the Hunting Log's own book cannot be opened AT a
+    /// target. <c>AgentMonsterNote</c> exposes <c>Show</c>/<c>Hide</c> and its own page fields, and no
+    /// call that selects a rank or a creature; there is no <c>OpenWithData</c> on it. Showing it
+    /// would land the player on whichever page the agent last had, which is exactly the "always lands
+    /// at the top" defect <see cref="QuestJournalAction"/> documents fixing for the Journal. Our own
+    /// Hunting tab names the rank, the target and its kill count, and puts the controller cursor on
+    /// the button that continues the hunt — so it is the honest destination until the game's book can
+    /// be opened at a row.</para></summary>
+    public GuidanceAction Subject()
     {
-        if (Navigator?.Current.QuestId is not { } questId)
+        // The engaged mode's own page comes FIRST, ahead of the Journal. An unlock stop carries the
+        // row id of a quest that has not been accepted yet, so the Journal would open and then find
+        // nothing to select — the "always lands at the top" failure QuestJournalAction documents
+        // fixing. The checklist has the entry, its requirements and its giver.
+        var mode = Navigator?.FollowMode ?? FollowMode.MainScenario;
+        if (mode == FollowMode.Hunting && modules.Get<HuntingLogModule>() is { Enabled: true } hunting)
         {
-            return null;
+            return new GuidanceAction("Open Hunting Log", hunting.OpenLog);
         }
 
-        return new GuidanceAction("Open Journal", () => QuestJournalAction.Execute(questId));
+        if (mode == FollowMode.UnlockRoute && modules.Get<UnlockChecklistModule>() is { Enabled: true } unlocks)
+        {
+            return new GuidanceAction("Open Unlocks", unlocks.OpenChecklist);
+        }
+
+        if (Navigator?.Current.QuestId is { } questId and > 0)
+        {
+            return new GuidanceAction("Open Journal", () => QuestJournalAction.Execute(questId));
+        }
+
+        // The floor. Whatever is being followed, the tab that owns the choice can say so and can
+        // change it — and its Stop button is one of the guaranteed ways back to the main scenario.
+        return new GuidanceAction("Open Following", openFollowing);
     }
 
     private static void Add(List<GuidanceAction> actions, GuidanceAction? action)
@@ -175,9 +223,11 @@ internal sealed class GuidanceActions(
             $"Teleport to {aetheryteName}", () => TeleportAction.Execute(aetheryteId, cfg, clientState, log));
     }
 
-    /// <summary>"Start Hunting", with the rank's remaining count so the player can see there is
+    /// <summary>"Start Hunting", with the RANK's remaining count so the player can see there is
     /// something to switch into. Runs the identical path the window's own button does, so both
-    /// produce the same chained route through the same guidance machinery.</summary>
+    /// produce the same chained route through the same guidance machinery — the label and the
+    /// condition are <see cref="HuntingPlan"/>'s, so neither surface can print a number the other
+    /// one does not.</summary>
     private GuidanceAction? StartHunting(QuestNavigator navigator)
     {
         if (modules.Get<HuntingLogModule>() is not { Enabled: true } huntingModule)
@@ -185,23 +235,13 @@ internal sealed class GuidanceActions(
             return null;
         }
 
-        var order = huntingModule.Hunting.HuntHereOrder;
-        if (order.Count == 0)
+        var remaining = huntingModule.Hunting.RemainingTargets.Count;
+        if (!HuntingPlan.CanStart(remaining))
         {
             return null;
         }
 
-        return new GuidanceAction($"Start Hunting ({order.Count})", () =>
-        {
-            var targets = order.Select(huntingModule.Hunting.ToPickupTarget)
-                               .Where(t => t != null)
-                               .Select(t => t!)
-                               .ToList();
-            if (targets.Count > 0)
-            {
-                navigator.SetRoute(targets);
-            }
-        });
+        return new GuidanceAction(HuntingPlan.StartLabel(remaining), navigator.StartHunt);
     }
 
     /// <summary>A route through every available, locatable unlock — the same predicate and ordering
@@ -226,6 +266,20 @@ internal sealed class GuidanceActions(
         return new GuidanceAction(
             label ?? $"Unlock Route ({routable.Count})",
             () => StartRoute(navigator, unlockModule, routable));
+    }
+
+    /// <summary>Both halves of the reset, always, in this order: release whatever is engaged, then
+    /// drop the followed quest. Either one alone leaves the player somewhere they did not ask to
+    /// be.</summary>
+    private void ReturnToMainScenario()
+    {
+        if (Navigator is not { } navigator)
+        {
+            return;
+        }
+
+        navigator.ClearPickup();
+        navigator.FollowedOverride = null;
     }
 
     private void StartRoute(

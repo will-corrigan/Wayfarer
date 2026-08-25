@@ -153,8 +153,9 @@ public class ReadoutFocusTests
 
     /// <summary>The plate's second press is the game's own "Display Subcommands" (<c>InputId.MENU</c>,
     /// <c>ConfigKey</c> row 215), not a button of our choosing, and it is a press BESIDE Confirm
-    /// rather than instead of it — Confirm on the plate still opens the Journal, exactly as a click
-    /// does. Both halves are asserted, because either one alone would be the wrong design.</summary>
+    /// rather than instead of it — Confirm on the plate still opens whatever is being followed,
+    /// exactly as a click does. Both halves are asserted, because either one alone would be the wrong
+    /// design.</summary>
     [Fact]
     public void ThePlateAnswersTheGamesOwnSubcommandPress()
     {
@@ -165,9 +166,12 @@ public class ReadoutFocusTests
         Assert.DoesNotContain("InputId.OK", subcommand, StringComparison.Ordinal);
 
         // The plate's Confirm does whatever a click on it does: its anchor is built from the same
-        // callback the plate's own mouse hit box is. Class scope for the same reason as above.
+        // callback the plate's own mouse hit box is. Named onSubjectClicked and no longer
+        // onQuestNameClicked, because a quest name is only one of the things it can be — and while it
+        // was named for the quest it was wired to the Journal alone, which is a press that did nothing
+        // on a hunt. Class scope rather than one method's body, for the same reason as above.
         Assert.Contains(
-            "navTargets[NavBanner] = BuildNavAnchor(onQuestNameClicked",
+            "navTargets[NavBanner] = BuildNavAnchor(onSubjectClicked",
             SourceGuard.SourceOf(Body),
             StringComparison.Ordinal);
     }

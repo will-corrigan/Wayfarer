@@ -114,7 +114,15 @@ internal sealed unsafe class HuntingLogService
 
     /// <summary>Every remaining, routable target in the player's current zone, nearest-first —
     /// the "hunt here" route-chaining order. Empty whenever <see cref="CurrentTarget"/>
-    /// is null, is a duty affordance, or is in a different zone.</summary>
+    /// is null, is a duty affordance, or is in a different zone.
+    ///
+    /// <para><b>This is not what a hunt is planned or counted from</b> — see
+    /// <see cref="RemainingTargets"/>, which is. It was, and that is where "the list shows 13 monsters
+    /// and the button says Start Hunting (3)" came from: the plan has always covered the whole rank,
+    /// while every surface that counted it or gated on it read this. Its two remaining uses are the
+    /// two questions it genuinely answers, both of which are about the player's own zone and nothing
+    /// else: which creatures are worth a nameplate marker, and which rows can be given a distance.
+    /// </para></summary>
     public IReadOnlyList<HuntingTargetView> HuntHereOrder { get; private set; } = [];
 
     /// <summary>Every remaining target on the current page resolved to a view, in dataset order —

@@ -186,7 +186,7 @@ internal sealed class GuidanceOverlay(
                 OpenDutyFinder,
                 onSettingsClicked,
                 getFollowChoices,
-                OpenJournal,
+                OpenSubject,
                 actions,
                 textures,
                 framework,
@@ -287,15 +287,34 @@ internal sealed class GuidanceOverlay(
         }
     }
 
-    /// <summary>Opens the game's own Journal at whatever is being followed right now. Read off the
-    /// live snapshot at the moment of the click rather than captured when the readout was drawn,
-    /// exactly as the teleport above is: the readout is a view of that snapshot and the snapshot is
-    /// the only thing that knows which quest the name belongs to.</summary>
-    private void OpenJournal()
+    /// <summary>Opens whatever is being followed right now: the game's own Journal at the quest, or
+    /// Wayfarer's own page for a hunt, an unlock route or an idle readout. Read off the live snapshot
+    /// at the moment of the press rather than captured when the readout was drawn, exactly as the
+    /// teleport above is.
+    ///
+    /// <para><b>This used to be the Journal and nothing else</b>, and it was still handed to the
+    /// plate unconditionally — so the plate built its hit box and its controller anchor, took the
+    /// press, found no quest row behind a hunting target or an unlock stop, and did nothing at all. A
+    /// control that looks live and is not is worse than one that is visibly unavailable. See
+    /// <see cref="GuidanceActions.Subject"/> for which destination it picks and why the game's own
+    /// Monster Note is not among them.</para>
+    ///
+    /// <para>Guarded, because it is now a call into a module's own window-opening path rather than a
+    /// single agent call: a fault here must cost the press and nothing else, and must not travel back
+    /// up into the game's own event dispatch.</para></summary>
+    private void OpenSubject()
     {
-        if (feed.Navigator.Current.QuestId is { } questId)
+        try
         {
-            QuestJournalAction.Execute(questId);
+            actions.Subject().Invoke();
+        }
+        catch (Exception ex)
+        {
+            const string message =
+                "Wayfarer readout: opening what is being followed failed, so pressing the readout's plate did "
+                + "nothing this time. Everything else on the readout is unaffected, and the same destinations are "
+                + "on the Wayfarer entry in the game's own right-click menu.";
+            log.Warning(ex, message);
         }
     }
 

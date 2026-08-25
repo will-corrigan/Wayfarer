@@ -56,6 +56,11 @@ internal static class HostileReadout
             EntranceX = 12f,
             EntranceZ = -40f,
             AetheryteName = "Foundation",
+
+            // With the id, so the teleport line still carries its action mark — the worst case for the
+            // layout is the one where the line is a control, since that is when a hit box and a
+            // controller anchor are placed on it.
+            AetheryteId = 70,
             AetheryteUnlocked = true,
             AethernetEntryName = "Foundation",
             AethernetExitName = "The Forgotten Knight",

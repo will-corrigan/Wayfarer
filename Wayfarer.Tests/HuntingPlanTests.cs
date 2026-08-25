@@ -15,6 +15,32 @@ public class HuntingPlanTests
     [Fact]
     public void ProgressText_ReadsAsKilledOverRequired() => Assert.Equal("2/3", HuntingPlan.ProgressText(2, 3));
 
+    /// <summary>The label carries the number of stops the press will attempt, and drops the number
+    /// entirely when there are none rather than printing "(0)".</summary>
+    [Theory]
+    [InlineData(13, "Start Hunting (13)")]
+    [InlineData(1, "Start Hunting (1)")]
+    [InlineData(0, "Start Hunting")]
+    public void StartLabel_CountsTheWholeRank(int remaining, string expected) =>
+        Assert.Equal(expected, HuntingPlan.StartLabel(remaining));
+
+    /// <summary>The label and the enabled-ness are ONE number. This is the pin on "the list says 13
+    /// and the button says 3": the count printed and the condition that lights the control are the
+    /// same argument, so a surface cannot light a button over a number it did not print, or print a
+    /// number over a button it did not light.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(13)]
+    public void CanStart_AgreesWithWhateverTheLabelPrinted(int remaining)
+    {
+        var lit = HuntingPlan.CanStart(remaining);
+        var counted = HuntingPlan.StartLabel(remaining).Contains('(', StringComparison.Ordinal);
+
+        Assert.Equal(lit, counted);
+        Assert.Equal(remaining > 0, lit);
+    }
+
     [Fact]
     public void SourceLabel_NamesTheActiveLog() =>
         Assert.Equal("Hunting Log - Gladiator", HuntingPlan.SourceLabel("Gladiator"));

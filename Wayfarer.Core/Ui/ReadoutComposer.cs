@@ -330,16 +330,23 @@ public static class ReadoutComposer
         // so it takes neither. Both go through Pressable, which is what makes that pairing a rule
         // rather than two independent decisions that happen to agree.
         const string Verb = "Teleport to ";
-        lines.Add(state.AetheryteUnlocked
-            ? Pressable(
-                Verb + aetheryte,
-                ReadoutEmphasis.Secondary,
-                ReadoutLineAction.Teleport,
-                DtrGlyph.Aetheryte,
-                glyphAt: Verb.Length)
-            : new ReadoutLine(
-                $"Not attuned to {aetheryte}",
-                ReadoutEmphasis.Secondary));
+        if (!state.AetheryteUnlocked)
+        {
+            lines.Add(new ReadoutLine($"Not attuned to {aetheryte}", ReadoutEmphasis.Secondary));
+            return;
+        }
+
+        // The mark needs the id as well as the attunement, because the id is what the action needs: a
+        // line marked Teleport with no id behind it becomes a hit box and a controller anchor whose
+        // press reaches a handler that reads the id, finds none and returns — a control that looks
+        // live and is not. The words are unchanged in that case; only the mark is withheld, and
+        // withholding it is spelled as "no action", because Pressable takes the glyph away with it.
+        lines.Add(Pressable(
+            Verb + aetheryte,
+            ReadoutEmphasis.Secondary,
+            state.AetheryteId is null ? ReadoutLineAction.None : ReadoutLineAction.Teleport,
+            DtrGlyph.Aetheryte,
+            glyphAt: Verb.Length));
     }
 
     private static (bool ShowArrow, float? X, float? Y, float? Z) AddReasonOnly(List<ReadoutLine> lines, NavigationState state)

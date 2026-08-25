@@ -8,6 +8,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
 using Lumina.Text.ReadOnly;
+using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
@@ -118,6 +119,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// Roughly half a second at 60fps: far longer than the addon needs to finish a close it is in the
     /// middle of, and short enough that a page which can never open stops being asked for.</summary>
     private const int PendingPageFrames = 30;
+
+    /// <summary>The caption one — and only one — follow choice wears. Exactly one entry carries it at
+    /// any moment, and which one is decided by <see cref="MainScenarioReturn.ModeOf"/> rather than by
+    /// each entry deciding for itself.</summary>
+    private const string Following = "Following";
 
     private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
 
@@ -409,54 +415,70 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// accepted quest — whether or not they currently have anything to offer, because a choice that
     /// vanishes when it is empty cannot be learned.
     ///
-    /// <para>Deliberately thin: a label, whether it is the one being followed, and what activating
-    /// it does. The richer per-row cosmetics below — descriptions, icons, detail panes — stay in
-    /// this tab, which is the one surface that has room for them; the dropdown draws its rows from
-    /// the same three fields, so nothing about the pickable set itself is defined twice.</para></summary>
+    /// <para>Deliberately thin: a label, whether it is the one being followed, what activating it
+    /// does, and whether there is anything to start right now. The richer per-row cosmetics below —
+    /// descriptions, icons, detail panes — stay in this tab, which is the one surface that has room
+    /// for them; the dropdown draws its rows from the same fields, so nothing about the pickable set
+    /// itself is defined twice.</para>
+    ///
+    /// <para><b>Every entry acts.</b> "Listed whether or not it has anything to offer" used to mean
+    /// listed with a null action, which is a row that can be reached, focused and confirmed and does
+    /// nothing — the exact failure this list was supposed to prevent. An entry with nothing to start
+    /// now opens the tab that explains why instead, and <see cref="FollowChoice.Ready"/> is what the
+    /// rows colour themselves from.</para></summary>
     internal IReadOnlyList<FollowChoice> GetFollowChoices()
     {
         var navigator = ResolveNavigator();
         var choices = new List<FollowChoice>();
 
-        var followingMsq = navigator is not null && navigator.FollowedOverride is null;
+        // Which of the four things is actually being followed, from the source that holds the arrow
+        // rather than from the followed-quest override alone. That override is null during a hunt and
+        // during an unlock route, so reading it as "following the main scenario" made this list say
+        // "Main Scenario - Following" in the middle of a hunt AND disable the entry that ends it,
+        // which is how a controller player came to have no way home from the readout.
+        var mode = navigator?.FollowMode ?? FollowMode.MainScenario;
+        var followingMsq = mode == FollowMode.MainScenario;
+
+        // Always live while there is a navigator to drive, whichever mode is running: it is the
+        // guaranteed way home, and the reset it performs is the one MainScenarioReturn describes.
         choices.Add(new FollowChoice(
             "Main Scenario",
-            followingMsq ? "Following" : string.Empty,
+            followingMsq ? Following : string.Empty,
             followingMsq,
-            navigator is null ? null : OnFollowMsqClicked));
+            navigator is null ? null : OnFollowMsqClicked,
+            Ready: !followingMsq));
 
+        // Nothing routable does NOT mean nothing to press: the entry opens the Unlocks tab, which is
+        // where "nothing available right now" is said in words. An entry that is listed so it can be
+        // learned and then does nothing when it is pressed teaches the opposite lesson.
+        var routingUnlocks = mode == FollowMode.UnlockRoute;
         var routable = navigator is null
             ? 0
             : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+        var unlocksReady = routable > 0 && navigator is not null;
         choices.Add(new FollowChoice(
             "Unlock Route",
             routable > 0 ? $"{routable}" : string.Empty,
-            false,
-            routable > 0 && navigator is not null ? OnRouteClicked : null));
+            routingUnlocks,
+            unlocksReady ? OnRouteClicked : OpenUnlocksTab,
+            unlocksReady));
 
-        var remaining = hunting.HuntHereOrder.Count;
+        // The RANK's remaining count, because that is what starting a hunt attempts — see
+        // HuntingPlan.StartLabel. Counted from the current zone, as it was, this entry went inert the
+        // moment the player walked out of the zone she started in, mid-hunt, with the rest of the rank
+        // still waiting — which is what "she can't click the arrow to change what to hunt" was.
+        var onTheHunt = mode == FollowMode.Hunting;
+        var remaining = hunting.RemainingTargets.Count;
+        var huntReady = HuntingPlan.CanStart(remaining) && navigator is not null;
         var huntLabel = hunting.ActiveLogLabel is { Length: > 0 } log ? $"Hunting Log - {log}" : "Hunting Log";
         choices.Add(new FollowChoice(
             huntLabel,
-            remaining > 0 ? $"{remaining}" : string.Empty,
-            false,
-            remaining > 0 && navigator is not null ? OnHuntClicked : null));
+            HuntingPlan.CanStart(remaining) ? $"{remaining}" : string.Empty,
+            onTheHunt,
+            huntReady ? OnHuntClicked : OpenHuntingTab,
+            huntReady));
 
-        if (navigator is not null)
-        {
-            var followed = navigator.FollowedOverride;
-            foreach (var (id, name) in navigator.GetAcceptedQuests())
-            {
-                var questId = id;
-                var isFollowed = followed == questId;
-                choices.Add(new FollowChoice(
-                    name,
-                    isFollowed ? "Following" : string.Empty,
-                    isFollowed,
-                    () => FollowQuest(questId)));
-            }
-        }
-
+        AddAcceptedQuestChoices(choices, navigator, mode);
         return choices;
     }
 
@@ -687,6 +709,25 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// already said three ways — the row's name is drawn in the green reserved for it, its marker
     /// is the in-progress one, and the strip above every tab names it in full — so what this drops
     /// is a truncated fourth.</para></summary>
+    /// <summary>How a followable row states itself: what is being followed reads as in progress, what
+    /// can be started reads as available, and what has nothing to start reads as done. One answer for
+    /// the two rows that share the shape, so neither can drift into claiming to be available while it
+    /// is the thing already running.</summary>
+    private static UnlockStatus FollowRowStatus(FollowChoice choice) => choice switch
+    {
+        { IsFollowed: true } => UnlockStatus.Accepted,
+        { Ready: true } => UnlockStatus.Available,
+        _ => UnlockStatus.Done,
+    };
+
+    /// <summary>The pane's button, when there is something for it to start. Absent while this is what
+    /// is already being followed — the way out of that is the Stop on the strip above, and a button
+    /// offering to start what is already running would be a press that does nothing.</summary>
+    private static IReadOnlyList<HubDetailAction> FollowRowActions(FollowChoice choice, string label) =>
+        !choice.IsFollowed && choice.Ready && choice.Activate is { } activate
+            ? [new HubDetailAction(label, activate)]
+            : [];
+
     private static string CountCaption(string detail) =>
         detail.Length > 0 && detail.All(char.IsAsciiDigit) ? detail : string.Empty;
 
@@ -2730,10 +2771,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             ? $"{label} - Rank {hunting.CurrentRank} - {left} left"
             : hunting.NoLogReason ?? "No hunting log active.");
 
+        // The button counts the same set the list above it draws and the header line totals: the rank,
+        // because that is what pressing it plans. It used to count the targets in the player's own
+        // zone, which is how a tab showing thirteen monsters came to carry a button saying "Start
+        // Hunting (3)" — and how the button came to be greyed out in a zone with nothing left in it
+        // while the rest of the rank was still waiting a teleport away.
         var navigator = ResolveNavigator();
-        var remaining = hunting.HuntHereOrder.Count;
-        huntHereButton.String = remaining > 0 ? $"Start Hunting ({remaining})" : "Start Hunting";
-        huntHereButton.IsEnabled = navigator != null && remaining > 0;
+        huntHereButton.String = HuntingPlan.StartLabel(left);
+        huntHereButton.IsEnabled = navigator != null && HuntingPlan.CanStart(left);
 
         rows.Clear();
         distanceRows.Clear();
@@ -2773,6 +2818,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         if (!target.IsRoutable)
         {
+            // A duty-gated target the game cannot be asked to queue has nothing for a press to do, so
+            // it says so in its status word rather than wearing "Available" over a confirm that does
+            // nothing. Visibly unavailable beats present-and-silent, and the row is still listed with
+            // its count and its duty name so the player can see what is left on the rank.
+            var queueable = target.DutyContentFinderConditionId is not null;
+
             return new HubListRow
             {
                 Kind = HubRowKind.Entry,
@@ -2785,10 +2836,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 Detail = $"{target.Killed}/{target.Required}",
                 IconId = HuntingRowIcon(target),
                 Portrait = true,
-                StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Available),
-                Activate = target.DutyContentFinderConditionId is null
-                    ? null
-                    : () => OpenDuty(target.DutyContentFinderConditionId),
+                StatusWord = UnlockStatusDisplay.Word(
+                    queueable ? UnlockStatus.Available : UnlockStatus.RequirementsUnknown),
+                StatusColor = StatusColor(queueable ? UnlockStatus.Available : UnlockStatus.RequirementsUnknown),
+                Activate = queueable ? () => OpenDuty(target.DutyContentFinderConditionId) : null,
             };
         }
 
@@ -2830,19 +2881,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// than to a hole in the column.</para></summary>
     private uint HuntingRowIcon(HuntingTargetView target) => statusIcons.Resolve(target.IconId);
 
+    /// <summary>Starts a hunt through the whole rank — the same call the readout's menu and the ImGui
+    /// fallback make, and gated on the same number the button's own label prints, so a lit button
+    /// cannot be a press that does nothing.</summary>
     private void OnHuntClicked()
     {
-        var navigator = ResolveNavigator();
-        if (navigator is null || hunting.HuntHereOrder.Count == 0)
+        if (ResolveNavigator() is not { } navigator || !HuntingPlan.CanStart(hunting.RemainingTargets.Count))
         {
             return;
         }
 
-        var targets = hunting.HuntHereOrder.Select(hunting.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
-        if (targets.Count > 0)
-        {
-            navigator.SetRoute(targets);
-        }
+        navigator.StartHunt();
     }
 
     /// <summary>The universal exit. Whenever an explicit mode owns the arrow the player must have a
@@ -2965,6 +3014,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return row;
     }
 
+    /// <summary>Where an Unlock Route entry with nothing to route to sends the press: the tab that
+    /// says so in words. This window's own tab rather than the module's opener, because this window is
+    /// necessarily already open when the press happens.</summary>
+    private void OpenUnlocksTab() => SelectTab(HubTab.Checklist);
+
+    /// <inheritdoc cref="OpenUnlocksTab"/>
+    private void OpenHuntingTab() => SelectTab(HubTab.Hunting);
+
+    /// <summary>Back to the default loop, from wherever the player is: release whatever is engaged,
+    /// then drop the followed quest. Both halves, always — see <see cref="MainScenarioReturn"/> for
+    /// why either one alone is not a way home.</summary>
     private void OnFollowMsqClicked()
     {
         if (ResolveNavigator() is not { } navigator)
@@ -3072,7 +3132,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     ///
     /// <para>Four things, always all four, in the same order, whether or not they currently have
     /// anything to offer — a choice that vanishes when it is empty cannot be learned. The ones with
-    /// nothing to do say so on their second line and are inert.</para></summary>
+    /// nothing to start say so on their second line, and pressing one opens the tab that says it in
+    /// full rather than doing nothing.</para></summary>
     private void AddFollowableRows(QuestNavigator? navigator, IReadOnlyList<FollowChoice> choices)
     {
         rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = "Following" });
@@ -3105,24 +3166,31 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private void AddUnlockRouteRow(FollowChoice choice)
     {
-        var routable = choice.Activate is not null;
+        // Followed-ness first, exactly as the main-scenario row above reads it — this row could not
+        // report itself at all before, so an engaged unlock route was invisible on the one tab whose
+        // job is saying what is being followed.
+        var status = FollowRowStatus(choice);
+        var sentence = choice.IsFollowed
+            ? "Following this route."
+            : choice.Ready
+                ? $"{choice.Detail} nearby, nearest first."
+                : "Nothing to route to.";
 
         rows.Add(new HubListRow
         {
             Kind = HubRowKind.Entry,
             Label = choice.Label,
-            Description = routable
-                ? $"{choice.Detail} nearby, nearest first."
-                : "Nothing to route to.",
+            Description = sentence,
             Detail = CountCaption(choice.Detail),
-            IconId = statusIcons.For(routable ? UnlockStatus.Available : UnlockStatus.Done),
-            StatusWord = UnlockStatusDisplay.Word(routable ? UnlockStatus.Available : UnlockStatus.Done),
-            StatusColor = StatusColor(routable ? UnlockStatus.Available : UnlockStatus.Done),
+            IconId = statusIcons.For(status),
+            StatusWord = UnlockStatusDisplay.Word(status),
+            StatusColor = StatusColor(status),
+            LabelColor = choice.IsFollowed ? GameColors.Good : null,
             Pane = FollowableDetail(
                 choice.Label,
-                routable ? $"{choice.Detail} available nearby." : "Nothing to route to.",
+                sentence,
                 "Walks every available unlock nearby, nearest first.",
-                choice.Activate is null ? [] : [new HubDetailAction("Follow this route", choice.Activate)]),
+                FollowRowActions(choice, "Follow this route")),
             Hover = PublishDetail,
             Activate = choice.Activate,
         });
@@ -3130,7 +3198,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private void AddHuntingFollowRow(FollowChoice choice)
     {
-        var remaining = hunting.HuntHereOrder.Count;
+        // The rank, not the zone — the same set the Hunting tab lists and the same set the press
+        // plans. See HuntingPlan.StartLabel.
+        var remaining = hunting.RemainingTargets.Count;
+        var huntingSentence = choice.IsFollowed
+            ? $"Following this hunt — {remaining} left on this rank."
+            : HuntingPlan.CanStart(remaining)
+                ? $"{remaining} targets left on this rank."
+                : hunting.NoLogReason ?? "Nothing left on this rank.";
+
+        var status = FollowRowStatus(choice);
 
         rows.Add(new HubListRow
         {
@@ -3138,16 +3215,17 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Label = choice.Label,
             Description = hunting.ActiveLogLabel is null
                 ? hunting.NoLogReason ?? "No hunting log active."
-                : $"Rank {hunting.CurrentRank} · {remaining} left in this zone",
+                : $"Rank {hunting.CurrentRank} · {remaining} left on this rank",
             Detail = CountCaption(choice.Detail),
-            IconId = statusIcons.For(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
-            StatusWord = UnlockStatusDisplay.Word(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
-            StatusColor = StatusColor(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
+            IconId = statusIcons.For(status),
+            StatusWord = UnlockStatusDisplay.Word(status),
+            StatusColor = StatusColor(status),
+            LabelColor = choice.IsFollowed ? GameColors.Good : null,
             Pane = FollowableDetail(
                 choice.Label,
-                remaining > 0 ? $"{remaining} targets left in this zone." : hunting.NoLogReason ?? "Nothing left on this rank here.",
-                "Walks this rank's remaining targets, nearest first.",
-                choice.Activate is null ? [] : [new HubDetailAction("Start Hunting", choice.Activate)]),
+                huntingSentence,
+                "Walks this rank's remaining targets: this zone first, nearest first, then on by zone.",
+                FollowRowActions(choice, "Start Hunting")),
             Hover = PublishDetail,
             Activate = choice.Activate,
         });
@@ -3163,6 +3241,33 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Body = body,
             Actions = actions,
         };
+
+    /// <summary>Every accepted quest, in the order the navigator returned them — which is the order
+    /// the Following tab's own rows are matched against.
+    ///
+    /// <para>A quest is marked as followed only while a quest is what the arrow is actually on. The
+    /// override can be set underneath a running hunt, and a list with two entries both claiming to be
+    /// what is being followed is a list that cannot be read.</para></summary>
+    private void AddAcceptedQuestChoices(List<FollowChoice> choices, QuestNavigator? navigator, FollowMode mode)
+    {
+        if (navigator is null)
+        {
+            return;
+        }
+
+        var followed = navigator.FollowedOverride;
+        foreach (var (id, name) in navigator.GetAcceptedQuests())
+        {
+            var questId = id;
+            var isFollowed = mode == FollowMode.Quest && followed == questId;
+            choices.Add(new FollowChoice(
+                name,
+                isFollowed ? Following : string.Empty,
+                isFollowed,
+                () => FollowQuest(questId),
+                Ready: !isFollowed));
+        }
+    }
 
     private void AddAcceptedQuestRows(QuestNavigator? navigator, IReadOnlyList<FollowChoice> choices)
     {
@@ -3271,11 +3376,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (followMsqButton is not null)
         {
-            // Live only when there is something to come back from. Following the main scenario is
-            // this plugin's null state, so while you are on it the button has nothing to do — and a
-            // button whose label is the same sentence as the heading above it, always lit and never
-            // changing anything, is exactly what read as a caption in a box.
-            followMsqButton.IsEnabled = navigator?.FollowedOverride is not null;
+            // Live whenever there is something to come back FROM — an engaged hunt or unlock route as
+            // well as a chosen quest. This read the followed-quest override alone, which is null
+            // during a hunt, so the one button on this window named "Resume Main Scenario" was greyed
+            // out in exactly the mode a player most wants it. Following the main scenario really is
+            // this plugin's null state, and on it the button still has nothing to do.
+            followMsqButton.IsEnabled = navigator?.MainScenarioReset.Acts == true;
         }
 
         UpdateTeleportButton(state);
@@ -3338,6 +3444,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             hash = (hash * 31) + (state.StepLabel?.GetHashCode(StringComparison.Ordinal) ?? 0);
             hash = (hash * 31) + state.Mode.GetHashCode(StringComparison.Ordinal);
             hash = (hash * 31) + (state.Engaged ? 1 : 0);
+
+            // WHICH source is engaged, not merely that one is: swapping a hunt for an unlock route
+            // leaves Engaged true throughout, and the "Following" caption belongs to a different row
+            // afterwards. Without this the rows kept the old one marked.
+            hash = (hash * 31) + (state.SourceId?.GetHashCode(StringComparison.Ordinal) ?? 0);
+
+            // And what the hunting row counts, which is the rank rather than the player's own zone —
+            // a kill changes it without changing anything else here. A Count on a list already in
+            // hand; nothing is read or allocated for it.
+            hash = (hash * 31) + hunting.RemainingTargets.Count;
 
             // The accepted-quest list itself is not folded in: reading it allocates, and this runs
             // every tick. Accepting or finishing a quest changes the followed quest's name, step or

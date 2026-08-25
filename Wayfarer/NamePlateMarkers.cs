@@ -123,6 +123,10 @@ internal sealed class NamePlateMarkers(
         enemyNames.Clear();
         giverNames.Clear();
 
+        // HuntHereOrder and deliberately not RemainingTargets: a nameplate only exists for something
+        // the player can actually see, so the current zone's set is exactly the right one here. Every
+        // other reader of that property was counting or planning a hunt with it and has moved to the
+        // whole rank; this one is left alone because it is asking the question the property answers.
         if (modules.Get<HuntingLogModule>() is { Enabled: true } huntingModule)
         {
             foreach (var target in huntingModule.Hunting.HuntHereOrder)

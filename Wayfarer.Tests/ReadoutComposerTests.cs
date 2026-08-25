@@ -247,6 +247,12 @@ public class ReadoutComposerTests
             Mode = NavigationState.Modes.OtherZone,
             SourceLabel = "Main Scenario",
             AetheryteName = "Horizon",
+
+            // The id, because the MARK now requires it: the id is what the press needs, and a marked
+            // line with nothing to teleport to is a control that looks live and is not. The router
+            // never produces one without the other — an AetherytePoint carries both — so this is the
+            // fixture catching up with the state rather than a new requirement on it.
+            AetheryteId = 2,
             AetheryteUnlocked = true,
         };
 
