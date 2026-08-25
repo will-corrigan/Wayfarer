@@ -37,16 +37,18 @@ public static class RowLayout
     /// <summary>Lays a row out at <paramref name="width"/>. <paramref name="height"/> is what the
     /// list actually gave the row, which may differ from <see cref="Height"/> while a resize is in
     /// flight. <paramref name="hasStatus"/> is whether line two has to carry the state in a word,
-    /// which it only does when the state's own icon could not be drawn.</summary>
+    /// which it only does when the state's own icon could not be drawn.
+    /// <paramref name="portrait"/> widens the icon column from a status marker to the Hunting Log's
+    /// own creature art — see <see cref="GameMetrics.Row.PortraitSize"/>.</summary>
     public static RowBlocks Compose(
-        RowShape shape, float width, float height, bool hasIcon, bool hasStatus = false)
+        RowShape shape, float width, float height, bool hasIcon, bool hasStatus = false, bool portrait = false)
     {
         var box = new ScreenRect(0f, 0f, Math.Max(width, 0f), Math.Max(height, 0f));
         return shape switch
         {
             RowShape.Note => ComposeNote(box),
             RowShape.Section => ComposeSection(box, hasIcon),
-            _ => ComposeEntry(box, hasIcon, hasStatus),
+            _ => ComposeEntry(box, hasIcon, hasStatus, portrait),
         };
     }
 
@@ -91,14 +93,17 @@ public static class RowLayout
             default);
     }
 
-    private static RowBlocks ComposeEntry(ScreenRect box, bool hasIcon, bool hasStatus)
+    private static RowBlocks ComposeEntry(ScreenRect box, bool hasIcon, bool hasStatus, bool portrait)
     {
-        var iconTop = (box.Height - GameMetrics.Row.IconSize) / 2f;
+        // A portrait row is the game's Hunting Log row (MonsterNoteBook 1017): a 48x48 piece of
+        // creature art filling the row's height at x=6, with the words starting at x=56. A status
+        // row is Journal's and the Duty Finder's: a 20x20 marker at x=2 centred over both lines,
+        // words at x=24.
+        var iconSize = portrait ? GameMetrics.Row.PortraitSize : GameMetrics.Row.IconSize;
+        var iconLeft = portrait ? GameMetrics.Row.PortraitPadding : GameMetrics.Row.Padding;
+        var iconTop = (box.Height - iconSize) / 2f;
         var icon = hasIcon
-            ? Clip(
-                new ScreenRect(
-                    GameMetrics.Row.Padding, iconTop, GameMetrics.Row.IconSize, GameMetrics.Row.IconSize),
-                box)
+            ? Clip(new ScreenRect(iconLeft, iconTop, iconSize, iconSize), box)
             : default;
 
         // The icon column is reserved whether or not this row's own icon could be drawn. It is a
@@ -106,7 +111,7 @@ public static class RowLayout
         // of the row above it gives a list two left edges, and on the Unlocks tab — where the
         // locked entries are exactly the ones whose icon does not resolve — that meant most of the
         // list was indented differently from the rest of it.
-        var left = GameMetrics.Row.TextLeft;
+        var left = portrait ? GameMetrics.Row.PortraitTextLeft : GameMetrics.Row.TextLeft;
         var trailing = Caption(
             box, GameMetrics.Row.TextTop, GameMetrics.Row.TextHeight, GameMetrics.Row.TrailingWidth);
         var status = hasStatus

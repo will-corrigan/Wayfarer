@@ -10,13 +10,19 @@ namespace Wayfarer.Core.Ui;
 ///   0        reserved — "no navigation"
 ///   1..5     hub tab bar (Following | Unlocks | Hunting Log | Settings), with room for a fifth
 ///   6..9     the Following strip's own controls, on screen whatever tab is open
-///   10..39   the active tab's control region: filter chips, action buttons, or — on the Settings
+///   10..59   the active tab's control region: filter chips, action buttons, or — on the Settings
 ///            tab — every setting control, numbered top to bottom by the walker
-///   40       the list node itself (its upward scroll sentinel)
-///   41..     list rows, four indices apart (KamiToolKit reserves four slots per row)
-///   40 + 4n + 1  the downward scroll sentinel, immediately after the last pooled row
-///   170..179 the detail pane's action buttons
+///   60       the list node itself (its upward scroll sentinel)
+///   61..     list rows, four indices apart (KamiToolKit reserves four slots per row)
+///   60 + 4n + 1  the downward scroll sentinel, immediately after the last pooled row
 /// </code>
+///
+/// <para><b>The control region was 10..39 and is now 10..59.</b> Thirty indices was four more than
+/// the Settings tab already used, and the failure mode when a region does not fit is not a visible
+/// error: <c>NavigationWalker.Apply</c> refuses the whole region and the entire tab becomes
+/// unreachable with a controller, with one line in the log. Four settings of headroom on the tab
+/// that grows every release is not headroom. The twenty came from the detail pane's old reservation
+/// at 170..179, which was freed when the pane was removed.</para>
 ///
 /// <para><b>Why the list pool is clamped.</b> A region <i>after</i> the list was impossible to
 /// place while the pool was "as many rows as fit under 255": the list's extent depended on the pool
@@ -51,10 +57,10 @@ public static class HubNavPlan
     /// guard unreachable and its covering test the tautology <c>39 &lt; 40</c> — moving
     /// <see cref="List"/> from 40 to 12 left the whole suite green. The two are independent now,
     /// so the guard has something real to compare.</para></summary>
-    public const int RegionCapacity = 30;
+    public const int RegionCapacity = 50;
 
     /// <summary>The list block's own index.</summary>
-    public const int List = 40;
+    public const int List = 60;
 
     /// <summary>Rows the list's recycled node pool is allowed to grow to.
     ///
@@ -64,15 +70,6 @@ public static class HubNavPlan
     /// costs nothing and buys a list block whose last index is a constant instead of a function of
     /// the player's screen.</para></summary>
     public const int ListPoolLimit = 30;
-
-    /// <summary>First index of the detail pane's action row. Placed above the clamped list block
-    /// rather than below the control region, so growing either the region or the pane cannot
-    /// silently push the other into the list's rows.</summary>
-    public const int DetailPane = 170;
-
-    /// <summary>Indices reserved for the detail pane. Three buttons is the most any status offers;
-    /// ten leaves room to be wrong about that without another re-plan.</summary>
-    public const int DetailPaneCapacity = 10;
 
     /// <summary>Highest index the tab bar occupies.</summary>
     public static int TabBarLast => TabBar + TabCount - 1;
@@ -131,27 +128,17 @@ public static class HubNavPlan
             : null;
     }
 
-    /// <summary>The list block and the one region numbered above it: the detail pane. The journal
-    /// page used to have a block up here too; it is its own addon now, with an index space of its
-    /// own, so nothing in this one has to make room for it.</summary>
+    /// <summary>The list block, which is now the last region in the space. The journal page used to
+    /// have a block above it and is its own addon now, with an index space of its own; the detail
+    /// pane used to have one at 170 and is gone, which is where the control region's extra twenty
+    /// indices came from.</summary>
     private static string? ValidateListAndAbove()
     {
         var list = List;
-        if (!NavListBlock.Fits(List, MaxListPoolSize))
-        {
-            return $"A list of {MaxListPoolSize} rows starting at {list} exceeds the {NavGraphPlanner.MaxIndex} index ceiling.";
-        }
-
         var listLast = ListLast;
-        var pane = DetailPane;
-        if (listLast >= pane)
-        {
-            return $"The list block ends at {listLast}, which collides with the detail pane at {pane}.";
-        }
-
-        var paneEnd = DetailPane + DetailPaneCapacity - 1;
-        return paneEnd <= NavGraphPlanner.MaxIndex
+        return NavListBlock.Fits(List, MaxListPoolSize)
             ? null
-            : $"The detail pane ({pane}..{paneEnd}) exceeds the {NavGraphPlanner.MaxIndex} index ceiling.";
+            : $"A list of {MaxListPoolSize} rows starting at {list} ends at {listLast}, past the "
+                + $"{NavGraphPlanner.MaxIndex} index ceiling.";
     }
 }

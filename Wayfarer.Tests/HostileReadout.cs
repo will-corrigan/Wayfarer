@@ -66,7 +66,6 @@ internal static class HostileReadout
         Elevation = ElevationHint.Above,
         HuntingSummary = "Ornery Karakul 2/3",
         NearbyUnlocks = ThreeNearbyUnlocks,
-        TeleportOnClick = true,
     };
 
     /// <summary>A quest and how far away it is, which is what the readout looks like almost all of the

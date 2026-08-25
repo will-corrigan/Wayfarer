@@ -213,10 +213,27 @@ public static class GameMetrics
         /// name, a right-hand count and a second element beneath.</summary>
         public const float EntryHeight = Height + SecondaryHeight;
 
-        /// <summary>The icon on the Hunting Log's 48-tall row is 48x48 (MonsterNoteBook
-        /// <c>1017 #3</c>) because it is creature art. Wayfarer's row carries a 20px status marker
-        /// instead, so it keeps the list-row icon size and centres it over both lines.</summary>
+        /// <summary>Where a 20px status marker sits on a 48-tall row: centred over both lines.
+        /// </summary>
         public const float EntryIconTop = (EntryHeight - IconSize) / 2f;
+
+        /// <summary>A creature portrait, not a status marker. MonsterNoteBook <c>1017 #3</c> — the
+        /// Hunting Log's own monster row — is 48x48, and that row (<c>1017 #1</c>) is 48 tall, which
+        /// is already <see cref="EntryHeight"/>. The portrait therefore fills the row's full height
+        /// rather than being centred in it.
+        ///
+        /// <para>Wayfarer drew these 63xxx portraits in the 20px status slot, which is what "the
+        /// hunting log has no images" looked like once the ids themselves started resolving: a
+        /// 48x48 piece of creature art sampled down into a marker's box.</para></summary>
+        public const float PortraitSize = EntryHeight;
+
+        /// <summary>Inset from the row's left edge to the portrait. MonsterNoteBook <c>1017 #3</c>
+        /// is at x=6.</summary>
+        public const float PortraitPadding = 6f;
+
+        /// <summary>The left edge of a portrait row's text. MonsterNoteBook <c>1017 #4</c> — the
+        /// creature's name — is at x=56, which is the portrait's own 6 plus its 48 plus two.</summary>
+        public const float PortraitTextLeft = 56f;
     }
 
     /// <summary>The scroll bar, and the width a list has to give up to it.</summary>
@@ -814,9 +831,15 @@ public static class GameMetrics
         /// </summary>
         public const uint StripTextSize = Type.SecondarySize;
 
-        /// <summary>The pitch of the subordinate lines beneath the banner. The game's two job-quest
-        /// components sit at y=0 and y=26 of their container.</summary>
-        public const float SubLinePitch = 26f;
+        /// <summary>The pitch of a subordinate line that carries a marker. The quest tracker's own
+        /// icon-bearing line, <c>ToDoList 1008</c>, is h=22 around a 24x24 icon (<c>1008 #5</c>) —
+        /// and this is the same construction with the "!" medallion in place of that icon.
+        ///
+        /// <para>It was 26, taken from ScenarioTree's two job-quest components at y=0 and y=26. Those
+        /// are components in a <i>window</i> plate, and the readout is a heads-up element: the
+        /// tracker's register is the right one, and it is tighter. See
+        /// <see cref="AnnotationBlock"/> for the same mistake in its more expensive form.</para></summary>
+        public const float SubLinePitch = Hud.MetaBlock;
 
         /// <summary>The marker on a subordinate line — the game's "!" quest medallion, partlist 4
         /// part 7, drawn 1:1. It is taller than the row it belongs to, and deliberately so.</summary>
@@ -858,9 +881,21 @@ public static class GameMetrics
         public const float MarkerLeft = HeadlineLeft - MarkerHang;
 
         /// <summary>The block an unmarked subordinate line gets — an annotation about the tracked
-        /// thing rather than a second destination. The quest tracker's own meta block
-        /// (<see cref="Hud.MetaBlock"/>), because that is what it is.</summary>
-        public const float AnnotationBlock = Hud.MetaBlock;
+        /// thing rather than a second destination. Almost every line on the readout is one of these:
+        /// the objective, the distance, the zone, the travel advice, the hunting summary.
+        ///
+        /// <para><b>This is the number that made the readout read as too spread out.</b> It was
+        /// <see cref="Hud.MetaBlock"/>, 22, measured off <c>ToDoList 1008 #7</c>. That measurement is
+        /// correct and was applied to the wrong thing: 22 is the height of a tracker <i>component</i>,
+        /// a box that houses a 24x24 icon (<c>1008 #5</c>) and an 8-tall progress bar (<c>1008 #2</c>)
+        /// as well as its words. Our line is a bare row of text, so 22 bought eight pixels of nothing
+        /// under every line of the readout.</para>
+        ///
+        /// <para>The distance the tracker actually puts between two consecutive rows of Axis-12 text
+        /// is its own line spacing, and it sets that to 14: <c>ToDoList 1008 #6</c> is
+        /// <c>FontSize=12, LineSpacing=14</c> — see <see cref="Hud.MetaLeading"/>. That is a line's
+        /// pitch. 22 was a component's height.</para></summary>
+        public const float AnnotationBlock = Hud.MetaLeading;
 
         /// <summary>Every subordinate line's font, marked or not. Axis 12: the banner has exactly two
         /// type levels and this is the lower one.</summary>

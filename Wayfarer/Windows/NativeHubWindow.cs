@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
+using Lumina.Text.ReadOnly;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
@@ -194,7 +196,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private TabBarNode? hubTabs;
     private ListNode<HubListRow, HubListRowNode>? list;
-    private HubDetailPaneNode? detailPane;
 
     /// <summary>The row the journal window is currently showing, or null when it is closed. Kept so
     /// the cursor can be put back on that row when the window goes away, by whatever route it went.
@@ -501,7 +502,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         BuildFollowingStrip();
         BuildButtonHint(contentStart, contentSize);
         BuildSharedList();
-        BuildDetailPane();
         BuildChecklistControls();
         BuildHuntingControls();
         BuildQuestControls();
@@ -607,31 +607,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         var perRow = HubListRowNode.ItemHeight + GameMetrics.Row.Spacing;
         return Math.Min(wanted, HubNavPlan.MaxListPoolSize * perRow);
     }
-
-    /// <summary>How much of a tab the detail strip takes — and none of the Unlocks tab.
-    ///
-    /// <para><b>Why the strip is gone from that one tab.</b> It exists to answer "what is the cursor
-    /// on", and on the Unlocks tab the journal page now answers that in full: the banner, the reward,
-    /// the requirements, where to go and what to do about it, all at once instead of one of them at a
-    /// time. Keeping both would mean paying 291 pixels — six of the game's own rows — for a summary
-    /// of a page that is one press away. 291 over the 49 an entry row occupies is a hair under six
-    /// more rows, at every window size and every HUD scale, on the tab whose whole complaint was
-    /// that you could not see what was in it.</para>
-    ///
-    /// <para><b>And none of the Following tab either.</b> On that tab the pane was 291 pixels — a
-    /// third of the window — spent on a status legend for three fixed choices and your own accepted
-    /// quests, none of which needs one; it was empty every time the list was rebuilt, and what it
-    /// showed then was a section glyph over five lines of vocabulary with a hundred and eighty
-    /// pixels of nothing beneath. Every action it offered is the row's own: confirm on a row
-    /// follows the thing, which is what the pane's button did. The tab now says what it is
-    /// following at the top, in a block with the objective and the buttons, and gives the rest to
-    /// the list.</para>
-    ///
-    /// <para>The Hunting Log keeps it, because its rows are a target with a count and a place, and
-    /// it has no page. The strip is unchanged — it is the same component, with the same tests,
-    /// drawn on one tab instead of three.</para></summary>
-    private static float DetailPaneHeight(HubTab tab) =>
-        tab is HubTab.Checklist or HubTab.Quests ? 0f : HubDetailPaneNode.PaneHeight;
 
     private static float ControlsHeight(HubTab tab) => tab switch
     {
@@ -943,7 +918,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         settingsNodes.Clear();
         hubTabs = null;
         list = null;
-        detailPane = null;
         pageRow = null;
         pendingPage = null;
         hoveredRow = null;
@@ -1143,7 +1117,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// it is being shown in a second place, not invented in one.</summary>
     private string GuidanceHeading()
     {
-        foreach (var line in feed.Compose(teleportOnClick: false).Lines)
+        foreach (var line in feed.Compose().Lines)
         {
             if (line.Emphasis == ReadoutEmphasis.Heading)
             {
@@ -1154,22 +1128,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return "nothing yet";
     }
 
-    /// <summary>The pane across the bottom of the window that says what the cursor is on. Built
-    /// once and shared by every list tab — one component, three call sites, so the Unlocks, Hunting
-    /// Log and Following tabs cannot disagree about how a selected thing is described.</summary>
-    private void BuildDetailPane()
-    {
-        detailPane = new HubDetailPaneNode(log)
-        {
-            Position = tabContentStart,
-            Size = new Vector2(tabContentSize.X, HubDetailPaneNode.PaneHeight),
-        };
-        AddOwnedNode(detailPane);
-        detailPane.Show(null);
-    }
-
-    /// <summary>Publishes a row to the pane. One shared delegate is handed to every row of a
-    /// rebuild rather than a closure each.</summary>
+    /// <summary>Notes which row the cursor is on, and moves the journal page with it. One shared
+    /// delegate is handed to every row of a rebuild rather than a closure each.
+    ///
+    /// <para><b>There used to be a detail strip across the bottom of the window for this to fill.</b>
+    /// It is gone from every tab now. The Unlocks and Following tabs had already given theirs up —
+    /// 291 pixels, six of the game's own rows, for a summary of a page one press away — and the
+    /// Hunting Log was the last tab carrying one. On that tab it restated the row and nothing else:
+    /// the creature's name was the row's name, "3 of 5 killed" was the row's own count, the zone was
+    /// the row's second line, and its one button did exactly what confirming the row already did.
+    /// The player could not tell what the bottom half of the tab was for, which is the correct
+    /// reading of a panel that says nothing new. Removing it gives those 291 units back to the
+    /// list, which is what stopped a rank's targets fitting without a scroll bar.</para></summary>
     private void PublishDetail(HubListRow row)
     {
         if (ReferenceEquals(row, hoveredRow))
@@ -1177,50 +1147,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        // The journal window follows the cursor whether or not the strip is drawn — that is the
-        // game's own contract for its two-window journal, and it is the whole reason the page is a
-        // second addon rather than a node in here.
-        FollowJournal(row);
-
-        // Not drawn on this tab, so not composed either: a tab that spends its pixels on the list
-        // has no strip to fill, and building SeStrings for a hidden pane once per d-pad step is
-        // exactly the allocation storm the reference guard above exists to prevent.
-        if (detailPane is not { IsVisible: true })
-        {
-            hoveredRow = row;
-            return;
-        }
-
         hoveredRow = row;
-        detailPane.Show(row.Pane);
 
-        // The set of buttons on the pane changes with the row, and the indices are absolute — a
-        // button that appeared without being numbered is a button a controller cannot reach.
-        RenumberDetailPane();
+        // The journal window follows the cursor — that is the game's own contract for its two-window
+        // journal, and it is the whole reason the page is a second addon rather than a node in here.
+        FollowJournal(row);
     }
 
-    /// <summary>Renumbers the pane after its buttons change, and re-points the list's downward exit
-    /// at whatever the pane now offers.</summary>
-    private void RenumberDetailPane()
-    {
-        if (list is null || !config.InputMode.CursorNavigation)
-        {
-            return;
-        }
-
-        var firstRow = PopulatedRowCount() > 0 ? NavListBlock.RowIndex(HubNavPlan.List, 0) : HubNavPlan.TabBar;
-        list.NavDown = ApplyDetailPaneNavigation(firstRow);
-    }
-
-    /// <summary>Puts the pane back to its key. Called whenever the list is rebuilt, because the row
-    /// the pane was describing may no longer exist — a stale pane over a list that has moved on is
-    /// worse than no pane, since it looks current.</summary>
-    private void ResetDetail()
-    {
-        hoveredRow = null;
-        detailPane?.Show(null);
-        RenumberDetailPane();
-    }
+    /// <summary>Forgets which row the cursor was on. Called whenever the list is rebuilt, because
+    /// that row may no longer exist.</summary>
+    private void ResetDetail() => hoveredRow = null;
 
     /// <summary>A disabled button with no explanation is the shape of the original "nothing in
     /// here works" report: the action buttons go inert when Quest Helper is off, and nothing said
@@ -1501,7 +1437,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        PositionListAndPane(controlsHeight);
+        PositionList(controlsHeight);
     }
 
     /// <summary>Lays the Following strip out along the top: the words on the left, at the same left
@@ -1532,28 +1468,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
     }
 
-    /// <summary>Puts the list and the pane below it. The pane is pinned to the bottom of the tab
-    /// body and the list gets what is left, so the pane never moves as rows come and go — a detail
-    /// view that slides up the window every time the list shortens is harder to use than no detail
-    /// view at all.</summary>
-    private void PositionListAndPane(float controlsHeight)
+    /// <summary>Puts the list under the tab's control block, filling the rest of the tab body.
+    /// </summary>
+    private void PositionList(float controlsHeight)
     {
-        if (list is null)
-        {
-            return;
-        }
-
-        var paneHeight = DetailPaneHeight(currentTab);
-        if (detailPane is not null)
-        {
-            detailPane.IsVisible = list.IsVisible && !IsPageOpen && paneHeight > 0f;
-            detailPane.Position = new Vector2(
-                tabContentStart.X,
-                tabContentStart.Y + tabContentSize.Y - paneHeight);
-            detailPane.Size = new Vector2(tabContentSize.X, paneHeight);
-        }
-
-        if (!list.IsVisible)
+        if (list is not { IsVisible: true })
         {
             return;
         }
@@ -1561,7 +1480,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // The list keeps a fixed viewport and scrolls what does not fit — it is the one thing in
         // here that must never grow the window, because "the window grew instead of scrolling"
         // is precisely what put it off the edge of the screen.
-        var available = tabContentSize.Y - controlsHeight - paneHeight;
+        var available = tabContentSize.Y - controlsHeight;
         list.Position = new Vector2(tabContentStart.X, tabContentStart.Y + controlsHeight);
         list.Size = new Vector2(tabContentSize.X, ClampListHeight(Math.Max(available, RowHeight)));
     }
@@ -1612,7 +1531,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return currentTab switch
         {
             HubTab.Settings => settingsArea?.ContentNode.Height ?? tabContentSize.Y,
-            _ => ControlsHeight(currentTab) + ListHeightForRows() + DetailPaneHeight(currentTab),
+            _ => ControlsHeight(currentTab) + ListHeightForRows(),
         };
     }
 
@@ -1671,9 +1590,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         currentTab = tab;
         hubTabs?.SelectTab(TabLabel(tab));
 
-        // The virtual list — and the detail pane, which mirrors its visibility below in
-        // PositionListAndPane — is shared across every list-backed tab and lives outside the
-        // per-tab buckets SetBucketVisible walks. Settings has no list of its own to hide it with,
+        // The virtual list is shared across every list-backed tab and lives outside the per-tab
+        // buckets SetBucketVisible walks. Settings has no list of its own to hide it with,
         // so without this the list stays visible (and clickable) under the Settings tab's controls
         // forever after the first time any list tab is shown.
         if (list is not null)
@@ -1925,9 +1843,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // the two disagree on the Settings tab: SelectTab hides the list without emptying it, so the
         // count is still whatever the previous tab published, and "down" from the last setting
         // pointed at the first row of a list that is not on screen.
-        var firstRow = populated > 0 && list.IsVisible
-            ? NavListBlock.RowIndex(HubNavPlan.List, 0)
-            : HubNavPlan.TabBar;
+        //
+        // With no list under it, "down" out of the region goes NOWHERE rather than to the tab bar.
+        // The tab bar is at the TOP of the window, so pointing there made the last control's down
+        // press throw the cursor to the top of the tab — which is exactly the report: "she gets as
+        // far down as the hud position toggle bit and then the next down press takes her back to the
+        // top of the menu". The game's own scrolling lists stop at their last row; this one now does
+        // too, and up still walks back to the tabs the way it always did.
+        var listBelow = populated > 0 && list.IsVisible;
+        var regionExit = listBelow ? NavListBlock.RowIndex(HubNavPlan.List, 0) : NavGraphPlanner.NoNavigation;
 
         var regionEnd = HubNavPlan.Region;
         if (controls is not null)
@@ -1936,12 +1860,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 controls,
                 HubNavPlan.Region,
                 HubNavPlan.TabBar,
-                firstRow,
+                regionExit,
                 HubNavPlan.Region + HubNavPlan.RegionCapacity - 1);
         }
 
         var lastRegionIndex = regionEnd > HubNavPlan.Region ? regionEnd - 1 : HubNavPlan.TabBar;
-        ApplyListNavigation(populated, lastRegionIndex, ApplyDetailPaneNavigation(firstRow));
+        ApplyListNavigation(populated, lastRegionIndex, HubNavPlan.TabBar);
         LogGraph(controls, regionEnd, populated);
     }
 
@@ -2026,26 +1950,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
     }
 
-    /// <summary>Numbers the detail pane's action buttons into their own reserved block above the
-    /// list's, and reports where "down out of the list" should now land — the first button when
-    /// there is one, the tab bar when the pane has nothing to offer this row.</summary>
-    private int ApplyDetailPaneNavigation(int firstRow)
-    {
-        if (detailPane is not { IsVisible: true })
-        {
-            return HubNavPlan.TabBar;
-        }
-
-        var end = NavigationWalker.Apply(
-            detailPane.ActionRow,
-            HubNavPlan.DetailPane,
-            firstRow,
-            HubNavPlan.TabBar,
-            HubNavPlan.DetailPane + HubNavPlan.DetailPaneCapacity - 1);
-
-        return end > HubNavPlan.DetailPane ? HubNavPlan.DetailPane : HubNavPlan.TabBar;
-    }
-
     /// <summary>Takes the window out of the cursor graph entirely when the player has turned
     /// controller navigation off.
     ///
@@ -2058,9 +1962,9 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// window, which is what the setting says.</para>
     ///
     /// <para>Which means every region has to be unwired and not merely left unnumbered. The Following
-    /// strip, the control region and the detail pane's buttons all keep whatever indices the last
-    /// numbering pass gave them, so declining to renumber leaves live nav targets with nothing
-    /// pointing at them — the same half-wired window from the other direction.</para></summary>
+    /// strip and the control region both keep whatever indices the last numbering pass gave them, so
+    /// declining to renumber leaves live nav targets with nothing pointing at them — the same
+    /// half-wired window from the other direction.</para></summary>
     private void RemoveFromCursorGraph(NodeBase? controls)
     {
         if (stripControls is not null)
@@ -2071,11 +1975,6 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         if (controls is not null)
         {
             NavigationWalker.Remove(controls);
-        }
-
-        if (detailPane is not null)
-        {
-            NavigationWalker.Remove(detailPane.ActionRow);
         }
 
         if (hubTabs is not null)
@@ -2801,7 +2700,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             var view = hunting.CurrentTarget is { } current && current.Monster == monster
                 ? current
-                : hunting.HuntHereOrder.FirstOrDefault(t => t.Monster == monster);
+                : hunting.RemainingTargets.FirstOrDefault(t => t.Monster == monster);
             if (view is null)
             {
                 continue;
@@ -2821,8 +2720,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
+        // The rank and what is left of it, in one line above the list — which is where the game's
+        // own Hunting Log puts its progress (MonsterNoteBook 1018: a label, a count and a bar,
+        // directly over the monster list). The count is what makes the tab say what it is for
+        // without the reader having to total the rows themselves.
+        var left = hunting.RemainingTargets.Count;
         SetHuntingHeader(hunting.ActiveLogLabel is { } label
-            ? $"{label} - Rank {hunting.CurrentRank}"
+            ? $"{label} - Rank {hunting.CurrentRank} - {left} left"
             : hunting.NoLogReason ?? "No hunting log active.");
 
         var navigator = ResolveNavigator();
@@ -2833,12 +2737,22 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Clear();
         distanceRows.Clear();
         AddGuidanceUnavailableNote(navigator);
-        foreach (var target in hunting.HuntHereOrder)
+
+        // Every remaining target on the rank, in the dataset's own order — which is the order the
+        // game's Hunting Log lists them in.
+        //
+        // This used to list HuntHereOrder, which is only the targets in the zone the player happens
+        // to be standing in. That is the right set for the Start Hunting button, which chains a
+        // route through this zone, and the wrong set for a log: a rank has around ten targets and
+        // the tab showed the nought-to-three of them that were local, so most of the rank was
+        // simply absent. "Half of it is cropped away" was not a clipping bug — the rows were never
+        // built.
+        foreach (var target in hunting.RemainingTargets)
         {
             rows.Add(BuildHuntingRow(target, navigator));
         }
 
-        var shown = hunting.HuntHereOrder.Select(t => t.Monster).ToHashSet();
+        var shown = hunting.RemainingTargets.Select(t => t.Monster).ToHashSet();
         if (hunting.CurrentTarget is { } current && !shown.Contains(current.Monster))
         {
             rows.Add(BuildHuntingRow(current, navigator));
@@ -2869,9 +2783,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 Description = HuntingRowWhere(target),
                 Detail = $"{target.Killed}/{target.Required}",
                 IconId = HuntingRowIcon(target),
+                Portrait = true,
                 StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Available),
-                Pane = BuildHuntingDetail(target, navigator),
-                Hover = PublishDetail,
                 Activate = target.DutyContentFinderConditionId is null
                     ? null
                     : () => OpenDuty(target.DutyContentFinderConditionId),
@@ -2885,9 +2798,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Description = HuntingRowWhere(target),
             Detail = $"{target.Killed}/{target.Required}",
             IconId = HuntingRowIcon(target),
+            Portrait = true,
             StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Available),
-            Pane = BuildHuntingDetail(target, navigator),
-            Hover = PublishDetail,
             Activate = navigator is null ? null : () =>
             {
                 if (hunting.ToPickupTarget(target) is { } pickup)
@@ -2901,54 +2813,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return row;
     }
 
-    /// <summary>The picture in a hunting row's left column: the creature's own art while there is
-    /// still something to kill, the green check once there is not.
+    /// <summary>The picture in a hunting row's left column: the creature's own art, whatever the
+    /// count says.
     ///
-    /// <para>That swap is the vanilla Hunting Log's own behaviour, not an invention — the art is the
-    /// entry's identity and the checkmark replaces it on completion. The icon still goes through the
-    /// same runtime validation every other icon does, so a creature whose art a patch has moved
-    /// falls back to the row saying its state in words rather than to a hole in the column.</para></summary>
-    private uint HuntingRowIcon(HuntingTargetView target) =>
-        target.Killed >= target.Required
-            ? statusIcons.Resolve(UnlockStatusDisplay.CompleteIcon)
-            : statusIcons.Resolve(target.IconId);
-
-    /// <summary>What the pane says about one hunting target. The same component the Unlocks tab
-    /// uses, so "what is selected" is described the same way whichever list the player is in.</summary>
-    private HubRowDetail BuildHuntingDetail(HuntingTargetView target, QuestNavigator? navigator)
-    {
-        var done = target.Killed >= target.Required;
-        var actions = new List<HubDetailAction>();
-
-        if (!done && target.IsRoutable && navigator is not null)
-        {
-            actions.Add(new HubDetailAction("Guide me there", () =>
-            {
-                if (hunting.ToPickupTarget(target) is { } pickup)
-                {
-                    navigator.SetPickup(pickup);
-                }
-            }));
-        }
-        else if (!done && target.DutyContentFinderConditionId is { } cfcId)
-        {
-            actions.Add(new HubDetailAction("Open Duty Finder", () => OpenDuty(cfcId)));
-        }
-
-        return new HubRowDetail
-        {
-            Title = target.MonsterName,
-            Kind = $"{target.Killed} of {target.Required} killed",
-            StatusIconId = HuntingRowIcon(target),
-            StatusSentence = done
-                ? "Complete."
-                : $"{target.Required - target.Killed} left to kill.",
-            Body = target.IsRoutable
-                ? "Can be chained with the rest of the rank."
-                : "Inside a Grand Company duty. Queue for it.",
-            From = HuntingRowWhere(target),
-        };
-    }
+    /// <para><b>It used to swap the art for a green check on completion</b>, on the belief that this
+    /// was the vanilla Hunting Log's behaviour. It is not. MonsterNoteBook's own monster row draws
+    /// the portrait (<c>1017 #3</c>) and its completion mark (<c>1017 #2</c>) as two separate nodes,
+    /// so the creature never goes away. Swapping also moved the row's text back to the status
+    /// column's x=24 while its neighbours kept the portrait column's x=56, which gave one list two
+    /// left edges. The count on the right of the row is what says a target is finished — the same
+    /// place the game puts it.</para>
+    ///
+    /// <para>The id still goes through the same runtime validation every other icon does, so a
+    /// creature whose art a patch has moved falls back to the row saying its state in words rather
+    /// than to a hole in the column.</para></summary>
+    private uint HuntingRowIcon(HuntingTargetView target) => statusIcons.Resolve(target.IconId);
 
     private void OnHuntClicked()
     {
@@ -3115,7 +2994,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var navigator = ResolveNavigator();
-        var content = feed.Compose(teleportOnClick: false);
+        var content = feed.Compose();
         var choices = GetFollowChoices();
 
         rows.Clear();
@@ -3417,11 +3296,25 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             && state is { AetheryteUnlocked: true, AetheryteId: not null }
             && state.AetheryteName is { Length: > 0 };
 
+        // The readout's own wording, so the two surfaces say the one thing: the verb, the game's
+        // aetheryte crystal, then the place. A framed button is right here — a window is where the
+        // game itself puts framed buttons — but the words on it are not a second vocabulary.
         var label = offered ? $"Teleport to {state!.AetheryteName}" : "Teleport";
         if (!string.Equals(label, lastTeleportLabel, StringComparison.Ordinal))
         {
             lastTeleportLabel = label;
-            teleportButton.String = label;
+
+            var builder = new SeStringBuilder();
+            if (offered)
+            {
+                builder.AddText("Teleport to ").AddIcon(BitmapFontIcon.Aetheryte).AddText(state!.AetheryteName!);
+            }
+            else
+            {
+                builder.AddText(label);
+            }
+
+            teleportButton.String = new ReadOnlySeString(builder.Build().Encode());
         }
 
         teleportButton.IsEnabled = offered;

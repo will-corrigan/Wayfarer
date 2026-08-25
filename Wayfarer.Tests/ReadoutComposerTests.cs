@@ -229,8 +229,18 @@ public class ReadoutComposerTests
         Assert.Contains(content.Lines, line => line.Text.Contains("Teleport to Horizon", StringComparison.Ordinal));
     }
 
+    /// <summary>The teleport line is the game's aetheryte crystal inside the sentence, and the same
+    /// sentence on every surface.
+    ///
+    /// <para>This test used to be <c>The_teleport_line_only_says_click_where_clicking_is_possible</c>,
+    /// and it pinned a "(click)" suffix that appeared only on the host that could be clicked. The
+    /// suffix is gone — a caption is not an affordance, and the clickable host now lights the line
+    /// under the pointer instead. What is asserted in its place is the structured mark that survived:
+    /// the line still carries <see cref="ReadoutLineAction.Teleport"/>, which is what both the click
+    /// box and the controller's anchor are built from, and it carries the glyph as a mark with a
+    /// position rather than as a character anyone has to find by searching the string.</para></summary>
     [Fact]
-    public void The_teleport_line_only_says_click_where_clicking_is_possible()
+    public void The_teleport_line_puts_the_aetheryte_glyph_inside_its_words()
     {
         var state = new NavigationState
         {
@@ -240,11 +250,20 @@ public class ReadoutComposerTests
             AetheryteUnlocked = true,
         };
 
-        var withMouse = ReadoutComposer.Compose(Inputs(state) with { TeleportOnClick = true });
-        var withPad = ReadoutComposer.Compose(Inputs(state));
+        var content = ReadoutComposer.Compose(Inputs(state));
+        var teleport = Assert.Single(content.Lines, line => line.Action == ReadoutLineAction.Teleport);
 
-        Assert.Contains(withMouse.Lines, line => line.Text.EndsWith("(click)", StringComparison.Ordinal));
-        Assert.DoesNotContain(withPad.Lines, line => line.Text.Contains("(click)", StringComparison.Ordinal));
+        Assert.Equal("Teleport to Horizon", teleport.Text);
+        Assert.Equal(DtrGlyph.Aetheryte, teleport.Glyph);
+
+        // Inline, between the verb and the place — not a prefix on the line and not a suffix after it.
+        Assert.Equal("Teleport to ".Length, teleport.GlyphAt);
+        Assert.Equal("Teleport to ", teleport.Text[..teleport.GlyphAt]);
+        Assert.Equal("Horizon", teleport.Text[teleport.GlyphAt..]);
+
+        // No caption standing in for the affordance, on any surface.
+        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("click", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("first", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -61,7 +61,6 @@ public class HubNavigationGraphTests
 
         Assert.Contains("NavigationWalker.Remove(stripControls)", remove, StringComparison.Ordinal);
         Assert.Contains("NavigationWalker.Remove(controls)", remove, StringComparison.Ordinal);
-        Assert.Contains("NavigationWalker.Remove(detailPane.ActionRow)", remove, StringComparison.Ordinal);
         Assert.Contains("hubTabs.NavIndex = NavGraphPlanner.NoNavigation", remove, StringComparison.Ordinal);
         Assert.Contains("list.NavIndex = NavGraphPlanner.NoNavigation", remove, StringComparison.Ordinal);
     }

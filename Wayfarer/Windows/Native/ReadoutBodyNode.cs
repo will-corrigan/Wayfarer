@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -7,6 +8,7 @@ using KamiToolKit.Enums;
 using KamiToolKit.Extensions;
 using KamiToolKit.Nodes;
 using KamiToolKit.Nodes.Simplified;
+using Lumina.Text.ReadOnly;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 
@@ -130,6 +132,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// pixels.</para></summary>
     private const float CogIdleAlpha = 0.4f;
 
+    /// <summary>What the teleport line's words sit at when the pointer is not on them. Nearer full
+    /// than the cog's 0.4 because this is a line of text that has to stay readable at rest — the cog
+    /// is a decoration until it is wanted, and the teleport advice is advice whether or not anyone
+    /// intends to click it. The lift to 1 is what says the line is pressable, which is the job the
+    /// words "(click)" used to do badly.</summary>
+    private const float TeleportIdleAlpha = 0.8f;
+
     /// <summary>Bits of <see cref="ClickTargets"/> — one per clickable node the readout can put on
     /// screen.</summary>
     private const int TeleportTarget = 1;
@@ -159,10 +168,22 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         + "readout is drawn without its banner. Everything it says is still on screen, in the plain heads-up "
         + "colours.";
 
-    /// <summary>How much of the teleport line's block the click target covers. Short of the whole
-    /// block on purpose: the box is the offer to teleport, and the pixels between two lines belong to
-    /// neither of them.</summary>
-    private const float TeleportBoxHeight = 0.6f;
+    /// <summary>Padding above and below the teleport line's words, to make its click and cursor
+    /// target the height of a row the game would let you press rather than the height of the glyphs
+    /// alone.
+    ///
+    /// <para><b>Why this is a padding and not a fraction of the block any more.</b> It used to be
+    /// <c>0.6</c> of the line's block, which was sane only against a block that was eight pixels
+    /// taller than its own text. Now that a line's block is its leading
+    /// (<see cref="GameMetrics.Banner.AnnotationBlock"/>, 14 at Axis 12), six tenths of it would be
+    /// eight pixels — a target shorter than the words inside it, which is poor with a mouse and
+    /// worse with a d-pad, where it is also the cursor's anchor.</para>
+    ///
+    /// <para>Two is what the tracker itself leaves: <c>ToDoList 1008</c>'s collision node
+    /// (<c>#9</c>) is h=22 over text (<c>#7</c>) that sits at y=2 in the same 22-tall component, so
+    /// the pressable area is the text's own box grown by its inset. Half of that inset on each
+    /// side.</para></summary>
+    private const float TeleportBoxPadding = GameMetrics.Row.TextTop;
 
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
@@ -492,7 +513,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // of a placed position rather than a measurement of a string.
         arrowNode = BuildArrow(BaseArrow);
         elevationNode = BuildArrow(BaseArrow / 2f);
-        teleportHitBox = onTeleportClicked is null ? null : BuildHitBox(onTeleportClicked, this);
+        teleportHitBox = onTeleportClicked is null ? null : BuildTeleportHitBox(onTeleportClicked);
         subjectHitBox = BuildSubjectHitBox(onFollowClicked, onQuestNameClicked);
         journalClickable = onQuestNameClicked is not null;
     }
@@ -726,6 +747,40 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         box.ShowClickableCursor = true;
         box.AttachNode(parent);
         return box;
+    }
+
+    /// <summary>The teleport line's target, plus the hover treatment that replaced the words
+    /// "(click)".
+    ///
+    /// <para><b>Two rectangles, deliberately, and they must not be collapsed into one.</b> The hit
+    /// box is the full width of the line, because a generous target is right for a pointer and
+    /// necessary for a d-pad, which anchors on the same rectangle. The <i>highlight</i> is the line's
+    /// own text node — the words and the crystal inside them — and nothing else, so a short place name
+    /// does not light a band of empty plate to the right of itself. Lighting the hit box would do
+    /// exactly that.</para>
+    ///
+    /// <para>The treatment is the cog's, so the plate has one vocabulary for "this responds to the
+    /// pointer": dimmed at rest, full alpha under it. <c>MouseOver</c> and <c>MouseOut</c> ask only
+    /// for <c>EmitsEvents</c> and <c>RespondToMouse</c> — <c>MouseClick</c> is the one that adds
+    /// <c>HasCollision</c> — so the hover costs the world no clicks it was not already
+    /// costing.</para></summary>
+    private ResNode BuildTeleportHitBox(Action onClicked)
+    {
+        var box = BuildHitBox(onClicked, this);
+        box.AddEvent(AtkEventType.MouseOver, () => SetTeleportHighlight(hovered: true));
+        box.AddEvent(AtkEventType.MouseOut, () => SetTeleportHighlight(hovered: false));
+        return box;
+    }
+
+    /// <summary>Lights the teleport line's words, or puts them back. Reads the slot rather than
+    /// remembering a node: which of the twelve line nodes is the teleport advice changes as the
+    /// composer's output changes, and a remembered node would be last frame's line.</summary>
+    private void SetTeleportHighlight(bool hovered)
+    {
+        if (teleportSlot is { } slot)
+        {
+            lineNodes[slot.Index].Alpha = hovered ? 1f : TeleportIdleAlpha;
+        }
     }
 
     /// <summary>Records which of the readout's click targets are live this frame. The cog, the
@@ -1424,6 +1479,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             width - subLineLeft - (GameMetrics.Banner.HeadlineRight * factor), factor);
         var arrowWanted = arrowDrawable && frame.ArrowRadians is not null;
 
+        // Not i: the lines that go on the banner never reach LayoutSubLine, and it is the first
+        // SUBORDINATE line that owns the gutter column. See ReadoutBodyLayout.GutterLine.
+        var subLines = 0;
         for (var i = 0; i < count; i++)
         {
             var line = frame.Content.Lines[i];
@@ -1439,14 +1497,20 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             // own medallion while it has it: one mark per line, and the arrow is the stronger
             // statement about the same thing.
             var takenByArrow = arrowWanted && arrowSlot is null;
-            var slot = LayoutSubLine(i, line, subLineLeft, subLineWidth, factor, drawMarker: !takenByArrow);
+            var gutter = ReadoutBodyLayout.GutterLine(subLines++);
+            var slot = LayoutSubLine(
+                i, line, subLineLeft, subLineWidth, factor, drawMarker: !takenByArrow, gutter: gutter);
 
             if (takenByArrow)
             {
                 arrowSlot = slot;
             }
 
-            teleportSlot ??= WantsTeleportBox(frame, line) ? slot : null;
+            if (teleportSlot is null && WantsTeleportBox(frame, line))
+            {
+                teleportSlot = slot;
+                SetTeleportHighlight(hovered: false);
+            }
         }
 
         HideLinesFrom(count);
@@ -1768,7 +1832,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// one line the wrong height; it cannot move the line after it, because nothing after it reads
     /// anything from here.</para></summary>
     private LineSlot LayoutSubLine(
-        int index, ReadoutLine line, float left, float width, float factor, bool drawMarker)
+        int index, ReadoutLine line, float left, float width, float factor, bool drawMarker, bool gutter)
     {
         var section = lineSections[index];
         var node = lineNodes[index];
@@ -1788,22 +1852,30 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         node.TextOutlineColor = OutlineFor(line.Emphasis);
         node.TextFlags = BodyFlags;
 
-        SetLineText(index, line.Text, forced: false);
+        SetGlyphLineText(index, line, forced: false);
 
+        // `gutter` is the arrow's line. It buys the tracker's icon-bearing line height rather than its
+        // bare-text height, because a 24px mark in a 14px line hangs out of the readout — see
+        // ReadoutBodyLayout.SubLineBlock. The medallion's own lines carry it on line.Marked.
         var block = new ReadoutBlock(line.Marked, line.Separated, WrappedLines(node, width));
-        var height = ReadoutBodyLayout.TextHeight(block, factor);
+        var height = ReadoutBodyLayout.TextHeight(block, factor, gutter);
 
         // Centred in the block for a single row, top-aligned once it wraps — a wrapped line has to
         // start where the block does or its extra rows push into the line beneath.
-        var textTop = ReadoutBodyLayout.TextTop(block, factor);
+        var textTop = ReadoutBodyLayout.TextTop(block, factor, gutter);
 
         node.Size = new Vector2(width, step * Math.Clamp(block.Rows, 1f, MaxWrappedLines));
         node.Position = new Vector2(left, textTop);
         node.IsVisible = true;
 
+        // Full alpha unless this turns out to be the clickable teleport line, which the caller dims —
+        // reset here rather than there because these nodes are a reused pool and last frame's
+        // teleport advice is this frame's distance.
+        node.Alpha = 1f;
+
         // The section is worth the whole of what the line costs — the rule's own room included — which
         // is what lets the container place the next line without knowing anything about this one.
-        section.Size = new Vector2(stack.Width, ReadoutBodyLayout.LineHeight(block, factor));
+        section.Size = new Vector2(stack.Width, ReadoutBodyLayout.LineHeight(block, factor, gutter));
         section.IsVisible = true;
 
         LayoutMarker(index, line, factor, ruleAdvance, height, drawMarker);
@@ -1844,6 +1916,43 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
         lastText[index] = text;
         lineNodes[index].String = text;
+    }
+
+    /// <summary>Writes a line whose words have one of the game's own bitmap-font glyphs inside them.
+    ///
+    /// <para>The glyph and where it goes arrive as a mark on the line
+    /// (<see cref="ReadoutLine.Glyph"/>), not as a character in the string — this is the only place
+    /// the abstract mark becomes a concrete <c>BitmapFontIcon</c>, exactly as
+    /// <see cref="DtrEntry"/> does for the server info bar. <c>SeStringBuilder</c> puts the icon in
+    /// the same text run as the words either side of it, so it wraps and ellipsises with them.</para>
+    ///
+    /// <para>The cache key includes the glyph, because two lines whose words are identical and whose
+    /// glyphs differ are not the same line.</para></summary>
+    private void SetGlyphLineText(int index, ReadoutLine line, bool forced)
+    {
+        // The one mapping from the readout's abstract glyph mark to the game's own icon. Deliberately
+        // not shared with DtrEntry's copy: they read the same enum, and if the two surfaces ever want
+        // different marks for the same meaning neither has to be untangled from the other first.
+        if (line.Glyph != DtrGlyph.Aetheryte)
+        {
+            SetLineText(index, line.Text, forced);
+            return;
+        }
+
+        // Clamped rather than trusted: a composer that named an index past the end of its own words
+        // must not be able to throw on the drawing path.
+        var at = Math.Clamp(line.GlyphAt, 0, line.Text.Length);
+        var key = $"{line.Glyph}@{at}:{line.Text}";
+        if (!forced && string.Equals(lastText[index], key, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var builder = new SeStringBuilder();
+        builder.AddText(line.Text[..at]).AddIcon(BitmapFontIcon.Aetheryte).AddText(line.Text[at..]);
+
+        lastText[index] = key;
+        lineNodes[index].String = new ReadOnlySeString(builder.Build().Encode());
     }
 
     /// <summary>Parks the box over the words of the subject line — the one region that is both the
@@ -1911,8 +2020,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return false;
         }
 
-        var top = stack.Y + lineSections[slot.Index].Y + slot.RuleAdvance;
-        teleportHitBox.Size = new Vector2(slot.Width, slot.Height * TeleportBoxHeight);
+        // The words' own run, grown by the tracker's text inset, and never taller than the block it
+        // sits in. Derived from the line's measured text rather than from a fraction of its block, so
+        // tightening the readout's pitch cannot shrink the target below the words it belongs to.
+        var padding = TeleportBoxPadding * 2f;
+        var height = Math.Min(slot.FontSize + padding, slot.Height);
+        var top = stack.Y + lineSections[slot.Index].Y + slot.RuleAdvance
+            + Math.Max((slot.Height - height) / 2f, 0f);
+
+        teleportHitBox.Size = new Vector2(slot.Width, height);
         teleportHitBox.Position = new Vector2(slot.Left, top);
         teleportHitBox.IsVisible = true;
         return true;

@@ -238,12 +238,21 @@ public static class ReadoutComposer
 
         // The line is marked as a teleport whether or not this surface can be clicked: the mark says
         // what the line means, and each surface decides for itself whether it can offer the action.
+        //
+        // The words are the same on every surface too. They used to gain a "(click)" suffix wherever
+        // the action was actually offered, which is a caption standing in for an affordance — and it
+        // told a player reading the click-through overlay to click something that could not be
+        // clicked. The clickable host lights the line under the pointer instead, which is what the
+        // cog beside it already does, and the words are left to say the one thing they are for.
+        const string Verb = "Teleport to ";
         lines.Add(state.AetheryteUnlocked
             ? new ReadoutLine(
-                inputs.TeleportOnClick ? $"Teleport to {aetheryte} first (click)" : $"Teleport to {aetheryte} first",
+                Verb + aetheryte,
                 ReadoutEmphasis.Secondary,
                 Separated: false,
-                ReadoutLineAction.Teleport)
+                ReadoutLineAction.Teleport,
+                Glyph: DtrGlyph.Aetheryte,
+                GlyphAt: Verb.Length)
             : new ReadoutLine(
                 $"Not attuned to {aetheryte}",
                 ReadoutEmphasis.Secondary));
