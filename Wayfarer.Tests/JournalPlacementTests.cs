@@ -126,4 +126,51 @@ public class JournalPlacementTests
 
         Assert.Equal(200f - GameMetrics.JournalFrame.BesideOverlapY, at.Y, 3);
     }
+
+    /// <summary>Why the header of <c>KamiToolKit.Nodes.WindowNode</c> has to be disarmed
+    /// (<c>JournalWindow.LockChrome</c>) rather than merely left invisible.
+    ///
+    /// <para><c>WindowNode</c>'s own header collision — the game's title-bar drag handle — sits at
+    /// (8,8) sized (width, 28) in every window built from it, hub and journal alike; nothing about
+    /// one window's <c>IsVisible = false</c> touches those numbers on the other. When the hub is
+    /// docked at the very top of the screen, <see cref="A_page_beside_a_list_at_the_top_of_the_screen_stays_on_screen"/>
+    /// already proves this window is clamped to <c>y = 0</c> too — so both windows' header
+    /// collision rows land at <c>[8, 36]</c> in screen pixels, identically, and the journal's runs
+    /// the width of its own frame starting twelve pixels inside the hub's right edge. A live,
+    /// invisible drag handle occupying the same pixels as a real, visible one is what
+    /// <c>LockChrome</c> removes; this proves the coincidence is real rather than assuming it.</para>
+    /// </summary>
+    [Fact]
+    public void The_hosts_own_title_bar_collides_with_the_pages_header_row_when_both_are_pinned_to_the_top()
+    {
+        const float HeaderTop = 8f;
+        const float HeaderHeight = 28f;
+        const float BesideOverlapX = GameMetrics.JournalFrame.BesideOverlapX;
+
+        var host = new Vector2(300f, 0f);
+        var hostSize = new Vector2(462f, 700f);
+        var page = JournalPlacement.Beside(host, hostSize, PageSize, Screen, scale: 1f);
+
+        // The clamp already pins the page to the top of the screen, exactly where the hub itself
+        // sits — the premise this test exists to make concrete rather than assumed.
+        Assert.Equal(0f, page.Y, 3);
+        Assert.Equal(host.Y, page.Y, 3);
+
+        var hostHeaderTop = host.Y + HeaderTop;
+        var hostHeaderBottom = hostHeaderTop + HeaderHeight;
+        var pageHeaderTop = page.Y + HeaderTop;
+        var pageHeaderBottom = pageHeaderTop + HeaderHeight;
+
+        // Identical Y ranges: the two header collision rows do not merely come close, they coincide.
+        Assert.Equal(hostHeaderTop, pageHeaderTop, 3);
+        Assert.Equal(hostHeaderBottom, pageHeaderBottom, 3);
+
+        // And they share a real run of X too — the deliberate overlap that lets the border's
+        // ornament cross the seam is the same overlap that puts a live header collision node over
+        // the host's own title bar.
+        var overlapLeft = Math.Max(host.X, page.X);
+        var overlapRight = Math.Min(host.X + hostSize.X, page.X + PageSize.X);
+        Assert.True(overlapRight > overlapLeft, "the two windows' header rows do not share any X range.");
+        Assert.Equal(BesideOverlapX, overlapRight - overlapLeft, 3);
+    }
 }

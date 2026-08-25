@@ -420,8 +420,42 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             : DetailText.Led(lead, detail.Requirements, JournalWindowLayout.MaxRequirementLines, out _);
     }
 
+    /// <summary>Disarms the window node's own header rather than merely hiding it.
+    ///
+    /// <para><c>Plugin.BuildJournal</c> hands this addon a <see cref="KamiToolKit.Nodes.WindowNode"/>
+    /// already built with <c>IsVisible = false</c> — the trick that makes the page chromeless, since
+    /// its border is the parchment art rather than a window frame. But invisible is not the same as
+    /// inert: <c>WindowNode</c>'s header collision node keeps its own <c>NodeFlags.Visible</c>,
+    /// <c>HasCollision</c>, <c>RespondToMouse</c> and <c>EmitsEvents</c> regardless of its parent's —
+    /// nothing about setting a parent invisible reaches into a child's own flags. Left alone, that is
+    /// a full-width, invisible drag handle sitting across this window's own top edge, and
+    /// <see cref="JournalPlacement.Beside"/>'s own clamp pins this window to <c>y = 0</c> whenever the
+    /// hub is docked at the top of the screen — see
+    /// <c>JournalPlacementTests.A_page_beside_a_list_at_the_top_of_the_screen_stays_on_screen</c> —
+    /// which is exactly where the hub's own draggable title bar lives too. Two invisible, live drag
+    /// handles occupying the same few rows of pixels is a mis-grabbed window waiting for a coincidence,
+    /// not a feature with a UI: this page is never dragged by the player at all, the hub repositions it
+    /// every tick (<see cref="PlaceBeside"/>), so the handle is disarmed rather than left live and
+    /// merely unseen. The close/config/info buttons in the same invisible header get the same
+    /// treatment for the same reason — nothing on this chrome should ever answer a click.</para></summary>
+    private void LockChrome()
+    {
+        if (WindowNode is not KamiToolKit.Nodes.WindowNode windowNode)
+        {
+            return;
+        }
+
+        windowNode.HeaderCollisionNode.RemoveNodeFlags(
+            NodeFlags.HasCollision, NodeFlags.RespondToMouse, NodeFlags.EmitsEvents);
+        windowNode.CloseButtonNode.IsEnabled = false;
+        windowNode.ConfigurationButtonNode.IsEnabled = false;
+        windowNode.InformationButtonNode.IsEnabled = false;
+    }
+
     private void Build()
     {
+        LockChrome();
+
         log.Information("Wayfarer journal: building the page — the frame first.");
         frame = new JournalFrameNode(log) { Position = Vector2.Zero };
         AddNode(frame);
