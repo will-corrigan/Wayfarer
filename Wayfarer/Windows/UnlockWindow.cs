@@ -4,6 +4,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Input;
+using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
 using Wayfarer.Modules;
 
@@ -331,7 +332,11 @@ internal sealed class UnlockWindow(
         var questSuffix = u.Status == UnlockStatus.Accepted && u.Def.Quest is { Length: > 0 } quest
             ? $" — {quest}"
             : string.Empty;
-        var label = $"{u.Def.Unlock}{questSuffix}  (lv{u.QuestLevel}{(u.ZoneName is { } z ? $", {z}" : string.Empty)})##{u.QuestRowId}_{u.Def.Unlock}";
+
+        // Same casing as the native window's rows: the sheets write an imported entry's name in
+        // lower case and leave the casing to the client (UnlockRowText.Name). The ##id keeps the
+        // committed string, so a casing change cannot move a row's ImGui identity.
+        var label = $"{UnlockRowText.Name(u)}{questSuffix}  (lv{u.QuestLevel}{(u.ZoneName is { } z ? $", {z}" : string.Empty)})##{u.QuestRowId}_{u.Def.Unlock}";
         var clicked = ImGui.Selectable(label);
         if (greyed)
         {
@@ -363,7 +368,11 @@ internal sealed class UnlockWindow(
     {
         ImGui.BeginTooltip();
         ImGui.PushTextWrapPos(320 * ImGuiHelpers.GlobalScale);
-        ImGui.TextUnformatted(u.Def.Description ?? u.Def.Unlock);
+
+        // Through UnlockRowText, so this surface sees the game's own description for the imported
+        // entries too rather than falling straight back to the name.
+        var described = UnlockRowText.Description(u);
+        ImGui.TextUnformatted(described.Length > 0 ? described : UnlockRowText.Name(u));
         if (u.Def.Quest is { } q)
         {
             ImGui.TextDisabled(u.GiverName is { Length: > 0 } giver
@@ -454,7 +463,7 @@ internal sealed class UnlockWindow(
         ImGui.TextWrapped("Nothing in the game's data backs these up, so they cannot be checked.");
         foreach (var u in unverified)
         {
-            ImGui.BulletText($"{u.Def.Unlock} ({LevelOrCategory(u.Def)})");
+            ImGui.BulletText($"{UnlockRowText.Name(u)} ({LevelOrCategory(u.Def)})");
             if (!ImGui.IsItemHovered())
             {
                 continue;
