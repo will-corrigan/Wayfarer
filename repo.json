@@ -5,7 +5,7 @@
     "InternalName": "Wayfarer",
     "Punchline": "A quest arrow that knows the way: teleports, doors and aethernet included — plus an unlock checklist.",
     "Description": "Guides you to your quest objective with an on-screen arrow that understands teleports, building entrances and city aethernet routing. Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.",
-    "AssemblyVersion": "0.7.0.0",
+    "AssemblyVersion": "0.8.0.0",
     "RepoUrl": "https://github.com/will-corrigan/Wayfarer",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -13,8 +13,8 @@
     "IsTestingExclusive": "False",
     "DownloadCount": 0,
     "LastUpdate": 0,
-    "DownloadLinkInstall": "https://github.com/will-corrigan/Wayfarer/releases/download/v0.7.0/Wayfarer.zip",
-    "DownloadLinkUpdate": "https://github.com/will-corrigan/Wayfarer/releases/download/v0.7.0/Wayfarer.zip",
+    "DownloadLinkInstall": "https://github.com/will-corrigan/Wayfarer/releases/download/v0.8.0/Wayfarer.zip",
+    "DownloadLinkUpdate": "https://github.com/will-corrigan/Wayfarer/releases/download/v0.8.0/Wayfarer.zip",
     "IconUrl": "https://raw.githubusercontent.com/will-corrigan/Wayfarer/main/images/icon.png",
     "Tags": [
       "quest",
@@ -22,8 +22,8 @@
       "unlocks",
       "qol"
     ],
-    "DownloadLinkTesting": "https://github.com/will-corrigan/Wayfarer/releases/download/v0.7.0/Wayfarer.zip",
-    "TestingAssemblyVersion": "0.7.0.0",
+    "DownloadLinkTesting": "https://github.com/will-corrigan/Wayfarer/releases/download/v0.8.0/Wayfarer.zip",
+    "TestingAssemblyVersion": "0.8.0.0",
     "TestingDalamudApiLevel": 15
   }
 ]
