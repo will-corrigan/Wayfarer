@@ -242,7 +242,10 @@ const today = () => new Date().toISOString().slice(0, 10);
 // at generation time, alongside the wiki fetches the generator already makes — never a URL
 // assembled from a name and never written unless the wiki's own API confirms the page exists.
 
-const WIKILINK_API = 'https://ffxiv.consolegameswiki.com/wiki/api.php';
+// NOT /wiki/api.php: this wiki serves its content under /wiki/<title> and its API script from a
+// separate /mediawiki/ path — asking for /wiki/api.php returns the ARTICLE named "Api.php" (a
+// real HTML page, not JSON), which is a very quiet way to think every title is missing.
+const WIKILINK_API = 'https://ffxiv.consolegameswiki.com/mediawiki/api.php';
 const WIKILINK_USER_AGENT =
   'WayfarerCatalogueGenerator/1.0 (https://github.com/will-corrigan/Wayfarer; wiki link verification)';
 let lastWikilinkRequestAt = 0;
