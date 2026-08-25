@@ -304,10 +304,11 @@ internal sealed class GuidanceOverlay(
             return null;
         }
 
-        // TeleportOnClick is true only on the host that can actually be clicked, so the readout
-        // never promises a click the surface it is drawn on cannot deliver.
+        // The content is the same on both hosts now: the words no longer say whether they can be
+        // clicked, because the clickable host lights the line under the pointer instead. This flag
+        // decides only whether that host puts a hit box on the line at all.
         var clickableTeleport = forClickableHost && cfg.ClickTeleportEnabled;
-        var content = feed.Compose(teleportOnClick: clickableTeleport);
+        var content = feed.Compose();
         var (radians, hidden) = Bearing(content);
         return new ReadoutFrame(
             content,

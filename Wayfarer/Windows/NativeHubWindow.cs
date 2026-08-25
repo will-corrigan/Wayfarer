@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
+using Lumina.Text.ReadOnly;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
@@ -1115,7 +1117,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// it is being shown in a second place, not invented in one.</summary>
     private string GuidanceHeading()
     {
-        foreach (var line in feed.Compose(teleportOnClick: false).Lines)
+        foreach (var line in feed.Compose().Lines)
         {
             if (line.Emphasis == ReadoutEmphasis.Heading)
             {
@@ -2986,7 +2988,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var navigator = ResolveNavigator();
-        var content = feed.Compose(teleportOnClick: false);
+        var content = feed.Compose();
         var choices = GetFollowChoices();
 
         rows.Clear();
@@ -3288,11 +3290,25 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             && state is { AetheryteUnlocked: true, AetheryteId: not null }
             && state.AetheryteName is { Length: > 0 };
 
+        // The readout's own wording, so the two surfaces say the one thing: the verb, the game's
+        // aetheryte crystal, then the place. A framed button is right here — a window is where the
+        // game itself puts framed buttons — but the words on it are not a second vocabulary.
         var label = offered ? $"Teleport to {state!.AetheryteName}" : "Teleport";
         if (!string.Equals(label, lastTeleportLabel, StringComparison.Ordinal))
         {
             lastTeleportLabel = label;
-            teleportButton.String = label;
+
+            var builder = new SeStringBuilder();
+            if (offered)
+            {
+                builder.AddText("Teleport to ").AddIcon(BitmapFontIcon.Aetheryte).AddText(state!.AetheryteName!);
+            }
+            else
+            {
+                builder.AddText(label);
+            }
+
+            teleportButton.String = new ReadOnlySeString(builder.Build().Encode());
         }
 
         teleportButton.IsEnabled = offered;

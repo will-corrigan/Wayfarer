@@ -97,7 +97,7 @@ internal sealed unsafe class ArrowWindow : Window
         // SetWindowFontScale doesn't clamp on its own.
         ImGui.SetWindowFontScale(Math.Clamp(cfg.TextScale, 0.1f, 5f));
 
-        var content = feed.Compose(cfg.ClickTeleportEnabled);
+        var content = feed.Compose();
         DrawArrow(content);
 
         foreach (var line in content.Lines)

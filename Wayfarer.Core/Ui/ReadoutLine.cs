@@ -28,13 +28,30 @@ namespace Wayfarer.Core.Ui;
 /// distance would be a lie about what it is. So the composer says which lines are which, here, where
 /// it can be tested, rather than the drawn readout guessing from emphasis or from position.</para>
 ///
-/// <para>Marked lines get the medallion and the game's 26-pixel pitch; unmarked lines get neither,
-/// and take the tracker's own annotation block
+/// <para>Marked lines get the medallion and the tracker's icon-bearing pitch; unmarked lines get
+/// neither, and take the tracker's own annotation block
 /// (<see cref="GameMetrics.Banner.AnnotationBlock"/>).</para></param>
+/// <param name="Glyph">One of the game's own bitmap-font icons, drawn <i>inside</i> this line's words
+/// at <paramref name="GlyphAt"/>. <see cref="DtrGlyph.None"/> for the lines that are words only.
+///
+/// <para><b>Why a mark and not a character in the string.</b> This assembly has no Dalamud
+/// dependency, so it cannot name a <c>BitmapFontIcon</c>; the layer that draws does the mapping,
+/// exactly as <see cref="DtrComposer"/> and the server info bar entry already do. And a sentinel
+/// character in <paramref name="Text"/> for the drawing layer to find by string-matching is the
+/// precise mistake <see cref="ReadoutLineAction"/> exists to have corrected — the plugin used to
+/// decide a line was clickable by looking for a "(click)" suffix on it.</para></param>
+/// <param name="GlyphAt">Where in <paramref name="Text"/> the glyph is inserted, as a character
+/// index. 0 puts it in front of the words; <c>Text.Length</c> puts it after them; anything between
+/// puts it inline, which is what the teleport line does — "Teleport to " then the crystal then the
+/// aetheryte's name, so the mark reads as part of the sentence rather than as a bullet on it.
+/// Ignored when <paramref name="Glyph"/> is <see cref="DtrGlyph.None"/>, and clamped where it is
+/// drawn, which must never throw on a line's own text.</param>
 public sealed record ReadoutLine(
     string Text,
     ReadoutEmphasis Emphasis,
     bool Separated = false,
     ReadoutLineAction Action = ReadoutLineAction.None,
     bool Subject = false,
-    bool Marked = false);
+    bool Marked = false,
+    DtrGlyph Glyph = DtrGlyph.None,
+    int GlyphAt = 0);

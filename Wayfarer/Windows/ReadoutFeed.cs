@@ -41,10 +41,11 @@ internal sealed class ReadoutFeed(
     /// the same <see cref="INavigationProvider"/> every other consumer already has.</summary>
     public INavigationProvider Navigator => navigator;
 
-    /// <summary>Builds this frame's content. <paramref name="teleportOnClick"/> is true only where
-    /// the surface can actually be clicked — the overlay is click-through by construction, so it
-    /// never promises otherwise.</summary>
-    public ReadoutContent Compose(bool teleportOnClick)
+    /// <summary>Builds this frame's content. The words are the same on every surface: what differs
+    /// between the click-through overlay and the clickable addon is whether the line can be pressed,
+    /// which each host decides for itself from the line's own <see cref="ReadoutLineAction"/> mark.
+    /// </summary>
+    public ReadoutContent Compose()
     {
         var state = navigator.Current;
         var distance = Distance(state);
@@ -55,7 +56,6 @@ internal sealed class ReadoutFeed(
             HuntingSummary = HuntingSummary(),
             HuntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal),
             NearbyUnlocks = NearbyUnlocks(),
-            TeleportOnClick = teleportOnClick,
             Elevation = TargetElevation(state),
             AreaHint = AreaHint(state, distance),
         });
