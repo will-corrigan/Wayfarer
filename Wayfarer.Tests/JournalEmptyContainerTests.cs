@@ -43,6 +43,24 @@ public class JournalEmptyContainerTests
         Assert.Contains("LockedDutyIcon", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void The_reward_banner_is_not_read_off_a_gate_quest_with_no_journal_page()
+    {
+        var body = MethodBody(
+            Path.Combine("Wayfarer", "Windows", "Native", "HubJournalFacts.cs"),
+            "private uint Quest(",
+            endMarker: null);
+
+        Assert.Contains("JournalGenre", body, StringComparison.Ordinal);
+
+        var genreCheckAt = body.IndexOf("JournalGenre", StringComparison.Ordinal);
+        var iconReadAt = body.IndexOf(".Icon", StringComparison.Ordinal);
+
+        var message = "Quest() must check the resolved row's JournalGenre before reading its Icon — a "
+            + "quest with no journal entry has no page for that Icon to be the banner of.";
+        Assert.True(genreCheckAt >= 0 && iconReadAt >= 0 && genreCheckAt < iconReadAt, message);
+    }
+
     /// <summary>The text of one method, comments stripped, found by its own signature and the next
     /// member's. Crude on purpose, like every other structural guard in this file set: a signature
     /// that moves costs a clearer failure message, never a silently-skipped assertion.</summary>
