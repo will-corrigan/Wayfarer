@@ -95,7 +95,7 @@ public class ReadoutFocusTests
     [Fact]
     public void ThePlateAnswersTheGamesOwnSubcommandPress()
     {
-        var subcommand = SourceGuard.Body(SourceGuard.SourceOf(Body), "private static void AddSubcommand(");
+        var subcommand = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void AddSubcommand(");
 
         Assert.Contains("InputId.MENU", subcommand, StringComparison.Ordinal);
         Assert.Contains("AtkEventType.InputReceived", subcommand, StringComparison.Ordinal);

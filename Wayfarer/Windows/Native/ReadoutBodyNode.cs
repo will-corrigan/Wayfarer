@@ -457,6 +457,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// alone answers one more press — see <see cref="AddSubcommand"/>.</para></summary>
     private readonly NavFocusNode?[] navTargets = new NavFocusNode?[MaxNavTargets];
 
+    /// <summary>Which inputs the focused plate has already been seen to receive, so the diagnostic
+    /// that names them says each one once rather than once a frame — see
+    /// <see cref="ReportInput"/>.</summary>
+    private readonly HashSet<InputId> seenInputs = [];
+
     /// <summary>The set of controls the nav chain was last built for, as a
     /// <see cref="ClickTargets"/> bitmask. Starts at -1, which no real set can equal, so the first
     /// frame always builds one.</summary>
@@ -848,41 +853,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return nav;
     }
 
-    /// <summary>Gives one anchor a second press: the game's own <b>Display Subcommands</b>, which is
-    /// what every focused thing in this game answers when the player wants the list of everything
-    /// that can be done to it rather than the obvious one thing.
-    ///
-    /// <para><b>Why this is the right press and not a press we chose.</b> It is the game's, by name:
-    /// the <c>ConfigKey</c> sheet's row 215 is "Display Subcommands", keyed <c>MENU</c>, in the same
-    /// UI-navigation category as Confirm (211), Cancel (212) and Cycle through HUD Components (227) —
-    /// so it is bound on the player's own pad, next to the presses she already uses, and remapping it
-    /// remaps this. The game's own list component opts into the identical input for the identical
-    /// purpose (<c>AtkComponentList.IsInputMenuOptionEnabled</c>).</para>
-    ///
-    /// <para>Registered as a second handler for the same event the anchor already listens to, so
-    /// Confirm keeps doing exactly what a mouse click on the plate does — open the Journal — and this
-    /// is strictly an addition beside it.</para></summary>
-    private static void AddSubcommand(NavFocusNode? nav, Action? onSubcommand)
-    {
-        if (nav is null || onSubcommand is null)
-        {
-            return;
-        }
-
-        nav.AddEvent(AtkEventType.InputReceived, (_, eventType, _, _, data) =>
-        {
-            if (eventType is not AtkEventType.InputReceived || data is null)
-            {
-                return;
-            }
-
-            if ((InputId)data->InputData.InputId is InputId.MENU && data->InputData.State is InputState.Down)
-            {
-                onSubcommand();
-            }
-        });
-    }
-
     /// <summary>Parks one anchor on one control: visible exactly when that control is, and two units
     /// in from its left edge at half its height, so the game's cursor sits beside the thing it is
     /// about to press rather than in its corner.</summary>
@@ -934,6 +904,67 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         {
             lineNodes[slot.Index].Alpha = hovered ? 1f : TeleportIdleAlpha;
         }
+    }
+
+    /// <summary>Gives one anchor a second press: the game's own <b>Display Subcommands</b>, which is
+    /// what every focused thing in this game answers when the player wants the list of everything
+    /// that can be done to it rather than the obvious one thing.
+    ///
+    /// <para><b>Why this is the right press, and not a press we chose.</b> It is the game's own, by
+    /// name: row 215 of the <c>ConfigKey</c> sheet is "Display Subcommands", keyed <c>MENU</c>, and it
+    /// sits in the same UI-navigation category as "Confirm" (row 211, <c>OK</c>), "Cancel" (212,
+    /// <c>CANCEL</c>) and "Cycle through HUD Components" (227, <c>PAD_HUDFOCUS</c>) — the presses this
+    /// readout already answers. It is therefore bound on the player's own pad already — Square on a
+    /// PlayStation pad, X on an Xbox one, which is what the game's own controls guide means by "use A
+    /// to confirm, B to cancel, and X to open submenus" — and remapping it in the game's own keybinds
+    /// remaps this, because what is matched here is the input's id and not a button.
+    ///
+    /// <para>Registered as a second handler for the event the anchor already listens to, so Confirm
+    /// keeps doing exactly what a mouse click on the plate does — open the Journal — and this is
+    /// strictly an addition beside it.</para>
+    ///
+    /// <para>What no source could settle is whether the game routes this id to a focused node
+    /// belonging to a plugin's own addon, the way it routes Confirm there. If it does not, this press
+    /// does nothing and everything else on the readout is unaffected — so the diagnostic below names
+    /// every id that does arrive, which turns one press in game into the answer.</para></summary>
+    private void AddSubcommand(NavFocusNode? nav, Action? onSubcommand)
+    {
+        if (nav is null || onSubcommand is null)
+        {
+            return;
+        }
+
+        nav.AddEvent(AtkEventType.InputReceived, (_, eventType, _, _, data) =>
+        {
+            if (eventType is not AtkEventType.InputReceived || data is null)
+            {
+                return;
+            }
+
+            var input = (InputId)data->InputData.InputId;
+            if (data->InputData.State is InputState.Down)
+            {
+                ReportInput(input);
+            }
+
+            if (input is InputId.MENU && data->InputData.State is InputState.Down)
+            {
+                onSubcommand();
+            }
+        });
+    }
+
+    /// <summary>Names each input the focused plate is sent, once per input, and only with diagnostics
+    /// on. It exists for one question that reading the game's code cannot answer — which presses reach
+    /// a plugin addon's own focused node — and it answers it from inside the game instead.</summary>
+    private void ReportInput(InputId input)
+    {
+        if (!diagnosticsEnabled() || !seenInputs.Add(input))
+        {
+            return;
+        }
+
+        log.Debug($"Wayfarer readout: the focused readout was sent input {input} ({(int)input}).");
     }
 
     /// <summary>Records which of the readout's click targets are live this frame. The cog, the
