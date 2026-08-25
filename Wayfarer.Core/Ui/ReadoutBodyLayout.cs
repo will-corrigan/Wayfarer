@@ -99,26 +99,40 @@ public static class ReadoutBodyLayout
             SubLineFontSize(factor) + (GameMetrics.Banner.SubLineLeading - GameMetrics.Banner.SubLineSize),
             11f);
 
-    /// <summary>The block one unwrapped line occupies. A marked line is the game's own job-quest row
-    /// at its 26-pixel pitch; an unmarked one is an annotation and takes the quest tracker's own meta
-    /// block.</summary>
-    public static float SubLineBlock(bool marked, float factor) =>
-        (marked ? GameMetrics.Banner.SubLinePitch : GameMetrics.Banner.AnnotationBlock) * factor;
+    /// <summary>The block one unwrapped line occupies.
+    ///
+    /// <para><b>Two heights, and which one a line gets depends on its gutter.</b> A line with
+    /// something in the gutter beside it — its medallion, or the bearing arrow — is the quest
+    /// tracker's own icon-bearing line: <c>ToDoList 1008</c> is h=22 around a 24x24 icon
+    /// (<see cref="GameMetrics.Banner.SubLinePitch"/>). A line with an empty gutter is a bare row of
+    /// text and gets the tracker's line spacing for its size, 14
+    /// (<see cref="GameMetrics.Banner.AnnotationBlock"/>). Giving every line the icon height is what
+    /// made the readout read as too spread out; giving every line the text height leaves the arrow
+    /// hanging out of the bottom of the readout.</para></summary>
+    public static float SubLineBlock(bool gutter, float factor) =>
+        (gutter ? GameMetrics.Banner.SubLinePitch : GameMetrics.Banner.AnnotationBlock) * factor;
 
     /// <summary>The whole of a line's section: the rule above it, then the taller of its block and the
     /// rows its text actually took. A line that wraps grows past its block, because a clipped line is
-    /// worse than a loose one.</summary>
-    public static float LineHeight(ReadoutBlock block, float factor) =>
-        RuleAdvance(block.Separated, factor) + TextHeight(block, factor);
+    /// worse than a loose one.
+    ///
+    /// <para><paramref name="gutter"/> is whether this line has a mark beside it. The medallion is on
+    /// the line's own <see cref="ReadoutBlock.Marked"/>; the arrow is not, because which line carries
+    /// the arrow is a property of the whole readout rather than of any line — it always takes the
+    /// first — so the caller passes it in. Both callers are
+    /// <see cref="Compose"/> and the live node, and they must pass the same thing or the node's
+    /// sections and this arithmetic disagree.</para></summary>
+    public static float LineHeight(ReadoutBlock block, float factor, bool gutter = false) =>
+        RuleAdvance(block.Separated, factor) + TextHeight(block, factor, gutter);
 
     /// <inheritdoc cref="LineHeight"/>
-    public static float TextHeight(ReadoutBlock block, float factor) =>
-        Math.Max(SubLineBlock(block.Marked, factor), SubLineStep(factor) * Rows(block.Rows));
+    public static float TextHeight(ReadoutBlock block, float factor, bool gutter = false) =>
+        Math.Max(SubLineBlock(block.Marked || gutter, factor), SubLineStep(factor) * Rows(block.Rows));
 
     /// <summary>Where a line's words start inside its section: centred in the block for a single row,
     /// flush with the top of the block once it wraps — a wrapped line has to start where its block
     /// does or its extra rows push into the line beneath.</summary>
-    public static float TextTop(ReadoutBlock block, float factor)
+    public static float TextTop(ReadoutBlock block, float factor, bool gutter = false)
     {
         var top = RuleAdvance(block.Separated, factor);
         if (Rows(block.Rows) > 1f)
@@ -126,9 +140,21 @@ public static class ReadoutBodyLayout
             return top;
         }
 
-        var slack = SubLineBlock(block.Marked, factor) - SubLineStep(factor);
+        var slack = SubLineBlock(block.Marked || gutter, factor) - SubLineStep(factor);
         return top + Math.Max(slack / 2f, 0f);
     }
+
+    /// <summary>Whether line <paramref name="index"/> is the one with the gutter column beside it. The
+    /// arrow always takes the first subordinate line — the objective — so that is the line that has to
+    /// be tall enough to hold a mark.
+    ///
+    /// <para><b>It does not ask whether the arrow is actually there.</b> The column is reserved, not
+    /// earned: an arrow that added height when it appeared would move every line under it every time
+    /// the bearing became unavailable, which is the "everything looks shifted when the arrow is
+    /// absent" complaint. The first line is the tracker's icon-bearing height always, and the arrow
+    /// costs nothing vertically — which is what
+    /// <c>Taking_the_arrow_away_moves_nothing_else_on_the_readout</c> proves.</para></summary>
+    public static bool GutterLine(int index) => index == 0;
 
     /// <summary>The left edge of the plate's own text, and of the name written across it.</summary>
     public static float HeadlineLeft(float factor) => GameMetrics.Banner.HeadlineLeft * factor;
@@ -186,7 +212,7 @@ public static class ReadoutBodyLayout
         heights[1] = BannerHeight(factor);
         for (var i = 0; i < lines.Count; i++)
         {
-            heights[i + 2] = LineHeight(lines[i], factor);
+            heights[i + 2] = LineHeight(lines[i], factor, GutterLine(i));
         }
 
         heights[^1] = FootHeight(factor);
@@ -201,7 +227,7 @@ public static class ReadoutBodyLayout
         // already in that column.
         if (request.Arrow && arrowCentre is null)
         {
-            arrowCentre = placed[^1].Y + (GameMetrics.Banner.AnnotationBlock * factor / 2f);
+            arrowCentre = placed[^1].Y + (GameMetrics.Banner.SubLinePitch * factor / 2f);
         }
 
         return new ReadoutBodyBlocks
@@ -259,7 +285,7 @@ public static class ReadoutBodyLayout
                     GameMetrics.Window.RuleHeight);
             }
 
-            var textTop = section.Y + TextTop(block, factor);
+            var textTop = section.Y + TextTop(block, factor, GutterLine(i));
             parts.Texts[i] = new ScreenRect(
                 SubLineLeft(factor), textTop, SubLineWidth(factor), SubLineStep(factor) * Rows(block.Rows));
 

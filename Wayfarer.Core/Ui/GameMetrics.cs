@@ -831,9 +831,15 @@ public static class GameMetrics
         /// </summary>
         public const uint StripTextSize = Type.SecondarySize;
 
-        /// <summary>The pitch of the subordinate lines beneath the banner. The game's two job-quest
-        /// components sit at y=0 and y=26 of their container.</summary>
-        public const float SubLinePitch = 26f;
+        /// <summary>The pitch of a subordinate line that carries a marker. The quest tracker's own
+        /// icon-bearing line, <c>ToDoList 1008</c>, is h=22 around a 24x24 icon (<c>1008 #5</c>) —
+        /// and this is the same construction with the "!" medallion in place of that icon.
+        ///
+        /// <para>It was 26, taken from ScenarioTree's two job-quest components at y=0 and y=26. Those
+        /// are components in a <i>window</i> plate, and the readout is a heads-up element: the
+        /// tracker's register is the right one, and it is tighter. See
+        /// <see cref="AnnotationBlock"/> for the same mistake in its more expensive form.</para></summary>
+        public const float SubLinePitch = Hud.MetaBlock;
 
         /// <summary>The marker on a subordinate line — the game's "!" quest medallion, partlist 4
         /// part 7, drawn 1:1. It is taller than the row it belongs to, and deliberately so.</summary>
@@ -875,9 +881,21 @@ public static class GameMetrics
         public const float MarkerLeft = HeadlineLeft - MarkerHang;
 
         /// <summary>The block an unmarked subordinate line gets — an annotation about the tracked
-        /// thing rather than a second destination. The quest tracker's own meta block
-        /// (<see cref="Hud.MetaBlock"/>), because that is what it is.</summary>
-        public const float AnnotationBlock = Hud.MetaBlock;
+        /// thing rather than a second destination. Almost every line on the readout is one of these:
+        /// the objective, the distance, the zone, the travel advice, the hunting summary.
+        ///
+        /// <para><b>This is the number that made the readout read as too spread out.</b> It was
+        /// <see cref="Hud.MetaBlock"/>, 22, measured off <c>ToDoList 1008 #7</c>. That measurement is
+        /// correct and was applied to the wrong thing: 22 is the height of a tracker <i>component</i>,
+        /// a box that houses a 24x24 icon (<c>1008 #5</c>) and an 8-tall progress bar (<c>1008 #2</c>)
+        /// as well as its words. Our line is a bare row of text, so 22 bought eight pixels of nothing
+        /// under every line of the readout.</para>
+        ///
+        /// <para>The distance the tracker actually puts between two consecutive rows of Axis-12 text
+        /// is its own line spacing, and it sets that to 14: <c>ToDoList 1008 #6</c> is
+        /// <c>FontSize=12, LineSpacing=14</c> — see <see cref="Hud.MetaLeading"/>. That is a line's
+        /// pitch. 22 was a component's height.</para></summary>
+        public const float AnnotationBlock = Hud.MetaLeading;
 
         /// <summary>Every subordinate line's font, marked or not. Axis 12: the banner has exactly two
         /// type levels and this is the lower one.</summary>
