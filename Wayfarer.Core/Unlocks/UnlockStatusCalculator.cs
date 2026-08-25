@@ -854,9 +854,18 @@ public static class UnlockStatusCalculator
     ///
     /// <para>Membership is still established by quest identity: a group is marked done only when a
     /// Quest row belonging to it is actually complete. The level is what stops that evidence
-    /// leaking sideways into a tier it says nothing about.</para></summary>
-    private readonly record struct AlternativeGroup(string Unlock, int? Level)
+    /// leaking sideways into a tier it says nothing about.</para>
+    ///
+    /// <para>The channel is in the key for the same reason the level is, and became necessary when
+    /// the catalogue started listing every kind of unlock rather than mostly duties: two DIFFERENT
+    /// things can share a name and a level. The quest behind "The Promise of Tomorrow" grants both a
+    /// title and an orchestrion roll of that name, and "Tiisol Ja" is both a custom-delivery client
+    /// and that client's crafting-log division. Those are two unlocks with two sheet rows, and
+    /// finishing one says nothing about the other — whereas the three "Levequests" rows, one per
+    /// starting city, are one unlock and share a channel. Alternatives are always the same kind of
+    /// thing; a collision never is.</para></summary>
+    private readonly record struct AlternativeGroup(string Unlock, int? Level, string Channel)
     {
-        public static AlternativeGroup Of(ResolvedUnlock u) => new(u.Def.Unlock, u.Def.Level);
+        public static AlternativeGroup Of(ResolvedUnlock u) => new(u.Def.Unlock, u.Def.Level, u.Def.Channel);
     }
 }

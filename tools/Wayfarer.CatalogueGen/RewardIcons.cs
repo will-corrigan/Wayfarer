@@ -28,6 +28,7 @@ internal sealed class RewardIcons
     private readonly ExcelSheet<Glasses> glasses;
     private readonly ExcelSheet<CharaMakeCustomize> hairstyles;
     private readonly ExcelSheet<ClassJob> jobs;
+    private readonly ExcelSheet<GeneralAction> generalActions;
 
     private RewardIcons(GameData game)
     {
@@ -43,6 +44,7 @@ internal sealed class RewardIcons
         glasses = game.GetExcelSheet<Glasses>();
         hairstyles = game.GetExcelSheet<CharaMakeCustomize>();
         jobs = game.GetExcelSheet<ClassJob>();
+        generalActions = game.GetExcelSheet<GeneralAction>();
     }
 
     public static RewardIcons Build(GameData game) => new(game);
@@ -75,6 +77,8 @@ internal sealed class RewardIcons
         // cannot be cited. The soul crystal is the job, it is a real reference, and its icon is the
         // picture the game itself uses on the job's own item.
         "ClassJob" => items.GetRowOrDefault(jobs.GetRowOrDefault(candidate.Id)?.ItemSoulCrystal.RowId ?? 0)?.Icon ?? 0u,
+
+        "GeneralAction" => Unsigned(generalActions.GetRowOrDefault(candidate.Id)?.Icon ?? 0),
 
         // The Orchestrion sheet is Name and Description; the roll you are handed is the only thing
         // with a picture.

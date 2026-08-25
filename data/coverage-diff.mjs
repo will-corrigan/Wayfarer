@@ -125,17 +125,51 @@ export function buildCoverage(enumerated, unlocks) {
     }
   });
 
-  // ---- the game side ------------------------------------------------------------------------
-  const channels = new Map();
-  const coveringEntries = new Map();
-  const rows = enumerated.map((row) => {
+  // ---- which rows are covered, and which of them speak for a group -------------------------
+  //
+  // The enumerator has already grouped the rows the game holds several of for one thing — the 22
+  // "Ocean Fishing" duty rows — by pointing each later row's `duplicateOf` at the first. What it
+  // cannot know is which member of a group the CATALOGUE happens to cover, because that is not a
+  // fact about the game. "The Gilded Araya" is the case: the shipped entry covers row 944, and the
+  // first row of that name is 69, so taking the enumerator's answer alone would list the same duty
+  // twice. So a group whose covered member is not its first row re-points at the covered one.
+  const hitsFor = enumerated.map((row) => {
     const identityHits =
       byIdentity.get(identityKey(row.identityKind, row.identityId, row.identitySubrowId)) ?? [];
     const gateHits = row.questRowId ? byQuest.get(row.questRowId) ?? [] : [];
-    const hits = [...new Set([...identityHits, ...gateHits])].sort((a, b) => a - b);
+    return {
+      identityHits,
+      gateHits,
+      hits: [...new Set([...identityHits, ...gateHits])].sort((a, b) => a - b),
+    };
+  });
+
+  const groupKey = (row) => `${row.channel}#${row.duplicateOf ?? row.identityId}`;
+  const coveredInGroup = new Map();
+  enumerated.forEach((row, i) => {
+    const key = groupKey(row);
+    if (hitsFor[i].hits.length > 0 && !coveredInGroup.has(key)) {
+      coveredInGroup.set(key, row.identityId);
+    }
+  });
+
+  /** The row this one defers to: the enumerator's answer, or the covered member of its group. */
+  const deferTo = (row) => {
+    if (row.duplicateOf !== null && row.duplicateOf !== undefined) return row.duplicateOf;
+    const covered = coveredInGroup.get(groupKey(row));
+    return covered !== undefined && covered !== row.identityId ? covered : null;
+  };
+
+  // ---- the game side ------------------------------------------------------------------------
+  const channels = new Map();
+  const coveringEntries = new Map();
+  const rows = enumerated.map((row, index) => {
+    const { identityHits, gateHits, hits } = hitsFor[index];
 
     const named = hasName(row);
-    const verdict = hits.length ? null : classifyMissing({ ...row, unnamed: !named });
+    const verdict = hits.length
+      ? null
+      : classifyMissing({ ...row, unnamed: !named, duplicateOf: deferTo(row) });
 
     // Display names ride along ONLY on the rows somebody still has to decide about.
     //
@@ -165,6 +199,11 @@ export function buildCoverage(enumerated, unlocks) {
       ...opt('questRowId', row.questRowId),
       ...(nameable && row.questName ? { questName: row.questName } : {}),
       ...(row.gateLive ? { gateLive: true } : {}),
+      // The row this one is a second copy of, when the game's tables hold several for one thing —
+      // 22 "Ocean Fishing" duty rows, one per route. Decided by the enumerator, which is the only
+      // side that has every name: display names are deliberately not written for excluded rows (see
+      // below), so the grouping could not be re-derived here from the committed artefact.
+      ...opt('duplicateOf', row.duplicateOf),
       ...opt('level', row.level),
       ...(row.festival ? { festival: row.festival } : {}),
       via: row.via,

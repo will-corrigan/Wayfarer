@@ -1,22 +1,44 @@
 import { ALL as REWARD_KINDS } from './reward-kinds.mjs';
+import { ENTRY_CHANNELS, channelForCuratedEntry } from './unlock-channels.mjs';
 
 const d = (await import('./unlocks-by-level.json', { with: { type: 'json' } })).default;
 const prios = new Set(['essential', 'nice', 'optional']);
 const confidences = new Set(['verified', 'single-source', 'unverified']);
 const types = new Set(['alliance-raid', 'dungeon', 'emote', 'minion', 'mount', 'raid', 'system', 'trial', 'zone']);
 const questKinds = new Set(['classquest', 'msq', 'other', 'sidequest']);
+const channels = new Set(ENTRY_CHANNELS);
 const MAX_LEVEL = 110;
-// Two fewer than the 588 the first regeneration produced: both belonged to the unreleased-
-// expansion guide page, which is the previous expansion's page with the quest names blanked, and
-// neither described content that exists. See data/README.md.
-//
-// +1 for "The Wing Spirit Cometh" (Quest#71005, Wings of Legacy): a real, live Dawntrail trophy-
-// mount quest the wiki guide does not list, added by the generator's committed-overrides
-// mechanism — see NEW_TROPHY_MOUNT_ENTRIES in scripts/build-unlock-catalogue.mjs.
-const EXPECTED = 587;
+
+// The curated half: the 587 entries built from the wiki guide. Two fewer than the 588 the first
+// regeneration produced — both belonged to the unreleased-expansion guide page and neither described
+// content that exists — plus one for "The Wing Spirit Cometh" (Quest#71005, Wings of Legacy), a
+// real, live Dawntrail trophy-mount quest the guide does not list. See data/README.md and
+// NEW_TROPHY_MOUNT_ENTRIES in scripts/build-unlock-catalogue.mjs.
+const EXPECTED_CURATED = 587;
+
+// The imported half: one entry per enumerated row the coverage policy says the catalogue lists and
+// no curated entry covers. Both halves are checked separately, because they fail differently — a
+// change in the first is somebody editing curation, a change in the second is the game shipping a
+// patch — and a single total would hide one moving inside the other.
+const EXPECTED_IMPORTED = 621;
+const EXPECTED = EXPECTED_CURATED + EXPECTED_IMPORTED;
+
+// Written by the generator's import, and the marker the two halves are told apart by. `sources` is
+// where it lives rather than a field of its own for the same reason everything else in that list is
+// there: it says where the entry came from, and "the game's own enumeration, `title` channel" is a
+// provenance in exactly the way "gamerescape:progression-guide" is.
+const IMPORT_SOURCE_PREFIX = 'game-enumeration:';
+const isImported = (e) => (e.sources ?? []).some((s) => typeof s === 'string' && s.startsWith(IMPORT_SOURCE_PREFIX));
+
 let errors = 0;
 const err = (m) => { console.error(m); errors++; };
 if (!Array.isArray(d.unlocks) || d.unlocks.length !== EXPECTED) err(`unlocks length ${d.unlocks?.length} != ${EXPECTED}`);
+if (Array.isArray(d.unlocks)) {
+  const imported = d.unlocks.filter(isImported).length;
+  const curated = d.unlocks.length - imported;
+  if (curated !== EXPECTED_CURATED) err(`curated entries ${curated} != ${EXPECTED_CURATED}`);
+  if (imported !== EXPECTED_IMPORTED) err(`imported entries ${imported} != ${EXPECTED_IMPORTED}`);
+}
 
 // Anything this file does not name is a field the plugin does not read. System.Text.Json drops an
 // unknown property without a word, so a misspelt 'requiers' or a requirement kind nobody
@@ -205,7 +227,7 @@ const checkRequires = (where, r) => {
 };
 
 const entryKeys = new Set([
-  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
   'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
   'sources',
 ]);
@@ -307,8 +329,25 @@ for (const [i, e] of d.unlocks.entries()) {
   const where = `#${i} ${e.unlock}`;
   if (typeof e !== 'object' || e === null || Array.isArray(e)) { err(`${where}: entry must be an object`); continue; }
   checkKeys(where, e, entryKeys);
-  if (typeof e.description !== 'string' || e.description.length < 20 || e.description.length > 400)
-    err(`${where}: bad description`);
+
+  // A description is required of a CURATED entry and forbidden nothing else. The rule used to be
+  // "every entry has 20-400 characters of it", which was right while every entry had been written by
+  // a person and is a trap now that most have not: 621 entries come from the game's own sheets,
+  // which state a name and a gate and no prose at all. Satisfying a length rule for those would mean
+  // generating a sentence per row, and a manufactured sentence that reads like curation is worse than
+  // an honest blank — it is the same failure as an invented level, in the field a player reads first.
+  //
+  // So: curated entries keep the rule exactly, which is what stops the existing 587 losing their
+  // prose to a careless regeneration. An imported entry may have none, and when it does the row and
+  // the journal fall back through `notes` and the requirement label to the entry's own name — see
+  // Wayfarer.Core/Ui/UnlockRowText.Description.
+  if ('description' in e && e.description !== null) {
+    if (typeof e.description !== 'string' || e.description.length < 20 || e.description.length > 400)
+      err(`${where}: bad description`);
+  } else if (!isImported(e)) {
+    err(`${where}: a curated entry must carry a description`);
+  }
+
   if (!prios.has(e.priority)) err(`${where}: bad priority '${e.priority}'`);
   if (typeof e.cosmetic !== 'boolean') err(`${where}: bad cosmetic`);
   for (const k of ['unlock', 'type', 'quest', 'questKind', 'notes'])
@@ -339,6 +378,23 @@ for (const [i, e] of d.unlocks.entries()) {
       err(`${where}: has no level, so it needs a 'category' naming what it is`);
   }
   if (!types.has(e.type)) err(`${where}: unknown type '${e.type}'`);
+
+  // The taxonomy the per-category displays group by. Checked two ways: it has to be a channel the
+  // coverage policy lists, and for a CURATED entry it has to be the one derivable from that entry's
+  // own reward identity or type. The second half is what stops a hand-edited channel surviving — the
+  // field is generated, and an entry whose channel disagrees with what it says it unlocks is a
+  // taxonomy that has started to lie.
+  if (!channels.has(e.channel)) err(`${where}: unknown channel '${e.channel}'`);
+  else if (!isImported(e)) {
+    let derived = null;
+    try {
+      derived = channelForCuratedEntry(e);
+    } catch (ex) {
+      err(`${where}: ${ex.message}`);
+    }
+    if (derived !== null && derived !== e.channel)
+      err(`${where}: channel '${e.channel}' is not what this entry's reward/type derives ('${derived}')`);
+  }
   if (e.questKind !== null && !questKinds.has(e.questKind)) err(`${where}: unknown questKind '${e.questKind}'`);
   checkScalar(where, e, 'quest', 'string', true);
   if (typeof e.quest === 'string' && e.quest.trim().length === 0)
@@ -389,11 +445,19 @@ for (const [i, e] of d.unlocks.entries()) {
 // so neither of them is corroborated, whatever each one says on its own. A gap of one level is the
 // wiki's own table rounding and is left alone; anything wider is a genuine conflict, and it has to
 // be recorded rather than asserted away.
+//
+// An entry whose own `levelSource` IS this quest row is not a party to that. It is not claiming a
+// level about the quest, it is quoting the quest's own accept level, and a quotation cannot disagree
+// with its source. That distinction carries the import: every imported entry's level is the Quest
+// row's accept level, and the guide's level is when the content becomes relevant, so without this
+// the same known difference would be reported a second time as a dispute and would drag hundreds of
+// corroborated curated entries down with it. Kept in step with the same rule in
+// scripts/build-unlock-catalogue.mjs, which is what writes the notes this checks for.
 const LEVEL_AGREEMENT_SLACK = 1;
 const byQuestRow = new Map();
 for (const [i, e] of d.unlocks.entries()) {
   const row = (e.sources ?? []).find((s) => typeof s === 'string' && s.startsWith('game-data:Quest#'));
-  if (row) byQuestRow.set(row, [...(byQuestRow.get(row) ?? []), i]);
+  if (row && e.levelSource !== row) byQuestRow.set(row, [...(byQuestRow.get(row) ?? []), i]);
 }
 for (const [row, idx] of byQuestRow) {
   if (idx.length < 2) continue;

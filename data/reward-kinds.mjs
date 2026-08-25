@@ -20,6 +20,7 @@ export const WITH_ICON = [
   'Glasses',
   'CharaMakeCustomize',
   'ClassJob',
+  'GeneralAction',
 ];
 
 /** Kinds with no icon column of their own that reach one through the item that grants them.

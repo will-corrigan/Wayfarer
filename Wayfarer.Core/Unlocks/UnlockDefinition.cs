@@ -35,6 +35,25 @@ public sealed class UnlockDefinition
 
     public string Type { get; set; } = string.Empty;
 
+    /// <summary>What KIND of thing this is, in the vocabulary the game-data enumeration walks:
+    /// <c>duty</c>, <c>title</c>, <c>orchestrion</c>, <c>job</c>, <c>minion</c>,
+    /// <c>gathering-folklore</c>, <c>challenge-log</c> and the rest — plus <c>zone</c> for the
+    /// handful of entries that open a place the game keeps no row for.
+    ///
+    /// <para><b>Why this is not <see cref="Type"/>.</b> <c>Type</c> answers "which filter chip", and
+    /// its nine values were chosen when the catalogue was 587 duties, systems and a few cosmetics. It
+    /// has no word for a title, an orchestrion roll or a folklore book, so by the time it was asked
+    /// to describe 1,208 entries it was answering <c>system</c> for a third of them. This is the
+    /// field a display groups by when it wants to show titles as their own page, and it is
+    /// deliberately the enumeration's own vocabulary so that the taxonomy and the completeness check
+    /// cannot drift apart. See <c>data/unlock-channels.mjs</c>.</para>
+    ///
+    /// <para>Generated, not curated: an imported entry carries the channel it was enumerated under,
+    /// and a curated one has it derived from the sheet its <see cref="Reward"/> names, or failing
+    /// that from its <c>Type</c>. <c>data/validate-unlocks.mjs</c> re-derives it in CI, so a
+    /// hand-edited channel does not survive.</para></summary>
+    public string Channel { get; set; } = string.Empty;
+
     public string? Quest { get; set; }
 
     /// <summary>Quest sheet row ids, any ONE of which completes this unlock — the Grand Company,

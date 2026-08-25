@@ -31,8 +31,13 @@ using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.CatalogueGen;
 
-/// <summary>One thing the game states is unlockable, and the quest it states opens it.</summary>
-internal sealed class EnumeratedUnlock
+/// <summary>One thing the game states is unlockable, and the quest it states opens it.
+///
+/// <para>A record rather than a class for one reason: <see cref="DuplicateOf"/> is a fact about a
+/// row's PLACE in the finished, ordered set, so it can only be filled in once every channel has
+/// been walked — and <c>with</c> is how that happens without a hand-written copy of fifteen
+/// properties that would silently drop the sixteenth.</para></summary>
+internal sealed record EnumeratedUnlock
 {
     /// <summary>The kind of unlock, in the vocabulary data/coverage-policy.mjs is written
     /// against.</summary>
@@ -71,6 +76,18 @@ internal sealed class EnumeratedUnlock
     /// <summary>The gate quest's accept level, null when there is no live gate.</summary>
     public int? Level { get; init; }
 
+    /// <summary>The level the IDENTITY's own sheet states, independent of any gate quest — today
+    /// <c>ContentFinderCondition.ClassJobLevelRequired</c>, and null on every channel whose sheet
+    /// states none.
+    ///
+    /// <para>It exists because <see cref="Level"/> is a fact about the GATE and 577 of the 857
+    /// duties have no gate at all. The Duty Finder still states a level for those, and the
+    /// guildhests are the clearest case: the game names no unlock quest for any of the fourteen and
+    /// prints a level beside every one of them anyway. Carrying it means such a row can be listed
+    /// at a level a sheet states rather than at no level — or, worse, at an invented one.</para>
+    /// </summary>
+    public int? IdentityLevel { get; init; }
+
     /// <summary>The gate quest's <c>Festival</c> row, 0 for a quest available all year. Non-zero
     /// makes the row seasonal, which is decidable from data and is why the policy can treat it as
     /// a rule rather than a list.</summary>
@@ -85,9 +102,24 @@ internal sealed class EnumeratedUnlock
     /// they are what decides whether a duty is a kind the catalogue lists at all.</summary>
     public string ContentType { get; init; } = string.Empty;
 
-    /// <summary><c>ContentFinderCondition.IsInDutyFinder</c>, for duty rows only. A duty that is
-    /// neither in the finder nor gated on a quest is retired.</summary>
+    /// <summary><c>ContentFinderCondition.IsInDutyFinder</c>, for duty rows only. Reported rather
+    /// than acted on: whole kinds of duty have it false on every row (Ultimates, Deep Dungeons,
+    /// Treasure Hunt, the Masked Carnivale), so it says nothing about one row on its own.</summary>
     public bool? InDutyFinder { get; init; }
+
+    /// <summary>The identity id of the row this one is a second copy of, or null when it is the
+    /// first — or only — row for its name in its channel.
+    ///
+    /// <para>The game's tables carry a row per route, per time slot and per superseded revision:
+    /// twenty-two <c>ContentFinderCondition</c> rows are called "Ocean Fishing" and two more keep
+    /// the name of the Diadem row that replaced them. That multiplicity is a routing detail of the
+    /// tables and not twenty-two unlocks, so exactly one row of each name carries the entry.</para>
+    ///
+    /// <para>Decided here rather than on the JavaScript side because this is the only side that has
+    /// every display name: <c>data/coverage-diff.mjs</c> deliberately writes names only for the rows
+    /// a reviewer has to decide about, so it could not re-derive the grouping from the committed
+    /// artefact.</para></summary>
+    public uint? DuplicateOf { get; init; }
 }
 
 /// <summary>The game-data side of the completeness check: every channel walked once, in row
@@ -330,7 +362,8 @@ internal static class UnlockEnumeration
                 hasGate ? gate.QuestRowId : null,
                 hasGate ? gate.Via : "none",
                 row.ContentType.ValueNullable?.Name.ExtractText() ?? string.Empty,
-                row.IsInDutyFinder));
+                row.IsInDutyFinder,
+                identityLevel: row.ClassJobLevelRequired > 0 ? row.ClassJobLevelRequired : null));
         }
     }
 
@@ -727,7 +760,8 @@ internal static class UnlockEnumeration
             string via,
             string contentType = "",
             bool? inDutyFinder = null,
-            ushort? subrowId = null)
+            ushort? subrowId = null,
+            int? identityLevel = null)
         {
             var gate = questRowId is { } id && this.live.TryGetValue(id, out var f) ? f : default;
             var gateLive = questRowId is { } q && this.live.ContainsKey(q);
@@ -742,6 +776,7 @@ internal static class UnlockEnumeration
                 QuestName = gate.Name ?? string.Empty,
                 GateLive = gateLive,
                 Level = gateLive ? gate.Level : null,
+                IdentityLevel = identityLevel,
                 Festival = gateLive ? gate.Festival : 0,
                 Via = via,
                 ContentType = contentType,
@@ -782,7 +817,7 @@ internal sealed class EnumerateResponse
 
             // Deterministic order, independent of the order the channels happen to be walked in,
             // so the committed artefact is a function of the game data alone.
-            Unlocks =
+            Unlocks = MarkDuplicates(
             [
                 .. rows
                     .OrderBy(r => r.Channel, StringComparer.Ordinal)
@@ -790,8 +825,41 @@ internal sealed class EnumerateResponse
                     .ThenBy(r => r.IdentitySubrowId ?? 0)
                     .ThenBy(r => r.QuestRowId ?? 0)
                     .ThenBy(r => r.Via, StringComparer.Ordinal),
-            ],
+            ]),
         };
+    }
+
+    /// <summary>Fills in <see cref="EnumeratedUnlock.DuplicateOf"/>: within a channel, the first row
+    /// of a given name keeps it and every later row of that name points back at it.
+    ///
+    /// <para>Runs on the ordered list, so which row is "first" is a function of the game data rather
+    /// than of the order the channels happened to be walked in. Folding is case-insensitive and
+    /// nothing else: these are two strings out of the same sheet column, so anything cleverer would
+    /// be inventing a difference in order to paper over it.</para></summary>
+    private static List<EnumeratedUnlock> MarkDuplicates(List<EnumeratedUnlock> ordered)
+    {
+        var firstOf = new Dictionary<(string Channel, string Name), uint>();
+        var marked = new List<EnumeratedUnlock>(ordered.Count);
+        foreach (var row in ordered)
+        {
+            if (row.Name.Length == 0)
+            {
+                marked.Add(row);
+                continue;
+            }
+
+            var key = (row.Channel, row.Name.Trim().ToLowerInvariant());
+            if (firstOf.TryGetValue(key, out var first))
+            {
+                marked.Add(row with { DuplicateOf = first });
+                continue;
+            }
+
+            firstOf[key] = row.IdentityId;
+            marked.Add(row);
+        }
+
+        return marked;
     }
 
     /// <summary>A one-line summary for the generator's console output.</summary>

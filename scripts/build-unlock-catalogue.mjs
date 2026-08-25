@@ -56,6 +56,9 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { buildCoverage, canonicaliseCoverage, catalogueFingerprint } from '../data/coverage-diff.mjs';
 import { ALL as REWARD_KINDS, drawsAnIcon } from '../data/reward-kinds.mjs';
+import {
+  CATEGORY_FOR_CHANNEL, COSMETIC_CHANNELS, channelForCuratedEntry, typeForImportedRow,
+} from '../data/unlock-channels.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATASET = path.join(REPO, 'data', 'unlocks-by-level.json');
@@ -938,7 +941,7 @@ function infoboxQuestNumber(record) {
 // row in which sheet it actually is. `quest`/`questAnyOf` are the other half of the entry — how
 // you get it — and stay together after it.
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
   'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
   'sources',
 ];
@@ -1297,6 +1300,212 @@ function applySocialRequirementOverrides(curated) {
   return applied;
 }
 
+// --------------------------------------------------------------------------- the imported half
+//
+// WHAT THIS IS
+// Everything above this line builds an entry from the wiki guide, corroborated against the game.
+// This builds one from the game alone: the enumeration proposes 3,091 unlockable things, the
+// coverage policy says which of them the catalogue lists, and every one it lists that no curated
+// entry already covers becomes an entry here. That is what took the catalogue from 587 rows to a
+// definitive list.
+//
+// WHY THE GENERATOR AND NOT A ONE-OFF SCRIPT
+// Because the committed file is also the input. A one-off import would be indistinguishable from
+// curation the moment it landed, and the next patch's new duty would need the whole exercise
+// repeating by hand. Imported entries are marked in their own `sources` (see `IMPORT_SOURCE`), the
+// generator drops them from the curated set on the way in, and rebuilds them from the enumeration
+// on the way out — so a patch that adds a title adds an entry, and one that removes a duty removes
+// one, with no editorial step in between.
+//
+// WHAT IT WILL NOT DO
+// Invent. There is no description, because nothing states one and paraphrasing the game is the
+// thing this repository does not do (data/README.md, and GameTextRef for the alternative). There is
+// no level unless the Quest row or the duty row states one, and no `questKind`, because the guide
+// is the only thing that has ever said whether a quest is MSQ or a sidequest. `priority` is the
+// neutral value for the channel rather than a judgement nobody made. An imported entry says exactly
+// what the sheets say and stops.
+
+/** The source line that marks an entry as game-proposed rather than curated, and names the channel
+ * it came from. A marker rather than a boolean field because that is what `sources` is for: the
+ * entry says where it came from, and "the game's own enumeration, `title` channel" is as much a
+ * provenance as "gamerescape:progression-guide" is. */
+const IMPORT_SOURCE = (channel) => `game-enumeration:${channel}`;
+const IMPORT_SOURCE_PREFIX = 'game-enumeration:';
+
+/** Whether a committed entry was written by the import. Those are dropped from the curated set and
+ * rebuilt from the enumeration every run, which is what keeps the file a function of the game data
+ * rather than of whatever the last import happened to produce. */
+export const isImported = (entry) =>
+  (entry.sources ?? []).some((s) => s.startsWith(IMPORT_SOURCE_PREFIX));
+
+/** A `category` a level-less entry can carry: the game's own ContentType name for a duty, the
+ * channel's own name for everything else. Never shorter than the four characters the validator
+ * requires — "PvP" is the only short ContentType and the policy does not list it. */
+function importedCategory(row) {
+  const contentType = row.contentType ?? '';
+  if (row.channel === 'duty' && contentType.length >= 4) return contentType;
+  return CATEGORY_FOR_CHANNEL[row.channel]
+    ?? (() => { throw new Error(`no category name for channel '${row.channel}' — add one to CATEGORY_FOR_CHANNEL`); })();
+}
+
+/** One catalogue entry, built from one enumeration row and nothing else.
+ *
+ * The two shapes an imported entry comes in, and they are the whole of it:
+ *
+ *   gated       the game names a live quest. The entry is bound to it, gradeable, and
+ *               `single-source` — one source, the sheets, and no second one to corroborate it.
+ *   ungated     the game names the thing and withholds the condition. That is 130-odd duties, where
+ *               the unlock is server-side and the client only shows prose, and the entry says so
+ *               with `unverifiable` rather than falling through to Available.
+ *
+ * Note what is deliberately NOT a third shape: seasonal. 234 of these rows are gated on an event
+ * quest, and they are real, permanent once earned, and not obtainable today — but nothing needs
+ * writing into the entry to say so, because the plugin already reads `Quest.Festival` off the bound
+ * row and forces UnknownGate ("needs a festival or a house") instead of Available. See
+ * `hasUnmodeledGate` in Wayfarer/UnlockService.cs. Marking them `unverifiable` as well would be the
+ * opposite of true — the gate is perfectly readable — and an entry claiming otherwise while citing a
+ * quest whose completion the client records is exactly what
+ * data/validate-catalogue-identity.mjs rejects.
+ */
+function importedEntry(row) {
+  const gated = row.questRowId !== null && row.questRowId !== undefined && row.gateLive === true;
+  const cosmetic = COSMETIC_CHANNELS.has(row.channel);
+
+  // The same "no invented levels" rule the curated half follows, with the same two grounds and in
+  // the same order. A level of 1 is not a level in either of them: on a gate quest it is the
+  // hidden-capstone shape the trophy mounts have, and on a duty row it is what the sheet writes for
+  // a duty with no level requirement at all — Ocean Fishing, and the treasure-map dungeons you enter
+  // with an item. Treating either as a level would sort them above the opening tutorial.
+  const grounded =
+    gated && row.level > 1
+      ? { level: row.level, levelSource: `game-data:Quest#${row.questRowId}` }
+      : row.identityLevel > 1
+        ? { level: row.identityLevel, levelSource: `game-data:${row.identityKind}#${row.identityId}` }
+        : { category: importedCategory(row) };
+
+  const requires = gated
+    ? null
+    : {
+      label:
+          'the game states no unlock quest for this row — the condition is server-side, and the '
+          + 'client only shows it as prose',
+      unverifiable: true,
+    };
+
+  return {
+    ...grounded,
+    unlock: row.name,
+    type: typeForImportedRow(row),
+    channel: row.channel,
+    reward: { kind: row.identityKind, id: row.identityId, name: row.name },
+    quest: gated ? row.questName : null,
+    // Nothing states it. The guide is the only source that has ever said whether a quest is main
+    // scenario, a sidequest or a class quest, and it does not list these rows.
+    questKind: null,
+    notes: null,
+    // `priority` is a closed set and an editorial judgement. Nothing editorial has looked at these
+    // rows, so they take the neutral value for their kind rather than a claim: cosmetics are
+    // optional, everything else is worth doing. An entry that has never been reviewed is
+    // identifiable by its own `game-enumeration:` source, which is a better filter than a fourth
+    // priority value nothing else understands.
+    priority: cosmetic ? 'optional' : 'nice',
+    cosmetic,
+    ...(requires ? { requires } : {}),
+    confidence: gated ? 'single-source' : 'unverified',
+    sources: [
+      IMPORT_SOURCE(row.channel),
+      `game-data:${row.identityKind}#${row.identityId}`,
+      ...(gated ? [`game-data:Quest#${row.questRowId}`] : []),
+    ],
+  };
+}
+
+/** Every enumeration row the policy says the catalogue lists and no curated entry covers.
+ *
+ * The classification is not recomputed here: `buildCoverage` has already run it over the same rows
+ * against the entries built above, so "recommended" is exactly "listed, and missing". Reading it
+ * rather than re-deriving it is what keeps the import and the completeness check from being able to
+ * disagree — a row the check calls a gap and the import skips would be a gap forever.
+ *
+ * @param {Array} enumerated the enumeration's own rows, which carry the names and levels
+ *   data/coverage.json deliberately does not.
+ * @param {Array} classified `buildCoverage(...).rows`, index-aligned with `enumerated`.
+ */
+function importEntries(enumerated, classified) {
+  const imported = [];
+  enumerated.forEach((row, i) => {
+    if (classified[i].classification !== 'recommended') return;
+    imported.push(importedEntry(row));
+  });
+  return imported;
+}
+
+/** Writes the resolver's answers onto the entries, and fails generation on the two things a
+ * committed reward must never be.
+ *
+ * Shared by both halves because both need exactly the same fences. The curated half asks the
+ * resolver to INFER which reward an entry is about and takes no answer as a fact; the imported half
+ * states the identity outright and an absent answer is a bug in this file rather than a statement
+ * about the game, which is the whole of what `required` changes.
+ *
+ * @param {Array} entries index-aligned with the `ref` the joins were sent under.
+ * @param {object} rewards the resolver's response, keyed by that ref.
+ */
+function applyRewards(entries, rewards, report, { required = false } = {}) {
+  entries.forEach((e, i) => {
+    const r = rewards[String(i)];
+    if (!r) {
+      if (required) {
+        throw new Error(
+          `${e.unlock}: the reward join returned nothing for a STATED identity `
+            + `(${e.reward?.kind}#${e.reward?.id}). That is not a fact about the game — it means the `
+            + 'join was built wrongly. See importEntries.',
+        );
+      }
+      delete e.reward;
+      return;
+    }
+
+    // A kind nothing downstream knows is worse than no reward at all: the validator would reject
+    // it in CI and the plugin would have no arm for it. Fail here, where the sheet walk that
+    // produced it can be corrected, rather than committing it.
+    if (!REWARD_KINDS.includes(r.kind)) {
+      throw new Error(
+        `${e.unlock}: the reward join produced kind '${r.kind}', which is not in data/reward-kinds.mjs. ` +
+          'Add it there and to Wayfarer.Core/Unlocks/UnlockReward.cs, with an icon decision, or stop emitting it.',
+      );
+    }
+
+    // A kind the catalogue says draws an icon whose row turns out to have none, caught at
+    // generation rather than shipping as a blank square. The id itself is not written into the file
+    // — icon ids move between patches, so the plugin looks them up live — this only asks whether one
+    // exists at all.
+    //
+    // It is an ERROR only when the identity was inferred, because then the two readings are "the
+    // kind is misfiled" and "the join picked the wrong row", and the second is a bug this fence
+    // exists to catch. For a STATED identity there is no join to have got wrong: the entry is that
+    // row, and the row having no art is a fact about the game. Five of the six chocobo bardings have
+    // no IconBody, and refusing to list them over it would be the catalogue lying about what
+    // exists. Reported, so the count is visible rather than silent.
+    if (drawsAnIcon(r.kind) && !r.iconId) {
+      if (r.how !== 'stated-identity') {
+        throw new Error(
+          `${e.unlock}: reward ${r.kind}#${r.id} ("${r.name}") is an icon-bearing kind but that row has no icon. ` +
+            'Either the join picked the wrong row, or the kind belongs in WITHOUT_ICON in data/reward-kinds.mjs.',
+        );
+      }
+
+      report.rewardsWithoutArt.push({ unlock: e.unlock, kind: r.kind, id: r.id });
+    }
+
+    e.reward = { kind: r.kind, id: r.id, name: r.name };
+    report.rewards.push({
+      unlock: e.unlock, level: e.level ?? null, type: e.type,
+      kind: r.kind, id: r.id, name: r.name, how: r.how, via: r.via, iconId: r.iconId,
+    });
+  });
+}
+
 /** A trophy-mount quest the catalogue does not contain an entry for at all. Unlike
  * {@link MOUNT_REQUIREMENT_OVERRIDES}, which corrects an existing curated entry, this seeds one —
  * so it needs everything a curated entry normally carries, plus the Quest row id up front so the
@@ -1362,7 +1571,19 @@ function applyNewTrophyMountEntries(curated) {
 async function main() {
   const sqpack = args.sqpack ?? process.env.WAYFARER_SQPACK ?? DEFAULT_SQPACK;
   const committed = JSON.parse(fs.readFileSync(DATASET, 'utf8'));
-  const curated = committed.unlocks;
+
+  // What the game says exists, asked first because it now decides part of the answer rather than
+  // only auditing it: the curated half is built from the guide below, and every listed thing the
+  // guide does not name is imported from this. See "the imported half".
+  const enumeration = enumerateUnlocks(sqpack);
+
+  // The curated half only. Entries the last run imported are dropped and rebuilt from the
+  // enumeration, so the committed file cannot drift from the game data by being its own input —
+  // see `isImported`.
+  const curated = committed.unlocks.filter((e) => !isImported(e));
+  const previouslyImported = committed.unlocks.length - curated.length;
+  console.log(`committed entries: ${committed.unlocks.length} (${curated.length} curated, `
+    + `${previouslyImported} imported — rebuilt from the enumeration this run)`);
   const mountRequirementOverrides = applyMountRequirementOverrides(curated);
   const socialRequirementOverrides = applySocialRequirementOverrides(curated);
   const newTrophyMountEntries = applyNewTrophyMountEntries(curated);
@@ -1450,6 +1671,7 @@ async function main() {
     gates: [],
     levelless: [],
     rewards: [],
+    rewardsWithoutArt: [],
     entriesWithoutAReward: [],
     wikiLinkMisses: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
@@ -1768,6 +1990,67 @@ async function main() {
     return out;
   });
 
+  // ------------------------------------------------------------------ what each entry grants
+  //
+  // The reward is a GENERATED field: it is the row id behind the entry's own name, and the sheets
+  // are the only thing that can state it. An entry the game names no reward for keeps none — most
+  // `system` entries open a feature the game has no row for at all, and that is an answer rather
+  // than a gap (see data/README.md).
+  //
+  // It has to run before the import below, because the import's question — is this enumerated row
+  // already covered — is answered partly by the shipped entries' reward identities.
+  applyRewards(unlocks, resolveRewards(rewardJoins, sqpack), report);
+
+  // The taxonomy, for the entries built from the guide: the sheet their reward names, or failing
+  // that their own `type`. Imported entries below carry the channel they were enumerated under, so
+  // this is the only place a channel is derived rather than stated — see data/unlock-channels.mjs.
+  for (const e of unlocks) e.channel = channelForCuratedEntry(e);
+
+  // ------------------------------------------------------------------ the imported half
+  //
+  // Everything the game says is unlockable, that the policy says the catalogue lists, and that no
+  // entry above covers. The diff is computed by the same buildCoverage the completeness check runs,
+  // against the entries just built, so what gets imported and what the check calls a gap cannot
+  // disagree.
+  const priorCoverage = buildCoverage(enumeration.unlocks, unlocks);
+  const imported = importEntries(enumeration.unlocks, priorCoverage.rows);
+  console.log('');
+  console.log(`import: ${unlocks.length} curated entries cover ${priorCoverage.totals.covered} of `
+    + `${priorCoverage.totals.gameRows} enumerated rows; importing ${imported.length}`);
+  const importedByChannel = imported.reduce((a, e) => ({ ...a, [e.channel]: (a[e.channel] ?? 0) + 1 }), {});
+  console.log(`  by channel: ${JSON.stringify(importedByChannel)}`);
+  report.imported = imported.map((e) => ({
+    unlock: e.unlock, channel: e.channel, level: e.level ?? null, category: e.category ?? null,
+    reward: e.reward, quest: e.quest, confidence: e.confidence,
+  }));
+  report.counts.importedByChannel = importedByChannel;
+
+  // The same two fences the curated half goes through, and the reason imported entries are routed
+  // through the resolver at all: an unknown reward kind, or an icon-bearing kind whose row has no
+  // icon, fails generation here instead of shipping as a blank square.
+  const importedJoins = imported.map((e, i) => ({
+    ref: String(i),
+    unlock: e.unlock,
+    type: e.type,
+    questRowIds: e.sources
+      .filter((s) => s.startsWith('game-data:Quest#'))
+      .map((s) => Number(s.slice('game-data:Quest#'.length))),
+    duties: [],
+    identity: e.reward,
+  }));
+  applyRewards(imported, resolveRewards(importedJoins, sqpack), report, { required: true });
+
+  unlocks.push(...imported);
+  for (const e of imported) {
+    // The imported entry's own bound quest, on the same rule as the curated half: only when there
+    // is one, and never a duty name for an entry that already names a quest.
+    wikiCandidates.push(e.quest ?? (e.reward?.kind === 'ContentFinderCondition' ? e.reward.name : null));
+  }
+
+  for (const e of unlocks) {
+    if (!e.reward) report.entriesWithoutAReward.push({ unlock: e.unlock, level: e.level ?? null, type: e.type });
+  }
+
   // ------------------------------------------------------------------ the player-facing backup
   //
   // One verified Consolegameswiki link per entry, where the entry names something the wiki
@@ -1787,51 +2070,6 @@ async function main() {
       report.wikiLinkMisses.push({ unlock: e.unlock, level: e.level ?? null, candidate });
     }
   });
-
-  // ------------------------------------------------------------------ what each entry grants
-  //
-  // The reward is a GENERATED field: it is the row id behind the entry's own name, and the sheets
-  // are the only thing that can state it. An entry the game names no reward for keeps none — most
-  // `system` entries open a feature the game has no row for at all, and that is an answer rather
-  // than a gap (see data/README.md).
-  const rewards = resolveRewards(rewardJoins, sqpack);
-  unlocks.forEach((e, i) => {
-    const r = rewards[String(i)];
-    if (!r) {
-      delete e.reward;
-      return;
-    }
-
-    // A kind nothing downstream knows is worse than no reward at all: the validator would reject
-    // it in CI and the plugin would have no arm for it. Fail here, where the sheet walk that
-    // produced it can be corrected, rather than committing it.
-    if (!REWARD_KINDS.includes(r.kind)) {
-      throw new Error(
-        `${e.unlock}: the reward join produced kind '${r.kind}', which is not in data/reward-kinds.mjs. ` +
-          'Add it there and to Wayfarer.Core/Unlocks/UnlockReward.cs, with an icon decision, or stop emitting it.',
-      );
-    }
-
-    // The spec's rule, enforced where it can be: a kind the catalogue says draws an icon whose row
-    // has none is a data bug, and it is caught at generation rather than shipping as a blank
-    // square. The id itself is not written into the file — icon ids move between patches, so the
-    // plugin looks them up live — this only asks whether one exists at all.
-    if (drawsAnIcon(r.kind) && !r.iconId) {
-      throw new Error(
-        `${e.unlock}: reward ${r.kind}#${r.id} ("${r.name}") is an icon-bearing kind but that row has no icon. ` +
-          'Either the join picked the wrong row, or the kind belongs in WITHOUT_ICON in data/reward-kinds.mjs.',
-      );
-    }
-
-    e.reward = { kind: r.kind, id: r.id, name: r.name };
-    report.rewards.push({
-      unlock: e.unlock, level: e.level ?? null, type: e.type,
-      kind: r.kind, id: r.id, name: r.name, how: r.how, via: r.via, iconId: r.iconId,
-    });
-  });
-  for (const e of unlocks) {
-    if (!e.reward) report.entriesWithoutAReward.push({ unlock: e.unlock, level: e.level ?? null, type: e.type });
-  }
 
   // ------------------------------------------------------------------ order
   //
@@ -1862,7 +2100,18 @@ async function main() {
   });
 
   for (const [source, idx] of byQuestRow) {
-    const levelled = idx.filter((i) => typeof unlocks[i].level === 'number');
+    // An entry whose level is grounded IN this quest row is not making a claim about it; it is
+    // quoting it, and a quotation cannot disagree with its source. Only entries that state a level
+    // from somewhere else can be parties to a dispute about what this quest unlocks.
+    //
+    // This matters far more since the import: an imported entry's level IS the Quest row's accept
+    // level, and the guide's level is when the content becomes relevant. The two differ by design
+    // and the difference is already recorded, once, as "level: guide section vs catalogue" — so
+    // without this the same fact would be reported a second time as a dispute, and would drag
+    // hundreds of corroborated curated entries down to single-source on the strength of it.
+    const levelled = idx.filter(
+      (i) => typeof unlocks[i].level === 'number' && unlocks[i].levelSource !== source,
+    );
     if (levelled.length < 2) continue;
     const levels = levelled.map((i) => unlocks[i].level);
     if (Math.max(...levels) - Math.min(...levels) <= LEVEL_AGREEMENT_SLACK) continue;
@@ -1975,7 +2224,7 @@ async function main() {
   // catalogue it was generated beside. It is a separate exit condition from the catalogue's: a
   // catalogue that reproduces byte for byte can still have a stale coverage artefact next to it
   // when a patch has added unlocks, and that is precisely the case this exists to make loud.
-  const coverageStale = writeCoverage(enumerateUnlocks(sqpack), JSON.parse(candidate).unlocks);
+  const coverageStale = writeCoverage(enumeration, JSON.parse(candidate).unlocks);
   if (coverageStale && !args.write) {
     console.log('Re-run with --write to accept the coverage artefact too.');
   }

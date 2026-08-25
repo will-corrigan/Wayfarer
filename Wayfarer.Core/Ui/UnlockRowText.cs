@@ -18,11 +18,18 @@ public static class UnlockRowText
     /// <summary>Line one: what the entry is, and nothing else. The giver's name deliberately does
     /// not appear here — it is <i>where you go</i>, not <i>what it is</i>, and it belongs with the
     /// rest of the directions in the detail pane. The game's own journal titles behave the same
-    /// way.</summary>
+    /// way.
+    ///
+    /// <para>Title-cased, for the same reason the Hunting Log's monster names are. An entry the
+    /// catalogue imported from the game's own sheets carries that sheet's own string, and the sheets
+    /// store "wind-up brickman" and "paladin" in lower case and leave the casing to the client.
+    /// Doing it here rather than in the data file keeps the committed value equal to the row it came
+    /// from — <see cref="DisplayNames.TitleCase"/> is the same transform the Hunting Log uses, and
+    /// it leaves anything already carrying a capital exactly as written.</para></summary>
     public static string Name(ResolvedUnlock unlock)
     {
         ArgumentNullException.ThrowIfNull(unlock);
-        return unlock.Def.Unlock;
+        return DisplayNames.TitleCase(unlock.Def.Unlock);
     }
 
     /// <summary>Line two: the catalogue's own sentence about what this unlock gives the player.

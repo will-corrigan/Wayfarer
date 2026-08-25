@@ -130,6 +130,35 @@ internal sealed class RewardIndex
     /// them.</para></summary>
     public Match? Resolve(RewardJoin join)
     {
+        if (join.Identity is { Kind.Length: > 0 } stated)
+        {
+            // The caller already knows the identity, because the enumeration handed it over: the
+            // entry IS Title#858, rather than something inferred from a name. None of the three
+            // rules below applies — they exist to decide which of a quest's several rewards an entry
+            // is about, and that question is already answered. What coming through here still buys
+            // is the fences: an unknown kind, and an icon-bearing kind whose row has no icon, both
+            // fail generation instead of shipping.
+            //
+            // The quest's own candidates are consulted first so the answer keeps its
+            // GrantingItemId — an orchestrion roll's picture lives on the item you are handed, not
+            // on the Orchestrion row, which has only a name and a description.
+            foreach (var questRowId in join.QuestRowIds)
+            {
+                foreach (var candidate in byQuest.GetValueOrDefault(questRowId) ?? [])
+                {
+                    if (string.Equals(candidate.Kind, stated.Kind, StringComparison.Ordinal)
+                        && candidate.Id == stated.Id)
+                    {
+                        return new Match(candidate with { Name = stated.Name }, "stated-identity");
+                    }
+                }
+            }
+
+            return new Match(
+                new Candidate(stated.Kind, stated.Id, stated.Name, "game-enumeration"),
+                "stated-identity");
+        }
+
         var pool = new List<Candidate>();
         foreach (var questRowId in join.QuestRowIds)
         {
@@ -571,6 +600,22 @@ internal sealed class RewardJoin
     /// <summary>ContentFinderCondition rows the entry's own label link resolved to — the duty the
     /// entry is <i>about</i>, which the resolver already established.</summary>
     public List<RewardJoinDuty> Duties { get; init; } = [];
+
+    /// <summary>The identity the caller already knows, for an entry the game-data enumeration
+    /// proposed rather than the guide. Null for every curated entry, and when it is set the three
+    /// inference rules are skipped entirely — see <see cref="RewardIndex.Resolve"/>.</summary>
+    public RewardJoinIdentity? Identity { get; init; }
+}
+
+/// <summary>A reward the caller states outright: the sheet, the row, and the name that row carries.
+/// </summary>
+internal sealed class RewardJoinIdentity
+{
+    public string Kind { get; init; } = string.Empty;
+
+    public uint Id { get; init; }
+
+    public string Name { get; init; } = string.Empty;
 }
 
 internal sealed class RewardJoinDuty
