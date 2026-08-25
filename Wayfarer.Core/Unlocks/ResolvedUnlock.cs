@@ -216,6 +216,17 @@ public sealed class ResolvedUnlock
 
     public string? ZoneName { get; set; }
 
+    /// <summary>The game's own sentence about this unlock, read at load from the sheet cell
+    /// <see cref="UnlockDefinition.DescriptionSource"/> names — or null when the entry cites none, or
+    /// when the cell could not be read against the installed patch.
+    ///
+    /// <para>Here rather than on the definition because the definition is what the committed file
+    /// says and this is what the running client says. It is resolved once, at load, in the player's
+    /// own client language; see <see cref="GameTextRef"/> for why the reference and not the text is
+    /// what gets committed, and <c>Wayfarer.Core/Ui/UnlockRowText.Description</c> for where it sits in
+    /// the fallback order.</para></summary>
+    public string? GameDescription { get; set; }
+
     /// <summary><c>IssuerStart</c> resolved against the ENpcResident sheet's
     /// <c>Singular</c> name. Null when the issuer isn't an ENpcResident (some quests are
     /// issued by objects/eobjects) or has no name — degrades silently, no logging.</summary>
@@ -292,6 +303,7 @@ public sealed class ResolvedUnlock
         GiverY = GiverY,
         GiverZ = GiverZ,
         ZoneName = ZoneName,
+        GameDescription = GameDescription,
         GiverName = GiverName,
         Status = Status,
         LockReason = LockReason,

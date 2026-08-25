@@ -522,7 +522,16 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         entries.Clear();
         foreach (var def in defs)
         {
-            var r = new ResolvedUnlock { Def = def, IdentityGate = UnlockIdentityGate.For(def.Reward, duties) };
+            var r = new ResolvedUnlock
+            {
+                Def = def,
+                IdentityGate = UnlockIdentityGate.For(def.Reward, duties),
+
+                // The game's own sentence about the unlock, for the 621 entries nobody wrote one
+                // for. Read once here rather than per draw: it is a sheet lookup, the checklist is
+                // redrawn on every d-pad step, and the answer cannot change while the client runs.
+                GameDescription = def.DescriptionSource is { } source ? ResolveGameText(source) : null,
+            };
             if (Bind(def, sheet, byKey) is { } bound)
             {
                 QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level ?? 0);

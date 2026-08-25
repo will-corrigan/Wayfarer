@@ -92,6 +92,22 @@ public sealed class UnlockDefinition
 
     public string? Description { get; set; }
 
+    /// <summary>Where the GAME says what this unlock is, for the entries nobody has written a
+    /// sentence about — a sheet, a row and a column rather than a copy of the text.
+    ///
+    /// <para>621 of the catalogue's entries are imported from the game's own sheets, which state a
+    /// name and a gate and no prose, and generating a sentence for each would be the same error as
+    /// inventing a level in the field a player reads first. For titles, orchestrion rolls and duties
+    /// the game HAS a sentence — Square Enix's own, already localised into whatever language the
+    /// player's client runs in — and this cites it. Resolved at load through
+    /// <see cref="UnlockGateContext.ResolveGameText"/>, exactly as
+    /// <see cref="UnlockRequirement.ConditionSource"/> is, and never copied into the committed file:
+    /// see <see cref="GameTextRef"/> for why a reference beats a paraphrase.</para>
+    ///
+    /// <para>Null on every curated entry, which has real prose in <see cref="Description"/>.</para>
+    /// </summary>
+    public GameTextRef? DescriptionSource { get; set; }
+
     public string Priority { get; set; } = "nice";
 
     public bool Cosmetic { get; set; }

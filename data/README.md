@@ -51,6 +51,24 @@ never a level of 1 — in both those places 1 means "no level requirement". `pri
 value for the channel (`optional` for cosmetics, `nice` for the rest) rather than a judgement nobody
 made.
 
+**What it does instead of inventing a description: cite one.** 471 of the 621 have a
+`descriptionSource` — a sheet, a row and a column, never a copy of the text — and the plugin resolves
+it at load in the player's own client language. It is the same mechanism as
+`requires.conditionSource` and it exists for the same reason: *quote the game, do not paraphrase it*
+(see `GameTextRef`). A duty's blurb comes from `ContentFinderConditionTransient`, a title's from the
+`Achievement` that grants it, and the rest from the identity's own sheet or the transient beside it.
+
+The column index is **derived, not counted**: the typed sheet already knows how to read the field, so
+the generator reads it both ways and keeps the raw column index that reproduces the typed answer,
+requiring eight rows to agree and then re-checking the specific row it is about to cite. A sheet
+whose column cannot be pinned down that way gets no reference at all — which costs a description and
+cannot produce a wrong one. 150 imported entries have none because their sheets carry no prose:
+emotes, jobs, folklore books, crafting-log divisions and allied societies have a name and nothing
+else.
+
+The row falls back through the game's sentence, then `notes`, then the requirement label, then the
+entry's own name, so a blank second line is not reachable — see `UnlockRowText.Description`.
+
 ## What kind of thing an entry is — `channel`
 
 Every entry carries one, and it is the field a per-category display groups by.

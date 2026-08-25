@@ -228,8 +228,8 @@ const checkRequires = (where, r) => {
 
 const entryKeys = new Set([
   'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
-  'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
+  'requires', 'confidence', 'sources',
 ]);
 
 // The player-facing backup for "the game does not say" (see data/README.md):
@@ -346,6 +346,17 @@ for (const [i, e] of d.unlocks.entries()) {
       err(`${where}: bad description`);
   } else if (!isImported(e)) {
     err(`${where}: a curated entry must carry a description`);
+  }
+
+  // Where the GAME says what this is, for the entries nobody wrote a sentence about: a sheet, a row
+  // and a column, resolved live in the player's own client language. Same shape and same reasoning as
+  // requires.conditionSource — quote the game, do not paraphrase it — so it is checked the same way.
+  //
+  // Only an imported entry may carry one. A curated entry already has prose somebody wrote, and two
+  // sources of description on one entry is a question about precedence nobody needs to answer.
+  if ('descriptionSource' in e) {
+    if (!isImported(e)) err(`${where}: only an imported entry may carry a descriptionSource`);
+    checkConditionSource(`${where} descriptionSource`, e.descriptionSource);
   }
 
   if (!prios.has(e.priority)) err(`${where}: bad priority '${e.priority}'`);

@@ -53,6 +53,15 @@ public static class UnlockRowText
             return description;
         }
 
+        // The game's own sentence about it, read live from the sheet the entry cites. After the
+        // catalogue's prose, because a curated description was written about the entry as the
+        // checklist means it — and before the notes, because a note is an editorial aside and this is
+        // an actual answer to "what is this thing".
+        if (unlock.GameDescription is { Length: > 0 } fromGame)
+        {
+            return fromGame;
+        }
+
         if (unlock.Def.Notes is { Length: > 0 } notes)
         {
             return notes;

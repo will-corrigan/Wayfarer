@@ -120,6 +120,17 @@ internal sealed record EnumeratedUnlock
     /// a reviewer has to decide about, so it could not re-derive the grouping from the committed
     /// artefact.</para></summary>
     public uint? DuplicateOf { get; init; }
+
+    /// <summary>Where the GAME says what this thing is: a sheet, a row and a column, never a copy of
+    /// the text. Null on every channel whose sheets carry no prose about the identity.
+    ///
+    /// <para>An imported entry has no description, because the sheets state a name and a gate and
+    /// nothing else, and generating a sentence per row would be the same error as inventing a level.
+    /// For titles, orchestrion rolls and duties the game HAS a sentence, already localised into
+    /// whatever language the player's client runs in, and citing it is what
+    /// <c>Wayfarer.Core/Unlocks/GameTextRef.cs</c> exists for. See
+    /// <see cref="DescriptionSources"/>.</para></summary>
+    public DescriptionSource? DescriptionSource { get; init; }
 }
 
 /// <summary>The game-data side of the completeness check: every channel walked once, in row
@@ -168,13 +179,25 @@ internal static class UnlockEnumeration
     {
         var quests = game.GetExcelSheet<Quest>() ?? throw new InvalidOperationException("no Quest sheet");
         var gates = QuestGates.Build(quests);
+        var descriptions = DescriptionSources.Build(game);
         var rows = new List<EnumeratedUnlock>();
 
-        AddQuestRewardChannels(game, quests, gates, rows);
-        AddDuties(game, gates, rows);
-        AddTitles(game, gates, rows);
+        AddQuestRewardChannels(game, quests, gates, descriptions, rows);
+        AddDuties(game, gates, descriptions, rows);
+        AddTitles(game, gates, descriptions, rows);
         AddFeatureChannels(game, gates, rows);
-        return rows;
+
+        // The channels above name their own description sheet, because for a duty and a title it is
+        // not the identity's sheet: a duty's blurb is on ContentFinderConditionTransient and a
+        // title's is on the Achievement that grants it. Everything else can be answered from the
+        // identity alone, and asking once here rather than at twenty call sites is what keeps a new
+        // channel from silently shipping without one.
+        return
+        [
+            .. rows.Select(r => r.DescriptionSource is not null
+                ? r
+                : r with { DescriptionSource = descriptions.ForIdentity(r.IdentityKind, r.IdentityId) }),
+        ];
     }
 
     /// <summary>The Quest sheet's own reward columns, plus everything reached through
@@ -183,6 +206,7 @@ internal static class UnlockEnumeration
         GameData game,
         Lumina.Excel.ExcelSheet<Quest> quests,
         QuestGates gates,
+        DescriptionSources descriptions,
         List<EnumeratedUnlock> rows)
     {
         var items = game.GetExcelSheet<Item>();
@@ -205,7 +229,7 @@ internal static class UnlockEnumeration
                 {
                     if (r.RowId != 0 && items.GetRowOrDefault(r.RowId) is { } item)
                     {
-                        AddItemReward(gates, rows, q.RowId, RewardIndex.FromItem(item, unlockLinks));
+                        AddItemReward(gates, descriptions, rows, q.RowId, RewardIndex.FromItem(item, unlockLinks));
                     }
                 }
             }
@@ -214,7 +238,7 @@ internal static class UnlockEnumeration
             {
                 if (r.RowId != 0 && r.ValueNullable is { } item)
                 {
-                    AddItemReward(gates, rows, q.RowId, RewardIndex.FromItem(item, unlockLinks));
+                    AddItemReward(gates, descriptions, rows, q.RowId, RewardIndex.FromItem(item, unlockLinks));
                 }
             }
 
@@ -273,6 +297,7 @@ internal static class UnlockEnumeration
 
     private static void AddItemReward(
         QuestGates gates,
+        DescriptionSources descriptions,
         List<EnumeratedUnlock> rows,
         uint questRowId,
         RewardIndex.Candidate? candidate)
@@ -282,8 +307,22 @@ internal static class UnlockEnumeration
             return;
         }
 
+        // Orchestrion is the one item-borne channel whose description sheet is not reachable from the
+        // identity kind: the Orchestrion sheet is Name and Description, and the sweep in Build cannot
+        // know that "Orchestrion" means look there rather than at a transient beside it. Every other
+        // kind is answered by that sweep.
+        var description = string.Equals(candidate.Kind, "Orchestrion", StringComparison.Ordinal)
+            ? descriptions.ForOrchestrion(candidate.Id)
+            : null;
+
         rows.Add(gates.Row(
-            channel, candidate.Kind, candidate.Id, candidate.Name, questRowId, candidate.Via));
+            channel,
+            candidate.Kind,
+            candidate.Id,
+            candidate.Name,
+            questRowId,
+            candidate.Via,
+            description: description));
     }
 
     /// <summary>Every named duty, and the gate quest where the game states one.
@@ -294,7 +333,8 @@ internal static class UnlockEnumeration
     /// <c>ContentFinderConditionTransient</c>, which is a string and not a reference. That is the
     /// single strongest argument for keeping the wiki guide: its whole reason to exist is the fact
     /// the game withholds here.</para></summary>
-    private static void AddDuties(GameData game, QuestGates gates, List<EnumeratedUnlock> rows)
+    private static void AddDuties(
+        GameData game, QuestGates gates, DescriptionSources descriptions, List<EnumeratedUnlock> rows)
     {
         var cfc = game.GetExcelSheet<ContentFinderCondition>();
         var instanceContent = game.GetExcelSheet<InstanceContent>();
@@ -363,14 +403,16 @@ internal static class UnlockEnumeration
                 hasGate ? gate.Via : "none",
                 row.ContentType.ValueNullable?.Name.ExtractText() ?? string.Empty,
                 row.IsInDutyFinder,
-                identityLevel: row.ClassJobLevelRequired > 0 ? row.ClassJobLevelRequired : null));
+                identityLevel: row.ClassJobLevelRequired > 0 ? row.ClassJobLevelRequired : null,
+                description: descriptions.ForDuty(row.RowId)));
         }
     }
 
     /// <summary>Quest-completion titles. No quest column awards a title, so the only enumerable
     /// join runs the other way: an <c>Achievement</c> of condition kind 6 whose <c>Key</c> is a
     /// Quest row.</summary>
-    private static void AddTitles(GameData game, QuestGates gates, List<EnumeratedUnlock> rows)
+    private static void AddTitles(
+        GameData game, QuestGates gates, DescriptionSources descriptions, List<EnumeratedUnlock> rows)
     {
         foreach (var row in game.GetExcelSheet<Achievement>())
         {
@@ -392,7 +434,8 @@ internal static class UnlockEnumeration
                 row.Title.RowId,
                 row.Title.ValueNullable?.Masculine.ExtractText() ?? string.Empty,
                 row.Key.RowId,
-                "Achievement.Title"));
+                "Achievement.Title",
+                description: descriptions.ForAchievement(row.RowId)));
         }
     }
 
@@ -761,7 +804,8 @@ internal static class UnlockEnumeration
             string contentType = "",
             bool? inDutyFinder = null,
             ushort? subrowId = null,
-            int? identityLevel = null)
+            int? identityLevel = null,
+            DescriptionSource? description = null)
         {
             var gate = questRowId is { } id && this.live.TryGetValue(id, out var f) ? f : default;
             var gateLive = questRowId is { } q && this.live.ContainsKey(q);
@@ -777,6 +821,7 @@ internal static class UnlockEnumeration
                 GateLive = gateLive,
                 Level = gateLive ? gate.Level : null,
                 IdentityLevel = identityLevel,
+                DescriptionSource = description,
                 Festival = gateLive ? gate.Festival : 0,
                 Via = via,
                 ContentType = contentType,

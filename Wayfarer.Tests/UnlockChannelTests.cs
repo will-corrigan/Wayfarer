@@ -120,6 +120,44 @@ public class UnlockChannelTests
         Assert.Equal("Wind-up Brickman", UnlockRowText.GrantedCapability(bare));
     }
 
+    /// <summary>The game's own sentence, cited rather than copied. 471 of the 621 imported entries
+    /// name a sheet cell that says what they are — a duty's Duty Finder blurb, a title's achievement
+    /// description, an orchestrion roll's own line — and the row prefers it over the editorial note
+    /// and the requirement label, while a curated description still wins over it.
+    ///
+    /// <para>The committed file carries the reference and never the text, so this is the only claim
+    /// CI can make about it without a game: that the references exist, are well formed, and are only
+    /// on the entries that have no prose of their own.</para></summary>
+    [Fact]
+    public void TheGamesOwnDescriptionIsCitedRatherThanCopied()
+    {
+        var all = Load();
+        var cited = all.FindAll(d => d.DescriptionSource is not null);
+        Assert.True(cited.Count > 400, $"only {cited.Count} entries cite the game's own description");
+
+        foreach (var d in cited)
+        {
+            Assert.Null(d.Description);
+            Assert.False(string.IsNullOrEmpty(d.DescriptionSource!.Sheet));
+        }
+
+        // The order the row reads them in: curated prose, then the game's, then the note, then the
+        // requirement label. Anything else would let an editorial aside outrank an answer.
+        var withBoth = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition { Unlock = "x", Description = "the catalogue's own sentence about it" },
+            GameDescription = "the game's own sentence",
+        };
+        Assert.Equal("the catalogue's own sentence about it", UnlockRowText.Description(withBoth));
+
+        var gameOnly = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition { Unlock = "x", Notes = "an editorial aside" },
+            GameDescription = "the game's own sentence",
+        };
+        Assert.Equal("the game's own sentence", UnlockRowText.Description(gameOnly));
+    }
+
     /// <summary>The sheets write a whole name in lower case and leave the casing to the client, so a
     /// row imported from one reads "wind-up brickman" until something cases it. Curated prose is left
     /// alone, which is the half of the rule that is easy to get wrong: title-casing everything turns

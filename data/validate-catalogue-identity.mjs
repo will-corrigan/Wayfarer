@@ -28,8 +28,8 @@ const err = (m) => { console.error(m); errors++; };
 // because a serialiser emitted the same facts in a different order.
 const ENTRY_KEYS = [
   'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
-  'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
+  'requires', 'confidence', 'sources',
 ];
 
 // ---------------------------------------------------------------- 1. canonical form

@@ -942,8 +942,8 @@ function infoboxQuestNumber(record) {
 // you get it — and stay together after it.
 const ENTRY_KEYS = [
   'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
-  'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
+  'requires', 'confidence', 'sources',
 ];
 
 // The guide types each row with an icon, and that icon is a statement by the source about what
@@ -1403,6 +1403,12 @@ function importedEntry(row) {
     // scenario, a sidequest or a class quest, and it does not list these rows.
     questKind: null,
     notes: null,
+    // Where the GAME says what this is, when it says anything: a sheet, a row and a column, never a
+    // copy of the text. Titles, orchestrion rolls and duties all have a sentence of Square Enix's
+    // own, already localised into whatever language the player's client runs in, and the repository
+    // already had the mechanism for citing one rather than curating a paraphrase of it — see
+    // GameTextRef and requires.conditionSource. The plugin resolves it live at load.
+    ...(row.descriptionSource ? { descriptionSource: row.descriptionSource } : {}),
     // `priority` is a closed set and an editorial judgement. Nothing editorial has looked at these
     // rows, so they take the neutral value for their kind rather than a claim: cosmetics are
     // optional, everything else is worth doing. An entry that has never been reviewed is
