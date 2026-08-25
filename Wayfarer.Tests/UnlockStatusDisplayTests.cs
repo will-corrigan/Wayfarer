@@ -133,6 +133,26 @@ public class UnlockStatusDisplayTests
         Assert.Equal(UnlockStatusTone.Bad, UnlockStatusDisplay.Tone(UnlockStatus.LockedOut));
     }
 
+    /// <summary>The locked-quest padlock's own fallback sibling is a real, distinct id from the same
+    /// 24x24 composite family — not the missed/prohibition icon, which means something else
+    /// entirely, and not itself, which would not be a fallback at all. <c>HubStatusIcons.For</c> is
+    /// the runtime half of this guard and cannot be exercised here (it needs the live game's own
+    /// texture table); this is the half that can be, and it is what would catch a rename or a typo
+    /// that quietly made the fallback point at nothing new.</summary>
+    [Fact]
+    public void The_locked_quest_icons_fallback_is_a_distinct_padlock_from_the_same_family()
+    {
+        Assert.NotEqual(0u, UnlockStatusDisplay.LockedQuestIcon);
+        Assert.NotEqual(0u, UnlockStatusDisplay.LockedDutyIcon);
+        Assert.NotEqual(UnlockStatusDisplay.LockedQuestIcon, UnlockStatusDisplay.LockedDutyIcon);
+        Assert.NotEqual(UnlockStatusDisplay.MissedIcon, UnlockStatusDisplay.LockedDutyIcon);
+
+        // Both in the 24x24 composite block HubStatusIcons.SourceSize sizes by range, so a fallback
+        // from one to the other never hands ApplyIcon a rectangle drawn for the wrong art.
+        Assert.InRange(UnlockStatusDisplay.LockedQuestIcon, 60000u, 60999u);
+        Assert.InRange(UnlockStatusDisplay.LockedDutyIcon, 60000u, 60999u);
+    }
+
     /// <summary>Available loses its green on purpose: the gold marker is the game's own "you can
     /// start this" signal, and the colour channel is needed for complete and missed.</summary>
     [Fact]

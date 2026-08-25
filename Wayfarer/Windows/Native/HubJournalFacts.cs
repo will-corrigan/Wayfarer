@@ -30,6 +30,8 @@ internal sealed class HubJournalFacts(IDataManager data, ITextureProvider textur
 {
     private readonly Dictionary<uint, uint> banners = [];
 
+    private readonly Dictionary<uint, int> dutyLevels = [];
+
     private bool loggedMissingBanner;
 
     /// <summary>The size the banner art is authored at, which is what an image node's part rectangle
@@ -67,6 +69,39 @@ internal sealed class HubJournalFacts(IDataManager data, ITextureProvider textur
 
         banners[key] = icon;
         return icon;
+    }
+
+    /// <summary>The duty's own sync level — <c>ContentFinderCondition.ClassJobLevelRequired</c> —
+    /// so the reward tray can say "Sastasha (Lv. 15)" instead of just the name. This is
+    /// deliberately not the entry's own <see cref="ResolvedUnlock.QuestLevel"/>: that is the
+    /// unlocking quest's accept level, which the badge already shows and which is not always the
+    /// duty's own sync level. 0 when the row cannot be read — <see cref="UnlockRowText.DutyReward"/>
+    /// is what turns that into "no level printed" rather than "(Lv. 0)".</summary>
+    public int DutyLevel(uint contentFinderConditionRowId)
+    {
+        if (contentFinderConditionRowId == 0)
+        {
+            return 0;
+        }
+
+        if (dutyLevels.TryGetValue(contentFinderConditionRowId, out var cached))
+        {
+            return cached;
+        }
+
+        var level = 0;
+        try
+        {
+            level = data.GetExcelSheet<ContentFinderCondition>()
+                .GetRowOrDefault(contentFinderConditionRowId)?.ClassJobLevelRequired ?? 0;
+        }
+        catch (Exception ex)
+        {
+            log.Warning(ex, $"Wayfarer hub: the sync level for duty #{contentFinderConditionRowId} could not be read.");
+        }
+
+        dutyLevels[contentFinderConditionRowId] = level;
+        return level;
     }
 
     /// <summary>The giver's position in the coordinates the game itself prints — "(x11.4, y11.0)" —
@@ -156,9 +191,25 @@ internal sealed class HubJournalFacts(IDataManager data, ITextureProvider textur
 
     /// <summary>The gate quest's own banner — the picture the game draws at the top of that quest's
     /// page in the player's journal, which is the same picture this page is standing in for.
-    /// </summary>
-    private uint Quest(ResolvedUnlock unlock) =>
-        unlock.QuestRowId is { } rowId
-            ? data.GetExcelSheet<Lumina.Excel.Sheets.Quest>().GetRowOrDefault(rowId)?.Icon ?? 0u
-            : 0u;
+    ///
+    /// <para><b>Only when there is a page to draw it on.</b> A quest with no journal entry —
+    /// <c>JournalGenre.RowId == 0</c>, the same fact <see cref="Wayfarer.Core.Unlocks.QuestNameCandidate"/>
+    /// already tracks to tell a live row from a retired one — has no page, and so no picture at the
+    /// top of it. Its <c>Icon</c> field is not "this quest's banner, at a stale id"; it is not a
+    /// banner at all, because the row it names was never intended to be seen. Reading it anyway is
+    /// what put 100463 on 'Rank 2 Heavensward Daily Hunts': that catalogue entry is gated by 'Better
+    /// Bill Hunting', a hidden system quest with no journal presence of its own, and the hunt tier is
+    /// not that quest wearing a different name — it is a different thing standing behind the same
+    /// gate. Falling back to no banner here is the deliberate miss for entry kinds that genuinely
+    /// have none, not a texture lookup this plugin failed to make.</para></summary>
+    private uint Quest(ResolvedUnlock unlock)
+    {
+        if (unlock.QuestRowId is not { } rowId)
+        {
+            return 0u;
+        }
+
+        var quest = data.GetExcelSheet<Lumina.Excel.Sheets.Quest>().GetRowOrDefault(rowId);
+        return quest is { JournalGenre.RowId: not 0 } ? quest.Value.Icon : 0u;
+    }
 }

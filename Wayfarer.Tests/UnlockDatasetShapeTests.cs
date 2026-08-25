@@ -1,3 +1,4 @@
+using Wayfarer.Core.Ui;
 using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
@@ -121,6 +122,37 @@ public class UnlockDatasetShapeTests
             {
                 Assert.True(d.Sources.Count >= 2, $"'{d.Unlock}' claims 'verified' from one source");
             }
+        }
+    }
+
+    /// <summary>The Reward section's own promise, checked against every shipped entry rather than
+    /// a handful of examples: 272 of 587 carry no sheet-backed <c>Reward</c> at all, and every one
+    /// of them still has to produce a real, non-repeating reward line through
+    /// <see cref="UnlockRowText.GrantedCapability"/> — the mechanical proof that "the unlock IS the
+    /// reward when there is no item" holds for the whole catalogue and not only the cases this
+    /// change was written against.</summary>
+    [Fact]
+    public void EveryRewardLessEntryStillStatesTheCapabilityItGrants()
+    {
+        var rewardLess = Load().FindAll(d => d.Reward is null);
+
+        // The fallback exists because this group is not empty. A regeneration that closed the gap
+        // entirely would not be a failure, but it would mean this test is no longer exercising
+        // anything, which is worth knowing about explicitly rather than silently.
+        Assert.NotEmpty(rewardLess);
+
+        foreach (var d in rewardLess)
+        {
+            var unlock = new ResolvedUnlock { Def = d };
+            var line = UnlockRowText.GrantedCapability(unlock);
+
+            Assert.False(string.IsNullOrWhiteSpace(line), $"'{d.Unlock}' produced no reward line at all");
+
+            // Always a cut of the description, never a paraphrase invented on top of it — a
+            // clause with no dash and no interior sentence end is handed back whole, which is
+            // correct and not a bug, so equality is allowed; anything that is not a whole-string
+            // prefix is not.
+            Assert.StartsWith(line, d.Description, StringComparison.Ordinal);
         }
     }
 

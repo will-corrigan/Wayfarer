@@ -23,7 +23,17 @@ namespace Wayfarer.Windows.Native;
 ///
 /// <para><b>A heading with nothing under it is refused whole.</b> <see cref="SetBody"/> hides the
 /// entire section when the body is empty. A section that says only its own name is worse than no
-/// section — it reads as content that failed to load.</para></summary>
+/// section — it reads as content that failed to load.</para>
+///
+/// <para><b>Safe when empty, not skipped when empty.</b> The three sections on the page are built
+/// once, in <c>JournalWindow.Build()</c>, and every later entry reuses the same three node trees —
+/// only their content and their <c>IsVisible</c> change in <c>Fill()</c>. Building a section only for
+/// entries that turn out to need it would mean tearing the tree down and rebuilding it per entry,
+/// which is exactly the per-frame construction this window's own reused-pool design (see
+/// <c>JournalWindow</c>'s field list) exists to avoid. So a section with nothing to say is never
+/// "not built" — it is built with an empty body row and then hidden, and the body row being briefly
+/// empty at construction time is exactly what <see cref="JournalNodes.AddOnce"/>'s own second guard
+/// makes safe.</para></summary>
 internal sealed class JournalSectionNode : SectionStackNode
 {
     private readonly HorizontalListNode headingRow;

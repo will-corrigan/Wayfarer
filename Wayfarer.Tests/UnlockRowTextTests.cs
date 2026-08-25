@@ -99,4 +99,78 @@ public class UnlockRowTextTests
         Assert.Equal("Heavensward Unique Quest Rewards", UnlockRowText.LevelToken(unlock));
         Assert.DoesNotContain("Lv 0", UnlockRowText.Trailing(unlock), StringComparison.Ordinal);
     }
+
+    /// <summary>The reward-less majority — 'Rank 2 Heavensward Daily Hunts' among them — get the
+    /// capability itself as the reward line, cut at the first clause rather than carrying the whole
+    /// description a second time.</summary>
+    [Fact]
+    public void An_entry_with_no_sheet_reward_states_the_capability_it_grants_instead()
+    {
+        var dashed = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition
+            {
+                Unlock = "Dye System",
+                Description = "Unlocks dyeing — apply a dye item to compatible gear to recolor it. Purely cosmetic.",
+            },
+        };
+        var undashed = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition
+            {
+                Unlock = "Glamours",
+                Description = "Unlocks the Glamour system, which lets you make one piece of gear look like another.",
+            },
+        };
+
+        Assert.Equal("Unlocks dyeing", UnlockRowText.GrantedCapability(dashed));
+        Assert.Equal(
+            "Unlocks the Glamour system, which lets you make one piece of gear look like another.",
+            UnlockRowText.GrantedCapability(undashed));
+    }
+
+    /// <summary>A description with neither an em dash nor sentence-ending punctuation before its
+    /// end is handed over whole rather than cut somewhere arbitrary — the tray's own text node
+    /// ellipsises the overflow, so nothing is lost by not truncating here as well.</summary>
+    [Fact]
+    public void A_capability_clause_with_no_natural_cut_point_is_not_truncated_here()
+    {
+        var unlock = new ResolvedUnlock
+        {
+            Def = new UnlockDefinition
+            {
+                Unlock = "Something",
+                Description = "Tracks your combined standing across every beast tribe this expansion offers",
+            },
+        };
+
+        Assert.Equal(
+            "Tracks your combined standing across every beast tribe this expansion offers",
+            UnlockRowText.GrantedCapability(unlock));
+    }
+
+    /// <summary>Never empty: the data validators require a 20-to-400-character description on
+    /// every shipped entry, so the fallback to the bare name only matters for a hand-built unlock a
+    /// test constructs without one.</summary>
+    [Fact]
+    public void A_capability_with_no_description_at_all_falls_back_to_the_entrys_own_name()
+    {
+        var unlock = new ResolvedUnlock { Def = new UnlockDefinition { Unlock = "Bare" } };
+
+        Assert.Equal("Bare", UnlockRowText.GrantedCapability(unlock));
+    }
+
+    [Fact]
+    public void A_duty_reward_carries_its_own_sync_level_not_the_unlocking_quests()
+    {
+        Assert.Equal("Sastasha (Lv. 15)", UnlockRowText.DutyReward("Sastasha", 15));
+    }
+
+    /// <summary>A duty whose sync level could not be read prints the name alone — "(Lv. 0)" is not
+    /// a fact the game states about anything.</summary>
+    [Fact]
+    public void A_duty_reward_with_no_readable_level_omits_it_rather_than_printing_zero()
+    {
+        Assert.Equal("Sastasha", UnlockRowText.DutyReward("Sastasha", 0));
+    }
 }
