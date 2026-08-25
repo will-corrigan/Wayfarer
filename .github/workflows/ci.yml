@@ -52,6 +52,13 @@ jobs:
       - name: Validate catalogue completeness
         run: node data/validate-coverage.mjs
 
+      # repo.json is the Dalamud custom-repo manifest, not catalogue data, but the same "one step
+      # per validator" reasoning above applies: this catches a malformed channel configuration
+      # (see release.yml and promote.yml) before it ships, rather than it silently going inert the
+      # way it already has once.
+      - name: Validate the repo manifest
+        run: node scripts/validate-repo-manifest.mjs
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:

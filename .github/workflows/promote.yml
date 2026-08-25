@@ -1,0 +1,126 @@
+name: Promote to Stable
+
+# The ONLY thing in this repository that writes AssemblyVersion, DownloadLinkInstall or
+# DownloadLinkUpdate. It does not build anything: it repoints the stable channel at the zip that
+# is already attached to a release and already being served to the testing channel, so what
+# everyone else installs is byte-for-byte the file the tester played.
+#
+# That is not a stylistic choice. Dalamud rejects a downloaded zip whose own baked-in manifest
+# version differs from the repo manifest's version for the channel it came from, so the promoted
+# version number is not something this workflow gets to pick - it is whatever the tested build
+# baked in, which is why release.yml has to publish a real release-please version rather than a
+# CI-invented one. Rebuilding at a tidier number would ship a file nobody ran.
+#
+# See the README's Releases section for the operator's view of this.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_tag:
+        description: "Optional: the release tag you expect to promote (e.g. v0.8.2). Leave empty to promote whatever the testing channel points at."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+# Shared with release.yml's package job: both end by committing repo.json to `main`.
+concurrency:
+  group: publish-repo-json
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Resolve and check the build to promote
+        id: pick
+        shell: pwsh
+        # Through the environment rather than interpolated into the script body: whatever is typed
+        # into the dispatch form is arbitrary text and must not be able to become PowerShell.
+        env:
+          CONFIRM_TAG: ${{ inputs.confirm_tag }}
+        run: |
+          $repo = Get-Content repo.json -Raw | ConvertFrom-Json
+          $version = $repo[0].TestingAssemblyVersion
+          $url = $repo[0].DownloadLinkTesting
+          $stable = $repo[0].AssemblyVersion
+
+          # Guard 1: there has to be something newer to promote. Equal channels is the resting
+          # state after a promotion, not an error to work around.
+          if ([version]$version -le [version]$stable) {
+            throw "Nothing to promote: testing $version is not newer than the current stable $stable."
+          }
+
+          # Guard 2: the testing version and the testing URL must describe the SAME release. If
+          # they disagree, promoting them together would point stable at a zip whose baked version
+          # is not the version being published, and every install and update on the stable channel
+          # would throw "Distributed plugin version does not match repo version".
+          $urlTag = [regex]::Match($url, '/download/([^/]+)/').Groups[1].Value
+          $versionTag = "v" + ($version -replace '\.0$', '')
+          if (-not $urlTag) {
+            throw "DownloadLinkTesting ($url) is not a release asset URL, so there is no release to promote."
+          }
+          if ($urlTag -ne $versionTag) {
+            throw "repo.json disagrees with itself: TestingAssemblyVersion $version implies tag $versionTag, but DownloadLinkTesting points at $urlTag. Refusing to promote until they name the same release."
+          }
+
+          # Guard 3: an operator typo on a workflow that has no undo (Dalamud has no downgrade
+          # path - it only ever offers a strictly greater version) costs a version number and a
+          # roll-forward release. Typing the tag is optional; getting it wrong is not.
+          $confirm = "$env:CONFIRM_TAG".Trim()
+          if ($confirm -and $confirm -ne $urlTag) {
+            throw "Asked to promote $confirm, but the testing channel points at $urlTag. Nothing was changed."
+          }
+
+          # Guard 4: promotion never builds, so the artefact must already exist. If this 404s, the
+          # packaging job for that tag failed and there is nothing to promote.
+          $code = (Invoke-WebRequest -Uri $url -Method Head -SkipHttpErrorCheck).StatusCode
+          if ($code -ne 200) {
+            throw "No packaged build at $url (HTTP $code)."
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "url=$url" >> $env:GITHUB_OUTPUT
+          "tag=$urlTag" >> $env:GITHUB_OUTPUT
+          Write-Host "Promoting $urlTag ($version), replacing stable $stable"
+
+      - name: Point the stable channel at it
+        shell: pwsh
+        run: |
+          $repo = Get-Content repo.json -Raw | ConvertFrom-Json
+          $repo[0].AssemblyVersion = "${{ steps.pick.outputs.version }}"
+          $repo[0].DownloadLinkInstall = "${{ steps.pick.outputs.url }}"
+          $repo[0].DownloadLinkUpdate = "${{ steps.pick.outputs.url }}"
+
+          # The testing fields are deliberately NOT written. They already hold exactly these
+          # values, so the two channels come out equal on their own - which is the correct resting
+          # state: there is nothing left to test. The tester stays on the file she already has
+          # instead of being offered it again.
+          ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json
+
+      - name: Validate repo.json before publishing it
+        # Inline for the same reason as in release.yml: this commit is pushed with GITHUB_TOKEN,
+        # which does not trigger workflows, so ci.yml will not see the file until the next human
+        # push.
+        run: node scripts/validate-repo-manifest.mjs
+
+      - name: Commit, and make the release the latest one
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # No "nothing to commit" branch: guard 1 above already established that
+          # AssemblyVersion is about to change, so an empty diff here would be a real bug and
+          # should fail the run rather than be shrugged off. `chore:` keeps release-please out
+          # of it.
+          git commit -am "chore: promote ${{ steps.pick.outputs.tag }} to stable"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          gh release edit "${{ steps.pick.outputs.tag }}" --prerelease=false --latest --repo "${{ github.repository }}"
