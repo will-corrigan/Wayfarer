@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Validates repo.json - the Dalamud custom-repo manifest the plugin installer reads directly -
-// against the shape Dalamud's PluginManifest actually parses, plus the one invariant that keeps
-// the testing channel (see testing-publish.yml and the README's Releases section) from going
-// silently inert.
+// against the shape Dalamud's PluginManifest actually parses, plus the two invariants that keep
+// the testing channel (see release.yml, promote.yml and the README's Releases section) working.
 //
 // WHY THIS EXISTS
 // ----------------
@@ -14,10 +13,10 @@
 // already (both fields quietly pinned equal, forever). This validator exists so a malformed or
 // regressed manifest fails CI instead of shipping silently.
 //
-// Equal is fine and expected: release.yml resets TestingAssemblyVersion to match AssemblyVersion
-// on every stable release, and that is the correct resting state until the next testing dispatch
-// advances it. Only STRICTLY LESS is rejected here - that can only happen from a bug, since both
-// producers (release.yml and testing-publish.yml) are supposed to keep it at or ahead of stable.
+// Equal is fine and expected: it is what a promotion leaves behind (promote.yml copies the
+// testing version into stable and touches nothing else), and it means "nothing new to test".
+// Only STRICTLY LESS is rejected here - stable can never overtake testing through either
+// workflow, so that can only come from a hand edit or a bug.
 
 const repo = (await import('../repo.json', { with: { type: 'json' } })).default;
 
@@ -55,7 +54,7 @@ if (p) {
   else if (!FOUR_PART_VERSION.test(p.AssemblyVersion))
     err(`AssemblyVersion "${p.AssemblyVersion}" is not four dot-separated integers (Dalamud parses it as System.Version)`);
   else if (!hasInRangeComponents(p.AssemblyVersion))
-    err(`AssemblyVersion "${p.AssemblyVersion}" has a component above ${USHORT_MAX} - that cannot come from a build of this repo (AssemblyVersionAttribute would fail to compile), so it did not come from release.yml`);
+    err(`AssemblyVersion "${p.AssemblyVersion}" has a component above ${USHORT_MAX} - that cannot come from a build of this repo (AssemblyVersionAttribute would fail to compile), so it did not come from a release`);
 
   if (!isNonEmptyString(p.DownloadLinkInstall)) err('DownloadLinkInstall must be a non-empty string');
   else if (!/^https:\/\//.test(p.DownloadLinkInstall)) err(`DownloadLinkInstall "${p.DownloadLinkInstall}" is not an https URL`);
@@ -65,13 +64,13 @@ if (p) {
 
   if (typeof p.DalamudApiLevel !== 'number') err('DalamudApiLevel must be a number');
 
-  // Testing fields: present because the testing channel exists (see testing-publish.yml), and
-  // held to the same shape as their stable counterparts, plus the never-regress invariant.
+  // Testing fields: every release lands here first (see release.yml), so they are held to the
+  // same shape as their stable counterparts, plus the never-regress invariant.
   if (!isNonEmptyString(p.TestingAssemblyVersion)) err('TestingAssemblyVersion must be a non-empty string');
   else if (!FOUR_PART_VERSION.test(p.TestingAssemblyVersion))
     err(`TestingAssemblyVersion "${p.TestingAssemblyVersion}" is not four dot-separated integers (Dalamud parses it as System.Version)`);
   else if (!hasInRangeComponents(p.TestingAssemblyVersion))
-    err(`TestingAssemblyVersion "${p.TestingAssemblyVersion}" has a component above ${USHORT_MAX} - that cannot come from a build of this repo (AssemblyVersionAttribute would fail to compile), so it did not come from testing-publish.yml`);
+    err(`TestingAssemblyVersion "${p.TestingAssemblyVersion}" has a component above ${USHORT_MAX} - that cannot come from a build of this repo (AssemblyVersionAttribute would fail to compile), so it did not come from a release`);
 
   if (!isNonEmptyString(p.DownloadLinkTesting)) err('DownloadLinkTesting must be a non-empty string');
   else if (!/^https:\/\//.test(p.DownloadLinkTesting)) err(`DownloadLinkTesting "${p.DownloadLinkTesting}" is not an https URL`);
@@ -83,12 +82,38 @@ if (p) {
     && p.TestingDalamudApiLevel !== p.DalamudApiLevel)
     err(`TestingDalamudApiLevel (${p.TestingDalamudApiLevel}) must equal DalamudApiLevel (${p.DalamudApiLevel}) - the testing build targets the same Dalamud API level as stable, it never ships against a different one`);
 
-  // The never-regress invariant. Equal is the correct resting state after a stable release;
-  // only strictly LESS is a bug (a testing dispatch or a hand edit that moved it backwards).
+  // The never-regress invariant. Equal is the correct resting state after a promotion; only
+  // strictly LESS is a bug (a hand edit, or a workflow change that let stable overtake testing).
   if (FOUR_PART_VERSION.test(p.AssemblyVersion) && FOUR_PART_VERSION.test(p.TestingAssemblyVersion)) {
     const cmp = compareVersions(parseVersion(p.TestingAssemblyVersion), parseVersion(p.AssemblyVersion));
     if (cmp < 0)
       err(`TestingAssemblyVersion (${p.TestingAssemblyVersion}) is LESS than AssemblyVersion (${p.AssemblyVersion}) - Dalamud requires TestingAssemblyVersion > AssemblyVersion for the testing channel to be available at all, so a testing version below stable can only make the channel inert. It must never regress below stable.`);
+  }
+
+  // Each channel's version and its download URL must describe the SAME release. Publishing a
+  // release moves TestingAssemblyVersion and DownloadLinkTesting together; promotion moves
+  // AssemblyVersion and DownloadLinkInstall/Update together. Either one moving without the other
+  // hands Dalamud a zip whose baked-in manifest version disagrees with the repo manifest's
+  // version for that channel, and Dalamud throws on it - "Distributed plugin version does not
+  // match repo version" - so every install and update on that channel fails.
+  //
+  // Both producers emit X.Y.Z.0 for tag vX.Y.Z, so the tag the version implies is the version
+  // with its trailing .0 removed. A version that cannot be expressed that way is itself the bug:
+  // it could not have come from a tagged, changelogged release, and so could never be promoted.
+  const tagOfVersion = (v) => `v${v.replace(/\.0$/, '')}`;
+  const tagOfUrl = (url) => (typeof url === 'string' ? url.match(/\/download\/([^/]+)\//)?.[1] : undefined);
+
+  for (const [versionField, urlField] of [
+    ['AssemblyVersion', 'DownloadLinkInstall'],
+    ['AssemblyVersion', 'DownloadLinkUpdate'],
+    ['TestingAssemblyVersion', 'DownloadLinkTesting'],
+  ]) {
+    if (!FOUR_PART_VERSION.test(p[versionField] ?? '')) continue;
+    const urlTag = tagOfUrl(p[urlField]);
+    if (!urlTag)
+      err(`${urlField} ("${p[urlField]}") is not a release asset URL, so nothing confirms it serves ${versionField} (${p[versionField]})`);
+    else if (urlTag !== tagOfVersion(p[versionField]))
+      err(`${urlField} points at release ${urlTag}, but ${versionField} (${p[versionField]}) is the build tagged ${tagOfVersion(p[versionField])} - a version moved without its URL, or the reverse. Dalamud rejects a zip whose own version differs from the repo manifest's version for that channel.`);
   }
 }
 

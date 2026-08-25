@@ -172,34 +172,80 @@ release-please keeps an up-to-date pull request open with the next version bump 
 `github-actions[bot]`, GitHub usually holds its CI run for manual approval (a banner reading
 **"Approve and run"** on the pull request) — click that first so the checks actually run. Once it's
 green, merge the pull request. Merging tags the release and, in the same workflow run, chains straight
-into a packaging job: it builds the plugin, attaches `Wayfarer.zip` to the GitHub release, and publishes
-the updated `repo.json` so the in-game plugin installer picks up the new version. There is no manual
-tagging step.
+into a packaging job: it builds the plugin and attaches `Wayfarer.zip` to the GitHub release. There is
+no manual tagging step.
 
-### Testing builds
+Where that build goes is the next section.
 
-Dalamud's plugin installer has a second, opt-in channel for exactly this kind of fix-before-release
-need: a "testing" version an individual tester can pick up without a stable release, while everyone
-else on the public repo stays on stable. `.github/workflows/testing-publish.yml` publishes one,
-`workflow_dispatch`-triggered — Actions tab → **Testing Publish** → **Run workflow**, or
-`gh workflow run testing-publish.yml`. It builds `main` (or another ref you give it), tags a unique
-prerelease, and updates only `TestingAssemblyVersion` and `DownloadLinkTesting` in `repo.json` —
-`AssemblyVersion` and `DownloadLinkInstall` are untouched, so stable installs are never affected.
+### Two channels
 
-Dalamud only shows a testing build once `TestingAssemblyVersion` is strictly greater than
-`AssemblyVersion`; equal or lower and the channel is silently unavailable, which is why the workflow
-computes an always-ahead version and fails outright if that guarantee is ever violated. A stable
-release resets the two channels back together automatically (`release.yml`'s packaging step sets
-both to the same new version), so testing goes quiet on its own until the next dispatch.
+Every release is published to Dalamud's **testing** channel first, and reaches everyone else only
+when it is promoted by hand. `repo.json` carries both channels at once: `AssemblyVersion` /
+`DownloadLinkInstall` / `DownloadLinkUpdate` are stable, `TestingAssemblyVersion` /
+`DownloadLinkTesting` are testing. There is one version stream — release-please's — and the two
+channels are two pointers into it.
 
-A tester picks this up entirely from her own Dalamud install, once:
+**Merging the release PR** tags `vX.Y.Z`, builds it, attaches the zip as a **prerelease**, and points
+the *testing* channel at it. Opted-in testers get it on their next update check; nobody else sees
+anything. `AssemblyVersion` is not touched, so stable installs are unaffected.
+
+**Actions → Promote to Stable → Run workflow** points the stable channel at whatever the testing
+channel currently holds, and clears the prerelease flag on that release. It **does not build**:
+`AssemblyVersion` becomes the tested build's version, `DownloadLinkInstall`/`DownloadLinkUpdate`
+become its URL, and everyone installs the byte-identical zip the tester played. Optionally type the
+tag you expect (`v0.8.2`) into the input as a confirmation; leave it blank to promote whatever is
+there. The workflow refuses to run if testing isn't newer than stable, if the zip isn't actually
+attached to that release, or if `repo.json`'s testing version and testing URL name different
+releases.
+
+So a normal cycle reads: land fixes → merge the release PR (testing gets `0.8.1`, stable stays
+`0.8.0`) → iterate, merging again as needed (testing `0.8.2`) → promote (both `0.8.2`) →
+land more work → merge (testing `0.9.0`, stable stays `0.8.2`). `AssemblyVersion` differing from
+`TestingAssemblyVersion` in `repo.json` is not a bug: it is the readable state "there is a build
+waiting to be promoted". Equal means there is nothing left to test.
+
+Two things are load-bearing, both enforced by `scripts/validate-repo-manifest.mjs` in CI and by
+guards in the workflows:
+
+- Dalamud shows a testing build only while `TestingAssemblyVersion` is **strictly greater** than
+  `AssemblyVersion`, compared as a plain four-integer `System.Version`. Equal or lower and the
+  channel is inert with no error reported anywhere — that has already happened here once.
+- A channel's version and its download URL must name the same release. Dalamud rejects a zip whose
+  own baked-in version differs from the repo manifest's version for the channel it came from, so
+  the promoted version number is never a choice: it is whatever the tested build baked in.
+
+That second point is why release-please must keep its **default versioning strategy**. Do not set
+`prerelease-type` or `versioning-strategy: prerelease` in `release-please-config.json`, however
+tempting `0.8.1-beta.2` looks: it is not a valid `System.Version`, so it would fail to parse and take
+the whole repo entry offline for every user, and MSBuild strips the suffix anyway, so every
+`-beta.N` would bake the identical `0.8.1.0` and no tester could ever receive the second one.
+Plain `X.Y.Z` → `X.Y.Z.0` is the only representable shape.
+
+### Rolling back
+
+Dalamud only ever offers a strictly greater version — there is no downgrade path, and nothing can
+recall a build from someone who already updated. In order of usefulness:
+
+- **Roll forward.** Revert the commit, merge the new release PR, let the tester confirm, promote.
+  This is the answer in almost every case.
+- **Stop the spread.** Set `"IsHide": "True"` in `repo.json` and push. Dalamud filters hidden
+  plugins out of the installer list *and* out of the update scan, so nobody who hasn't taken the bad
+  build yet will get it.
+- **Repoint stable at the previous release.** Set `AssemblyVersion` and both stable download links
+  back to the previous tag by hand. This stops fresh installs pulling the bad zip, but it puts the
+  version stream in reverse and helps nobody who already updated. Last resort.
+
+### For a tester
+
+Two one-time settings in their own Dalamud install, no new repo URL and no reinstall:
 
 1. `/xlsettings` → **Experimental** tab → check **"Get plugin testing builds"**.
 2. `/xlplugins` → **Installed Plugins** tab → right-click **Wayfarer** → **"Receive plugin testing
    versions"**.
 
-No new repo URL, no reinstall — the next update through the normal installer just picks up the
-testing build.
+Both are local to that Dalamud install and survive plugin updates. From then on the normal update
+check picks up each new release as it is cut, and the plugin's header carries yellow caution tape to
+make it obvious it is a testing build.
 
 ## License
 

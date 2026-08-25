@@ -41,6 +41,12 @@ jobs:
     permissions:
       contents: write
 
+    # This job and promote.yml both finish by committing repo.json to `main`. Serialize them:
+    # two runs interleaving between the read and the push would silently drop one channel's update.
+    concurrency:
+      group: publish-repo-json
+      cancel-in-progress: false
+
     env:
       DALAMUD_HOME: ${{ github.workspace }}\.dalamud
 
@@ -88,6 +94,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ steps.tag.outputs.tag }}" Wayfarer.zip --repo "${{ github.repository }}"
 
+      - name: Mark the release as a prerelease until it is promoted
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Every release starts life on the testing channel only, so it starts life as a
+        # prerelease: GitHub never shows a prerelease as "Latest", so the front page keeps
+        # advertising the last build that was actually promoted. promote.yml clears this flag.
+        # Done with an explicit `gh` call rather than release-please's own `prerelease` config
+        # option, which only applies while the version is 0.x or carries a semver suffix - it
+        # would quietly stop applying at 1.0.0 and start publishing unpromoted builds as Latest.
+        run: gh release edit "${{ steps.tag.outputs.tag }}" --prerelease --repo "${{ github.repository }}"
+
+      - name: Switch to main for the repo.json update
+        shell: pwsh
+        run: |
+          # The build ran against the release tag, but repo.json lives on `main` and promote.yml
+          # may have committed to it since that tag was cut. Move to the current tip before
+          # touching it, or a promotion would be silently reverted by the push below.
+          git fetch origin main
+          git checkout -B main origin/main
+
       - name: Update repo.json
         shell: pwsh
         run: |
@@ -96,17 +122,35 @@ jobs:
           # Dalamud requires the repo version to EXACTLY match the built manifest version,
           # which .NET always emits as four parts (e.g. 0.1.0.0 from <Version>0.1.0</Version>).
           if (($version -split "\.").Count -eq 3) { $version = "$version.0" }
-          $repoTesting = $version
           $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/Wayfarer.zip"
 
           $repo = Get-Content repo.json -Raw | ConvertFrom-Json
-          $repo[0].AssemblyVersion = $version
-          $repo[0].TestingAssemblyVersion = $repoTesting
-          $repo[0].DownloadLinkInstall = $downloadUrl
-          $repo[0].DownloadLinkUpdate = $downloadUrl
+
+          # LOAD-BEARING: a merged release PR publishes to the TESTING channel and nothing else.
+          # promote.yml is the only thing in this repository that ever writes AssemblyVersion,
+          # DownloadLinkInstall or DownloadLinkUpdate, and that is what makes the stable channel
+          # ship the exact zip a tester played rather than a rebuild of it.
+          #
+          # Dalamud shows a testing build only while TestingAssemblyVersion is STRICTLY greater
+          # than AssemblyVersion (PluginManifest.IsAvailableForTesting, compared as a plain
+          # four-integer System.Version). Equal or lower and the channel is inert with no error
+          # anywhere - that is the bug this repository shipped once already. The release-please
+          # flow can only ever move the version forwards, but this job is also dispatchable with
+          # an arbitrary tag, so check the ordering rather than assume it.
+          if ([version]$version -le [version]$repo[0].AssemblyVersion) {
+            throw "Refusing to publish: $version is not greater than the current stable $($repo[0].AssemblyVersion). A testing build at or below stable is invisible to Dalamud."
+          }
+
+          $repo[0].TestingAssemblyVersion = $version
           $repo[0].DownloadLinkTesting = $downloadUrl
+          $repo[0].TestingDalamudApiLevel = $repo[0].DalamudApiLevel
 
           ConvertTo-Json -InputObject $repo -Depth 10 -AsArray | Set-Content -Path repo.json
+
+      - name: Validate repo.json before publishing it
+        # Inline, not left to ci.yml: the commit below is pushed with GITHUB_TOKEN, which does not
+        # trigger workflows, so CI will not look at this file until the next human push.
+        run: node scripts/validate-repo-manifest.mjs
 
       - name: Commit repo.json
         shell: pwsh
@@ -116,7 +160,10 @@ jobs:
           git add repo.json
           $status = git status --porcelain -- repo.json
           if ($status) {
-            git commit -m "chore: publish repo.json for ${{ steps.tag.outputs.tag }}"
+            # `chore:` so release-please ignores this commit: no version bump implied, no
+            # changelog entry, and no interference with a release PR already in flight.
+            git commit -m "chore: publish testing build ${{ steps.tag.outputs.tag }}"
+            git pull --rebase origin main
             git push origin HEAD:main
           } else {
             Write-Host "repo.json unchanged, skipping commit"
