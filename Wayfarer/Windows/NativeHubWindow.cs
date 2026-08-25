@@ -1843,9 +1843,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         // the two disagree on the Settings tab: SelectTab hides the list without emptying it, so the
         // count is still whatever the previous tab published, and "down" from the last setting
         // pointed at the first row of a list that is not on screen.
-        var firstRow = populated > 0 && list.IsVisible
-            ? NavListBlock.RowIndex(HubNavPlan.List, 0)
-            : HubNavPlan.TabBar;
+        //
+        // With no list under it, "down" out of the region goes NOWHERE rather than to the tab bar.
+        // The tab bar is at the TOP of the window, so pointing there made the last control's down
+        // press throw the cursor to the top of the tab — which is exactly the report: "she gets as
+        // far down as the hud position toggle bit and then the next down press takes her back to the
+        // top of the menu". The game's own scrolling lists stop at their last row; this one now does
+        // too, and up still walks back to the tabs the way it always did.
+        var listBelow = populated > 0 && list.IsVisible;
+        var regionExit = listBelow ? NavListBlock.RowIndex(HubNavPlan.List, 0) : NavGraphPlanner.NoNavigation;
 
         var regionEnd = HubNavPlan.Region;
         if (controls is not null)
@@ -1854,7 +1860,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 controls,
                 HubNavPlan.Region,
                 HubNavPlan.TabBar,
-                firstRow,
+                regionExit,
                 HubNavPlan.Region + HubNavPlan.RegionCapacity - 1);
         }
 
