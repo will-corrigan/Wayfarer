@@ -88,6 +88,41 @@ public class ReadoutFocusTests
         }
     }
 
+    /// <summary>The teleport line's three parts, which are only right together.
+    ///
+    /// <para><b>One rectangle, two devices.</b> The pointer's click box and the pad's anchor are the
+    /// same node: the box is placed once, from the line's own measured text, and the anchor is
+    /// mirrored onto it. Give either device a rectangle of its own and the two drift apart on the
+    /// next change to the readout's spacing, with nothing to say so — which is exactly what the box's
+    /// height stopped being a fraction of its block to prevent.</para>
+    ///
+    /// <para><b>And the highlight is not that rectangle.</b> The box is the full width of the line
+    /// because a generous target is right for a pointer and necessary for a pad; the hover lights the
+    /// line's own text node, so a short place name does not light a band of empty plate beside
+    /// itself. Every one of the three reads as harmless to change on its own.</para></summary>
+    [Fact]
+    public void TheTeleportLinesTargetIsOneRectangleAndItsHighlightIsNot()
+    {
+        var body = SourceGuard.SourceOf(Body);
+
+        // The box: the whole width of the line, and a height measured from the line's own text rather
+        // than taken as a fraction of the block it sits in.
+        var box = SourceGuard.Body(body, "private bool LayoutTeleportHitBox()");
+        Assert.Contains("teleportHitBox.Size = new Vector2(slot.Width,", box, StringComparison.Ordinal);
+        Assert.Contains("slot.FontSize", box, StringComparison.Ordinal);
+        Assert.DoesNotContain("slot.Height *", box, StringComparison.Ordinal);
+
+        // The anchor: that same node, so the d-pad cannot come to rest anywhere the pointer cannot
+        // click.
+        var settle = SourceGuard.Body(body, "private void SettleNav()");
+        Assert.Contains("MirrorNav(navTargets[NavTeleport], teleportHitBox)", settle, StringComparison.Ordinal);
+
+        // The highlight: the words, and never the box.
+        var highlight = SourceGuard.Body(body, "private void SetTeleportHighlight(");
+        Assert.Contains("lineNodes[slot.Index].Alpha", highlight, StringComparison.Ordinal);
+        Assert.DoesNotContain("teleportHitBox", highlight, StringComparison.Ordinal);
+    }
+
     /// <summary>The plate's second press is the game's own "Display Subcommands" (<c>InputId.MENU</c>,
     /// <c>ConfigKey</c> row 215), not a button of our choosing, and it is a press BESIDE Confirm
     /// rather than instead of it — Confirm on the plate still opens the Journal, exactly as a click
