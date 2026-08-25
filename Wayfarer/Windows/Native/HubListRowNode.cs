@@ -12,21 +12,31 @@ namespace Wayfarer.Windows.Native;
 /// into an activation. Confirm arrives as the <b>logical</b> <c>InputId.OK</c>, so the player's own
 /// PadReverseConfirmCancel setting is honoured without us reading it.
 ///
-/// <para><b>Shape.</b> Two lines, mirroring the Duty Finder's own tree-list row: name on line one
-/// with a short right-hand caption, and a dimmed qualifying line underneath. The previous row was a
-/// single 26px line that gave the name ~590px it did not need and squeezed zone, level and state
-/// into a 132px gutter, ellipsising all three — 90% of the row was blank and the 10% that carried
-/// meaning was the part that got cut. On a TV at 200% HUD scale it was unreadable before it was
-/// truncated.</para></summary>
+/// <para><b>Shape.</b> Two lines and two columns, mirroring the Duty Finder's own tree-list row:
+/// the name on line one with the level pinned to the right of it, and a dimmed qualifying line
+/// underneath with the state pinned to the right of that. The previous row was a single 26px line
+/// that gave the name ~590px it did not need and squeezed zone, level and state into a 132px
+/// gutter, ellipsising all three — 90% of the row was blank and the 10% that carried meaning was
+/// the part that got cut. On a TV at 200% HUD scale it was unreadable before it was
+/// truncated.</para>
+///
+/// <para><b>Hierarchy.</b> Three registers, in the game's own faces: the name in Axis 14 at the
+/// Duty Finder's own warm list colour, the level and the state in Axis 12 captions, and the
+/// description in the dimmed Axis 12 the Journal gives its sub-row. The name is never dimmed to
+/// carry a state — that put it in the same colour and the same weight as the line beneath it and
+/// left the eye nothing to land on, which is what a list of two hundred locked entries looked
+/// like.</para></summary>
 internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListItemNode
 {
     private readonly IconImageNode iconNode;
     private readonly TextNode labelNode;
     private readonly TextNode trailingNode;
     private readonly TextNode descriptionNode;
+    private readonly TextNode statusNode;
 
     private HubRowKind kind = HubRowKind.Entry;
     private bool hasIcon;
+    private bool hasStatus;
 
     public HubListRowNode()
     {
@@ -49,33 +59,25 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         };
         labelNode.AttachNode(this);
 
-        trailingNode = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = GameMetrics.Type.SecondarySize,
-            LineSpacing = GameMetrics.Type.SecondaryLine,
-            AlignmentType = AlignmentType.Right,
-            TextFlags = TextFlags.Ellipsis,
-            TextColor = GameColors.Dimmed,
-        };
+        // Line one's caption: the level, pinned right.
+        trailingNode = Secondary(AlignmentType.Right);
         trailingNode.AttachNode(this);
 
-        descriptionNode = new TextNode
-        {
-            FontType = FontType.Axis,
-            FontSize = GameMetrics.Type.SecondarySize,
-            LineSpacing = GameMetrics.Type.SecondaryLine,
-            AlignmentType = AlignmentType.Left,
-
-            // Ellipsis rather than a hand-rolled character budget: the game's own text engine
-            // measures in the font that is actually being drawn, at the size it is actually being
-            // drawn, which a character count cannot do and which is exactly how a "safe" budget
-            // ends up cutting a word in half on one HUD scale and leaving a third of the row empty
-            // on another.
-            TextFlags = TextFlags.Ellipsis,
-            TextColor = GameColors.Dimmed,
-        };
+        // Line two: the description, which is prose and therefore the one line on the row that is
+        // allowed to be cut. Ellipsis rather than a hand-rolled character budget — the game's own
+        // text engine measures in the font that is actually being drawn, at the size it is actually
+        // being drawn, which a character count cannot do and which is exactly how a "safe" budget
+        // ends up cutting a word in half on one HUD scale and leaving a third of the row empty on
+        // another.
+        descriptionNode = Secondary(AlignmentType.Left);
         descriptionNode.AttachNode(this);
+
+        // Line two's caption: the state's own column, under the level and against the same right
+        // edge. Only ever filled when the state's shape could not be drawn — see
+        // HubListRow.StatusWord.
+        statusNode = Secondary(AlignmentType.Right);
+        statusNode.IsVisible = false;
+        statusNode.AttachNode(this);
 
         // The pointer's half of "cursor moves, detail updates". The controller's half is
         // OnNavHoverStart below, and both call the same method — one behaviour, not two that can
@@ -108,9 +110,7 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         if (ItemData is { } data)
         {
             trailingNode.String = data.Detail;
-            descriptionNode.String = !hasIcon && data.StatusWord is { Length: > 0 } word
-                ? Prefixed(word, data.Description)
-                : data.Description;
+            descriptionNode.String = data.Description;
         }
     }
 
@@ -124,11 +124,17 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         labelNode.String = itemData.Label;
         trailingNode.String = itemData.Detail;
 
-        // The state's word only appears when its shape could not be drawn — and it goes on line
-        // two, which has room for a word, rather than back into the gutter that could not hold it.
-        descriptionNode.String = !hasIcon && itemData.StatusWord is { Length: > 0 } word
-            ? Prefixed(word, itemData.Description)
-            : itemData.Description;
+        // The description is the description, whatever else the row has to say. The state's word
+        // only appears when its shape could not be drawn, and it goes in its own column on the
+        // right of line two — never in front of the sentence, which is what turned every row in a
+        // list of locked entries into the same opening two words.
+        descriptionNode.String = itemData.Description;
+
+        hasStatus = itemData.Kind == HubRowKind.Entry
+            && !hasIcon
+            && itemData.StatusWord is { Length: > 0 };
+        statusNode.String = hasStatus ? itemData.StatusWord : string.Empty;
+        statusNode.TextColor = itemData.StatusColor ?? GameColors.Dimmed;
 
         labelNode.TextColor = itemData.LabelColor ?? DefaultColor(itemData.Kind);
 
@@ -145,9 +151,18 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         // A note is prose, not a list entry: it is allowed to use both lines and it must wrap
         // rather than ellipsise, because the whole point of a note ("turn Quest Helper on to be
         // guided anywhere from here") is the part at the end of the sentence.
-        labelNode.TextFlags = itemData.Kind == HubRowKind.Note
-            ? TextFlags.WordWrap | TextFlags.MultiLine
-            : TextFlags.Ellipsis;
+        //
+        // A heading is the third case: the same Axis 14 as an entry, and set apart by the outline
+        // instead. The game's panel headers are drawn white over the bronze edge in UIColor row 54
+        // — that pairing is what makes a title read as a vanilla HUD header rather than as another
+        // row — and this list has no section icon to lean on the way Journal's own header does.
+        labelNode.TextFlags = itemData.Kind switch
+        {
+            HubRowKind.Note => TextFlags.WordWrap | TextFlags.MultiLine,
+            HubRowKind.Heading => TextFlags.Edge | TextFlags.Ellipsis,
+            _ => TextFlags.Ellipsis,
+        };
+        labelNode.TextOutlineColor = GameColors.HeadingEdge;
 
         Layout();
     }
@@ -185,8 +200,18 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         _ => GameColors.ListText,
     };
 
-    private static string Prefixed(string word, string description) =>
-        description.Length == 0 ? word : $"{word} — {description}";
+    /// <summary>The row's lower register: the dimmed Axis 12 the Journal's own sub-row is set in
+    /// (<c>1022 #2</c>), which is what everything on line two and the caption beside the name are
+    /// drawn in. One factory, so the three of them cannot drift into three sizes.</summary>
+    private static TextNode Secondary(AlignmentType alignment) => new()
+    {
+        FontType = FontType.Axis,
+        FontSize = GameMetrics.Type.SecondarySize,
+        LineSpacing = GameMetrics.Type.SecondaryLine,
+        AlignmentType = alignment,
+        TextFlags = TextFlags.Ellipsis,
+        TextColor = GameColors.Dimmed,
+    };
 
     private static RowShape Shape(HubRowKind kind) => kind switch
     {
@@ -239,7 +264,8 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         // Every rectangle comes from RowLayout, which is measured against the game's own tree-list
         // rows and clipped to the row's own box — so nothing here can put a node outside it.
         var shape = Shape(kind);
-        var blocks = RowLayout.Compose(shape, Width, Height, hasIcon && shape == RowShape.Entry);
+        var blocks = RowLayout.Compose(
+            shape, Width, Height, hasIcon && shape == RowShape.Entry, hasStatus && shape == RowShape.Entry);
 
         iconNode.IsVisible = !blocks.Icon.IsEmpty;
         if (!blocks.Icon.IsEmpty)
@@ -251,5 +277,6 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         Place(labelNode, blocks.Label);
         Place(trailingNode, blocks.Trailing);
         Place(descriptionNode, blocks.Description);
+        Place(statusNode, blocks.Status);
     }
 }

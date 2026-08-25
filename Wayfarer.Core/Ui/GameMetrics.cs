@@ -173,6 +173,16 @@ public static class GameMetrics
         /// <c>1023</c>'s name ends at x=336 and the caption starts at x=348.</summary>
         public const float TrailingGap = 12f;
 
+        /// <summary>The second line's own right-hand caption column — the rail the state sits in when
+        /// its shape could not be drawn.
+        ///
+        /// <para>Wider than <see cref="TrailingWidth"/> because the two columns carry different
+        /// things. The game has both widths in the same list: the entry row's caption
+        /// (Journal <c>1023 #4</c>, ContentsFinder <c>1026 #19</c>) is 48 and holds a numeral, while
+        /// the section row's (ContentsFinder <c>1024 #3</c>) is 64 and holds a word. A word is what
+        /// goes here, so it is the wider of the two the game itself uses.</para></summary>
+        public const float StatusWidth = Detail.KindWidth;
+
         /// <summary>A section header row. Journal <c>1021</c> and ContentsFinder <c>1024</c> are both
         /// 28 tall.</summary>
         public const float SectionHeight = 28f;

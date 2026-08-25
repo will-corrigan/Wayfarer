@@ -29,10 +29,25 @@ internal sealed class HubListRow
     public uint IconId { get; set; }
 
     /// <summary>The state in one word, used only when <see cref="IconId"/> is 0. Colour is never
-    /// the only signal and neither is a shape that did not load.</summary>
+    /// the only signal and neither is a shape that did not load.
+    ///
+    /// <para>It goes in a column of its own on the right of line two — the rail the level sits on
+    /// above it — and never in front of <see cref="Description"/>. Prefixing it produced a list in
+    /// which every row opened with the same two words, which is the opposite of what a fallback is
+    /// for: it turned the one thing that varies per row into the one thing that did not.</para>
+    /// </summary>
     public string StatusWord { get; init; } = string.Empty;
 
-    /// <summary>Overrides the kind's default colour — used for per-status unlock colouring.</summary>
+    /// <summary>What colour the state's own word is drawn in — reinforcement for the word, never a
+    /// signal on its own. Null leaves it in the dimmed caption colour the game gives a second
+    /// line.</summary>
+    public Vector4? StatusColor { get; init; }
+
+    /// <summary>Overrides the kind's default colour for the row's <b>name</b>. Reserved for the one
+    /// thing that is about the row rather than about its state — the green on whatever is currently
+    /// being followed. A name dimmed to say "locked" is what left a row with nothing on it for the
+    /// eye to land on: the name and the second line came out the same colour and the same weight,
+    /// and the state is the icon's job and the state column's.</summary>
     public Vector4? LabelColor { get; init; }
 
     /// <summary>Invoked on mouse click and on controller confirm alike. Null on headings and

@@ -71,15 +71,31 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// face's outline top and bottom.</summary>
     private const float HuntingHeaderHeight = GameMetrics.Row.SectionHeight;
 
+    /// <summary>The Unlocks tab's control block: two labelled filter rows, the rule the game draws
+    /// under a cluster of controls, and the action row beneath it.
+    ///
+    /// <para>It used to reserve a <see cref="HuntingHeaderHeight"/> for a heading node this tab
+    /// never had, so thirty-six pixels of nothing sat between the buttons and the first row. The
+    /// sum is now what is actually in the block, and the rule is the game's own separator —
+    /// ContentsFinder stacks its condition controls, draws a 4-pixel rule (<c>#55</c>) and leaves 4
+    /// before the block under it.</para></summary>
     private const float ChecklistControlsHeight =
-        HuntingHeaderHeight + GameMetrics.Control.ButtonHeight + GameMetrics.Window.BlockGap
-        + (GameMetrics.Control.CheckboxHeight * 2f) + (GameMetrics.Window.RuleGap * 2f);
+        (GameMetrics.Control.CheckboxHeight * 2f) + GameMetrics.Window.RuleHeight
+        + GameMetrics.Control.ButtonHeight + (GameMetrics.Window.RuleGap * 3f);
 
     private const float HuntingControlsHeight =
         HuntingHeaderHeight + GameMetrics.Control.ButtonHeight + GameMetrics.Window.RuleGap;
 
+    /// <summary>The Following tab's control block: what is being followed, what it wants you to do
+    /// next, and the buttons that act on it — a heading, an objective line, a note line and one row
+    /// of controls, in that order, because that is the order the three of them are read in.
+    ///
+    /// <para>The objective used to be a list row, several rows below the heading that named the
+    /// thing it belonged to and separated from it by two buttons. A quest, its objective and its
+    /// actions are one block and are now drawn as one.</para></summary>
     private const float QuestControlsHeight =
-        HuntingHeaderHeight + (GameMetrics.Control.ButtonHeight * 2f) + (GameMetrics.Window.RuleGap * 2f);
+        HuntingHeaderHeight + GameMetrics.Type.BodyLine + GameMetrics.Type.SecondaryLine
+        + GameMetrics.Control.ButtonHeight + (GameMetrics.Window.RuleGap * 3f);
 
     /// <summary>The controller button-hint line along the bottom. One line of the game's dimmed
     /// caption face (Journal <c>1022 #2</c> is Axis 12 in a 21-tall box).</summary>
@@ -195,6 +211,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
     private VerticalListNode? questControls;
     private TextNode? questHeaderNode;
+    private TextNode? questObjectiveNode;
+    private TextNode? questNoteNode;
     private TextButtonNode? followMsqButton;
     private TextButtonNode? teleportButton;
     private TextButtonNode? dutyFinderButton;
@@ -566,12 +584,20 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// more rows, at every window size and every HUD scale, on the tab whose whole complaint was
     /// that you could not see what was in it.</para>
     ///
-    /// <para>The Hunting Log and Following tabs keep it, because they have no page: their rows are a
-    /// target and a quest, not an entry with an anatomy, and building two more pages to justify
-    /// removing a strip that works would be the tail wagging the dog. The strip is unchanged — it is
-    /// the same component, with the same tests, drawn on two tabs instead of three.</para></summary>
+    /// <para><b>And none of the Following tab either.</b> On that tab the pane was 291 pixels — a
+    /// third of the window — spent on a status legend for three fixed choices and your own accepted
+    /// quests, none of which needs one; it was empty every time the list was rebuilt, and what it
+    /// showed then was a section glyph over five lines of vocabulary with a hundred and eighty
+    /// pixels of nothing beneath. Every action it offered is the row's own: confirm on a row
+    /// follows the thing, which is what the pane's button did. The tab now says what it is
+    /// following at the top, in a block with the objective and the buttons, and gives the rest to
+    /// the list.</para>
+    ///
+    /// <para>The Hunting Log keeps it, because its rows are a target with a count and a place, and
+    /// it has no page. The strip is unchanged — it is the same component, with the same tests,
+    /// drawn on one tab instead of three.</para></summary>
     private static float DetailPaneHeight(HubTab tab) =>
-        tab == HubTab.Checklist ? 0f : HubDetailPaneNode.PaneHeight;
+        tab is HubTab.Checklist or HubTab.Quests ? 0f : HubDetailPaneNode.PaneHeight;
 
     private static float ControlsHeight(HubTab tab) => tab switch
     {
@@ -628,8 +654,32 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         _ => GameColors.ListText,
     };
 
+    /// <summary>What colour a row's <b>name</b> is, which is very nearly always the list's own.
+    ///
+    /// <para>The name used to take the state's colour outright, and since most of the catalogue is
+    /// locked at any given level that meant most names were drawn in the same dimmed grey as the
+    /// description underneath them — "the same weight and nearly the same colour, so the eye has
+    /// nothing to land on". The state has a shape and a column of its own to be said in. The one
+    /// exception left is a permanently missed entry, where the row is not merely waiting and the
+    /// game's own red is the honest thing to draw it in.</para></summary>
+    private static Vector4 NameColor(UnlockStatus status) =>
+        UnlockStatusDisplay.Tone(status) == UnlockStatusTone.Bad ? GameColors.Bad : GameColors.ListText;
+
     /// <summary>A category key in the word the filter chip uses for it. Grouping by the key alone put
     /// lowercase "content" and "cosmetic" on screen as section headings.</summary>
+    /// <summary>What a row's right-hand caption column is allowed to hold: a count, and nothing
+    /// else.
+    ///
+    /// <para>The column is 48 pixels — Journal <c>1023 #4</c> — and a word does not fit in it. A
+    /// <see cref="FollowChoice"/>'s detail is a count for three of the four kinds and the word
+    /// "Following" for the one that is currently being followed, and that word came out as
+    /// "Follow…": the same defect as the Unlocks tab's "Lv 53…", one column over. Being followed is
+    /// already said three ways — the row's name is drawn in the green reserved for it, its marker
+    /// is the in-progress one, and the strip above every tab names it in full — so what this drops
+    /// is a truncated fourth.</para></summary>
+    private static string CountCaption(string detail) =>
+        detail.Length > 0 && detail.All(char.IsAsciiDigit) ? detail : string.Empty;
+
     private static string CategoryWord(string key) =>
         Array.Find(CategoryChips, chip => string.Equals(chip.Key, key, StringComparison.Ordinal)).Label
         ?? DisplayNames.TitleCase(key);
@@ -780,7 +830,16 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         ItemSpacing = GameMetrics.Control.ButtonGap,
     };
 
-    private static AlignedHorizontalListNode BuildFilterRow(IEnumerable<CheckboxNode> chips)
+    /// <summary>One labelled row of filter chips.
+    ///
+    /// <para><b>Why the label.</b> Two rows of bare checkboxes read as one undifferentiated block —
+    /// nothing on screen said that the first row narrowed by <i>kind</i> and the second by <i>how
+    /// much it matters</i>, so eight identical controls looked like eight of the same thing. The
+    /// game labels a cluster of controls rather than leaving it to be inferred, in the dimmed
+    /// caption face and in a fixed column so the chips beside each label start at the same x. The
+    /// column is <see cref="GameMetrics.Detail.KindWidth"/> — ContentsFinder's own 64-wide caption
+    /// column, which is the width the game uses for exactly this.</para></summary>
+    private static AlignedHorizontalListNode BuildFilterRow(string label, IEnumerable<CheckboxNode> chips)
     {
         var row = new AlignedHorizontalListNode
         {
@@ -788,6 +847,19 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             FitToContentHeight = true,
             ItemSpacing = GameMetrics.Window.BlockGap,
         };
+
+        row.AddNode(new TextNode
+        {
+            Width = GameMetrics.Detail.KindWidth,
+            Height = GameMetrics.Control.CheckboxHeight,
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
+            AlignmentType = AlignmentType.Left,
+            TextFlags = TextFlags.Ellipsis,
+            TextColor = GameColors.Dimmed,
+            String = label,
+        });
 
         foreach (var chip in chips)
         {
@@ -850,6 +922,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         stripControls = null;
         questControls = null;
         questHeaderNode = null;
+        questObjectiveNode = null;
+        questNoteNode = null;
         followMsqButton = null;
         teleportButton = null;
         dutyFinderButton = null;
@@ -1821,6 +1895,39 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         list.OptionNodes[populated - 1].ProcessNav(index, up, list.NavDown, list.NavLeft, list.NavRight);
     }
 
+    /// <summary>Takes out any heading with nothing under it, immediately before the rows are
+    /// published.
+    ///
+    /// <para>A section header is a promise that something follows it, and a list that breaks that
+    /// promise reads as content that failed to load — the field report was a heading with, in the
+    /// player's own words, nothing under it. Enforced here rather than at each of the four places
+    /// that build rows, because the guarantee wanted is about the list and not about any one
+    /// builder: whatever put a heading there, it does not reach the screen without content.</para>
+    ///
+    /// <para>Back to front so a heading left orphaned by dropping the heading beneath it goes as
+    /// well — an empty section at the end of a list of empty sections must not survive because it
+    /// was followed by another heading at the moment it was checked.</para>
+    ///
+    /// <para>A heading that can be <i>activated</i> stays whatever is under it. The collapsed
+    /// Unverified section is one: it is a control rather than a label, its whole job is to have
+    /// nothing under it until it is pressed, and taking it away would take the way back with
+    /// it.</para></summary>
+    private void DropEmptyHeadings()
+    {
+        for (var i = rows.Count - 1; i >= 0; i--)
+        {
+            if (rows[i].Kind != HubRowKind.Heading || rows[i].Activate is not null)
+            {
+                continue;
+            }
+
+            if (i + 1 >= rows.Count || rows[i + 1].Kind == HubRowKind.Heading)
+            {
+                rows.RemoveAt(i);
+            }
+        }
+    }
+
     private int PopulatedRowCount() =>
         list is null ? 0 : Math.Min(list.OptionsList.Count, list.OptionNodes.Count);
 
@@ -1873,6 +1980,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
+        DropEmptyHeadings();
+
         // The page was built from a row in the list that is about to be replaced. Reaching here with
         // it open should not be possible — the per-tick refresh leaves the tab alone while it is up
         // — but a page describing an object that no longer exists is the one state worth spending a
@@ -1922,8 +2031,14 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Size = new Vector2(tabContentSize.X, ChecklistControlsHeight),
         };
 
-        checklistControls.AddNode(BuildFilterRow(BuildDoneAndCategoryChips()));
-        checklistControls.AddNode(BuildFilterRow(BuildPriorityChips()));
+        checklistControls.AddNode(BuildFilterRow("Category", BuildCategoryChips()));
+        checklistControls.AddNode(BuildFilterRow("Priority", BuildPriorityChips()));
+
+        // The game's own separator between a cluster of controls and the block under it —
+        // ContentsFinder draws one (#55) between its condition checkboxes and the row of buttons
+        // beneath them. It is what makes two rows of chips read as a filter cluster rather than as
+        // the top of an undifferentiated pile of controls.
+        checklistControls.AddNode(new HorizontalLineNode { Height = GameMetrics.Window.RuleHeight });
         checklistControls.AddNode(BuildChecklistActionRow());
 
         AddTabNode(checklistNodes, checklistControls);
@@ -1932,6 +2047,26 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private AlignedHorizontalListNode BuildChecklistActionRow()
     {
         var row = NewActionRow();
+
+        // "Complete" is not a category and was never one — it says whether finished entries are
+        // listed at all, which is a property of the list rather than of what is in it. It sat at
+        // the head of the category row purely because that row had space, and that is what stopped
+        // the two chip rows from reading as "kinds" and "priorities".
+        row.AddNode(new CheckboxNode
+        {
+            // The button row's height rather than the checkbox row's, because that is the row it is
+            // in: AlignedHorizontalListNode pins every child to y=0, so a 24 beside a 28 sits four
+            // pixels high. The game varies this itself — Journal places its checkbox at 20 and
+            // MonsterNoteBook at 24 — so the control takes the height of the block it belongs to.
+            Height = GameMetrics.Control.ButtonHeight,
+            String = "Show complete",
+            IsChecked = filter.ShowDone,
+            OnClick = isOn =>
+            {
+                filter.ShowDone = isOn;
+                RebuildChecklist();
+            },
+        });
 
         // A cycling button rather than a nested tab bar: a TabBarNode consumes one index per tab,
         // which the walker (which numbers one index per element) cannot account for — nesting one
@@ -1965,20 +2100,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return row;
     }
 
-    private IEnumerable<CheckboxNode> BuildDoneAndCategoryChips()
+    private IEnumerable<CheckboxNode> BuildCategoryChips()
     {
-        yield return new CheckboxNode
-        {
-            Height = GameMetrics.Control.CheckboxHeight,
-            String = "Complete",
-            IsChecked = filter.ShowDone,
-            OnClick = isOn =>
-            {
-                filter.ShowDone = isOn;
-                RebuildChecklist();
-            },
-        };
-
         foreach (var (key, label) in CategoryChips)
         {
             var chipKey = key;
@@ -2132,7 +2255,8 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Detail = UnlockRowText.Trailing(u),
             IconId = statusIcons.For(u.Status),
             StatusWord = UnlockStatusDisplay.Word(u.Status),
-            LabelColor = StatusColor(u.Status),
+            StatusColor = StatusColor(u.Status),
+            LabelColor = NameColor(u.Status),
             Pane = BuildUnlockDetail(u, navigator),
             Hover = PublishDetail,
 
@@ -2302,6 +2426,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 Detail = UnlockRowText.Trailing(u),
                 IconId = statusIcons.For(UnlockStatus.Unverified),
                 StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Unverified),
+                StatusColor = StatusColor(UnlockStatus.Unverified),
+
+                // The one place a dimmed name is still right: these rows are not waiting on
+                // anything, they are entries the plugin cannot vouch for, and reading as "not like
+                // the others" is the whole point of showing them separately at all.
                 LabelColor = GameColors.Dimmed,
                 Pane = BuildUnlockDetail(u, navigator: null),
                 Hover = PublishDetail,
@@ -2633,30 +2762,59 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         questHeaderNode = BuildHeadingNode(string.Empty);
         questControls.AddNode(questHeaderNode);
-        questControls.AddNode(BuildQuestFollowRow());
+
+        // The objective, in the register the game gives a body line, directly under the name of the
+        // thing it belongs to.
+        questObjectiveNode = new TextNode
+        {
+            Height = GameMetrics.Type.BodyLine,
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.BodySize,
+            LineSpacing = GameMetrics.Type.BodyLine,
+            AlignmentType = AlignmentType.Left,
+            TextFlags = TextFlags.Ellipsis,
+            TextColor = GameColors.Body,
+        };
+        questControls.AddNode(questObjectiveNode);
+
+        // Whatever else the readout is saying — "you have arrived", "teleport to Foundation first".
+        // Always drawn, empty or not, so the list below does not move up and down as the guidance
+        // changes under the cursor.
+        questNoteNode = new TextNode
+        {
+            Height = GameMetrics.Type.SecondaryLine,
+            FontType = FontType.Axis,
+            FontSize = GameMetrics.Type.SecondarySize,
+            LineSpacing = GameMetrics.Type.SecondaryLine,
+            AlignmentType = AlignmentType.Left,
+            TextFlags = TextFlags.Ellipsis,
+            TextColor = GameColors.Dimmed,
+        };
+        questControls.AddNode(questNoteNode);
+
         questControls.AddNode(BuildQuestActionRow());
 
         AddTabNode(questNodes, questControls);
     }
 
-    private AlignedHorizontalListNode BuildQuestFollowRow()
+    private AlignedHorizontalListNode BuildQuestActionRow()
     {
         var row = NewActionRow();
 
+        // One row of actions rather than two, and every one of them acts on the thing named above
+        // it. This button is the way back from a side quest to the default loop, so it says so and
+        // it is live only when there is something to come back from — the label used to read
+        // "Follow the Main Scenario" while the heading over it already said Main Scenario, which is
+        // what made it look like a caption somebody had put a box around.
         followMsqButton = new TextButtonNode
         {
             Width = GameMetrics.Control.ButtonWidthLarge,
             Height = GameMetrics.Control.ButtonHeight,
-            String = "Follow the Main Scenario",
+            String = "Resume Main Scenario",
+            IsEnabled = false,
             OnClick = OnFollowMsqClicked,
         };
         row.AddNode(followMsqButton);
-        return row;
-    }
-
-    private AlignedHorizontalListNode BuildQuestActionRow()
-    {
-        var row = NewActionRow();
 
         teleportButton = new TextButtonNode
         {
@@ -2717,8 +2875,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Clear();
         distanceRows.Clear();
         AddGuidanceUnavailableNote(navigator);
-        SetQuestHeader(content);
-        AddGuidanceLines(content);
+        SetGuidanceBlock(content);
         AddFollowableRows(navigator, choices);
         AddAcceptedQuestRows(navigator, choices);
 
@@ -2732,9 +2889,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         lastQuestSignature = ComputeQuestSignature();
     }
 
-    /// <summary>The guidance heading, verbatim — the same words the readout puts at the top of the
-    /// HUD, so the tab and the HUD can never disagree about what is being followed.</summary>
-    private void SetQuestHeader(ReadoutContent content)
+    /// <summary>The whole guidance block, verbatim — the same words the readout puts at the top of
+    /// the HUD, so the tab and the HUD can never disagree about what is being followed.
+    ///
+    /// <para>Three registers over three lines: the heading names the thing, the objective says what
+    /// it wants, and whatever the readout adds after that is the note. They used to be a heading
+    /// node and then a run of dimmed list rows separated from it by two buttons, which is how a tab
+    /// whose whole subject is one quest came to have no relationship on screen between that quest,
+    /// its objective and the buttons that act on them.</para></summary>
+    private void SetGuidanceBlock(ReadoutContent content)
     {
         if (questHeaderNode is null)
         {
@@ -2742,31 +2905,39 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var heading = "Wayfarer";
+        var objective = string.Empty;
+        var note = new List<string>();
+
         foreach (var line in content.Lines)
         {
             if (line.Emphasis == ReadoutEmphasis.Heading)
             {
                 heading = line.Text;
-                break;
             }
-        }
-
-        questHeaderNode.String = heading;
-        questHeaderNode.Height = HuntingHeaderHeight;
-        questControls?.RecalculateLayout();
-    }
-
-    // The readout's own lines, minus the heading that is already above them. Display only: they say
-    // what the guidance is doing, and the buttons beside them are what acts on it.
-    private void AddGuidanceLines(ReadoutContent content)
-    {
-        foreach (var line in content.Lines)
-        {
-            if (line.Emphasis != ReadoutEmphasis.Heading)
+            else if (objective.Length == 0)
             {
-                rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = line.Text });
+                objective = line.Text;
+            }
+            else
+            {
+                note.Add(line.Text);
             }
         }
+
+        questHeaderNode.String = HeadingText.Plain(heading);
+        questHeaderNode.Height = HuntingHeaderHeight;
+
+        if (questObjectiveNode is not null)
+        {
+            questObjectiveNode.String = objective;
+        }
+
+        if (questNoteNode is not null)
+        {
+            questNoteNode.String = string.Join(" · ", note);
+        }
+
+        questControls?.RecalculateLayout();
     }
 
     /// <summary>Everything Wayfarer can be told to follow, as rows in one list, so the answer to
@@ -2788,9 +2959,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Description = navigator?.Current.QuestName is { Length: > 0 } questName
                 ? questName
                 : "The next step of the main story.",
-            Detail = msq.Detail,
+            Detail = CountCaption(msq.Detail),
             IconId = statusIcons.For(msq.IsFollowed ? UnlockStatus.Accepted : UnlockStatus.Available),
             StatusWord = UnlockStatusDisplay.Word(msq.IsFollowed ? UnlockStatus.Accepted : UnlockStatus.Available),
+            StatusColor = StatusColor(msq.IsFollowed ? UnlockStatus.Accepted : UnlockStatus.Available),
             LabelColor = msq.IsFollowed ? GameColors.Good : null,
             Pane = FollowableDetail(
                 "Main Scenario",
@@ -2816,9 +2988,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Description = routable
                 ? $"{choice.Detail} nearby, nearest first."
                 : "Nothing to route to.",
-            Detail = choice.Detail,
+            Detail = CountCaption(choice.Detail),
             IconId = statusIcons.For(routable ? UnlockStatus.Available : UnlockStatus.Done),
             StatusWord = UnlockStatusDisplay.Word(routable ? UnlockStatus.Available : UnlockStatus.Done),
+            StatusColor = StatusColor(routable ? UnlockStatus.Available : UnlockStatus.Done),
             Pane = FollowableDetail(
                 choice.Label,
                 routable ? $"{choice.Detail} available nearby." : "Nothing to route to.",
@@ -2840,9 +3013,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Description = hunting.ActiveLogLabel is null
                 ? hunting.NoLogReason ?? "No hunting log active."
                 : $"Rank {hunting.CurrentRank} · {remaining} left in this zone",
-            Detail = choice.Detail,
+            Detail = CountCaption(choice.Detail),
             IconId = statusIcons.For(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
             StatusWord = UnlockStatusDisplay.Word(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
+            StatusColor = StatusColor(choice.Activate is not null ? UnlockStatus.Available : UnlockStatus.Done),
             Pane = FollowableDetail(
                 choice.Label,
                 remaining > 0 ? $"{remaining} targets left in this zone." : hunting.NoLogReason ?? "Nothing left on this rank here.",
@@ -2901,9 +3075,10 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
                 // The objective moves to line two, where a whole sentence fits. In the gutter it
                 // was the longest string on the row competing for the narrowest space on it.
                 Description = navigator.GetAcceptedQuestObjective(questId) ?? string.Empty,
-                Detail = choice.Detail,
+                Detail = CountCaption(choice.Detail),
                 IconId = statusIcons.For(UnlockStatus.Accepted),
                 StatusWord = UnlockStatusDisplay.Word(UnlockStatus.Accepted),
+                StatusColor = StatusColor(UnlockStatus.Accepted),
                 LabelColor = choice.IsFollowed ? GameColors.Good : null,
                 Pane = BuildQuestDetail(name, navigator.GetAcceptedQuestObjective(questId), choice.IsFollowed, questId),
                 Hover = PublishDetail,
@@ -2970,8 +3145,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         if (followMsqButton is not null)
         {
-            followMsqButton.IsEnabled = navigator is not null
-                && (navigator.FollowedOverride is not null || state?.Engaged == true);
+            // Live only when there is something to come back from. Following the main scenario is
+            // this plugin's null state, so while you are on it the button has nothing to do — and a
+            // button whose label is the same sentence as the heading above it, always lit and never
+            // changing anything, is exactly what read as a caption in a box.
+            followMsqButton.IsEnabled = navigator?.FollowedOverride is not null;
         }
 
         UpdateTeleportButton(state);

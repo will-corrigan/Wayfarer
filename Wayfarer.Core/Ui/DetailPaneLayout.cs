@@ -170,12 +170,13 @@ public static class DetailPaneLayout
         var (badge, title, kind, statusIcon, status) = header;
 
         var body = Advance(ref y, box, budget.Body > 0, BlockHeight(budget.Body));
-        var bodyGlyph = Glyph(box, body);
+        var bodyGlyph = Glyph(box, body, Indent(body, GameMetrics.Journal.GlyphTextLeft));
         body = Indent(body, GameMetrics.Journal.GlyphTextLeft);
 
         var requirementsLabel =
             Advance(ref y, box, budget.RequirementsLabel, GameMetrics.Detail.HeadingHeight);
-        var requirementsGlyph = Glyph(box, requirementsLabel);
+        var requirementsGlyph = Glyph(
+            box, requirementsLabel, Indent(requirementsLabel, GameMetrics.Journal.GlyphTextLeft));
         requirementsLabel = Indent(requirementsLabel, GameMetrics.Journal.GlyphTextLeft);
         var requirements =
             Indent(
@@ -183,7 +184,8 @@ public static class DetailPaneLayout
                 GameMetrics.Row.TextLeft);
 
         var rewardLabel = Advance(ref y, box, budget.Reward, GameMetrics.Detail.HeadingHeight);
-        var rewardGlyph = Glyph(box, rewardLabel);
+        var rewardGlyph = Glyph(
+            box, rewardLabel, Indent(rewardLabel, GameMetrics.Journal.GlyphTextLeft));
         rewardLabel = Indent(rewardLabel, GameMetrics.Journal.GlyphTextLeft);
         var tray = RewardTray(ref y, box, budget.Reward);
 
@@ -265,11 +267,17 @@ public static class DetailPaneLayout
 
     /// <summary>A section glyph in the block's left gutter. The game draws these 24x24 at x=0 with
     /// the heading two pixels under their right edge; the two-pixel tuck is the glyph art's own
-    /// transparent margin, not an overlap.</summary>
-    private static ScreenRect Glyph(ScreenRect box, ScreenRect block)
+    /// transparent margin, not an overlap.
+    ///
+    /// <para>A glyph is an accent on words and never stands alone, so it is dropped whenever the
+    /// words are: <paramref name="text"/> is the block after it has been indented past this gutter,
+    /// and a pane narrow enough to leave nothing there must lose the mark as well as the line.
+    /// Otherwise a squeezed pane draws a disc with nothing beside it, which reads as a rendering
+    /// fault rather than as a section.</para></summary>
+    private static ScreenRect Glyph(ScreenRect box, ScreenRect block, ScreenRect text)
     {
         var size = GameMetrics.Journal.GlyphSize;
-        return block.IsEmpty || block.Y + size > box.Bottom || box.Width < size
+        return block.IsEmpty || text.IsEmpty || block.Y + size > box.Bottom || box.Width < size
             ? default
             : new ScreenRect(block.X, block.Y, size, size);
     }
