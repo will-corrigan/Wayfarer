@@ -53,9 +53,16 @@ internal sealed class HubListRow
     /// <summary>Invoked on mouse click and on controller confirm alike. Null on headings and
     /// notes, which are still focusable (the game's own lists behave the same way) but inert.
     ///
-    /// <para>Not reached on a row that <see cref="OpensPage"/>: activating those opens the journal
-    /// page and the action moves onto it, which is the game's own contract — the Journal's list
-    /// selects, its page acts.</para></summary>
+    /// <para>Both presses reach the window through one handler — the list's <c>OnItemSelected</c>,
+    /// which is what the row's <c>OnClick</c> is wired to and what a controller confirm raises too.
+    /// That is load-bearing rather than incidental: it is the single place <see cref="OpensPage"/> is
+    /// consulted, so anything that activates a row without going through it can only ever run this
+    /// action and can never open a page.</para>
+    ///
+    /// <para>Not reached on a row that <see cref="OpensPage"/> with a <see cref="Pane"/>: activating
+    /// those opens the journal page and the action moves onto it, which is the game's own contract —
+    /// the Journal's list selects, its page acts. The page's own controls call back into this, which
+    /// is why a page-opening row still carries one.</para></summary>
     public Action? Activate { get; init; }
 
     /// <summary>Whether activating this row opens the journal page for it instead of acting on it.

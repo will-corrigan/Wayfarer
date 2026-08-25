@@ -174,15 +174,20 @@ internal sealed class HubListRowNode : ListItemWithFocusNav<HubListRow>, IListIt
         Layout();
     }
 
-    /// <inheritdoc/>
-    protected override void OnNavSelected()
-    {
-        // Deliberately NOT calling base: the base toggles IsSelected and re-raises OnClick, which
-        // ListNode also raises for a mouse click AND (unless AllowMultipleSelection is set) for
-        // every row its own scroll-follows-focus passes over. Routing controller activation
-        // straight to the row's action here keeps a held d-pad from firing everything it scrolls by.
-        ItemData?.Activate?.Invoke();
-    }
+    /// <summary>Controller confirm. Calls base, so a confirm press takes the <b>same</b> path a
+    /// mouse click takes: <c>ListNode</c> wires every row's <c>OnClick</c> to its own
+    /// <c>OnItemSelected</c>, and the handler on the other end of that is the only place the window
+    /// decides between opening a row's page and acting on the row. An activation that does not raise
+    /// <c>OnClick</c> therefore cannot open a page at all — it silently runs the row's fallback
+    /// action instead, which made the whole journal page mouse-only.
+    ///
+    /// <para>Overridden only to say that, because the obvious-looking alternative is wrong: calling
+    /// <c>ItemData.Activate</c> straight from here bypasses the decision. The scroll-follows-focus
+    /// <c>OnClick</c> storm that would justify the bypass — <c>ListNode</c> raising <c>OnClick</c> on
+    /// every row a held d-pad scrolls past — is gated on <c>AllowMultipleSelection</c> being false,
+    /// and this list sets it true for exactly that reason. There is nothing to defend against.</para>
+    /// </summary>
+    protected override void OnNavSelected() => base.OnNavSelected();
 
     /// <summary>The controller's half of "cursor moves, detail updates" — fired by
     /// <c>NavFocusNode</c> on every d-pad step onto this row, which is the callback pair the
