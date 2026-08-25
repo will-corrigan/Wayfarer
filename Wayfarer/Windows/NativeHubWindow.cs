@@ -2692,7 +2692,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             var view = hunting.CurrentTarget is { } current && current.Monster == monster
                 ? current
-                : hunting.HuntHereOrder.FirstOrDefault(t => t.Monster == monster);
+                : hunting.RemainingTargets.FirstOrDefault(t => t.Monster == monster);
             if (view is null)
             {
                 continue;
@@ -2712,8 +2712,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
+        // The rank and what is left of it, in one line above the list — which is where the game's
+        // own Hunting Log puts its progress (MonsterNoteBook 1018: a label, a count and a bar,
+        // directly over the monster list). The count is what makes the tab say what it is for
+        // without the reader having to total the rows themselves.
+        var left = hunting.RemainingTargets.Count;
         SetHuntingHeader(hunting.ActiveLogLabel is { } label
-            ? $"{label} - Rank {hunting.CurrentRank}"
+            ? $"{label} - Rank {hunting.CurrentRank} - {left} left"
             : hunting.NoLogReason ?? "No hunting log active.");
 
         var navigator = ResolveNavigator();
@@ -2724,12 +2729,22 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         rows.Clear();
         distanceRows.Clear();
         AddGuidanceUnavailableNote(navigator);
-        foreach (var target in hunting.HuntHereOrder)
+
+        // Every remaining target on the rank, in the dataset's own order — which is the order the
+        // game's Hunting Log lists them in.
+        //
+        // This used to list HuntHereOrder, which is only the targets in the zone the player happens
+        // to be standing in. That is the right set for the Start Hunting button, which chains a
+        // route through this zone, and the wrong set for a log: a rank has around ten targets and
+        // the tab showed the nought-to-three of them that were local, so most of the rank was
+        // simply absent. "Half of it is cropped away" was not a clipping bug — the rows were never
+        // built.
+        foreach (var target in hunting.RemainingTargets)
         {
             rows.Add(BuildHuntingRow(target, navigator));
         }
 
-        var shown = hunting.HuntHereOrder.Select(t => t.Monster).ToHashSet();
+        var shown = hunting.RemainingTargets.Select(t => t.Monster).ToHashSet();
         if (hunting.CurrentTarget is { } current && !shown.Contains(current.Monster))
         {
             rows.Add(BuildHuntingRow(current, navigator));

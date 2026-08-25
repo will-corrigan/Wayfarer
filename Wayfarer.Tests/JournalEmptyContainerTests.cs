@@ -37,7 +37,7 @@ public class JournalEmptyContainerTests
         var body = MethodBody(
             Path.Combine("Wayfarer", "Windows", "Native", "HubStatusIcons.cs"),
             "public uint For(",
-            "private bool Probe(");
+            "private GameIconAvailability Probe(");
 
         Assert.Contains("LockedQuestIcon", body, StringComparison.Ordinal);
         Assert.Contains("LockedDutyIcon", body, StringComparison.Ordinal);
