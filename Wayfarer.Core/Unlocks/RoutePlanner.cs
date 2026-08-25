@@ -29,6 +29,27 @@ public static class RoutePlanner
         return result;
     }
 
+    /// <summary>The stops a "Route Me" press actually queues: <see cref="Order"/>, cut to
+    /// <see cref="UnlockRouteCap.Stops"/>.
+    ///
+    /// <para>Separate from <see cref="Order"/> rather than a cap inside it, because the two answer
+    /// different questions — "in what order are these worth walking" has no cap in it, and a caller
+    /// that wants the whole ordering (the chain planner's own comparison against it, for one) must
+    /// not have to work around one. This is the only thing the three Route Me buttons call, which is
+    /// what stops one of them from being uncapped: the cap is not theirs to apply.</para>
+    ///
+    /// <para>The count of what was left out is not returned — the caller already knows it, from the
+    /// same list it passed in. See <see cref="UnlockRouteCap.ButtonLabel"/> for the half of this
+    /// that matters, which is that the number is on screen before the button is pressed.</para>
+    /// </summary>
+    public static List<ResolvedUnlock> Plan(
+        List<ResolvedUnlock> available, uint currentTerritory, float px, float pz)
+    {
+        var ordered = Order(available, currentTerritory, px, pz);
+        var take = UnlockRouteCap.Take(ordered.Count);
+        return ordered.Count > take ? ordered.GetRange(0, take) : ordered;
+    }
+
     /// <summary>Top <paramref name="max"/> Available unlocks in <paramref name="currentTerritory"/>,
     /// nearest-first from the player position — the pure selection behind the widget's glanceable
     /// lines and the info bar's alert marker. Same Available + GiverTerritory==territory criterion as

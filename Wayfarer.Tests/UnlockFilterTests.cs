@@ -5,18 +5,32 @@ namespace Wayfarer.Tests;
 
 public class UnlockFilterTests
 {
+    /// <summary>The chip an entry answers to is read off its <c>channel</c> now, not its
+    /// <c>type</c> — which is what lets a title be a Title instead of a cosmetic and a feature be a
+    /// Capability instead of whatever was left. The <c>type</c> is deliberately set to something
+    /// unhelpful in every case below, so a mapping that still consulted it would fail.</summary>
     [Theory]
-    [InlineData("dungeon", false, "content")]
-    [InlineData("trial", false, "content")]
-    [InlineData("alliance-raid", false, "content")]
-    [InlineData("mount", false, "cosmetic")]
-    [InlineData("emote", false, "cosmetic")]
-    [InlineData("system", true, "cosmetic")]
-    [InlineData("system", false, "system")]
-    [InlineData("zone", false, "zone")]
-    public void Category_Mapping(string type, bool cosmetic, string expected)
+    [InlineData("duty", UnlockDomains.Duties)]
+    [InlineData("system", UnlockDomains.Capabilities)]
+    [InlineData("title", UnlockDomains.Titles)]
+    [InlineData("orchestrion", UnlockDomains.Collection)]
+    [InlineData("emote", UnlockDomains.Collection)]
+    [InlineData("gathering-folklore", UnlockDomains.Logs)]
+    [InlineData("job", UnlockDomains.Jobs)]
+    [InlineData("zone", UnlockDomains.Travel)]
+    public void Domain_Mapping(string channel, string expected)
     {
-        Assert.Equal(expected, UnlockFilters.Category(new UnlockDefinition { Type = type, Cosmetic = cosmetic }));
+        var def = new UnlockDefinition { Channel = channel, Type = "system", Cosmetic = true };
+        Assert.Equal(expected, UnlockFilters.Domain(def));
+    }
+
+    /// <summary>A channel nothing claims has no domain, and says so rather than landing in a
+    /// bucket. This is the assertion that the default-bucket behaviour is gone.</summary>
+    [Fact]
+    public void AnUnclaimedChannelHasNoDomainRatherThanADefaultOne()
+    {
+        Assert.Null(UnlockFilters.Domain(new UnlockDefinition { Channel = "hats", Type = "system" }));
+        Assert.Null(UnlockFilters.Domain(new UnlockDefinition { Channel = string.Empty, Type = "dungeon" }));
     }
 
     [Fact]
@@ -30,13 +44,39 @@ public class UnlockFilterTests
     }
 
     [Fact]
-    public void Matches_CategoryPrioritySearch()
+    public void Matches_DomainPrioritySearch()
     {
-        var f = new FilterState { Categories = ["cosmetic"], Priorities = ["essential"], Search = "glam" };
-        Assert.True(UnlockFilters.Matches(U("Glamours", "system", "essential", cosmetic: true), f));
-        Assert.False(UnlockFilters.Matches(U("Glamours", "system", "nice", cosmetic: true), f));   // wrong priority
-        Assert.False(UnlockFilters.Matches(U("Glamours", "dungeon", "essential"), f));             // wrong category
-        Assert.False(UnlockFilters.Matches(U("Materia", "system", "essential", cosmetic: true), f)); // search miss
+        var f = new FilterState
+        {
+            Domains = [UnlockDomains.Capabilities],
+            Priorities = ["essential"],
+            Search = "glam",
+        };
+
+        Assert.True(UnlockFilters.Matches(U("Glamours", "system", "essential"), f));
+        Assert.False(UnlockFilters.Matches(U("Glamours", "system", "nice"), f));      // wrong priority
+        Assert.False(UnlockFilters.Matches(U("Glamours", "duty", "essential"), f));   // wrong domain
+        Assert.False(UnlockFilters.Matches(U("Materia", "system", "essential"), f));  // search miss
+    }
+
+    /// <summary>Glamours is the case the four-bucket mapping got wrong and the reason the chips were
+    /// replaced: it is a FEATURE, its <c>type</c> is <c>system</c>, and because the catalogue marks
+    /// it cosmetic the old mapping filed it under the Cosmetics chip with 158 titles and every
+    /// orchestrion roll. The channel puts it in Capabilities and the <c>cosmetic</c> flag no longer
+    /// gets a vote.</summary>
+    [Fact]
+    public void ACosmeticFlaggedFeatureIsACapabilityRatherThanACosmetic()
+    {
+        var glamours = new UnlockDefinition
+        {
+            Unlock = "Glamours",
+            Channel = "system",
+            Type = "system",
+            Cosmetic = true,
+        };
+
+        Assert.Equal(UnlockDomains.Capabilities, UnlockFilters.Domain(glamours));
+        Assert.NotEqual(UnlockDomains.Collection, UnlockFilters.Domain(glamours), StringComparer.Ordinal);
     }
 
     [Fact]
@@ -103,9 +143,13 @@ public class UnlockFilterTests
         Assert.Equal(expected, top.Select(r => r.Def.Unlock).ToArray());
     }
 
+    /// <summary>An entry whose <c>channel</c> and <c>type</c> are the same string, which is true of
+    /// <c>system</c>, <c>emote</c>, <c>mount</c>, <c>minion</c> and <c>zone</c> in the real
+    /// catalogue. The filter reads the channel; the type is set alongside it so these fixtures still
+    /// describe a shape the catalogue can actually produce.</summary>
     private static ResolvedUnlock U(
         string unlock,
-        string type,
+        string channel,
         string prio = "nice",
         bool cosmetic = false,
         uint? territory = null,
@@ -115,7 +159,14 @@ public class UnlockFilterTests
         UnlockStatus status = UnlockStatus.Available)
         => new()
         {
-            Def = new UnlockDefinition { Unlock = unlock, Type = type, Priority = prio, Cosmetic = cosmetic },
+            Def = new UnlockDefinition
+            {
+                Unlock = unlock,
+                Type = channel,
+                Channel = channel,
+                Priority = prio,
+                Cosmetic = cosmetic,
+            },
             QuestRowId = 1,
             QuestLevel = level,
             GiverTerritory = territory,

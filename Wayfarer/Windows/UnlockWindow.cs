@@ -28,9 +28,15 @@ internal sealed class UnlockWindow(
     // QuestNavigator/UnlockService, which redeclare the same constant for the same reason.
     private const uint QuestRowIdOffset = 65536;
 
-    private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
-    private static readonly (string Key, string Label)[] CategoryChips =
-        [("content", "Content"), ("system", "Systems"), ("cosmetic", "Cosmetics"), ("zone", "Zones")];
+    private static readonly UnlockGrouping[] GroupModes =
+        [UnlockGrouping.Domain, UnlockGrouping.Zone, UnlockGrouping.Level];
+
+    private static readonly string[] GroupModeLabels = [.. GroupModes.Select(m => m.ToString())];
+
+    /// <summary>The seven domain chips, from <see cref="UnlockDomains"/> — the same source the
+    /// native window's are built from, so the fallback cannot offer a different set.</summary>
+    private static readonly (string Key, string Label)[] DomainChips =
+        [.. UnlockDomains.All.Select(d => (d, UnlockDomains.Label(d)))];
 
     private static readonly (string Key, string Label)[] PriorityChips =
         [("essential", "Essential"), ("nice", "Nice"), ("optional", "Optional")];
@@ -88,21 +94,7 @@ internal sealed class UnlockWindow(
 
         if (ImGui.BeginChild("unlocklist"))
         {
-            foreach (var group in GroupEntries(visible))
-            {
-                if (!ImGui.CollapsingHeader(
-                    $"{group.Key} ({group.Count()})###grp{group.Key}",
-                    ImGuiTreeNodeFlags.DefaultOpen))
-                {
-                    continue;
-                }
-
-                foreach (var u in OrderInGroup(group))
-                {
-                    DrawRow(u);
-                }
-            }
-
+            DrawSections(visible);
             DrawUnverified();
         }
 
@@ -203,7 +195,7 @@ internal sealed class UnlockWindow(
     private void DrawFilterBar()
     {
         ImGui.SetNextItemWidth(90 * ImGuiHelpers.GlobalScale);
-        ImGui.Combo("##groupby", ref groupMode, GroupModes, GroupModes.Length);
+        ImGui.Combo("##groupby", ref groupMode, GroupModeLabels, GroupModeLabels.Length);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(140 * ImGuiHelpers.GlobalScale);
         if (ImGui.InputTextWithHint("##search", "search...", ref search, 64))
@@ -218,7 +210,7 @@ internal sealed class UnlockWindow(
             filter.ShowDone = showDone;
         }
 
-        DrawChips(CategoryChips, filter.Categories);
+        DrawChips(DomainChips, filter.Domains);
         ImGui.SameLine();
         ImGui.TextDisabled("|");
         ImGui.SameLine();
@@ -228,16 +220,22 @@ internal sealed class UnlockWindow(
     private void DrawRouteButton(List<ResolvedUnlock> visible)
     {
         var routable = visible.Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null).ToList();
+
+        // Same words and same cap as the native button — through UnlockRouteCap, which is the point
+        // of it being there. This window is what a player sees when the native one could not be
+        // created, and a fallback that quietly routed everything would make the cap a property of
+        // which window happened to open.
+        var label = UnlockRouteCap.ButtonLabel(routable.Count);
         if (navigator == null)
         {
-            ImGui.TextDisabled($"Route Me ({routable.Count}) — enable Quest Helper");
+            ImGui.TextDisabled($"{label} — enable Quest Helper");
             return;
         }
 
-        if (ImGui.Button($"Route Me ({routable.Count})") && routable.Count > 0)
+        if (ImGui.Button(label) && routable.Count > 0)
         {
             var player = objects.LocalPlayer;
-            var ordered = RoutePlanner.Order(
+            var ordered = RoutePlanner.Plan(
                 routable,
                 clientState.TerritoryType,
                 player?.Position.X ?? 0,
@@ -251,7 +249,7 @@ internal sealed class UnlockWindow(
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Walks every quest above, nearest first.");
+            ImGui.SetTooltip(UnlockRouteCap.Explanation(routable.Count));
         }
 
         DrawStopButton();
@@ -277,30 +275,40 @@ internal sealed class UnlockWindow(
         }
     }
 
-    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupEntries(List<ResolvedUnlock> visible) =>
-        GroupModes[groupMode] switch
-        {
-            // An entry with no level gets its own section rather than a level band. Its quest row
-            // is a hidden level-1 reward row, so banding it would file the Extreme-trial trophy
-            // mounts under "Level 0–9" — a claim no source makes and the player would have to
-            // scroll past. Those sections sort after every level band.
-            "Level" => visible.GroupBy(
-                    u => u.Def.Level is null
-                        ? u.Def.Category ?? "No level requirement"
-                        : $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}",
-                    StringComparer.Ordinal)
-                .OrderBy(g => g.Any(u => u.Def.Level is null) ? 1 : 0)
-                .ThenBy(g => g.Min(u => u.QuestLevel)),
-            "Type" => visible.GroupBy(u => UnlockFilters.Category(u.Def), StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal),
-            _ => GroupByZone(visible),
-        };
-
-    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupByZone(List<ResolvedUnlock> visible)
+    /// <summary>Groups, bands, rows — from <see cref="UnlockSections"/>, which is the same call the
+    /// native window makes. The two windows had a grouping function each and could therefore disagree
+    /// about the order of the same list; neither of them can be tested, and that can.</summary>
+    private void DrawSections(List<ResolvedUnlock> visible)
     {
-        var currentZone = CurrentZoneName(); // hoisted: one scan of Entries per Draw, not per zone group
-        return visible.GroupBy(u => u.ZoneName ?? "Unknown location", StringComparer.Ordinal)
-                      .OrderByDescending(g => string.Equals(g.Key, currentZone, StringComparison.Ordinal))
-                      .ThenBy(g => g.Key, StringComparer.Ordinal);
+        foreach (var group in UnlockSections.Build(visible, GroupModes[groupMode], CurrentZoneName()))
+        {
+            if (!ImGui.CollapsingHeader(
+                $"{group.Heading} ({group.Count})###grp{group.Heading}",
+                ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                continue;
+            }
+
+            foreach (var band in group.Bands)
+            {
+                // The band's own line, indented under the group. Not a collapsing header: a band is
+                // not somewhere to put things away, and "Not known" folded shut is exactly the
+                // silence the band exists to break.
+                ImGui.Indent();
+                ImGui.TextDisabled($"{UnlockBands.Label(band.Band)} ({band.Entries.Count})");
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip(UnlockBands.Explanation(band.Band));
+                }
+
+                foreach (var u in band.Entries)
+                {
+                    DrawRow(u);
+                }
+
+                ImGui.Unindent();
+            }
+        }
     }
 
     private string? CurrentZoneName()

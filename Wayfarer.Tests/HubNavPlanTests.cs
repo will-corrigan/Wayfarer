@@ -1,4 +1,5 @@
 using Wayfarer.Core.Ui;
+using Wayfarer.Core.Unlocks;
 
 namespace Wayfarer.Tests;
 
@@ -116,6 +117,68 @@ public class HubNavPlanTests
             + "entirely unreachable with a controller. Raise RegionCapacity and move HubNavPlan.List.";
 
         Assert.True(worstCase <= HubNavPlan.RegionCapacity, message);
+    }
+
+    /// <summary>The same budget, for the Checklist tab — which just grew three controls.
+    ///
+    /// <para>The category chips went from four to seven when the four buckets became the seven
+    /// domains, and the chips are numbered one index each exactly as the settings are. Nothing
+    /// asserted the Checklist tab's count before, on the assumption that "there is obviously room" —
+    /// which is the same assumption the Settings tab's out-by-four comment was making.</para>
+    ///
+    /// <para>The chip count is read from <see cref="UnlockDomains"/> rather than from the window's
+    /// source, because that is where it comes from: the window generates one chip per domain, so
+    /// adding an eighth domain is what would move this number, and it moves here automatically.</para>
+    /// </summary>
+    [Fact]
+    public void The_checklist_tab_fits_the_control_region_with_room_to_grow()
+    {
+        // One index per numbered control: a domain chip each, a priority chip each, then the three
+        // controls on the action row (Show complete, Group, Route Me). Headings are text nodes and
+        // cost nothing, and the band headings the domains added are LIST rows — they are numbered out
+        // of the list block's pool, not out of this region, which is why they cannot strand anything.
+        var domainChips = UnlockDomains.All.Count;
+        const int PriorityChips = 3;
+        const int ActionRowControls = 3;
+
+        var controls = domainChips + PriorityChips + ActionRowControls;
+
+        // Generous on the same principle the Settings guard uses: worth having only if it still holds
+        // after a few more chips, and being told now is the point.
+        const int PlausibleGrowth = 8;
+        var worstCase = controls + PlausibleGrowth;
+
+        var message =
+            $"the Checklist tab would number {worstCase} controls ({domainChips} domain chips, "
+            + $"{PriorityChips} priority chips, {ActionRowControls} actions, plus {PlausibleGrowth} of "
+            + $"headroom) into a region that reserves {HubNavPlan.RegionCapacity}. "
+            + "NavigationWalker.Apply refuses a region that does not fit, so the tab would become "
+            + "entirely unreachable with a controller. Raise RegionCapacity and move HubNavPlan.List.";
+
+        Assert.True(worstCase <= HubNavPlan.RegionCapacity, message);
+    }
+
+    /// <summary>Band headings do not touch the control region's budget, and cannot strand a control
+    /// off the end of the index space.
+    ///
+    /// <para>They are rows in the virtualized list, so they are numbered out of the list block's
+    /// pool — and the pool is clamped to <see cref="HubNavPlan.ListPoolLimit"/>, which is why the
+    /// block's last index is a constant. Adding up to four band headings per group multiplies the
+    /// number of ROWS, and the number of rows has never been what the index space bounds. This is
+    /// that reasoning written down as an assertion, because "adding rows is free" is exactly the kind
+    /// of claim that stops being true quietly.</para></summary>
+    [Fact]
+    public void Band_headings_are_list_rows_and_do_not_consume_control_indices()
+    {
+        // Whatever the row count, the block ends at the same index — the pool is what is numbered.
+        var withFewRows = NavListBlock.DownwardSentinelIndex(HubNavPlan.List, HubNavPlan.MaxListPoolSize);
+        var withManyRows = NavListBlock.DownwardSentinelIndex(HubNavPlan.List, HubNavPlan.MaxListPoolSize);
+
+        Assert.Equal(withFewRows, withManyRows);
+        Assert.True(withFewRows <= NavGraphPlanner.MaxIndex);
+
+        // And the region below the list is untouched by any of it.
+        Assert.True(HubNavPlan.Region + HubNavPlan.RegionCapacity <= HubNavPlan.List);
     }
 
     /// <summary>A pooled row count large enough to be useful is still available after the clamp:

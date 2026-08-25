@@ -273,10 +273,14 @@ internal sealed class GuidanceActions(
             () => module.StartRoute(clientState.TerritoryType));
     }
 
-    /// <summary>A route through every available, locatable unlock — the same predicate and ordering
-    /// (<see cref="RoutePlanner.Order"/>) as the unlocks window's "Route me" button. Named for where
-    /// it is offered: the follow list says what it would follow and how much of it there is, the
-    /// action list says what it would start.</summary>
+    /// <summary>A route through the available, locatable unlocks — the same predicate, ordering and
+    /// cap (<see cref="RoutePlanner.Plan"/>) as the unlocks window's "Route Me" button. Named for
+    /// where it is offered: the follow list says what it would follow and how much of it there is,
+    /// the action list says what it would start.
+    ///
+    /// <para>This is a context-menu entry, so it is a surface a player can start a route from
+    /// without ever opening the window that shows the count. That is exactly why the cap is stated
+    /// here too, in the label, rather than left to the window to have mentioned.</para></summary>
     private GuidanceAction? StartUnlockRoute(QuestNavigator navigator, string? label)
     {
         if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule)
@@ -293,7 +297,7 @@ internal sealed class GuidanceActions(
         }
 
         return new GuidanceAction(
-            label ?? $"Unlock Route ({routable.Count})",
+            label ?? $"Unlock Route — {UnlockRouteCap.Caption(routable.Count)}",
             () => StartRoute(navigator, unlockModule, routable));
     }
 
@@ -315,7 +319,7 @@ internal sealed class GuidanceActions(
         QuestNavigator navigator, UnlockChecklistModule unlockModule, List<ResolvedUnlock> routable)
     {
         var player = objects.LocalPlayer;
-        var ordered = RoutePlanner.Order(
+        var ordered = RoutePlanner.Plan(
             routable, clientState.TerritoryType, player?.Position.X ?? 0, player?.Position.Z ?? 0);
         var targets = ordered.Select(unlockModule.Unlocks.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
         if (targets.Count > 0)
