@@ -112,7 +112,14 @@ public class InteriorRouteTests
     /// <summary>The reported case all the way to the words on screen: the costed leg, through
     /// <see cref="GuidanceProjection"/>, out of <see cref="ReadoutComposer"/>. Pins both what the
     /// player now reads AND that the arrow points at the shard they board — and that the readout
-    /// says "Fortemps Manor" exactly once, where it used to say it three times.</summary>
+    /// says "Fortemps Manor" exactly once, where it used to say it three times.
+    ///
+    /// <para>The distance is supplied, and it is zero. The reported position <i>is</i> shard 80's own
+    /// coordinates, so zero is what the live plugin measures here — other-zone mode measures to the
+    /// way in, not to the objective. Leaving it null made this test pin a line list the plugin would
+    /// never produce at that position, and hid the arrival line claiming the player had arrived at
+    /// the Fortemps Manor door while the two lines under it explained how to get there.</para>
+    /// </summary>
     [Fact]
     public void TheReportedCase_ReadsAsAShardHopWithThePlaceNamedOnce()
     {
@@ -138,13 +145,14 @@ public class InteriorRouteTests
                 AethernetExitName: leg.AethernetExitName,
                 RemainingYalms: leg.RemainingYalms));
 
-        var content = ReadoutComposer.Compose(new ReadoutInputs { State = state });
+        var content = ReadoutComposer.Compose(new ReadoutInputs { State = state, DistanceYalms = 0f });
 
         Assert.Equal(
             [
                 "Main Scenario",
                 "Heroes of the Hour",
                 "Enter Fortemps Manor.",
+                "0 yalms",
                 "To The Forgotten Knight aetheryte",
                 "Aethernet to The Last Vigil, then 42 yalms",
             ],

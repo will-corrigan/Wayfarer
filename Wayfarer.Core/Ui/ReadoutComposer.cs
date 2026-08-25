@@ -298,7 +298,15 @@ public static class ReadoutComposer
             return;
         }
 
-        if (distance < 5f)
+        // Arrival is a claim about the OBJECTIVE, and this distance is only the objective's in
+        // same-zone mode. In other-zone mode it is the distance to the way in — ReadoutFeed measures
+        // it to (EntranceX, EntranceZ) — so a player standing on the entry shard is at the start of
+        // the route, not the end of it. The Forgotten Knight is reached through shard 80 in
+        // Foundation, and standing on that shard the readout said "You have arrived" in Primary above
+        // "Aethernet to The Last Vigil, then 42 yalms": the loudest line on screen contradicting the
+        // two beneath it. Zero yalms to the door you have not walked through yet is a distance, and
+        // the plain distance line says it without claiming anything.
+        if (distance < 5f && string.Equals(inputs.State.Mode, NavigationState.Modes.SameZone, StringComparison.Ordinal))
         {
             lines.Add(new ReadoutLine("You have arrived", ReadoutEmphasis.Primary));
             return;

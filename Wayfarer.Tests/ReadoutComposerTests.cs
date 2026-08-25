@@ -182,6 +182,33 @@ public class ReadoutComposerTests
         Assert.Contains(content.Lines, line => line.Text.Contains("Through Gate of Nald", StringComparison.Ordinal));
     }
 
+    /// <summary>Arrival is a claim about the objective, and in other-zone mode the distance is not
+    /// the objective's — it is measured to the way in. Standing on the door, or on the aethernet
+    /// shard that reaches it, is the START of the route: the player has arrived at nothing yet. Said
+    /// here it was the loudest line on screen directly contradicting the two lines underneath it
+    /// telling them how much further to go.</summary>
+    [Fact]
+    public void Standing_on_the_way_in_is_not_arriving_at_the_objective()
+    {
+        var state = new NavigationState
+        {
+            Mode = NavigationState.Modes.OtherZone,
+            SourceLabel = "Main Scenario",
+            QuestName = "The Ul'dahn Envoy",
+            EntranceName = "Gate of Nald",
+            EntranceX = 5f,
+            EntranceZ = 6f,
+            ZoneName = "Western Thanalan",
+        };
+
+        var content = ReadoutComposer.Compose(Inputs(state) with { DistanceYalms = 0f });
+
+        Assert.DoesNotContain(
+            content.Lines, line => string.Equals(line.Text, "You have arrived", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => string.Equals(line.Text, "0 yalms", StringComparison.Ordinal));
+        Assert.Contains(content.Lines, line => line.Text.Contains("Through Gate of Nald", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void There_is_no_arrow_when_the_route_is_a_teleport()
     {
