@@ -31,8 +31,11 @@ namespace Wayfarer.Windows.Native;
 /// preset change and a resolution change without anything having to tell them.</para></summary>
 internal sealed class SettingSliderNode : VerticalListNode
 {
-    private const float CaptionHeight = GameMetrics.Row.SecondaryTextHeight;
-    private const float SliderHeight = GameMetrics.Control.DropDownHeight;
+    // From SettingsLayout, not from GameMetrics directly: the settings stack's scroll-follows-focus
+    // proof models this row's height, and a model that can drift from the row it models proves
+    // nothing. See SettingsLayout.ControlHeight.
+    private const float CaptionHeight = SettingsLayout.ScaleCaptionHeight;
+    private const float SliderHeight = SettingsLayout.ScaleSliderHeight;
 
     private readonly SettingDefinition setting;
     private readonly TextNode caption;
@@ -54,7 +57,7 @@ internal sealed class SettingSliderNode : VerticalListNode
 
         FitWidth = true;
         FitContents = true;
-        ItemSpacing = GameMetrics.Row.Padding;
+        ItemSpacing = SettingsLayout.ScaleCaptionGap;
 
         caption = new TextNode
         {
