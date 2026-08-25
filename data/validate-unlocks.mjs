@@ -206,8 +206,26 @@ const checkRequires = (where, r) => {
 
 const entryKeys = new Set([
   'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
-  'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
+  'sources',
 ]);
+
+// The player-facing backup for "the game does not say" (2026-08-24-requirement-text-provenance.md):
+// a link to the entry's own page. It is only ever written by the generator once
+// scripts/build-unlock-catalogue.mjs has checked, against Consolegameswiki's own API, that the page
+// exists — a URL assembled from a name and never verified is exactly what this field must not
+// carry. There is no separate "verified" flag alongside it for that reason: presence of the field
+// IS the verification, by construction of the one thing that is allowed to write it. What CI can
+// still check, with no network and no game, is that the value it was handed is well-formed and
+// points at the one host and path shape a verified link can ever have.
+const WIKI_URL = /^https:\/\/ffxiv\.consolegameswiki\.com\/wiki\/[^\s]+$/;
+const checkWikiUrl = (where, e) => {
+  if (!('wikiUrl' in e)) return;
+  if (typeof e.wikiUrl !== 'string' || !WIKI_URL.test(e.wikiUrl))
+    err(`${where}: wikiUrl '${e.wikiUrl}' is not a well-formed https://ffxiv.consolegameswiki.com/wiki/<Page_Name> URL`);
+  if (typeof e.wikiUrl === 'string' && / /.test(e.wikiUrl))
+    err(`${where}: wikiUrl has a literal space — page names use underscores`);
+};
 
 // What the entry actually grants, as a sheet identity. The whole value of the field is that it is
 // a ROW rather than prose, so all three parts have to be sound: a kind nothing can draw, an id of
@@ -320,6 +338,7 @@ for (const [i, e] of d.unlocks.entries()) {
   // presenting that as a gap would be a lie about the game rather than about the catalogue.
   if ('reward' in e) checkReward(where, e.reward);
   checkQuestAnyOf(where, e);
+  checkWikiUrl(where, e);
 
   // No entry may be silently identity-less. Every one has to say what it is gated on — a quest, a
   // set of quests, a curated requirement — or say out loud that it cannot be checked.

@@ -233,6 +233,109 @@ function discoverGuidePages() {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// --------------------------------------------------------------------------- wiki links (player-facing backup)
+//
+// When Wayfarer cannot explain a requirement — "the game does not say" — the player has nowhere
+// to go. A link to the entry's own page on Consolegameswiki (chosen over Gamer Escape: it is the
+// genuinely independent source, and its Prerequisites sections carry exactly the conditions this
+// pipeline cannot derive) is the backup. This section resolves and CHECKS one such page per entry
+// at generation time, alongside the wiki fetches the generator already makes — never a URL
+// assembled from a name and never written unless the wiki's own API confirms the page exists.
+
+// NOT /wiki/api.php: this wiki serves its content under /wiki/<title> and its API script from a
+// separate /mediawiki/ path — asking for /wiki/api.php returns the ARTICLE named "Api.php" (a
+// real HTML page, not JSON), which is a very quiet way to think every title is missing.
+const WIKILINK_API = 'https://ffxiv.consolegameswiki.com/mediawiki/api.php';
+const WIKILINK_USER_AGENT =
+  'WayfarerCatalogueGenerator/1.0 (https://github.com/will-corrigan/Wayfarer; wiki link verification)';
+let lastWikilinkRequestAt = 0;
+
+/** The same politeness contract as {@link api} — a contactable identity, a floor on the request
+ * interval, a cache that means a re-run asks again for nothing already checked — kept against a
+ * separate clock because this is a different site with its own rate to respect. */
+function wikilinkApi(params) {
+  const wait = MIN_REQUEST_INTERVAL_MS - (Date.now() - lastWikilinkRequestAt);
+  if (wait > 0) {
+    const until = Date.now() + wait;
+    while (Date.now() < until) { /* spin briefly; the interval is a floor, not a schedule */ }
+  }
+  lastWikilinkRequestAt = Date.now();
+
+  const argv = ['-sS', '--fail', '-L', '--compressed', '--max-time', '90', '-A', WIKILINK_USER_AGENT, '--get'];
+  for (const [k, v] of Object.entries(params)) argv.push('--data-urlencode', `${k}=${v}`);
+  argv.push(WIKILINK_API);
+
+  const run = spawnSync('curl', argv, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  if (run.status !== 0) throw new Error(`curl failed (${run.status}) for consolegameswiki ${JSON.stringify(params)}: ${run.stderr?.trim()}`);
+  return JSON.parse(run.stdout);
+}
+
+const readCachedWikilink = (title) => {
+  const slot = cacheSlot('wikilink', title);
+  return fs.existsSync(slot) ? JSON.parse(fs.readFileSync(slot, 'utf8')) : null;
+};
+
+function writeCachedWikilink(title, record) {
+  const slot = cacheSlot('wikilink', title);
+  fs.mkdirSync(path.dirname(slot), { recursive: true });
+  fs.writeFileSync(slot, JSON.stringify(record, null, 1));
+}
+
+/** The page's canonical URL: spaces become underscores, as the wiki's own links are written, and
+ * everything else is percent-encoded except the colon and apostrophe MediaWiki titles routinely
+ * carry unescaped ("The Minstrel's Ballad: Thordan's Reign") — encoding those would still be a
+ * valid URL and a far less readable one. Built from the RESOLVED title a lookup actually landed
+ * on, never from the name that was asked for. */
+function wikiPageUrl(resolvedTitle) {
+  const encoded = encodeURIComponent(resolvedTitle.replace(/ /g, '_'))
+    .replace(/%3A/g, ':')
+    .replace(/%27/g, "'");
+  return `https://ffxiv.consolegameswiki.com/wiki/${encoded}`;
+}
+
+/** Checks each candidate name against Consolegameswiki's own API and returns only what the wiki
+ * itself confirms, keyed by the name asked for. A redirect is followed to the page it actually
+ * lands on — a quest whose wiki title differs slightly from the game's own name should not lose
+ * its link over that — but the URL recorded is always built from the title the lookup landed on,
+ * never the one that was asked for. Names the wiki has no page for come back mapped to `null`,
+ * which is what tells the caller to omit `wikiUrl` rather than write a link to nothing. */
+function verifyWikiLinks(names) {
+  const todo = [...new Set(names)].filter((n) => !readCachedWikilink(n)).sort();
+  if (todo.length && args.offline) {
+    throw new Error(`--offline but ${todo.length} wiki link(s) are not cached, e.g. '${todo[0]}'`);
+  }
+
+  for (let i = 0; i < todo.length; i += TITLES_PER_REQUEST) {
+    const batch = todo.slice(i, i + TITLES_PER_REQUEST);
+    const j = wikilinkApi({
+      action: 'query', titles: batch.join('|'), redirects: '1', format: 'json', formatversion: '2',
+    });
+
+    const origin = {};
+    for (const n of j.query?.normalized ?? []) origin[n.to] = n.from;
+    for (const r of j.query?.redirects ?? []) origin[r.to] = origin[r.from] ?? r.from;
+
+    const seen = new Set();
+    for (const p of j.query?.pages ?? []) {
+      const asked = origin[p.title] ?? p.title;
+      seen.add(asked);
+      writeCachedWikilink(asked, p.missing
+        ? { title: asked, missing: true, fetched: today() }
+        : { title: asked, resolvedTitle: p.title, missing: false, url: wikiPageUrl(p.title), fetched: today() });
+    }
+    for (const t of batch) if (!seen.has(t)) writeCachedWikilink(t, { title: t, missing: true, fetched: today() });
+    process.stderr.write(`  wiki links checked ${Math.min(i + batch.length, todo.length)}/${todo.length}\r`);
+  }
+  if (todo.length) process.stderr.write('\n');
+
+  const out = new Map();
+  for (const n of new Set(names)) {
+    const rec = readCachedWikilink(n);
+    out.set(n, rec && !rec.missing ? rec.url : null);
+  }
+  return out;
+}
+
 // --------------------------------------------------------------------------- wikitext parsing
 
 const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '');
@@ -833,7 +936,8 @@ function infoboxQuestNumber(record) {
 // you get it — and stay together after it.
 const ENTRY_KEYS = [
   'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
-  'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence', 'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
+  'sources',
 ];
 
 // The guide types each row with an icon, and that icon is a statement by the source about what
@@ -1346,6 +1450,7 @@ async function main() {
     levelless: [],
     rewards: [],
     entriesWithoutAReward: [],
+    wikiLinkMisses: [],
     crossCheck: { checked: 0, agree: 0, disagree: 0, unanswerable: 0 },
     mountRequirementOverrides,
     socialRequirementOverrides,
@@ -1458,6 +1563,11 @@ async function main() {
   // they all are — see resolveRewards. The `ref` is the entry's position in `shipping`, which is
   // the only handle on a catalogue entry guaranteed unique (two entries can share a name).
   const rewardJoins = [];
+
+  // The wiki-link candidate per entry, index-aligned with `unlocks` below. Filled in alongside the
+  // entry it belongs to and checked against Consolegameswiki in one batch afterwards — see
+  // "wiki links" after the entries are built.
+  const wikiCandidates = [];
 
   const unlocks = shipping.map(({ entry, row, questRows, basis, fromGuide }, entryIndex) => {
     const curatedExtras = entry.sources.filter((s) => s !== GUIDE_SOURCE && !s.startsWith('game-data:Quest#'));
@@ -1644,7 +1754,37 @@ async function main() {
       questRowIds: [...questRows],
       duties: identityDuties.map((d) => ({ rowId: d.cfcId, name: d.name })),
     });
+
+    // The wiki-link candidate: the entry's own bound quest, and only when it is unambiguous — an
+    // entry with `questAnyOf` names a SET of quests, and picking one of their pages to link would
+    // be exactly the guess this whole feature exists not to make. Where there is no bound quest at
+    // all, the entry's own duty identity stands in for it, and only when there is exactly one: a
+    // page for one duty out of several would misname what the entry actually is.
+    wikiCandidates.push(
+      !out.questAnyOf && out.quest ? out.quest
+        : (!out.quest && identityDuties.length === 1 ? identityDuties[0].name : null),
+    );
     return out;
+  });
+
+  // ------------------------------------------------------------------ the player-facing backup
+  //
+  // One verified Consolegameswiki link per entry, where the entry names something the wiki
+  // actually has a page for. Checked, not assembled: `verifyWikiLinks` hits the wiki's own API and
+  // only a name it confirms comes back with a URL, so an entry never carries a link to a page that
+  // does not exist.
+  const wikiLinkCandidateNames = [...new Set(wikiCandidates.filter(Boolean))];
+  console.log(`checking ${wikiLinkCandidateNames.length} consolegameswiki page(s) for a wiki link...`);
+  const wikiLinks = verifyWikiLinks(wikiLinkCandidateNames);
+  unlocks.forEach((e, i) => {
+    const candidate = wikiCandidates[i];
+    const url = candidate ? wikiLinks.get(candidate) : null;
+    if (url) e.wikiUrl = url;
+    else delete e.wikiUrl;
+
+    if (candidate && !url) {
+      report.wikiLinkMisses.push({ unlock: e.unlock, level: e.level ?? null, candidate });
+    }
   });
 
   // ------------------------------------------------------------------ what each entry grants
@@ -1775,6 +1915,8 @@ async function main() {
     entriesGatedOnAnItem: unlocks.filter((e) => (e.requires?.items?.length ?? 0) > 0).length,
     entriesWithAReward: unlocks.filter((e) => e.reward).length,
     entriesWithoutAReward: report.entriesWithoutAReward.length,
+    entriesWithAWikiCandidate: wikiCandidates.filter(Boolean).length,
+    entriesWithAVerifiedWikiLink: unlocks.filter((e) => e.wikiUrl).length,
     entriesWhoseRewardHasAnIcon: unlocks.filter((e) => e.reward && drawsAnIcon(e.reward.kind)).length,
     rewardKinds: report.rewards.reduce((a, r) => ({ ...a, [r.kind]: (a[r.kind] ?? 0) + 1 }), {}),
     rewardJoinRules: report.rewards.reduce((a, r) => ({ ...a, [r.how]: (a[r.how] ?? 0) + 1 }), {}),
@@ -1813,6 +1955,7 @@ async function main() {
   console.log(`  by kind:      ${JSON.stringify(report.counts.rewardKinds)}`);
   console.log(`  by join rule: ${JSON.stringify(report.counts.rewardJoinRules)}`);
   console.log(`entries with no reward the game states: ${report.counts.entriesWithoutAReward} ${JSON.stringify(report.counts.entriesWithoutARewardByType)}`);
+  console.log(`entries with a verified wiki link: ${report.counts.entriesWithAVerifiedWikiLink} of ${report.counts.entriesWithAWikiCandidate} candidates (${unlocks.length} entries total)`);
   console.log('');
   console.log(identical
     ? 'REPRODUCES the committed dataset byte for byte.'
