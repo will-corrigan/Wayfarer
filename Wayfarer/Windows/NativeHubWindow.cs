@@ -2166,7 +2166,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Title = u.Def.Unlock,
             Kind = token.Length > 0 ? $"{token} · {kind}" : kind,
             Level = number,
-            RewardName = reward?.Name ?? string.Empty,
+            RewardName = RewardLine(u, reward),
             RewardIconId = rewardIcons.For(reward),
             RewardIconSize = reward is null ? Vector2.Zero : HubRewardIcons.SourceSize(reward.Kind),
             BannerIconId = journalFacts.Banner(u),
@@ -2185,6 +2185,22 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Actions = UnlockActions(u, navigator),
         };
     }
+
+    /// <summary>The reward tray's own line: an item's name unchanged, a duty's name with its sync
+    /// level appended, or — for the 272 of 587 shipped entries with no sheet-backed reward at all,
+    /// 223 of them <c>system</c> — the capability the entry itself grants, said in the catalogue's
+    /// own words. The unlock IS the reward when there is no item behind it, so this is never empty:
+    /// see <see cref="UnlockRowText.GrantedCapability"/> for why. The heading above it stays
+    /// "Reward" either way — that is the game's own word for this slot (<c>JournalWords.Reward</c>,
+    /// Addon row 463) and it does not have a second one for "a capability rather than a thing", so
+    /// nothing here invents one.</summary>
+    private string RewardLine(ResolvedUnlock u, UnlockReward? reward) => reward switch
+    {
+        { Kind: "ContentFinderCondition" } duty =>
+            UnlockRowText.DutyReward(duty.Name, journalFacts.DutyLevel(duty.Id)),
+        not null => reward.Name,
+        null => UnlockRowText.GrantedCapability(u),
+    };
 
     /// <summary>What can be done about an entry, in the three slots JournalDetail gives a quest —
     /// <c>InitiateButton</c>, the duty's own entry point, and <c>AcceptMapButton</c>, whose whole job

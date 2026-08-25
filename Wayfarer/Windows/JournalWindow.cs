@@ -750,6 +750,7 @@ internal sealed unsafe class JournalWindow(JournalWords words, IFramework framew
             statusIconNode!, detail.StatusIconId, new Vector2(GameMetrics.Detail.HeadingIconSize));
         JournalNodes.ApplyIcon(rewardIconNode!, detail.RewardIconId, detail.RewardIconSize);
         rewardNameNode!.String = detail.RewardName;
+
         rewardSection!.IsVisible = detail.RewardName.Length > 0;
 
         // The requirements are assembled before the state line, because whether there are any is what
