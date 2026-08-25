@@ -260,11 +260,12 @@ internal sealed unsafe class ArrowWindow : Window
             return;
         }
 
-        // The composer's own marker for "duty can be queued now" (see
-        // DutyObjectiveGuidance.CompleteDutyPrefix's doc comment) — the row id lives on the
-        // navigation state, not the line itself, so this is the one place both are in scope.
+        // The composer's own action mark, and not the line's wording. It used to match the prose on
+        // DutyObjectiveGuidance.CompleteDutyPrefix, which was the same mistake the "(click)" suffix
+        // was — a surface deciding what a line means by reading its English. The row id still lives on
+        // the navigation state rather than on the line, so this is the one place both are in scope.
         if (state.DutyContentFinderConditionId is { } cfcId
-            && line.Text.StartsWith(DutyObjectiveGuidance.CompleteDutyPrefix, StringComparison.Ordinal))
+            && line.Action == ReadoutLineAction.OpenDutyFinder)
         {
             if (ImGui.Selectable(line.Text))
             {

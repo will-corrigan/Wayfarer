@@ -183,6 +183,7 @@ internal sealed class GuidanceOverlay(
                 () => BuildFrame(forAddonHost: true),
                 placement,
                 Teleport,
+                OpenDutyFinder,
                 onSettingsClicked,
                 getFollowChoices,
                 OpenJournal,
@@ -267,6 +268,22 @@ internal sealed class GuidanceOverlay(
         if (feed.Navigator.Current.AetheryteId is { } aetheryteId)
         {
             TeleportAction.Execute(aetheryteId, cfg, clientState, log);
+        }
+    }
+
+    /// <summary>Opens the game's own Duty Finder at the duty the objective is inside, ready to queue —
+    /// the same call the hub window's Go buttons and the game's context menu make, through the one
+    /// place it is made (<see cref="DutyFinderAction"/>).
+    ///
+    /// <para>Read off the live snapshot at the moment of the press rather than captured when the
+    /// readout was drawn, exactly as the teleport above is. The id is null for a duty the player has
+    /// not unlocked, and the composer gives that line no action and no glyph — so this is the second
+    /// guard on a press that should never have been offered, not the first.</para></summary>
+    private void OpenDutyFinder()
+    {
+        if (feed.Navigator.Current.DutyContentFinderConditionId is { } cfcId)
+        {
+            DutyFinderAction.Execute(cfcId);
         }
     }
 

@@ -17,6 +17,25 @@ public static class DutyObjectiveGuidance
     /// Duty Finder") is the affordance, so the reason text ends at the duty name.</summary>
     public const string CompleteDutyPrefix = "Complete the duty: ";
 
+    /// <summary>The same marker for the case the player cannot queue: the duty exists, the objective
+    /// is inside it, and the content has not been unlocked yet, so the only thing to say is that it
+    /// has to be. Named for the same reason <see cref="CompleteDutyPrefix"/> is — the readout lifts
+    /// the duty's own name back out of the reason to draw it, and doing that against a named constant
+    /// is not the same thing as recognising a line by its English.</summary>
+    public const string UnlockDutyPrefix = "Unlock and complete the duty: ";
+
+    /// <summary>The duty's own name, out of a reason this class wrote, or null when the reason is not
+    /// one of them. One place knows both spellings and it is the place that produced them.</summary>
+    public static string? DutyName(string? reason) => reason switch
+    {
+        null => null,
+        _ when reason.StartsWith(CompleteDutyPrefix, StringComparison.Ordinal) =>
+            reason[CompleteDutyPrefix.Length..],
+        _ when reason.StartsWith(UnlockDutyPrefix, StringComparison.Ordinal) =>
+            reason[UnlockDutyPrefix.Length..],
+        _ => null,
+    };
+
     /// <summary>Returns the dedicated duty-guidance state when <paramref
     /// name="targetTerritory"/> is duty content, or null when it isn't (the caller
     /// should fall through to its normal route-costing path unchanged).</summary>
@@ -39,7 +58,7 @@ public static class DutyObjectiveGuidance
         var unlocked = isInstanceContentUnlocked(duty.InstanceContentId);
         var reason = unlocked
             ? $"{CompleteDutyPrefix}{duty.Name}"
-            : $"Unlock and complete the duty: {duty.Name}";
+            : $"{UnlockDutyPrefix}{duty.Name}";
 
         return new NavigationState
         {

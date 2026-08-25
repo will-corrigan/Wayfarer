@@ -20,6 +20,14 @@ namespace Wayfarer.Core.Ui;
 /// hunt or a route, and everything above the rule belongs to that mode.</description></item>
 /// <item><description><b>Nothing appears twice.</b> A hunting summary is emitted only when the
 /// hunt is not already the primary objective.</description></item>
+/// <item><description><b>A subordinate line has a glyph if and only if it has an action.</b> One of
+/// the game's own bitmap-font icons inside a line's words is the readout's only way of saying "this
+/// can be pressed", so the two are handed out together or not at all — see <see cref="Pressable"/>,
+/// which is the only place either is set. A glyph on a line that does nothing is a promise the
+/// readout does not keep; that is why an objective inside a duty the player has not unlocked keeps
+/// its words and loses its mark, rather than showing a duty icon that refuses to queue. The subject
+/// line is outside this rule because it is the banner's plate rather than a line of the block — see
+/// <see cref="ReadoutLine.Glyph"/>.</description></item>
 /// </list></summary>
 public static class ReadoutComposer
 {
@@ -38,6 +46,16 @@ public static class ReadoutComposer
     /// than at either end of the sentence it makes: the module supplies "Quest", the pill says
     /// "Current Quest", and neither half is complete on its own.</summary>
     private const string CurrentlyTracking = "Current";
+
+    /// <summary>What pressing the hunting summary does, and for now it is nothing.
+    ///
+    /// <para><b>It is a named seam rather than a literal because of the glyph rule.</b> The line
+    /// deserves the game's own monster mark — the player asked why it had an aetheryte crystal beside
+    /// it, and the honest answer was that the crystal was the only glyph the readout had. But a glyph
+    /// is the readout's way of saying "press this" (see <see cref="Pressable"/>), so the mark cannot
+    /// go on until the press does. Give this a real action and the mark appears with it; leave it
+    /// alone and the line stays correctly bare. One edit, both halves.</para></summary>
+    private const ReadoutLineAction HuntingLineAction = ReadoutLineAction.None;
 
     public static ReadoutContent Compose(ReadoutInputs inputs)
     {
@@ -136,6 +154,31 @@ public static class ReadoutComposer
         }
     }
 
+    /// <summary>The only place a readout line is given a glyph or an action, and it gives both or
+    /// neither.
+    ///
+    /// <para><b>This is the readout's whole affordance vocabulary in one expression.</b> A line's
+    /// glyph is the only thing on it that says it can be pressed, so the two cannot be handed out
+    /// separately: an unpressable line with a mark invites a press that does nothing, and a pressable
+    /// line without one hides the press entirely. Callers therefore say what the line WOULD do and
+    /// which mark WOULD suit it, and a caller whose action came back
+    /// <see cref="ReadoutLineAction.None"/> gets a plain line rather than having to remember to strip
+    /// the glyph itself.</para>
+    ///
+    /// <para>That asymmetry is deliberate: forgetting to pass an action is a line that reads as
+    /// ordinary prose, which is safe. Forgetting to strip a glyph is a lie about what the line does,
+    /// which is the defect this exists to make unrepresentable.</para></summary>
+    private static ReadoutLine Pressable(
+        string text,
+        ReadoutEmphasis emphasis,
+        ReadoutLineAction action,
+        DtrGlyph glyph,
+        int glyphAt = 0,
+        bool separated = false) =>
+        action == ReadoutLineAction.None
+            ? new ReadoutLine(text, emphasis, separated)
+            : new ReadoutLine(text, emphasis, separated, action, Glyph: glyph, GlyphAt: glyphAt);
+
     private static (bool ShowArrow, float? X, float? Y, float? Z) AddRoute(List<ReadoutLine> lines, ReadoutInputs inputs)
     {
         var state = inputs.State;
@@ -143,8 +186,45 @@ public static class ReadoutComposer
         {
             NavigationState.Modes.SameZone => AddSameZone(lines, inputs),
             NavigationState.Modes.OtherZone => AddOtherZone(lines, inputs),
+            NavigationState.Modes.DutyObjective => AddDuty(lines, state),
             _ => AddReasonOnly(lines, state),
         };
+    }
+
+    /// <summary>The objective is inside instanced content, so the line names the duty and — when the
+    /// player has unlocked it — queues for it.
+    ///
+    /// <para><b>Unlocked: the name alone, with the duty mark in front of it.</b> The prose it replaces
+    /// was "Complete the duty: Halatali", which spent two thirds of a narrow line telling the player
+    /// something the mark says at a glance and the readout's whole existence already implies. The
+    /// aetheryte line has the same shape — a mark and a place name — and this is that shape applied to
+    /// the one other thing on the readout that is a destination you enter rather than walk to.</para>
+    ///
+    /// <para><b>Not unlocked: the words, whole, and no mark.</b> There is nothing to queue for, and
+    /// the sentence has something to say that no icon can — that the content has to be unlocked
+    /// first. Keyed on <see cref="NavigationState.DutyContentFinderConditionId"/>, which is the
+    /// game's own answer to whether this duty can be entered, rather than on anything about the
+    /// wording.</para>
+    ///
+    /// <para>No arrow either way: an instanced territory has no aetheryte and no entrance to point
+    /// at, which is the reason <see cref="DutyObjectiveGuidance"/> exists at all.</para></summary>
+    private static (bool ShowArrow, float? X, float? Y, float? Z) AddDuty(
+        List<ReadoutLine> lines, NavigationState state)
+    {
+        if (DutyObjectiveGuidance.DutyName(state.Reason) is not { Length: > 0 } duty)
+        {
+            return AddReasonOnly(lines, state);
+        }
+
+        if (state.DutyContentFinderConditionId is null)
+        {
+            lines.Add(new ReadoutLine(state.Reason!, ReadoutEmphasis.Secondary));
+            return (false, null, null, null);
+        }
+
+        lines.Add(Pressable(
+            duty, ReadoutEmphasis.Secondary, ReadoutLineAction.OpenDutyFinder, DtrGlyph.Duty));
+        return (false, null, null, null);
     }
 
     private static (bool ShowArrow, float? X, float? Y, float? Z) AddSameZone(List<ReadoutLine> lines, ReadoutInputs inputs)
@@ -244,15 +324,19 @@ public static class ReadoutComposer
         // told a player reading the click-through overlay to click something that could not be
         // clicked. The clickable host lights the line under the pointer instead, which is what the
         // cog beside it already does, and the words are left to say the one thing they are for.
+        //
+        // Attuned or not is the same distinction the duty line makes: attuned is somewhere the player
+        // can go from here, so it takes the crystal and the press; not attuned is a statement of fact,
+        // so it takes neither. Both go through Pressable, which is what makes that pairing a rule
+        // rather than two independent decisions that happen to agree.
         const string Verb = "Teleport to ";
         lines.Add(state.AetheryteUnlocked
-            ? new ReadoutLine(
+            ? Pressable(
                 Verb + aetheryte,
                 ReadoutEmphasis.Secondary,
-                Separated: false,
                 ReadoutLineAction.Teleport,
-                Glyph: DtrGlyph.Aetheryte,
-                GlyphAt: Verb.Length)
+                DtrGlyph.Aetheryte,
+                glyphAt: Verb.Length)
             : new ReadoutLine(
                 $"Not attuned to {aetheryte}",
                 ReadoutEmphasis.Secondary));
@@ -339,7 +423,10 @@ public static class ReadoutComposer
         // when it is not already the primary objective two lines above.
         if (!inputs.HuntingIsPrimary && inputs.HuntingSummary is { Length: > 0 } hunting)
         {
-            lines.Add(new ReadoutLine(hunting, ReadoutEmphasis.Muted, separated));
+            // The game's own monster mark is the right glyph for this line, and it goes on the moment
+            // the line does something — see HuntingLineAction, which is the one place that decides.
+            lines.Add(Pressable(
+                hunting, ReadoutEmphasis.Muted, HuntingLineAction, DtrGlyph.Monster, separated: separated));
             separated = false;
         }
 

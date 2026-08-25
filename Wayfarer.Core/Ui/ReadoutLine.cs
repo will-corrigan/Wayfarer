@@ -34,6 +34,27 @@ namespace Wayfarer.Core.Ui;
 /// <param name="Glyph">One of the game's own bitmap-font icons, drawn <i>inside</i> this line's words
 /// at <paramref name="GlyphAt"/>. <see cref="DtrGlyph.None"/> for the lines that are words only.
 ///
+/// <para><b>A subordinate line carries a glyph if and only if it carries an <see cref="Action"/>.</b>
+/// The glyph IS the affordance — it is the only mark on a line of the readout's block that says the
+/// line can be pressed — so a glyph on a line that does nothing is a promise the readout does not
+/// keep, and an action on a line with no glyph is a press nobody will ever find. Both halves are
+/// enforced where lines are built (<see cref="ReadoutComposer.Pressable"/>) and asserted over
+/// everything the composer can produce.</para>
+///
+/// <para>The duty line is the worked example, and it is why the rule is a biconditional rather than
+/// "actionable lines get a glyph". An objective inside a dungeon the player has unlocked is a duty
+/// they can queue for, so the line takes the duty mark and queues on a press. The same objective
+/// inside a dungeon they have <i>not</i> unlocked cannot be queued at all — so it keeps its words,
+/// loses its mark, and reads as the plain statement of fact it actually is.</para>
+///
+/// <para><b><see cref="Subject"/> is outside the rule, and deliberately.</b> It is not a line of text
+/// in the block at all — it is the name written across the banner's parchment plate, and what says
+/// that plate can be pressed is the plate: a large, obviously-clicked object carrying the chevron the
+/// game's own art already puts at its right end. An icon dropped inside the quest name would be a
+/// bullet in the middle of a title, and it would say nothing the parchment does not already say. So
+/// the subject carries an action and no glyph, which is the one shape the biconditional
+/// excludes.</para>
+///
 /// <para><b>Why a mark and not a character in the string.</b> This assembly has no Dalamud
 /// dependency, so it cannot name a <c>BitmapFontIcon</c>; the layer that draws does the mapping,
 /// exactly as <see cref="DtrComposer"/> and the server info bar entry already do. And a sentinel
