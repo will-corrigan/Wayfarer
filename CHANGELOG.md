@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/will-corrigan/Wayfarer/compare/v0.9.0...v0.9.1) (2026-08-25)
+
+
+### Fixed
+
+* **hub:** make the Settings page follow the controller cursor ([#36](https://github.com/will-corrigan/Wayfarer/issues/36)) ([d6d3fa8](https://github.com/will-corrigan/Wayfarer/commit/d6d3fa8b7bd8297ff30389bfc4f215d44871d3db))
+* **readout:** stop every line reporting two rows, and give actionable lines the game's own marks ([#38](https://github.com/will-corrigan/Wayfarer/issues/38)) ([4ad070c](https://github.com/will-corrigan/Wayfarer/commit/4ad070c81a5a568a9995ff8f0acb73ef8d0bdf9d))
+
 ## [0.9.0](https://github.com/will-corrigan/Wayfarer/compare/v0.8.1...v0.9.0) (2026-08-25)
 
 
