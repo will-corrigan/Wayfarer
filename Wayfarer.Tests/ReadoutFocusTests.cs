@@ -73,22 +73,32 @@ public class ReadoutFocusTests
         Assert.Contains("RemoveNodeFlags(NodeFlags.Fill)", anchor, StringComparison.Ordinal);
     }
 
-    /// <summary>All four of the readout's controls get an anchor, so a controller reaches every one of
+    /// <summary>Every one of the readout's controls gets an anchor, so a controller reaches each of
     /// them the way a mouse clicks it. Cutting this back to the plate alone was tried and rejected —
-    /// the four controls are the design.</summary>
+    /// the controls are the design.
+    ///
+    /// <para>The banner's three come first and the pressable lines are appended after them, which is
+    /// asserted as well as counted: the plate's index is what the host hands the game as the addon's
+    /// focus node, so it must not move because a line was added.</para></summary>
     [Fact]
     public void EveryControlOnTheReadoutIsReachableWithAPad()
     {
-        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildNavAnchors(");
+        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildInteractions(");
+        var slots = new[] { "NavCog", "NavBanner", "NavSwitcher", "NavTeleport", "NavDuty" };
 
-        Assert.Equal(4, SourceGuard.Occurrences(anchors, "BuildNavAnchor("));
-        foreach (var slot in new[] { "NavCog", "NavBanner", "NavSwitcher", "NavTeleport" })
+        Assert.Equal(slots.Length, SourceGuard.Occurrences(anchors, "BuildNavAnchor("));
+        foreach (var slot in slots)
         {
             Assert.Contains($"navTargets[{slot}]", anchors, StringComparison.Ordinal);
         }
+
+        Assert.Contains(
+            "private const int NavBanner = 1;", SourceGuard.SourceOf(Body), StringComparison.Ordinal);
     }
 
-    /// <summary>The teleport line's three parts, which are only right together.
+    /// <summary>A pressable line's three parts, which are only right together — asserted once over the
+    /// shared machinery rather than once per line, because "once per line" is how a second line comes
+    /// to be wired up almost right.
     ///
     /// <para><b>One rectangle, two devices.</b> The pointer's click box and the pad's anchor are the
     /// same node: the box is placed once, from the line's own measured text, and the anchor is
@@ -99,28 +109,40 @@ public class ReadoutFocusTests
     /// <para><b>And the highlight is not that rectangle.</b> The box is the full width of the line
     /// because a generous target is right for a pointer and necessary for a pad; the hover lights the
     /// line's own text node, so a short place name does not light a band of empty plate beside
-    /// itself. Every one of the three reads as harmless to change on its own.</para></summary>
+    /// itself. Every one of the three reads as harmless to change on its own.</para>
+    ///
+    /// <para><b>And every press goes through all three.</b> The last assertion is what makes this one
+    /// guard rather than a guard for the teleport line and a hole for the next one: the box, the
+    /// anchor and the highlight are all indexed by the same press, so a new pressable line is a
+    /// constant in the source rather than a fourth copy of these three methods — and a copy would show
+    /// up here as a hard-coded name where an index belongs.</para></summary>
     [Fact]
-    public void TheTeleportLinesTargetIsOneRectangleAndItsHighlightIsNot()
+    public void APressableLinesTargetIsOneRectangleAndItsHighlightIsNot()
     {
         var body = SourceGuard.SourceOf(Body);
 
         // The box: the whole width of the line, and a height measured from the line's own text rather
         // than taken as a fraction of the block it sits in.
-        var box = SourceGuard.Body(body, "private bool LayoutTeleportHitBox()");
-        Assert.Contains("teleportHitBox.Size = new Vector2(slot.Width,", box, StringComparison.Ordinal);
+        var box = SourceGuard.Body(body, "private int LayoutLineHitBoxes()");
+        Assert.Contains("box.Size = new Vector2(slot.Width,", box, StringComparison.Ordinal);
         Assert.Contains("slot.FontSize", box, StringComparison.Ordinal);
         Assert.DoesNotContain("slot.Height *", box, StringComparison.Ordinal);
 
         // The anchor: that same node, so the d-pad cannot come to rest anywhere the pointer cannot
-        // click.
+        // click — and for every press, not just the first one that ever had a box.
         var settle = SourceGuard.Body(body, "private void SettleNav()");
-        Assert.Contains("MirrorNav(navTargets[NavTeleport], teleportHitBox)", settle, StringComparison.Ordinal);
+        Assert.Contains("MirrorNav(navTargets[NavFor(line)], lineHitBoxes[line])", settle, StringComparison.Ordinal);
 
         // The highlight: the words, and never the box.
-        var highlight = SourceGuard.Body(body, "private void SetTeleportHighlight(");
+        var highlight = SourceGuard.Body(body, "private void SetLineHighlight(");
         Assert.Contains("lineNodes[slot.Index].Alpha", highlight, StringComparison.Ordinal);
-        Assert.DoesNotContain("teleportHitBox", highlight, StringComparison.Ordinal);
+        Assert.DoesNotContain("lineHitBoxes", highlight, StringComparison.Ordinal);
+
+        // All three walk the same set, so a press cannot have two of them and not the third.
+        foreach (var walk in new[] { box, settle, SourceGuard.Body(body, "private void ClaimPresses(") })
+        {
+            Assert.Contains("PressableLineCount", walk, StringComparison.Ordinal);
+        }
     }
 
     /// <summary>The plate's second press is the game's own "Display Subcommands" (<c>InputId.MENU</c>,
@@ -138,7 +160,7 @@ public class ReadoutFocusTests
 
         // The plate's Confirm is still the Journal: its anchor is built from the same callback the
         // plate's own mouse hit box is.
-        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildNavAnchors(");
+        var anchors = SourceGuard.Body(SourceGuard.SourceOf(Body), "private void BuildInteractions(");
         Assert.Contains("BuildNavAnchor(onQuestNameClicked", anchors, StringComparison.Ordinal);
     }
 

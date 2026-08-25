@@ -244,17 +244,18 @@ public class GuidanceRouteCoverageTests
         Assert.Contains("\"Open Settings\"", actions, StringComparison.Ordinal);
     }
 
-    /// <summary>What the readout offers, and it is only ever its own four controls: the cog, the
-    /// switcher on the plate's cap, the plate itself, and the teleport line.
+    /// <summary>What the readout offers, and it is only ever its own controls: the cog, the switcher on
+    /// the plate's cap, the plate itself, and its pressable lines.
     ///
     /// <para>The subcommand menu the plate drops is deliberately not counted. It is the game's context
     /// menu rendering the same shared source the right-click menu renders, so counting it would let
     /// that menu justify trimming itself.</para>
     ///
-    /// <para>Nor is the teleport line counted. It is on the readout only while a teleport is being
-    /// recommended and the click-to-teleport setting is on, and neither is one of this matrix's two
-    /// axes — so it is never treated as covering a cell, which keeps the teleport entry in the game's
-    /// menu unconditionally.</para></summary>
+    /// <para>Nor are the pressable lines counted — the teleport advice, and the duty line that opens
+    /// the Duty Finder. Each is on the readout only in a situation this matrix has no axis for: a
+    /// teleport being recommended with the click-to-teleport setting on, an objective inside a duty the
+    /// player has actually unlocked. Neither is treated as covering a cell, which is what keeps both
+    /// entries in the game's own menu unconditionally.</para></summary>
     private static bool ReadoutOffers(Act act, Surface surface, Subject subject)
     {
         if (surface != Surface.Operable)

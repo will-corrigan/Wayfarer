@@ -141,12 +141,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// pixels.</para></summary>
     private const float CogIdleAlpha = 0.4f;
 
-    /// <summary>What the teleport line's words sit at when the pointer is not on them. Nearer full
-    /// than the cog's 0.4 because this is a line of text that has to stay readable at rest — the cog
-    /// is a decoration until it is wanted, and the teleport advice is advice whether or not anyone
-    /// intends to click it. The lift to 1 is what says the line is pressable, which is the job the
-    /// words "(click)" used to do badly.</summary>
-    private const float TeleportIdleAlpha = 0.8f;
+    /// <summary>What a pressable line's words sit at when the pointer is not on them. Nearer full than
+    /// the cog's 0.4 because these are lines of text that have to stay readable at rest — the cog is a
+    /// decoration until it is wanted, and the teleport advice is advice whether or not anyone intends
+    /// to click it. The lift to 1 is what says the line is pressable, which is the job the words
+    /// "(click)" used to do badly.</summary>
+    private const float PressableLineIdleAlpha = 0.8f;
 
     /// <summary>Bits of <see cref="ClickTargets"/> — one per clickable node the readout can put on
     /// screen.</summary>
@@ -164,21 +164,24 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int BannerTarget = 16;
 
+    /// <inheritdoc cref="TeleportTarget"/>
+    private const int DutyTarget = 32;
+
     /// <summary>Where a control's controller anchor sits inside that control's own rectangle: two
     /// units in from its left edge, and half its height down. The same offsets KamiToolKit's own
     /// navigable list rows use (<c>ListItemWithFocusNav</c>), so the game's cursor comes to rest
     /// beside a control here exactly as it does beside a row there.</summary>
     private const float NavAnchorInset = 2f;
 
-    /// <summary>How many controls the readout can offer a controller at once — the cog, the plate,
-    /// the switcher's cap and the teleport line.</summary>
-    private const int MaxNavTargets = 4;
-
     /// <summary>Where each control sits in the order a controller walks them, top to bottom as they
-    /// are drawn: the cog on the pill, then the plate, then the cap at the plate's right end, then
-    /// the teleport line beneath the banner. Down moves along this list and up moves back, both
-    /// wrapping, so every control is reachable in at most three presses and no press is a dead
-    /// end.</summary>
+    /// are drawn: the cog on the pill, then the plate, then the cap at the plate's right end, then the
+    /// pressable lines beneath the banner. Down moves along this list and up moves back, both
+    /// wrapping, so every control is reachable in a few presses and no press is a dead end.
+    ///
+    /// <para><b>The banner's three come first and the lines are appended after them</b>, which is why
+    /// a new pressable line raises <see cref="MaxNavTargets"/> at the end of the list rather than
+    /// renumbering anything: the plate's own index is what <see cref="ControllerFocusNode"/> hands the
+    /// game, and it must not move because a line was added.</para></summary>
     private const int NavCog = 0;
 
     /// <inheritdoc cref="NavCog"/>
@@ -189,6 +192,34 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     /// <inheritdoc cref="NavCog"/>
     private const int NavTeleport = 3;
+
+    /// <inheritdoc cref="NavCog"/>
+    private const int NavDuty = 4;
+
+    /// <summary>How many controls the readout can offer a controller at once — the cog, the plate, the
+    /// switcher's cap, and one anchor per pressable line.</summary>
+    private const int MaxNavTargets = NavDuty + 1;
+
+    /// <summary>The presses a LINE can carry, as an index into the readout's parallel arrays of hit
+    /// boxes and slots.
+    ///
+    /// <para><b>Why this is a set rather than a field per line.</b> A pressable line is always the
+    /// same three-part construction — a hit box the width of the line, a controller anchor mirrored
+    /// onto that same box, and a hover that lights the line's own words and not the box — and the
+    /// three only work while they agree about which rectangle they mean. Written out per line they
+    /// agree by coincidence; indexed, they agree by construction, and a new pressable line is a
+    /// constant here rather than a fourth copy of the same three methods.</para>
+    ///
+    /// <para>The line that carries each press is chosen by the composer's own
+    /// <see cref="ReadoutLineAction"/> mark, never by the line's wording or its position — see
+    /// <see cref="ActionFor"/>.</para></summary>
+    private const int LineTeleport = 0;
+
+    /// <inheritdoc cref="LineTeleport"/>
+    private const int LineDuty = 1;
+
+    /// <inheritdoc cref="LineTeleport"/>
+    private const int PressableLineCount = LineDuty + 1;
 
     /// <summary>What the pointer is told the plate's own chevron does. The mark is the game's and is
     /// baked into the parchment, so a tooltip is the only thing that can say what WE have made it
@@ -203,8 +234,8 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         + "readout is drawn without its banner. Everything it says is still on screen, in the plain heads-up "
         + "colours.";
 
-    /// <summary>Padding above and below the teleport line's words, to make its click and cursor
-    /// target the height of a row the game would let you press rather than the height of the glyphs
+    /// <summary>Padding above and below a pressable line's words, to make its click and cursor target
+    /// the height of a row the game would let you press rather than the height of the glyphs
     /// alone.
     ///
     /// <para><b>Why this is a padding and not a fraction of the block any more.</b> It used to be
@@ -218,7 +249,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// (<c>#9</c>) is h=22 over text (<c>#7</c>) that sits at y=2 in the same 22-tall component, so
     /// the pressable area is the text's own box grown by its inset. Half of that inset on each
     /// side.</para></summary>
-    private const float TeleportBoxPadding = GameMetrics.Row.TextTop;
+    private const float PressableLineBoxPadding = GameMetrics.Row.TextTop;
 
     /// <summary>How far the readout has to change size before the move handle is rebuilt around it.
     /// KamiToolKit sizes the handle once, when move mode is switched on, so a readout that grows a
@@ -358,11 +389,25 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// it by, in the host's own coordinates. Null in a host that cannot be dragged.</summary>
     private readonly Action<Vector2>? onMoved;
 
-    /// <summary>An invisible click target parked over whichever line is the teleport advice, or
-    /// null in a host that cannot be clicked. A <c>ResNode</c> draws nothing of its own, so the
-    /// readout looks byte-for-byte the same with or without it — the only difference is a collision
-    /// rectangle and the hand cursor over that one line.</summary>
-    private readonly ResNode? teleportHitBox;
+    /// <summary>One invisible click target per <see cref="PressableLine"/>, parked over whichever of
+    /// the readout's lines carries that press this frame, or null throughout in a host that cannot be
+    /// clicked. A <c>ResNode</c> draws nothing of its own, so the readout looks byte-for-byte the same
+    /// with or without them — the only difference is a collision rectangle and the hand cursor over
+    /// one line.
+    ///
+    /// <para>Indexed by <see cref="PressableLine"/> rather than being one named field each, because
+    /// every one of them is the same three-part construction — box, anchor, highlight — and the three
+    /// parts have to keep agreeing about which rectangle they are. A second named triplet is how they
+    /// come to disagree.</para></summary>
+    private readonly ResNode?[] lineHitBoxes = new ResNode?[PressableLineCount];
+
+    /// <summary>Which line each press's box belongs on this frame, or null where no line offered that
+    /// press. Written while the lines are laid out and read once they have been placed, which is the
+    /// only way a single floating box can follow whichever of twelve lines happens to be the one.
+    ///
+    /// <para>Readonly because the array is; its contents are cleared and refilled every frame.</para>
+    /// </summary>
+    private readonly LineSlot?[] lineSlots = new LineSlot?[PressableLineCount];
 
     /// <summary>The settings cog, or null in a host that takes no input at all. Drawing one on the
     /// fallback overlay would be a lie — an affordance that does nothing is worse than none — but on
@@ -502,12 +547,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="lastSubjectWidth"/>
     private string lastHeadlineText = string.Empty;
 
-    /// <summary>Which line the teleport box belongs on this frame, or null when no line offered the
-    /// click. Written while the lines are laid out and read once they have been placed, which is the
-    /// only way a single floating box can follow whichever of twelve lines happens to be the advice.
-    /// </summary>
-    private LineSlot? teleportSlot;
-
     private ArrowHiddenReason lastReported = ArrowHiddenReason.None;
     private bool reportedOnce;
     private bool warnedTextureOnce;
@@ -520,6 +559,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         ITextureProvider textures,
         Func<bool>? diagnosticsEnabled = null,
         Action? onTeleportClicked = null,
+        Action? onDutyClicked = null,
         Action<Vector2>? onMoved = null,
         Action? onSettingsClicked = null,
         Action? onFollowClicked = null,
@@ -565,26 +605,22 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // than being swallowed by the plate behind them.
         cogNode = onSettingsClicked is null ? null : BuildCog(onSettingsClicked);
 
-        // Over the chevron the plate's own art carries, at its right end. No art of ours: see the
-        // field's own note for why there is now exactly one caret on the bar and it is the game's.
-        if (onFollowClicked is not null)
-        {
-            switcherHitBox = BuildHitBox(onFollowClicked, bannerSection);
-            switcherHitBox.TextTooltip = SwitcherTooltip;
-        }
+        switcherHitBox = BuildSwitcherHitBox(onFollowClicked);
 
-        // The floating parts, over the stack. None of them takes vertical room — the arrow sits in a
-        // gutter beside a line, the hit boxes sit on top of what they make clickable — so none of them
-        // belongs in the flow. They are parked from where the flow put the sections, which is a read
-        // of a placed position rather than a measurement of a string.
+        // The floating parts, over the stack. None of them takes vertical room, so none belongs in the
+        // flow; they are parked from where the flow put the sections. See BuildInteractions for the
+        // rest of them — everything that answers a press is built together, there.
         arrowNode = BuildArrow(BaseArrow);
         elevationNode = BuildArrow(BaseArrow / 2f);
-        teleportHitBox = onTeleportClicked is null ? null : BuildTeleportHitBox(onTeleportClicked);
         subjectHitBox = BuildSubjectHitBox(onFollowClicked, onQuestNameClicked);
         journalClickable = onQuestNameClicked is not null;
-
-        BuildNavAnchors(onSettingsClicked, onQuestNameClicked, onFollowClicked, onTeleportClicked);
-        AddSubcommand(navTargets[NavBanner], onPlateSubcommand);
+        BuildInteractions(
+            onSettingsClicked,
+            onQuestNameClicked,
+            onFollowClicked,
+            onTeleportClicked,
+            onDutyClicked,
+            onPlateSubcommand);
     }
 
     /// <summary>Where the game should put the controller cursor when this readout is the focused
@@ -664,7 +700,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // read of a placed position, not a measurement of a string, which is the whole difference.
         LayoutArrow(frame, drawable, arrowSize, factor, ArrowCentre(arrowSlot, factor));
         LayoutElevation(frame, arrowSize);
-        SettleTeleportHitBox(LayoutTeleportHitBox());
+        SettleLineHitBoxes(LayoutLineHitBoxes());
         LayoutSubjectHitBox(
             subject,
             subjectContent?.Text,
@@ -721,9 +757,12 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             bannerHitBox.IsVisible = false;
         }
 
-        if (teleportHitBox is not null)
+        foreach (var box in lineHitBoxes)
         {
-            teleportHitBox.IsVisible = false;
+            if (box is not null)
+            {
+                box.IsVisible = false;
+            }
         }
 
         if (cogNode is not null)
@@ -913,13 +952,56 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         nav.Position = target.Position + new Vector2(NavAnchorInset, target.Height / 2f);
     }
 
-    /// <summary>The teleport line's target, plus the hover treatment that replaced the words
-    /// "(click)".
+    /// <summary>Which of the composer's action marks each pressable line answers to. The mark is the
+    /// only thing that decides — never the wording, never the position — which is the whole reason
+    /// <see cref="ReadoutLineAction"/> exists.</summary>
+    private static ReadoutLineAction ActionFor(int line) =>
+        line == LineTeleport ? ReadoutLineAction.Teleport : ReadoutLineAction.OpenDutyFinder;
+
+    /// <summary>Which bit of <see cref="ClickTargets"/> a pressable line's box lights.</summary>
+    private static int TargetFor(int line) => line == LineTeleport ? TeleportTarget : DutyTarget;
+
+    /// <summary>Which controller anchor belongs to a pressable line.</summary>
+    private static int NavFor(int line) => line == LineTeleport ? NavTeleport : NavDuty;
+
+    /// <summary>Whether this surface is offering a press at all, over and above the composer having
+    /// marked a line for it. The teleport is the only one with a setting of its own
+    /// (<see cref="ReadoutFrame.ClickableTeleport"/>); a duty that can be queued has nothing further
+    /// to ask.</summary>
+    private static bool Offered(ReadoutFrame frame, int press) =>
+        press != LineTeleport || frame.ClickableTeleport;
+
+    /// <summary>Which of the game's own bitmap-font icons a readout line's abstract mark becomes, or
+    /// null for a mark this surface has nothing to draw for — in which case the line is words only,
+    /// which is always a safe answer.
+    ///
+    /// <para><b>Two of the three are compromises, and they are admitted here rather than hidden behind
+    /// the mark's name.</b> The font has an aetheryte crystal, so <see cref="DtrGlyph.Aetheryte"/> is
+    /// exact. It has no icon meaning "a duty" or "the Duty Finder" at all:
+    /// <c>WaitingForDutyFinder</c> is the game's <i>queued for a duty</i> status mark, which is a state
+    /// the player is in rather than a thing they can enter, and it is nonetheless the only duty-finder
+    /// mark in the enum — every one of its 130-odd members was read off the installed Dalamud's own
+    /// metadata to be sure. <c>GroupFinder</c> is the nearest alternative and is worse: it means the
+    /// Party Finder, a different window. And <c>NotoriousMonster</c> is the game's mark for a named
+    /// monster rather than for a hunting log rank, which is the closest the font gets to "these are the
+    /// things to go and kill" — <c>FateSlay</c> was the other candidate and was rejected for implying
+    /// a FATE.</para></summary>
+    private static BitmapFontIcon? Icon(DtrGlyph glyph) => glyph switch
+    {
+        DtrGlyph.Aetheryte => BitmapFontIcon.Aetheryte,
+        DtrGlyph.Duty => BitmapFontIcon.WaitingForDutyFinder,
+        DtrGlyph.Monster => BitmapFontIcon.NotoriousMonster,
+        _ => null,
+    };
+
+    /// <summary>A pressable line's target, plus the hover treatment that replaced the words
+    /// "(click)". Null when the host was given no callback for this press, exactly as every other
+    /// control on the readout is.
     ///
     /// <para><b>Two rectangles, deliberately, and they must not be collapsed into one.</b> The hit
     /// box is the full width of the line, because a generous target is right for a pointer and
     /// necessary for a d-pad, which anchors on the same rectangle. The <i>highlight</i> is the line's
-    /// own text node — the words and the crystal inside them — and nothing else, so a short place name
+    /// own text node — the words and the glyph inside them — and nothing else, so a short place name
     /// does not light a band of empty plate to the right of itself. Lighting the hit box would do
     /// exactly that.</para>
     ///
@@ -928,22 +1010,27 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// for <c>EmitsEvents</c> and <c>RespondToMouse</c> — <c>MouseClick</c> is the one that adds
     /// <c>HasCollision</c> — so the hover costs the world no clicks it was not already
     /// costing.</para></summary>
-    private ResNode BuildTeleportHitBox(Action onClicked)
+    private ResNode? BuildLineHitBox(Action? onClicked, int line)
     {
+        if (onClicked is null)
+        {
+            return null;
+        }
+
         var box = BuildHitBox(onClicked, this);
-        box.AddEvent(AtkEventType.MouseOver, () => SetTeleportHighlight(hovered: true));
-        box.AddEvent(AtkEventType.MouseOut, () => SetTeleportHighlight(hovered: false));
+        box.AddEvent(AtkEventType.MouseOver, () => SetLineHighlight(line, hovered: true));
+        box.AddEvent(AtkEventType.MouseOut, () => SetLineHighlight(line, hovered: false));
         return box;
     }
 
-    /// <summary>Lights the teleport line's words, or puts them back. Reads the slot rather than
-    /// remembering a node: which of the twelve line nodes is the teleport advice changes as the
+    /// <summary>Lights a pressable line's words, or puts them back. Reads the slot rather than
+    /// remembering a node: which of the twelve line nodes carries a given press changes as the
     /// composer's output changes, and a remembered node would be last frame's line.</summary>
-    private void SetTeleportHighlight(bool hovered)
+    private void SetLineHighlight(int line, bool hovered)
     {
-        if (teleportSlot is { } slot)
+        if (lineSlots[line] is { } slot)
         {
-            lineNodes[slot.Index].Alpha = hovered ? 1f : TeleportIdleAlpha;
+            lineNodes[slot.Index].Alpha = hovered ? 1f : PressableLineIdleAlpha;
         }
     }
 
@@ -1034,16 +1121,52 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
     }
 
-    /// <summary>Grows one controller anchor per control, each on the same parent as the rectangle it
-    /// shadows, because an anchor is positioned from that rectangle's own coordinates. Nothing here
-    /// draws, and a host that was given no callbacks grows nothing at all.</summary>
-    private void BuildNavAnchors(
-        Action? onSettingsClicked, Action? onQuestNameClicked, Action? onFollowClicked, Action? onTeleportClicked)
+    /// <summary>The follow switcher's own target, over the chevron the plate's art already carries at
+    /// its right end. No art of ours: see the field's own note for why there is now exactly one caret
+    /// on the bar and it is the game's, and why a tooltip is the only thing that can say what we have
+    /// made it mean.</summary>
+    private ResNode? BuildSwitcherHitBox(Action? onFollowClicked)
     {
+        if (onFollowClicked is null)
+        {
+            return null;
+        }
+
+        var box = BuildHitBox(onFollowClicked, bannerSection);
+        box.TextTooltip = SwitcherTooltip;
+        return box;
+    }
+
+    /// <summary>Everything on the readout that answers a press: a click target per pressable line, a
+    /// controller anchor per control, and the plate's second press.
+    ///
+    /// <para><b>All of it in one place because a control is not one node.</b> Each of these is a
+    /// mouse rectangle and a controller anchor that has to shadow that same rectangle — see
+    /// <see cref="SettleNav"/>, where they are mirrored — so building the two halves apart is how one
+    /// device comes to reach something the other cannot. Each anchor is grown on the same parent as
+    /// the rectangle it shadows, because an anchor is positioned from that rectangle's own
+    /// coordinates.</para>
+    ///
+    /// <para>Nothing here draws, and a host that was given no callbacks grows nothing at all — which
+    /// is what makes the read-only overlay read-only rather than merely unresponsive.</para></summary>
+    private void BuildInteractions(
+        Action? onSettingsClicked,
+        Action? onQuestNameClicked,
+        Action? onFollowClicked,
+        Action? onTeleportClicked,
+        Action? onDutyClicked,
+        Action? onPlateSubcommand)
+    {
+        lineHitBoxes[LineTeleport] = BuildLineHitBox(onTeleportClicked, LineTeleport);
+        lineHitBoxes[LineDuty] = BuildLineHitBox(onDutyClicked, LineDuty);
+
         navTargets[NavCog] = BuildNavAnchor(onSettingsClicked, bannerSection);
         navTargets[NavBanner] = BuildNavAnchor(onQuestNameClicked, bannerSection);
         navTargets[NavSwitcher] = BuildNavAnchor(onFollowClicked, bannerSection);
         navTargets[NavTeleport] = BuildNavAnchor(onTeleportClicked, this);
+        navTargets[NavDuty] = BuildNavAnchor(onDutyClicked, this);
+
+        AddSubcommand(navTargets[NavBanner], onPlateSubcommand);
     }
 
     /// <summary>Takes every anchor down with the controls they shadow: a cursor resting on a control
@@ -1079,7 +1202,13 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         MirrorNav(navTargets[NavCog], cogNode);
         MirrorNav(navTargets[NavBanner], bannerHitBox);
         MirrorNav(navTargets[NavSwitcher], switcherHitBox);
-        MirrorNav(navTargets[NavTeleport], teleportHitBox);
+
+        // Every pressable line, onto the box the pointer clicks — one loop rather than a line each, so
+        // the d-pad cannot come to rest anywhere the pointer cannot click on any of them.
+        for (var line = 0; line < PressableLineCount; line++)
+        {
+            MirrorNav(navTargets[NavFor(line)], lineHitBoxes[line]);
+        }
 
         if (ClickTargets == lastNavTargets)
         {
@@ -1786,9 +1915,9 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         SubjectLine? subject = null;
         ReadoutLine? subjectContent = null;
 
-        // Cleared every frame, because it names a slot in a pool that is reused: last frame's teleport
+        // Cleared every frame, because these name slots in a pool that is reused: last frame's teleport
         // line may be this frame's distance.
-        teleportSlot = null;
+        Array.Clear(lineSlots);
 
         var headlineLeft = GameMetrics.Banner.HeadlineLeft * factor;
         var headlineWidth = Math.Max(
@@ -1825,11 +1954,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
                 arrowSlot = slot;
             }
 
-            if (teleportSlot is null && WantsTeleportBox(frame, line))
-            {
-                teleportSlot = slot;
-                SetTeleportHighlight(hovered: false);
-            }
+            ClaimPresses(frame, line, slot);
         }
 
         HideLinesFrom(count);
@@ -1840,28 +1965,55 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         return (arrowSlot, subject, subjectContent);
     }
 
-    /// <summary>Whether this line is the one the teleport box goes on. First match only: there is never
-    /// more than one teleport advice, and a second box would be a click target over the wrong words.
-    ///
-    /// <para>The frame's own offer is what decides, not the line's action mark. With click-to-teleport
-    /// turned off the composer still marks the line — the mark describes the line, not the surface —
-    /// and placing a hit box on it gave the player a hand cursor over words that would then politely
-    /// refuse to do anything.</para></summary>
-    private bool WantsTeleportBox(ReadoutFrame frame, ReadoutLine line) =>
-        teleportHitBox is not null && frame.ClickableTeleport && line.Action == ReadoutLineAction.Teleport;
-
-    /// <summary>Closes the teleport hit box out for this frame: taken down when no line offered the
-    /// click, and recorded either way, because the host rebuilds the addon's collision list from
-    /// <see cref="ClickTargets"/> and a hit box that appears without that is one that is never
-    /// hit.</summary>
-    private void SettleTeleportHitBox(bool placed)
+    /// <summary>Hands this line whichever presses it is marked for and nothing has claimed yet, and
+    /// puts its words back to their resting alpha so a line that inherited a pooled node from last
+    /// frame's hovered line does not arrive already lit.</summary>
+    private void ClaimPresses(ReadoutFrame frame, ReadoutLine line, LineSlot slot)
     {
-        if (!placed && teleportHitBox is not null)
+        for (var press = 0; press < PressableLineCount; press++)
         {
-            teleportHitBox.IsVisible = false;
+            if (lineSlots[press] is null && WantsLineBox(frame, line, press))
+            {
+                lineSlots[press] = slot;
+                SetLineHighlight(press, hovered: false);
+            }
+        }
+    }
+
+    /// <summary>Whether this line is the one a given press goes on. First match only: the composer
+    /// emits at most one line per action, and a second box would be a click target over the wrong
+    /// words.
+    ///
+    /// <para><b>Three things all have to be true, and they are three different kinds of thing.</b> The
+    /// host has to have been given the callback — the read-only overlay was not, and grows no boxes at
+    /// all. The composer has to have marked the line, which it does only when the action can actually
+    /// be performed: a teleport to somewhere attuned, a duty that is unlocked. And the surface has to
+    /// be offering the press, which is where the click-to-teleport setting lives — with it off the
+    /// composer still marks the line, because the mark describes the line and not the surface, and
+    /// placing a box on it gave the player a hand cursor over words that would then politely refuse to
+    /// do anything.</para></summary>
+    private bool WantsLineBox(ReadoutFrame frame, ReadoutLine line, int press) =>
+        lineHitBoxes[press] is not null && line.Action == ActionFor(press) && Offered(frame, press);
+
+    /// <summary>Closes every pressable line's hit box out for this frame: taken down where no line
+    /// offered that press, and recorded either way, because the host rebuilds the addon's collision
+    /// list from <see cref="ClickTargets"/> and a hit box that appears without that is one that is
+    /// never hit.
+    ///
+    /// <para>This assigns rather than ORs, and runs before <see cref="SettleClickTargets"/>, which
+    /// ORs: the lines are the only targets whose presence changes with the composer's output, so they
+    /// set the frame's baseline and the banner's fixed controls add themselves to it.</para></summary>
+    private void SettleLineHitBoxes(int placed)
+    {
+        for (var press = 0; press < PressableLineCount; press++)
+        {
+            if ((placed & TargetFor(press)) == 0 && lineHitBoxes[press] is { } box)
+            {
+                box.IsVisible = false;
+            }
         }
 
-        ClickTargets = placed ? TeleportTarget : 0;
+        ClickTargets = placed;
     }
 
     /// <summary>Deals with the two lines that belong to the banner itself rather than to the block
@@ -2257,7 +2409,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // The one mapping from the readout's abstract glyph mark to the game's own icon. Deliberately
         // not shared with DtrEntry's copy: they read the same enum, and if the two surfaces ever want
         // different marks for the same meaning neither has to be untangled from the other first.
-        if (line.Glyph != DtrGlyph.Aetheryte)
+        if (Icon(line.Glyph) is not { } icon)
         {
             SetLineText(index, line.Text, forced);
             return;
@@ -2273,7 +2425,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         }
 
         var builder = new SeStringBuilder();
-        builder.AddText(line.Text[..at]).AddIcon(BitmapFontIcon.Aetheryte).AddText(line.Text[at..]);
+        builder.AddText(line.Text[..at]).AddIcon(icon).AddText(line.Text[at..]);
 
         lastText[index] = key;
         lineNodes[index].String = new ReadOnlySeString(builder.Build().Encode());
@@ -2328,34 +2480,45 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         subjectHitBox.TextTooltip = text.Length == 0 ? default : text;
     }
 
-    /// <summary>Parks the invisible click target over the teleport line, from where the flow actually
-    /// put that line's section.
+    /// <summary>Parks each pressable line's invisible click target over the line that carries it, from
+    /// where the flow actually put that line's section, and says which ones landed as a
+    /// <see cref="ClickTargets"/> mask.
     ///
-    /// <para><b>Why it is not in the section with the line.</b> There is one box and any of twelve
-    /// lines could be the teleport advice, so a box inside a section would have to be reparented as
-    /// the composer's output changes — in a per-frame path, which is how a node comes to draw in two
-    /// places at once. It floats over the stack instead and is placed by adding its line's section's
-    /// own placed position to an offset within that section. Both of those are facts, not
-    /// measurements.</para></summary>
-    private bool LayoutTeleportHitBox()
+    /// <para><b>Why they are not in the sections with the lines.</b> There is one box per press and any
+    /// of twelve lines could be the one, so a box inside a section would have to be reparented as the
+    /// composer's output changes — in a per-frame path, which is how a node comes to draw in two places
+    /// at once. They float over the stack instead and are placed by adding their line's section's own
+    /// placed position to an offset within that section. Both of those are facts, not
+    /// measurements.</para>
+    ///
+    /// <para>One rule for every press, which is the point of the loop: a second pressable line laid
+    /// out by a second copy of this arithmetic is a second answer to how tall a pressable line's target
+    /// is.</para></summary>
+    private int LayoutLineHitBoxes()
     {
-        if (teleportHitBox is null || teleportSlot is not { } slot)
+        var placed = 0;
+        for (var press = 0; press < PressableLineCount; press++)
         {
-            return false;
+            if (lineHitBoxes[press] is not { } box || lineSlots[press] is not { } slot)
+            {
+                continue;
+            }
+
+            // The words' own run, grown by the tracker's text inset, and never taller than the block it
+            // sits in. Derived from the line's measured text rather than from a fraction of its block,
+            // so tightening the readout's pitch cannot shrink the target below the words it belongs to.
+            var padding = PressableLineBoxPadding * 2f;
+            var height = Math.Min(slot.FontSize + padding, slot.Height);
+            var top = stack.Y + lineSections[slot.Index].Y + slot.RuleAdvance
+                + Math.Max((slot.Height - height) / 2f, 0f);
+
+            box.Size = new Vector2(slot.Width, height);
+            box.Position = new Vector2(slot.Left, top);
+            box.IsVisible = true;
+            placed |= TargetFor(press);
         }
 
-        // The words' own run, grown by the tracker's text inset, and never taller than the block it
-        // sits in. Derived from the line's measured text rather than from a fraction of its block, so
-        // tightening the readout's pitch cannot shrink the target below the words it belongs to.
-        var padding = TeleportBoxPadding * 2f;
-        var height = Math.Min(slot.FontSize + padding, slot.Height);
-        var top = stack.Y + lineSections[slot.Index].Y + slot.RuleAdvance
-            + Math.Max((slot.Height - height) / 2f, 0f);
-
-        teleportHitBox.Size = new Vector2(slot.Width, height);
-        teleportHitBox.Position = new Vector2(slot.Left, top);
-        teleportHitBox.IsVisible = true;
-        return true;
+        return placed;
     }
 
     /// <summary>Where the arrow's centre lands: the optical centre of the line it belongs to, in the
