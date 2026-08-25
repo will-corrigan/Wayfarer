@@ -3,6 +3,7 @@ using System.Numerics;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
@@ -812,7 +813,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         TextButtonNode? node = null;
         node = new TextButtonNode
         {
-            Height = GameMetrics.Control.ButtonHeight,
+            Height = SettingsLayout.ControlHeight(SettingKind.Choice),
 
             // Widened by ApplySettingWidths to the container; this is only the seed.
             Width = GameMetrics.Control.ButtonWidthLarge,
@@ -3355,7 +3356,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             // edge — which is the reported "the sliders clip outside the border". The widths are set
             // explicitly instead, by ApplySettingWidths, which reserves the bar's gutter. Leaving
             // FitWidth on would simply undo that on the next layout pass.
-            ContentNode = { FitWidth = false, FitContents = true, ItemSpacing = GameMetrics.Window.RuleGap },
+            ContentNode = { FitWidth = false, FitContents = true, ItemSpacing = SettingsLayout.ItemSpacing },
             AutoHideScrollBar = true,
             Position = tabContentStart,
             Size = tabContentSize,
@@ -3376,12 +3377,20 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         foreach (var section in settings.Build())
         {
-            settingsArea.ContentNode.AddNode(BuildHeadingNode(section.Title));
+            var heading = BuildHeadingNode(section.Title);
+            settingsArea.ContentNode.AddNode(heading);
+
+            // The heading rides along with the first control under it and with nothing else: walking
+            // up into a section otherwise parks its first control flush at the top of the tab with
+            // the words that say what the section is one pixel above the clip, which is the same
+            // "the page doesn't follow" complaint one row smaller.
+            NodeBase? lead = heading;
             foreach (var setting in section.Settings)
             {
                 var control = BuildSettingControl(setting);
                 settingsArea.ContentNode.AddNode(control);
-                WireScrollFollowsFocus(control);
+                WireScrollFollowsFocus(control, lead);
+                lead = null;
             }
         }
 
@@ -3442,12 +3451,21 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// this from KamiToolKit's <c>ListNode</c>; this supplies it here from the outside, which is the
     /// only place it can be supplied from.</para>
     ///
-    /// <para>Driven by the node's own <c>FocusStart</c> event rather than by polling the game's
-    /// focus state every frame: it fires exactly when the cursor arrives, costs nothing the rest of
-    /// the time, and it is the same event the toolkit's own text-input node uses to know it has been
-    /// focused. Registered on the component's collision node, which is what the component nominates
-    /// as its focus target.</para></summary>
-    private void WireScrollFollowsFocus(NodeBase control)
+    /// <para><b>Which signal says "the cursor has arrived".</b> Not <c>FocusStart</c>: that is what
+    /// this was first written against and it never fired once for a pad, because the game raises it
+    /// through the component's own vtable for the text-input flow rather than dispatching it at the
+    /// node handlers a plugin can register — so the wiring was present, the arithmetic was right,
+    /// and the tab still walked the cursor off the bottom of the window. The signal that does fire
+    /// is <c>InputReceived</c>: the focused component gets the d-pad press, and the toolkit's own
+    /// <c>NavFocusNode</c> — the thing every row on the list-backed tabs is steered by, and the one
+    /// arrival signal in this codebase known to work on a controller — reads exactly the release of
+    /// an up/down press off it to mean "this node is the one the cursor is on now". The conditions
+    /// below are that node's, deliberately identical: the press moves focus, so the release is
+    /// delivered to the control the cursor has landed on.</para>
+    ///
+    /// <para>Left and right are left alone. A slider steps its value with them and never moves the
+    /// cursor, so scrolling on them could only ever be a no-op or a lurch.</para></summary>
+    private unsafe void WireScrollFollowsFocus(NodeBase control, NodeBase? lead)
     {
         // A scale setting is a caption plus a slider, and only the slider can be focused — so the
         // event goes on the slider while the scroll target stays the whole row, or the caption
@@ -3458,10 +3476,32 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        component.CollisionNode.AddEvent(AtkEventType.FocusStart, () => ScrollSettingIntoView(control));
+        component.AddEvent(AtkEventType.InputReceived, (_, _, _, _, data) =>
+        {
+            if (data is null)
+            {
+                return;
+            }
+
+            var input = data->InputData;
+            if (input.State is not InputState.Up)
+            {
+                return;
+            }
+
+            if ((InputId)input.InputId is not (InputId.UP or InputId.DOWN))
+            {
+                return;
+            }
+
+            ScrollSettingIntoView(control, lead);
+        });
     }
 
-    private void ScrollSettingIntoView(NodeBase control)
+    /// <summary>Scrolls the container by the least it can and still show all of
+    /// <paramref name="control"/> — and <paramref name="lead"/> with it, when the control is the
+    /// first under a section heading.</summary>
+    private void ScrollSettingIntoView(NodeBase control, NodeBase? lead)
     {
         if (settingsArea is null)
         {
@@ -3471,14 +3511,26 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         try
         {
             var bar = settingsArea.ScrollBarNode;
-            var target = ScrollIntoView.Adjust(
-                control.Y,
-                control.Height,
-                settingsArea.Height,
-                bar.ScrollPosition,
-                bar.ScrollMaxPosition);
 
-            if (Math.Abs(target - bar.ScrollPosition) >= 1f)
+            // Content coordinates throughout: the controls are children of the container's content
+            // node, so their Y is already measured from the top of the scrollable content, which is
+            // the same origin the scroll position is expressed in.
+            var viewport = settingsArea.Height;
+            var current = bar.ScrollPosition;
+            var ceiling = bar.ScrollMaxPosition;
+            var bottom = control.Y + control.Height;
+            var target = ScrollIntoView.Adjust(control.Y, control.Height, viewport, current, ceiling);
+
+            // Only ever on the way up, and only when there is room for both. Walking down to a
+            // section's first control puts it flush at the bottom with its heading above the clip,
+            // and pulling the heading back in from there would move the page under a cursor that had
+            // not moved — the same control focused twice has to settle in the same place.
+            if (lead is not null && target < current && bottom - lead.Y <= viewport)
+            {
+                target = ScrollIntoView.Adjust(lead.Y, bottom - lead.Y, viewport, current, ceiling);
+            }
+
+            if (Math.Abs(target - current) >= 1f)
             {
                 bar.ScrollPosition = target;
             }
@@ -3510,7 +3562,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     {
         var node = new CheckboxNode
         {
-            Height = GameMetrics.Control.CheckboxHeight,
+            Height = SettingsLayout.ControlHeight(SettingKind.Toggle),
             String = setting.Label,
             IsChecked = setting.ReadFlag?.Invoke() ?? false,
             OnClick = value => setting.WriteFlag?.Invoke(value),
