@@ -17,8 +17,10 @@ public class CoreGuidanceIsolationTests
         "QuestObjectiveSource",
         "UnlockRouteSource",
         "HuntingSource",
+        "AetherCurrentSource",
         "HuntingLogService",
         "UnlockService",
+        "AetherCurrentService",
         "QuestNavigator",
         "PickupTarget",
         "HuntingTargetView",
@@ -34,6 +36,7 @@ public class CoreGuidanceIsolationTests
         "\"hunting\"",
         "\"unlocks\"",
         "\"quest\"",
+        "\"aether-currents\"",
     ];
 
     public static TheoryData<string> GuardedDirectories =>
