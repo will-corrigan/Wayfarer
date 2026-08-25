@@ -384,9 +384,18 @@ internal static class JournalNodes
     /// built. <c>LayoutListNode.AddNode</c> attaches what it is given, so a node that has already
     /// been attached to the same container would be linked into the tree twice, and the second link
     /// is what makes the sibling chain circular — see <see cref="AddOnce"/> for what that costs.
-    /// A layout container is therefore refused outright here: the container is the one that
-    /// attaches its own children, and this is the choke point that makes it impossible to do it
-    /// twice however the call site is written.</para></summary>
+    /// A layout container is therefore refused outright here: the container is the one that attaches
+    /// its own children.</para>
+    ///
+    /// <para><b>What this does and does not close.</b> Refusing a container parent is what stops the
+    /// build-then-add double attach, which is the mistake that shipped. It is not a proof that no node
+    /// can be attached twice: <see cref="AddOnce"/>'s own guard is per-container — it can only see
+    /// what the container it was handed already holds — so a node that already lives in a DIFFERENT
+    /// container would still be attached to a second one, leaving its old <c>PrevSiblingNode</c>
+    /// pointing into its previous parent. Where the two containers are ancestor and descendant that
+    /// is the same ring by another route. No call site does this today; every one was walked. The
+    /// guarantee is "the shape of the mistake is refused", not "the mistake is impossible".</para>
+    /// </summary>
     private static void Attach(NodeBase node, NodeBase? parent)
     {
         if (parent is null or LayoutListNode)

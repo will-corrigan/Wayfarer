@@ -584,11 +584,14 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
 
     /// <summary>Takes the move handle down, and with it the viewport-level mouse listener behind it.
     ///
-    /// <b>This has to be called before the node is disposed.</b> <c>NodeBase.Dispose()</c> disposes
-    /// children, clears focus and detaches — but it never calls <c>DisableEditMode</c>, so the
-    /// <c>ViewportEventListener</c> that drives dragging is registered against the game's global
-    /// viewport and belongs to a plugin that has gone. That is the exact shape of the unload crash
-    /// this plugin has already shipped once.</summary>
+    /// <b>Called before the node is disposed.</b> The <c>ViewportEventListener</c> behind the handle
+    /// is registered against the game's <i>global</i> viewport rather than against this node, so a
+    /// listener that outlives the plugin is the exact shape of the unload crash this plugin has
+    /// already shipped once. <c>NodeBase.Dispose()</c> does call <c>DisableEditMode</c> itself, so
+    /// this is belt and braces rather than the only thing standing between here and that crash — but
+    /// it is belt and braces over a vendored library, on the one failure whose cost is the game, and
+    /// it is also what makes the teardown order explicit at the call site instead of implicit in a
+    /// submodule.</summary>
     public void StopMoving()
     {
         if (!movable)
