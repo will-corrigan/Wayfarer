@@ -24,6 +24,11 @@ public static class GateKinds
     public const string TribeRankAtLeast = "tribeRankAtLeast";
     public const string GrandCompanyRankAtLeast = "grandCompanyRankAtLeast";
     public const string AchievementComplete = "achievementComplete";
+
+    /// <summary>A <c>Title</c> row the player must already have earned. The client holds no title
+    /// list until one has been asked for, so this kind has three answers and not two — see
+    /// <see cref="TitleUnlockedEvaluator"/>.</summary>
+    public const string TitleUnlocked = "titleUnlocked";
     public const string AetherCurrentsComplete = "aetherCurrentsComplete";
     public const string SharedFateRankAtLeast = "sharedFateRankAtLeast";
     public const string ZoneProgressAtLeast = "zoneProgressAtLeast";
@@ -56,7 +61,7 @@ public static class GateKinds
     [
         AllOf, AnyOf, QuestComplete, QuestAnyOf, DutyUnlocked, DutyComplete, MountOwned,
         MinionOwned, ItemHeld, CharacterLevelAtLeast, JobLevelAtLeast, TribeRankAtLeast,
-        GrandCompanyRankAtLeast, AchievementComplete, AetherCurrentsComplete,
+        GrandCompanyRankAtLeast, AchievementComplete, TitleUnlocked, AetherCurrentsComplete,
         SharedFateRankAtLeast, ZoneProgressAtLeast, Unverifiable,
     ];
 }

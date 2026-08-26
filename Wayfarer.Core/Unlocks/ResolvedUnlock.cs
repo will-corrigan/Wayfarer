@@ -77,6 +77,15 @@ public sealed class ResolvedUnlock
     /// from the reward's sheet kind. Nothing here or downstream knows which entry it belongs to.</para></summary>
     public GateNode? IdentityGate { get; set; }
 
+    /// <summary>The game's own sentence about how this is obtained, resolved from
+    /// <see cref="UnlockDefinition.Obtain"/> against the running client's sheets — so it arrives in
+    /// whatever language the player's client runs in. Null when the entry cites none, or when the
+    /// lookup missed.
+    ///
+    /// <para>Resolved once, at load, by the host: the reference is stable for the session and 870
+    /// sheet reads per status pass would be 870 sheet reads nobody asked for.</para></summary>
+    public string? ObtainText { get; set; }
+
     public uint? QuestRowId { get; set; }
 
     /// <summary>Every Quest row the catalogue's name could equally well mean, when the game ships
@@ -208,6 +217,29 @@ public sealed class ResolvedUnlock
 
     public uint? GiverMap { get; set; }
 
+    /// <summary>Whether there is anywhere to send the player. Derived, never authored: an entry is
+    /// routable when its <see cref="UnlockDefinition.Place"/> is a kind that can have a coordinate
+    /// AND that coordinate actually resolved to a territory and a map.
+    ///
+    /// <para><b>Both halves are load-bearing.</b> The place kind alone is a claim about the channel
+    /// — a title earned by defeating fifty thousand enemies has nowhere to go, whatever else is on
+    /// the entry — and the resolution alone is a coincidence: a quest-less entry has no giver only
+    /// because nothing ever populated one, and behaviour that is correct by accident is behaviour
+    /// nothing can assert. Route affordances filter on this rather than on
+    /// <see cref="GiverTerritory"/> being non-null, so an entry with no place offers no route and
+    /// says what it needs instead.</para>
+    ///
+    /// <para>A derived property rather than a stored one, for the reason the catalogue does not
+    /// carry the flag either: an authored boolean is a claim that can rot, and a derivation
+    /// cannot.</para>
+    ///
+    /// <para>The territory is the resolution test rather than the map, because the territory is what
+    /// a route needs; the map matters to a map flag and the host populates the two together or not
+    /// at all (see <c>UnlockService</c>'s <c>QuestFacts</c>, which requires both to be non-zero
+    /// before setting either).</para></summary>
+    public bool Routable =>
+        UnlockPlaceKinds.CanHaveACoordinate(Def.Place?.Kind) && GiverTerritory is not null;
+
     public float GiverX { get; set; }
 
     public float GiverY { get; set; }
@@ -281,6 +313,7 @@ public sealed class ResolvedUnlock
     {
         Def = Def,
         IdentityGate = IdentityGate,
+        ObtainText = ObtainText,
         QuestRowId = QuestRowId,
         AlternativeQuestRowIds = AlternativeQuestRowIds,
         QuestLevel = QuestLevel,

@@ -34,6 +34,8 @@ internal static class Gates
         Func<uint, bool?>? isAetherCurrentZoneComplete = null,
         Func<uint, int, bool?>? sharedFateRankAtLeast = null,
         Func<ZoneProgressKind, int, bool?>? zoneProgressAtLeast = null,
+        Func<uint, bool?>? isTitleUnlocked = null,
+        TitleDataState titleData = TitleDataState.NotRequested,
         Func<uint, int>? getSaddlebagItemCount = null,
         GateEvaluatorRegistry? gates = null)
     {
@@ -59,6 +61,8 @@ internal static class Gates
             isAetherCurrentZoneComplete,
             sharedFateRankAtLeast,
             zoneProgressAtLeast,
+            isTitleUnlocked,
+            () => titleData,
             getSaddlebagItemCount);
 
         return gates is null ? ctx : ctx with { Gates = gates };

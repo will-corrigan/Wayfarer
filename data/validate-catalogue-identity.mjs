@@ -28,8 +28,8 @@ const err = (m) => { console.error(m); errors++; };
 // because a serialiser emitted the same facts in a different order.
 const ENTRY_KEYS = [
   'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
-  'requires', 'confidence', 'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'place', 'state',
+  'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ];
 
 // ---------------------------------------------------------------- 1. canonical form
@@ -106,8 +106,25 @@ for (const [i, e] of d.unlocks.entries()) {
       err(`${where}: records no game row, so its confidence cannot be '${e.confidence}'`);
   } else if (rows.length > 0 && e.requires?.unverifiable === true) {
     err(`${where}: is marked unverifiable but cites ${rows.map((n) => `Quest#${n}`).join(', ')}, whose completion the client records — one of the two is wrong`);
-  } else if (rows.length === 0 && e.requires?.unverifiable !== true) {
-    err(`${where}: cites ${ids.join(', ')} but no Quest row, so nothing says whether the unlock was taken — it must carry requires.unverifiable:true`);
+  } else if (rows.length === 0 && !('state' in e) && e.requires?.unverifiable !== true) {
+    // PREMISE CORRECTED. This rule used to read "cites rows but no Quest row, therefore nothing
+    // says whether the unlock was taken". That held while a Quest row was the only thing the client
+    // recorded that an entry could point at, and it does not now. An entry carrying a `state` gate
+    // names a bit the client keeps about the unlock ITSELF, which is a stronger statement than a
+    // quest binding rather than a weaker one: the quest is a prerequisite, the state is the thing.
+    // 669 titles are in exactly that position — no quest anywhere, their own unlock bit readable —
+    // and demanding unverifiable:true of them would be demanding that they claim they cannot be
+    // checked while the plugin checks them.
+    err(`${where}: cites ${ids.join(', ')} but neither a Quest row nor a 'state' gate, so nothing says whether the unlock was taken — it must carry requires.unverifiable:true`);
+  }
+
+  // A state gate is a claim about a row, so the entry has to cite that row. Same rule as questAnyOf
+  // and the duty gates: an id inside a gate with no source line behind it is an id nothing checked.
+  if (e.state?.kind === 'titleUnlocked') {
+    for (const n of e.state.ids ?? []) {
+      if (!ids.includes(`game-data:Title#${n}`))
+        err(`${where}: its state gate reads Title#${n} but the entry cites no 'game-data:Title#${n}' source`);
+    }
   }
 
   // A duty gate names an InstanceContent row, and the entry has to cite the
@@ -174,10 +191,20 @@ const anyOf = d.unlocks.filter((e) => (e.questAnyOf?.length ?? 0) > 0).length;
 const dutyGated = d.unlocks.filter((e) => (e.requires?.duties?.length ?? 0) > 0).length;
 const itemGated = d.unlocks.filter((e) => (e.requires?.items?.length ?? 0) > 0).length;
 const levelless = d.unlocks.filter((e) => typeof e.level !== 'number');
+
+// METRIC RE-BASED. This used to be `total - withRows` and was called "not gradeable", on the premise
+// that a quest binding was the only way an entry could be graded. It is not: an entry with a `state`
+// gate is graded off the unlock's own bit, with no quest at all. Left as it was, this line would
+// have reported 669 titles as ungradeable in the same breath as the plugin grading them — a figure
+// that is not wrong by a little, but describes a different catalogue. What is left is the honest
+// residue: the entries with neither.
+const gradeable = d.unlocks.filter((e) => questRows(e).length > 0 || 'state' in e).length;
+const placeless = d.unlocks.filter((e) => e.place?.kind === 'none').length;
 console.log(errors
   ? `FAILED: ${errors} errors`
   : `OK: ${d.unlocks.length} entries, ${withRows} bound to a quest row (${anyOf} to a set of them), `
     + `${dutyGated} gated on a duty clear, ${itemGated} on an item, `
-    + `${d.unlocks.length - withRows} not gradeable, ${levelless.length} with no level `
-    + `(${[...new Set(levelless.map((e) => e.category))].join('; ') || 'none'}), canonical form verified`);
+    + `${d.unlocks.length - gradeable} with nothing that could grade them, ${placeless} with nowhere `
+    + `to go, ${levelless.length} with no level `
+    + `(${[...new Set(levelless.map((e) => e.category))].length} categories), canonical form verified`);
 process.exit(errors ? 1 : 0);

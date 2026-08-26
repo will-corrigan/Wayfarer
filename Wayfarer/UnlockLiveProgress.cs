@@ -83,6 +83,39 @@ internal sealed unsafe class UnlockLiveProgress
     public bool? IsAchievementComplete(uint achievementId) =>
         achievements.TryAtLeast(CharacterKey, achievementId, 1, out var met) ? met : null;
 
+    /// <summary>Which of the two unknowns a title read that could not answer is. Reported rather
+    /// than collapsed, because "still on its way" and "nothing has asked" are different things for a
+    /// player to be told, and neither of them is "you have not earned it".
+    ///
+    /// <para>The decision itself is not here — it is <c>UnlockService.IsTitleUnlocked</c>, through
+    /// Dalamud's own <c>IUnlockState</c>, which is the supported reader and takes a typed row. This
+    /// is the one fact that service does not carry: it has <c>IsTitleListLoaded</c>, which is the
+    /// boundary between known and not, and nothing for the difference between a request in flight
+    /// and no request at all.</para></summary>
+    public TitleDataState TitleData()
+    {
+        // Both sources, because either can answer a title gate: the title list directly, and the
+        // achievement table through the achievement that awards it. Reporting only the title list
+        // would tell a player nothing has been asked for at the exact moment the plugin's own
+        // achievement request is in flight.
+        var ui = UIState.Instance();
+        var titlesKnown = ui != null && ui->TitleList.DataReceived;
+        var titlesAsked = ui != null && (ui->TitleList.DataRequested || ui->TitleList.DataPending);
+
+        var agent = Achievement.Instance();
+        var achievementsKnown = agent != null && agent->IsLoaded();
+        var achievementsAsked = agent != null && agent->State == Achievement.AchievementState.Requested;
+
+        if (titlesKnown || achievementsKnown)
+        {
+            return TitleDataState.Known;
+        }
+
+        return titlesAsked || achievementsAsked
+            ? TitleDataState.Pending
+            : TitleDataState.NotRequested;
+    }
+
     /// <inheritdoc cref="IsAchievementComplete"/>
     public bool? SharedFateRankAtLeast(uint territoryTypeId, int rank) =>
         sharedFate.TryAtLeast(CharacterKey, territoryTypeId, rank, out var met) ? met : null;
@@ -123,7 +156,14 @@ internal sealed unsafe class UnlockLiveProgress
             return;
         }
 
-        var wantsAchievements = kindsInUse.Contains(GateKinds.AchievementComplete);
+        // A title gate wants the achievement table too, and this is the only place that could know
+        // it. Every title in the catalogue is awarded by an achievement, so achievement completion
+        // is what answers a title gate for a player who has never opened Acquired Titles — and if
+        // this line were missing, the request that answers 870 rows would never be sent and every
+        // one of them would say "we cannot tell" for the whole session. What is deliberately NOT
+        // here is RequestTitleList(): a second gated source for a fact this one already settles.
+        var wantsAchievements = kindsInUse.Contains(GateKinds.AchievementComplete)
+            || kindsInUse.Contains(GateKinds.TitleUnlocked);
         var wantsFates = kindsInUse.Contains(GateKinds.SharedFateRankAtLeast);
         if (!wantsAchievements && !wantsFates)
         {

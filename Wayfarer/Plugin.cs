@@ -104,7 +104,8 @@ public sealed class Plugin : IDalamudPlugin
 
         inputMode = new InputModeService(gameConfig, gamepadState, config.InputMode, log);
 
-        var unlocks = new UnlockService(log, objects, clientState, pluginInterface, dataManager);
+        var unlocks = new UnlockService(
+            log, objects, clientState, pluginInterface, dataManager, unlockState);
         var hunting = new HuntingLogService(log, objects, clientState, pluginInterface, dataManager);
 
         // Declared once, rendered by the native window and by the ImGui fallback alike.

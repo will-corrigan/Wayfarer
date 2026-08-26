@@ -20,7 +20,14 @@ const EXPECTED_CURATED = 587;
 // no curated entry covers. Both halves are checked separately, because they fail differently — a
 // change in the first is somebody editing curation, a change in the second is the game shipping a
 // patch — and a single total would hide one moving inside the other.
-const EXPECTED_IMPORTED = 621;
+// 621 + 669: the titles the enumeration could not see before. `Achievement.Title` is the only
+// RowRef<Title> in the whole schema, and the walk that reads it used to take only the achievements
+// whose condition kind is quest completion — one of seventeen — because that is the only kind whose
+// `Key` is a quest and the catalogue's spine was the quest. Everything with no quest fell off it:
+// kill counts, duty feats, crafting, gathering, exploration, PvP rank, and every "obtain all five of
+// these". 201 titles of the 870 the game awards. It now emits all 870; 827 become entries and the
+// other 43 are already covered by a curated entry citing the same unlock quest.
+const EXPECTED_IMPORTED = 1290;
 const EXPECTED = EXPECTED_CURATED + EXPECTED_IMPORTED;
 
 // Written by the generator's import, and the marker the two halves are told apart by. `sources` is
@@ -100,8 +107,8 @@ const gateCombinators = new Set(['allOf', 'anyOf']);
 const gateLeafKinds = new Set([
   'questComplete', 'questAnyOf', 'dutyUnlocked', 'dutyComplete', 'mountOwned', 'minionOwned',
   'itemHeld', 'characterLevelAtLeast', 'jobLevelAtLeast', 'tribeRankAtLeast',
-  'grandCompanyRankAtLeast', 'achievementComplete', 'aetherCurrentsComplete',
-  'sharedFateRankAtLeast', 'zoneProgressAtLeast', 'unverifiable',
+  'grandCompanyRankAtLeast', 'achievementComplete', 'titleUnlocked',
+  'aetherCurrentsComplete', 'sharedFateRankAtLeast', 'zoneProgressAtLeast', 'unverifiable',
 ]);
 const gateNodeKeys = new Set(['kind', 'ids', 'amount', 'scope', 'display', 'from', 'children']);
 
@@ -228,9 +235,35 @@ const checkRequires = (where, r) => {
 
 const entryKeys = new Set([
   'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
-  'requires', 'confidence', 'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'place', 'state',
+  'priority', 'cosmetic', 'requires', 'confidence', 'sources',
 ]);
+
+// Whether an entry has somewhere to go, STATED rather than inferred from a missing coordinate. The
+// closed set is Wayfarer.Core/Unlocks/UnlockPlace.cs's, and absent means 'questGiver' — what every
+// entry written before the field existed meant. An unknown kind is an error rather than a value the
+// plugin quietly treats as "no place": a typo would otherwise silently withdraw a route.
+const placeKinds = new Set(['questGiver', 'none']);
+const placeKeys = new Set(['kind']);
+const checkPlace = (where, p) => {
+  if (typeof p !== 'object' || p === null || Array.isArray(p)) {
+    err(`${where}: 'place' must be an object`);
+    return;
+  }
+  checkKeys(`${where} place`, p, placeKeys);
+  if (!placeKinds.has(p.kind)) err(`${where}: place kind '${p.kind}' is not one of ${[...placeKinds].join(', ')}`);
+};
+
+// What proves the player already HAS this, as opposed to what it takes to get it. The two are not
+// interchangeable and putting one in the other's field inverts the verdict: a satisfied REQUIREMENT
+// means "go and get it", a satisfied STATE means "you have it". Same gate language as
+// requires.gates and dispatched through the same registry, so a kind this build cannot evaluate
+// degrades to "we can't tell" rather than to a claim.
+const checkState = (where, n) => {
+  checkGateNode(`${where} state`, n);
+  if (typeof n === 'object' && n !== null && (n.ids?.length ?? 0) === 0 && (n.children?.length ?? 0) === 0)
+    err(`${where}: 'state' names no row, so nothing could read it`);
+};
 
 // The player-facing backup for "the game does not say" (see data/README.md):
 // a link to the entry's own page. It is only ever written by the generator once
@@ -359,6 +392,9 @@ for (const [i, e] of d.unlocks.entries()) {
     checkConditionSource(`${where} descriptionSource`, e.descriptionSource);
   }
 
+  if ('place' in e) checkPlace(where, e.place);
+  if ('state' in e) checkState(where, e.state);
+
   if (!prios.has(e.priority)) err(`${where}: bad priority '${e.priority}'`);
   if (typeof e.cosmetic !== 'boolean') err(`${where}: bad cosmetic`);
   for (const k of ['unlock', 'type', 'quest', 'questKind', 'notes'])
@@ -432,19 +468,31 @@ for (const [i, e] of d.unlocks.entries()) {
   checkWikiUrl(where, e);
 
   // No entry may be silently identity-less. Every one has to say what it is gated on — a quest, a
-  // set of quests, a curated requirement — or say out loud that it cannot be checked.
+  // set of quests, a curated requirement, a readable proof that it has been obtained — or say out
+  // loud that it cannot be checked.
   const identified = e.quest !== null
     || (e.questAnyOf?.length ?? 0) > 0
+    || 'state' in e
     || e.requires?.unverifiable === true
     || e.requires?.requiresAnotherPlayer === true
     || lists.some((k) => (e.requires?.[k]?.length ?? 0) > 0)
     || 'minLevel' in (e.requires ?? {});
-  if (!identified) err(`${where}: has no identity at all — no quest, no questAnyOf, no requires`);
+  if (!identified) err(`${where}: has no identity at all — no quest, no questAnyOf, no state, no requires`);
 
-  // An entry with no quest, or one nothing in the game data backs, has no discoverable gate at
-  // all. Without an explicit unverifiable marker the calculator would fall through to Available
-  // and tell the player to go and get something they cannot get.
-  const unbacked = (e.quest === null && (e.questAnyOf?.length ?? 0) === 0) || e.confidence === 'unverified';
+  // An entry with nothing readable behind it has no discoverable gate at all. Without an explicit
+  // unverifiable marker the calculator would fall through to Available and tell the player to go
+  // and get something they cannot get.
+  //
+  // PREMISE CORRECTED. "No quest" used to be the whole test for "nothing backs this", because a
+  // quest was the only thing the client recorded that an entry could point at. An entry carrying a
+  // `state` gate points at a bit the client keeps about the unlock ITSELF, which is stronger
+  // evidence than a quest binding rather than weaker — the quest is a prerequisite, the state is
+  // the thing. Left as it was, this rule would have made 669 titles declare their status
+  // unknowable in the same breath as the plugin reading it, and then (through the pairing rule two
+  // lines below) forbidden them from citing the game rows they rest on. The test is now "nothing
+  // readable", which is what it always meant.
+  const unbacked = (e.quest === null && (e.questAnyOf?.length ?? 0) === 0 && !('state' in e))
+    || e.confidence === 'unverified';
   if (unbacked && e.requires?.unverifiable !== true && e.requires?.requiresAnotherPlayer !== true)
     err(`${where}: nothing backs this entry, so it needs requires.unverifiable:true (or requiresAnotherPlayer:true)`);
   if (e.requires?.unverifiable === true && e.confidence !== 'unverified')

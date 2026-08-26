@@ -289,7 +289,7 @@ internal sealed class GuidanceActions(
         }
 
         var routable = unlockModule.Unlocks.Entries
-            .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null)
+            .Where(u => u.Status == UnlockStatus.Available && u.Routable)
             .ToList();
         if (routable.Count == 0)
         {

@@ -12,11 +12,17 @@ public static class RoutePlanner
         List<ResolvedUnlock> available, uint currentTerritory, float px, float pz)
     {
         var result = new List<ResolvedUnlock>();
-        var here = available.Where(u => u.GiverTerritory == currentTerritory).ToList();
+
+        // Routable, not "has a territory". Those are the same answer for every entry a quest gives a
+        // giver, and different answers for the channels that have no place at all: those used to be
+        // filtered out by their territory happening to be null — a correct outcome nothing could
+        // assert, and one that any later code populating a coordinate would silently have undone.
+        // See ResolvedUnlock.Routable.
+        var here = available.Where(u => u.Routable && u.GiverTerritory == currentTerritory).ToList();
         Chain(here, px, pz, result);
 
         var rest = available
-            .Where(u => u.GiverTerritory is { } t && t != currentTerritory)
+            .Where(u => u.Routable && u.GiverTerritory is { } t && t != currentTerritory)
             .GroupBy(u => u.GiverTerritory!.Value)
             .OrderBy(g => g.Min(u => u.QuestLevel));
         foreach (var group in rest)
@@ -52,14 +58,16 @@ public static class RoutePlanner
 
     /// <summary>Top <paramref name="max"/> Available unlocks in <paramref name="currentTerritory"/>,
     /// nearest-first from the player position — the pure selection behind the widget's glanceable
-    /// lines and the info bar's alert marker. Same Available + GiverTerritory==territory criterion as
-    /// <see cref="UnlockStatusCalculator.Compute"/>; reuses the same greedy-nearest chain
-    /// as <see cref="Order"/> restricted to the current zone.</summary>
+    /// lines and the info bar's alert marker. Same Available + routable-here criterion every other
+    /// route affordance uses (see <see cref="ResolvedUnlock.Routable"/>); reuses the same
+    /// greedy-nearest chain as <see cref="Order"/> restricted to the current zone.</summary>
     public static List<ResolvedUnlock> TopAvailableHere(
         IEnumerable<ResolvedUnlock> all, uint currentTerritory, float px, float pz, int max)
     {
         var here = all
-            .Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory == currentTerritory)
+            .Where(u => u.Status == UnlockStatus.Available
+                && u.Routable
+                && u.GiverTerritory == currentTerritory)
             .ToList();
         var ordered = new List<ResolvedUnlock>();
         Chain(here, px, pz, ordered);

@@ -201,8 +201,16 @@ public static class UnlockStatusCalculator
             return;
         }
 
+        // The entry has an identity gate and it could not be read. Say WHY, in the gate's own
+        // words: "no quest to read for this" is a true statement about the entry that says nothing
+        // about what the player actually wants to know, which is whether they have the thing. A
+        // request-gated read — achievements, titles — spends the first moments of a session in this
+        // branch, and a row that shrugs where it could have said "still on its way" is the same
+        // failure in kind as one that says "not obtained".
         u.Status = UnlockStatus.RequirementsUnknown;
-        u.LockReason = "no quest to read for this";
+        u.LockReason = identity is { Outcome: GateOutcome.Indeterminate, Reason: { Length: > 0 } why }
+            ? why
+            : "no quest to read for this";
     }
 
     /// <summary>InstanceContent, Grand Company, beast tribe, mount, and unmodeled-gate checks —

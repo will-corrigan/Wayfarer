@@ -132,10 +132,17 @@ public static class UnlockStatusDisplay
             ? $"Available — {condition}."
             : "Available.";
 
-    private static string UnknownSentence(ResolvedUnlock unlock) =>
-        unlock.LockReason is { Length: > 0 } reason
-            ? $"Requirements unknown — {reason}."
-            : "Requirements unknown.";
+    // Two different unknowns, and "requirements unknown" is only true of one of them. An entry that
+    // declares a `state` gate has a requirement the game states plainly — the achievement's own
+    // sentence is in the body of the row — and what is missing is our READING of whether the player
+    // has met it. Saying "requirements unknown" over a row that has just spelled out its
+    // requirement reads as a rendering fault; and it must not read as a verdict on whether the
+    // player has the thing either, which is why neither branch says "not obtained".
+    private static string UnknownSentence(ResolvedUnlock unlock)
+    {
+        var lead = unlock.Def.State is not null ? "Not known yet" : "Requirements unknown";
+        return unlock.LockReason is { Length: > 0 } reason ? $"{lead} — {reason}." : $"{lead}.";
+    }
 
     // The calculator already phrases every gate as a verb phrase ("needs level 15", "requires
     // clearing Sastasha"), so this reads as one sentence rather than two glued together. The

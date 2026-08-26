@@ -146,10 +146,20 @@ public class UnlockDomainTests
 
         Assert.Equal(all.Count, byDomain.Values.Sum());
 
-        // Duties is the largest and Capabilities the runner-up: the shape the domains were chosen to
-        // expose, and the reason Capabilities is not allowed to be a footnote inside Cosmetics.
-        Assert.True(byDomain[UnlockDomains.Duties] > byDomain[UnlockDomains.Capabilities]);
-        Assert.True(byDomain[UnlockDomains.Capabilities] > byDomain[UnlockDomains.Titles]);
+        // PREMISE CORRECTED. This used to assert "Duties largest, Capabilities the runner-up, Titles
+        // behind it", which was a true description of a 1,208-entry catalogue holding 158 titles.
+        // The title channel now carries all 870 the game awards rather than only the 201 a quest
+        // does, so Titles is the largest domain and the old ordering is false — not because
+        // Capabilities shrank, but because a channel that was a tenth of the game finally is not.
+        //
+        // What the assertion was FOR survives, and is what is checked instead: Capabilities must not
+        // be a footnote. It is the one domain with no in-game window of its own, and the whole
+        // reason for the split was that 235 entries answering "what can I now do" had been filed
+        // under Cosmetics. Third-largest of seven is that claim without pinning an order that a
+        // patch, or the next channel to be completed, can legitimately change.
+        var largest = byDomain.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).ToList();
+        Assert.Contains(UnlockDomains.Capabilities, largest.Take(3), StringComparer.Ordinal);
+        Assert.Contains(UnlockDomains.Duties, largest.Take(3), StringComparer.Ordinal);
 
         // A domain with no entries at all is a chip that does nothing.
         Assert.All(byDomain, kv => Assert.True(kv.Value > 0, $"{kv.Key} has no entries"));
