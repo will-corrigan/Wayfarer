@@ -19,12 +19,12 @@ something a person does deliberately and reviews as a diff.
 
 ## The two halves
 
-The file has 1,208 entries and they come from two different places. Almost everything below is
+The file has 1,877 entries and they come from two different places. Almost everything below is
 about the first half; the second is short because it has to be.
 
 | | Curated | Imported |
 |---|---:|---:|
-| entries | 587 | 621 |
+| entries | 587 | 1,290 |
 | built from | the wiki guide, corroborated against the game | the game's own enumeration, alone |
 | carries a description | yes, always, and CI requires one | no — nothing states one |
 | `channel` | derived from what it unlocks | the channel it was enumerated under |
@@ -32,9 +32,16 @@ about the first half; the second is short because it has to be.
 
 **Why the second half exists.** The guide decides what exists, so anything the guide omits this
 pipeline could never learn about — and the completeness check below had been measuring that gap
-without closing it: every quest-completion title, every orchestrion roll, all twenty ARR job
-unlocks, three live dungeons. The generator now writes an entry for each of them from the game's own
-row.
+without closing it: every title, every orchestrion roll, all twenty ARR job unlocks, three live
+dungeons. The generator now writes an entry for each of them from the game's own row.
+
+**And the enumeration can have a gap of its own.** The title channel enumerated 201 rows against the
+870 the game awards, because `Achievement.Title` is the only `RowRef<Title>` in the whole schema and
+the walk that reads it took only the achievements whose condition kind is *quest completion* — one
+of seventeen, and the only one whose `Key` is a quest. Everything with no quest fell off the
+catalogue's quest-shaped spine: kill counts, duty feats, crafting, gathering, exploration, PvP rank,
+and every "obtain all five of these". Those 669 titles now carry the three facts a quest used to
+supply between them, separately, as the section below describes.
 
 **Why imported entries are rebuilt every run rather than carried forward.** The committed file is
 also the input to the next generation. An import that landed once would be indistinguishable from
@@ -51,7 +58,7 @@ never a level of 1 — in both those places 1 means "no level requirement". `pri
 value for the channel (`optional` for cosmetics, `nice` for the rest) rather than a judgement nobody
 made.
 
-**What it does instead of inventing a description: cite one.** 471 of the 621 have a
+**What it does instead of inventing a description: cite one.** 1,140 of the 1,290 have a
 `descriptionSource` — a sheet, a row and a column, never a copy of the text — and the plugin resolves
 it at load in the player's own client language. It is the same mechanism as
 `requires.conditionSource` and it exists for the same reason: *quote the game, do not paraphrase it*
@@ -69,13 +76,58 @@ else.
 The row falls back through the game's sentence, then `notes`, then the requirement label, then the
 entry's own name, so a blank second line is not reachable — see `UnlockRowText.Description`.
 
+## Three separate facts, none inferred from another — `descriptionSource`, `place`, `state`
+
+An entry with no quest used to collapse to one field. `requires.unverifiable` stood in for four
+different unknowns at once — we do not know how you get this, we do not know where, we do not know
+whether you have it, we do not know what it needs — and once it was set, none of the four was
+sayable. That was survivable while the only quest-less entries were duties, whose unlock genuinely
+is server-side. It is not survivable for a title earned by defeating fifty thousand enemies: the
+game states how, in its own words; there is nowhere to go, definitively; and the client keeps a bit
+saying whether you have it.
+
+So three fields, and they are allowed to disagree.
+
+| field | what it says | absent means |
+|---|---|---|
+| `descriptionSource` | **how** it is obtained, as a sheet/row/column into the game's own text | the sheets say nothing about this row |
+| `place` | **whether** it has a location: `questGiver`, or `none` | `questGiver` — what every entry written before the field meant |
+| `state` | **what proves** the player already has it, in the same gate language as `requires.gates` | nothing this build can read says |
+
+**`place` is stated, not inferred.** Routability used to be a consequence of nullness: the route
+planner filtered on the quest giver's territory, and that field is only ever populated from a quest,
+so a quest-less entry was silently unroutable. Correct behaviour, arrived at by accident, with
+nothing to show the player and nothing a test could assert — and anything that later populated a
+coordinate would have undone it in silence. `ResolvedUnlock.Routable` now derives from the stated
+place *and* the coordinate resolving; every route affordance filters on it; and an entry with no
+place says what it needs instead of offering a route to nowhere.
+
+**`state` is not `requires`, and confusing the two inverts the verdict.** A satisfied *requirement*
+means "go and get it". A satisfied *state* means "you already have it". They are separate fields for
+that reason, and `state` is the catalogue declaring what `ResolvedUnlock.IdentityGate` previously
+only derived from a reward's sheet kind — a mechanism that works where the identity row alone names
+the read (a duty's own unlock bit) and cannot where the read needs a fact that sheet does not carry.
+
+Declared per **channel**, in `STATE_GATE_FOR_CHANNEL`, never per entry: which client bit says you
+own one of these is a property of the sheet the identity lives in. There is one line in that map
+today, `title`, and its shortness is an honest measure rather than an oversight — the register of
+readable bits is much longer (mounts, minions, emotes, rolls, cards, bardings) and each needs an
+evaluator this build does not have. A channel absent from the map keeps saying it does not know.
+
+**What it bought.** 669 title entries that would otherwise each have had to declare their own status
+unknowable are graded off their own unlock bit, and the two validator rules that made "no quest"
+mean "nothing readable" were re-based on "nothing readable". Three states, not two: the title list
+and the achievement table are both request-gated, so a title can be *known*, *pending*, or *not
+asked for*, and the last two must never render as "not obtained". See `TitleUnlockedEvaluator` and
+`Wayfarer.Tests/TitleUnlockTests.cs`.
+
 ## What kind of thing an entry is — `channel`
 
 Every entry carries one, and it is the field a per-category display groups by.
 
 `type` cannot do that job. Its nine values were chosen when the catalogue was 587 duties, systems
 and a handful of cosmetics; it has no word for a title, an orchestrion roll, a folklore book or a
-Masked Carnivale act, so asked to describe 1,208 entries it answers `system` for a third of them.
+Masked Carnivale act, so asked to describe 1,877 entries it answers `system` for two thirds of them.
 `channel` is the vocabulary the game-data enumeration already walks — `duty`, `title`,
 `orchestrion`, `job`, `minion`, `challenge-log`, and 20 more — which means the taxonomy and the
 completeness check cannot drift apart. `type` is left exactly as it was, because it drives filter
@@ -329,12 +381,12 @@ rather than a value the plugin silently ignores. It cannot check that a `reward.
 icon — those need sqpack and CI has no game — so the generator checks both at the moment it writes
 the field.
 
-It also checks the two halves separately (587 curated, 621 imported), because they fail differently:
+It also checks the two halves separately (587 curated, 1,290 imported), because they fail differently:
 a change in the first is somebody editing curation and a change in the second is the game shipping a
 patch, and a single total would let one move inside the other. And it requires a **description on
 every curated entry** while allowing an imported one to have none. That rule used to be "every entry
 carries 20 to 400 characters of description", which was right while every entry had been written by a
-person and is a trap now that most have not — satisfying it for 621 game-proposed rows would mean
+person and is a trap now that most have not — satisfying it for 1,290 game-proposed rows would mean
 generating a sentence each, and a manufactured sentence that reads like curation is worse than an
 honest blank. The row and the journal fall through to `notes`, then the requirement label, then the
 entry's own name; see `UnlockRowText.Description`.
@@ -375,7 +427,7 @@ names **151** aether currents against the **30** rows the guide lists.
 
 So generation also asks the game. `tools/Wayfarer.CatalogueGen`'s `enumerate` verb walks every
 place in the schema where the game states "this is gated on a quest" — found mechanically, by
-reflecting over every `RowRef<Quest>` in `Lumina.Excel.Sheets` — and produces **3,091 rows across
+reflecting over every `RowRef<Quest>` in `Lumina.Excel.Sheets` — and produces **3,760 rows across
 36 channels**. The diff against the catalogue about to be written is `data/coverage.json`, which is
 committed. CI checks it with no game installation.
 
@@ -387,10 +439,10 @@ and the import cannot disagree about what a gap is.
 
 | channel | the game has | we cover | of those, by identity | curated entries | imported entries | excluded |
 |---|---:|---:|---:|---:|---:|---:|
+| `title` | 870 | 870 | 827 | — | **827** | — |
 | `duty` | 857 | 540 | 486 | 290 | **220** | 317 |
 | `triple-triad-card` | 481 | 381 | 10 | — | **5** | 100 |
 | `dye-slot` | 243 | — | — | — | — | 243 |
-| `title` | 201 | 201 | 158 | — | **158** | — |
 | `action` | 160 | 41 | — | — | — | 119 |
 | `aether-current` | 151 | 45 | — | — | — | 106 |
 | `gathering-folklore` | 134 | 54 | 12 | — | **12** | 80 |
@@ -424,7 +476,7 @@ and the import cannot disagree about what a gap is.
 | `facewear` | 1 | 1 | 1 | — | **1** | — |
 | `hairstyle` | 1 | 1 | 1 | — | **1** | — |
 | `zone` | — | — | — | 14 | — | — |
-| **total** | **3,091** | **1,860** | **961** | **587** | **621** | **1,231** |
+| **total** | **3,760** | **2,529** | **1,630** | **587** | **1,290** | **1,231** |
 
 The `curated entries` and `imported entries` columns count catalogue entries, not enumerated rows,
 and only the imported column totals cleanly: a curated entry can cover rows in more than one channel

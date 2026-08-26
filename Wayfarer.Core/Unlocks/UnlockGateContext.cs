@@ -39,6 +39,13 @@ namespace Wayfarer.Core.Unlocks;
 /// observation, which can prove a requirement met but never prove one unmet.</param>
 /// <param name="ZoneProgressAtLeast">Whether Eureka elemental level or Bozja resistance rank
 /// reaches a threshold. Null outside the zone that owns the director.</param>
+/// <param name="IsTitleUnlocked">Whether the player has earned one <c>Title</c> row. Null until
+/// something has caused the client to hold an answer: the unlocked-titles bitfield is all zeroes
+/// before the list is asked for, so an unguarded read tells a character with two hundred titles
+/// that they have none.</param>
+/// <param name="GetTitleDataState">Which of the two unknowns
+/// <paramref name="IsTitleUnlocked"/>'s null is — never asked for, or asked for and still coming.
+/// It shapes the sentence shown in place of an answer and decides nothing.</param>
 /// <param name="GetSaddlebagItemCount">The chocobo saddlebags, which an ordinary inventory count
 /// does not include.</param>
 public sealed record UnlockGateContext(
@@ -63,6 +70,8 @@ public sealed record UnlockGateContext(
     Func<uint, bool?>? IsAetherCurrentZoneComplete = null,
     Func<uint, int, bool?>? SharedFateRankAtLeast = null,
     Func<ZoneProgressKind, int, bool?>? ZoneProgressAtLeast = null,
+    Func<uint, bool?>? IsTitleUnlocked = null,
+    Func<TitleDataState>? GetTitleDataState = null,
     Func<uint, int>? GetSaddlebagItemCount = null)
 {
     /// <summary>The kinds this build can evaluate. Defaults to the shipped registry; a test may

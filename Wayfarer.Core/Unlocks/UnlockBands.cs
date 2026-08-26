@@ -71,8 +71,15 @@ public static class UnlockBands
     {
         UnlockBand.Available => "Every requirement Wayfarer can check is met. Route Me will walk these.",
         UnlockBand.Blocked => "Something specific is in the way. Each row says what it is.",
+
+        // Two kinds of row land here and the sentence has to cover both, or it is false about
+        // whichever it leaves out. Most are entries the game states nothing checkable about at all.
+        // The rest are entries whose proof is request-gated — a title's, until the achievement table
+        // arrives — where the game states plenty and Wayfarer has simply not read it yet. Each row
+        // says which; this says that the band is the honest place for both.
         UnlockBand.NotKnown =>
-            "The game states nothing Wayfarer can check these against. They are listed rather than "
+            "Either the game states nothing Wayfarer can check these against, or the reading that "
+            + "would settle them has not arrived yet. Each row says which. Listed rather than "
             + "hidden, and never reported as available.",
         _ => "Already unlocked on this character.",
     };

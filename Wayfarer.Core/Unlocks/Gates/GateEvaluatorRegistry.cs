@@ -25,7 +25,7 @@ public sealed class GateEvaluatorRegistry
         }
     }
 
-    /// <summary>The registry every ordinary caller wants: all eighteen shipped kinds. Evaluators
+    /// <summary>The registry every ordinary caller wants: all nineteen shipped kinds. Evaluators
     /// are stateless, so one instance serves the whole process.</summary>
     public static GateEvaluatorRegistry Standard { get; } = BuildStandard();
 
@@ -88,6 +88,7 @@ public sealed class GateEvaluatorRegistry
             new TribeRankAtLeastEvaluator(),
             new GrandCompanyRankAtLeastEvaluator(),
             new AchievementCompleteEvaluator(),
+            new TitleUnlockedEvaluator(),
             new AetherCurrentsCompleteEvaluator(),
             new SharedFateRankAtLeastEvaluator(),
             new ZoneProgressAtLeastEvaluator(),

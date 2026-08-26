@@ -108,6 +108,33 @@ public sealed class UnlockDefinition
     /// </summary>
     public GameTextRef? DescriptionSource { get; set; }
 
+    /// <summary>Whether this entry has a location, and if so of what kind. Null means
+    /// <see cref="UnlockPlaceKinds.QuestGiver"/> — the behaviour every entry had before the field
+    /// existed. See <see cref="UnlockPlace"/>.
+    ///
+    /// <para>Independent of <see cref="DescriptionSource"/> and <see cref="State"/> on purpose. An
+    /// entry may know how it is obtained and not where; know where and not how; be gradeable while
+    /// knowing neither. Collapsing the three into one "unverifiable" flag is what let a quest-less
+    /// entry say nothing at all about any of them.</para></summary>
+    public UnlockPlace? Place { get; set; }
+
+    /// <summary>What proves the player already has this: a gate read against the entry's own
+    /// identity rather than against a prerequisite for it.
+    ///
+    /// <para>This is <see cref="ResolvedUnlock.IdentityGate"/>, declared by the catalogue instead of
+    /// derived from a reward's sheet kind. Both paths exist and the declared one wins: deriving
+    /// works wherever the identity row alone names the read — a duty's own unlock bit — and cannot
+    /// where the read needs a fact the identity sheet does not carry.</para>
+    ///
+    /// <para>Note which way round it resolves. A satisfied REQUIREMENT means "go and get it"; a
+    /// satisfied STATE means "you already have it". Putting one in the other's field inverts every
+    /// verdict on the entry, which is why they are separate fields rather than one list.</para>
+    ///
+    /// <para>A kind this build cannot evaluate degrades to "we cannot tell" through the same
+    /// registry as any other gate, which is what makes declaring one safe: a catalogue shipped by a
+    /// newer plugin says it does not know rather than claiming the player has nothing.</para></summary>
+    public Gates.GateNode? State { get; set; }
+
     public string Priority { get; set; } = "nice";
 
     public bool Cosmetic { get; set; }

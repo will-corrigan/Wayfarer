@@ -27,6 +27,27 @@ public enum ZoneProgressKind
     BozjaResistance,
 }
 
+/// <summary>How much the client currently knows about which titles the player has earned. Three
+/// states, because the list is request-gated and the two unknowns are not the same fact: one is
+/// waiting for an answer, the other has never asked for one.
+///
+/// <para>This never decides a gate. <see cref="IProgressReader.TryTitleUnlocked"/> does that; this
+/// only says which sentence to show when it could not — see
+/// <c>TitleUnlockedEvaluator</c>. Keeping the decision and the wording apart is
+/// what stops a state being read as an answer.</para></summary>
+public enum TitleDataState
+{
+    /// <summary>Nothing has asked, so there is nothing to read. Not "the player has no
+    /// titles".</summary>
+    NotRequested,
+
+    /// <summary>Asked for, not yet arrived.</summary>
+    Pending,
+
+    /// <summary>Arrived. Every title now reads as itself, earned or not.</summary>
+    Known,
+}
+
 /// <summary>Everything a gate evaluator may read about the player.
 ///
 /// <para><b>The naming rule is the guard.</b> A member that <i>can</i> be unknown is declared
@@ -78,6 +99,10 @@ public interface ICharacterReader
 
 public interface IProgressReader
 {
+    /// <summary>Why <see cref="TryTitleUnlocked"/> could not answer, for the sentence shown in its
+    /// place. <see cref="TitleDataState.Known"/> whenever it can.</summary>
+    TitleDataState TitleData { get; }
+
     /// <summary>Authoritative when <see cref="ILiveState.IsReady"/>.</summary>
     bool IsQuestComplete(uint questRowId);
 
@@ -90,6 +115,16 @@ public interface IProgressReader
     /// round-trip and is made once, when the list is first computed for a character — never on a
     /// timer and never retried.</summary>
     bool TryAchievementComplete(uint achievementId, out bool complete);
+
+    /// <summary>Whether the player has earned one <c>Title</c> row. False until something has
+    /// caused the client to hold an answer, and there are two different ways for that to be true —
+    /// see <see cref="TitleData"/> for which, and for why the distinction is shown rather than
+    /// swallowed.
+    ///
+    /// <para>The dangerous read in the game, and the reason this is a <c>Try</c>: the unlocked-titles
+    /// bitfield is all zeroes until the list is requested, so an unguarded read tells a character
+    /// with two hundred titles that they have none.</para></summary>
+    bool TryTitleUnlocked(uint titleRowId, out bool unlocked);
 
     /// <summary>Whether the zone's Shared FATE rank is at least <paramref name="rank"/>. False
     /// until the FATE progress tab has arrived, with the same round-trip discipline as

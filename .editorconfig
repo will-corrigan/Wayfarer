@@ -359,6 +359,15 @@ dotnet_diagnostic.SA1402.severity = none
 dotnet_diagnostic.SA1649.severity = none
 dotnet_diagnostic.MA0048.severity = none
 
+[Wayfarer.Core/Unlocks/UnlockPlace.cs]
+# UnlockPlaceKinds is the closed set of values UnlockPlace.Kind may hold - one
+# routability concept, kept in one file for exactly the reason UnlockReward.cs
+# above is: a kind list living apart from the record it constrains would be free
+# to disagree with it.
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
 [Wayfarer/QuestNavigator.cs]
 # Ported as a single file with its companion PickupTarget record, matching the
 # source repo's port map (task-5-brief.md) exactly.

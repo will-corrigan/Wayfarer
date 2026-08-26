@@ -942,8 +942,8 @@ function infoboxQuestNumber(record) {
 // you get it — and stay together after it.
 const ENTRY_KEYS = [
   'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
-  'requires', 'confidence', 'sources',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'place', 'state', 'priority',
+  'cosmetic', 'requires', 'confidence', 'sources',
 ];
 
 // The guide types each row with an icon, and that icon is a statement by the source about what
@@ -1383,7 +1383,19 @@ function importedEntry(row) {
         ? { level: row.identityLevel, levelSource: `game-data:${row.identityKind}#${row.identityId}` }
         : { category: importedCategory(row) };
 
-  const requires = gated
+  // What proves the player already HAS this, as opposed to what it takes to get it. Declared per
+  // CHANNEL, never per entry: the question "which client bit says you own one of these" is a
+  // property of the sheet the identity lives in, and an answer written against one row would be an
+  // exception list by another name. See STATE_GATE_FOR_CHANNEL for why there is one entry in it.
+  const state = stateGateFor(row);
+
+  // An ungated row used to be given `unverifiable` unconditionally, and the label said why: the
+  // game names the thing and withholds the condition. That is still exactly right for a duty. It is
+  // NOT right for a row whose own unlock bit the client keeps — the flag says "we cannot tell
+  // whether you have this", and for those rows we can, off the identity the entry already names. So
+  // the shrug is now what is left when there is neither a gate nor a state, which is what it always
+  // meant.
+  const requires = gated || state
     ? null
     : {
       label:
@@ -1409,6 +1421,14 @@ function importedEntry(row) {
     // already had the mechanism for citing one rather than curating a paraphrase of it — see
     // GameTextRef and requires.conditionSource. The plugin resolves it live at load.
     ...(row.descriptionSource ? { descriptionSource: row.descriptionSource } : {}),
+    // Whether there is anywhere to go, STATED rather than left to be inferred from a missing
+    // coordinate. A gated row routes to its quest's giver, exactly as it always has; an ungated one
+    // has no giver and never had, and until now that was a correct outcome nothing could assert and
+    // any later code populating a coordinate would silently have undone. It matters most for the
+    // 669 titles earned by counting things, which have no place in any sheet: the row must offer no
+    // route and say what it needs instead. See Wayfarer.Core/Unlocks/UnlockPlace.cs.
+    place: { kind: gated ? 'questGiver' : 'none' },
+    ...(state ? { state } : {}),
     // `priority` is a closed set and an editorial judgement. Nothing editorial has looked at these
     // rows, so they take the neutral value for their kind rather than a claim: cosmetics are
     // optional, everything else is worth doing. An entry that has never been reviewed is
@@ -1417,13 +1437,36 @@ function importedEntry(row) {
     priority: cosmetic ? 'optional' : 'nice',
     cosmetic,
     ...(requires ? { requires } : {}),
-    confidence: gated ? 'single-source' : 'unverified',
+    // `unverified` means nothing in the game's data backs this entry, and it is what an ungated row
+    // with no readable state is. A row whose state gate reads its own unlock bit is backed by the
+    // game as directly as anything in the file — one source, the sheets, and no second one to
+    // corroborate it, which is what `single-source` says.
+    confidence: gated || state ? 'single-source' : 'unverified',
     sources: [
       IMPORT_SOURCE(row.channel),
       `game-data:${row.identityKind}#${row.identityId}`,
       ...(gated ? [`game-data:Quest#${row.questRowId}`] : []),
     ],
   };
+}
+
+/** The gate kind that reads one channel's own unlock bit, or null where nothing reads it yet.
+ *
+ * One line per channel, and today one line. The register of what the client keeps a readable bit
+ * for is much longer — mounts, minions, emotes, orchestrion rolls, cards, bardings — and each of
+ * those is an evaluator this build does not have; adding a line here without one would ship an
+ * entry that claims to be gradeable and silently is not. So the map is the honest measure of how far
+ * the runtime has got, and a channel absent from it keeps saying it does not know.
+ *
+ * The ids are the identity's own row. Nothing here reads a name and nothing here knows which entry
+ * it is building — dispatch is on the channel, which is a property of the sheet. */
+const STATE_GATE_FOR_CHANNEL = {
+  title: (row) => ({ kind: 'titleUnlocked', ids: [row.identityId], display: row.name }),
+};
+
+function stateGateFor(row) {
+  const build = STATE_GATE_FOR_CHANNEL[row.channel];
+  return build ? build(row) : null;
 }
 
 /** Every enumeration row the policy says the catalogue lists and no curated entry covers.

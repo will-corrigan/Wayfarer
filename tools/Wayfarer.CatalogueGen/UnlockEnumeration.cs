@@ -148,8 +148,10 @@ internal static class UnlockEnumeration
     private const byte UnlockCriteriaIsQuest = 1;
 
     /// <summary>The achievement condition kind whose <c>Key</c> is a Quest row. There is exactly
-    /// one <c>RowRef&lt;Title&gt;</c> in the whole schema — <c>Achievement.Title</c> — so this join
-    /// is the only way to enumerate a quest-granted title at all.</summary>
+    /// one <c>RowRef&lt;Title&gt;</c> in the whole schema — <c>Achievement.Title</c> — so that join
+    /// is the only way to enumerate a title at all, and this is the only one of its seventeen
+    /// condition kinds whose <c>Key</c> may be read as a gate: on every other kind the same column
+    /// holds a kill count, a gil amount or another achievement's id.</summary>
     private const byte AchievementTypeQuestCompletion = 6;
 
     /// <summary><c>QuestRewardOther</c> row 2, <c>Aether Current</c>. It accounts for 150 of the
@@ -408,34 +410,88 @@ internal static class UnlockEnumeration
         }
     }
 
-    /// <summary>Quest-completion titles. No quest column awards a title, so the only enumerable
-    /// join runs the other way: an <c>Achievement</c> of condition kind 6 whose <c>Key</c> is a
-    /// Quest row.</summary>
+    /// <summary>Every title the game awards. No quest column awards a title, so the only enumerable
+    /// join runs the other way: an <c>Achievement</c> whose <c>Title</c> column names one.
+    ///
+    /// <para><b>This used to emit only the quest-granted ones.</b> The old comment explained why —
+    /// "no quest column awards a title, so the only enumerable join runs the other way" — and drew
+    /// the wrong conclusion from it: that the join had to run from a condition kind whose
+    /// <c>Key</c> is a quest, which is one of seventeen. The catalogue's spine is the quest, and
+    /// everything with no quest fell off it: kill counts, duty feats, crafting, gathering,
+    /// exploration, PvP rank, and every "obtain all five of these" meta-achievement. 201 titles out
+    /// of 870.</para>
+    ///
+    /// <para><b>What replaces the quest, and what does not.</b> The gate is still read off condition
+    /// kind 6 and only off it (see <see cref="AchievementTypeQuestCompletion"/>) — a title with no
+    /// quest is enumerated with no gate at all, which is the same honest answer this walk already
+    /// gives 577 of the 857 duties. What the other 669 do get is the achievement's own description,
+    /// which is Square Enix's sentence about how the thing is earned and exists for every
+    /// achievement row there is.</para>
+    ///
+    /// <para><b>Deduplicated on the Title row</b>, because the identity is the title rather than the
+    /// achievement and three titles are awarded by two achievements each. The one that carries the
+    /// row is the lowest-numbered, so the answer is a function of the sheet rather than of iteration
+    /// order.</para></summary>
     private static void AddTitles(
         GameData game, QuestGates gates, DescriptionSources descriptions, List<EnumeratedUnlock> rows)
     {
-        foreach (var row in game.GetExcelSheet<Achievement>())
+        var achievements = game.GetExcelSheet<Achievement>();
+        var titles = game.GetExcelSheet<Title>();
+
+        // Title row -> the lowest-numbered achievement that awards it.
+        var awardedBy = new SortedDictionary<uint, uint>();
+        foreach (var row in achievements)
         {
-            if (row.Type != AchievementTypeQuestCompletion || row.Title.RowId == 0 || row.Key.RowId == 0)
+            if (row.Title.RowId != 0 && !awardedBy.ContainsKey(row.Title.RowId))
+            {
+                awardedBy[row.Title.RowId] = row.RowId;
+            }
+        }
+
+        // Five title names cover sixty-nine Title rows — twenty-one of them are "Of the Final
+        // Conflict", one per PvP season. Those are not one unlock listed twenty-one times: each is
+        // its own row with its own bit in the client, and the enumeration's duplicate-name rule
+        // (MarkDuplicates) would otherwise drop sixty-four real titles as copies. So the ones that
+        // collide take the game's own name for the achievement that awards them as a qualifier.
+        // Disambiguated, never merged, and never with a word of ours.
+        var shared = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var titleRowId in awardedBy.Keys)
+        {
+            var name = titles.GetRowOrDefault(titleRowId)?.Masculine.ExtractText() ?? string.Empty;
+            if (name.Length > 0 && !seenNames.Add(name))
+            {
+                shared.Add(name);
+            }
+        }
+
+        foreach (var (titleRowId, achievementRowId) in awardedBy)
+        {
+            if (achievements.GetRowOrDefault(achievementRowId) is not { } achievement)
             {
                 continue;
             }
 
-            // Only kind-6 achievements whose Key resolves to a NAMED quest row are quest titles;
-            // the same column on other kinds holds kill counts and gil amounts.
-            if (!gates.IsLiveQuest(row.Key.RowId))
+            var name = titles.GetRowOrDefault(titleRowId)?.Masculine.ExtractText() ?? string.Empty;
+            if (name.Length > 0 && shared.Contains(name))
             {
-                continue;
+                name = $"{name} ({achievement.Name.ExtractText()})";
             }
+
+            var gate = achievement.Type == AchievementTypeQuestCompletion
+                && achievement.Key.RowId != 0
+                && gates.IsLiveQuest(achievement.Key.RowId)
+                    ? achievement.Key.RowId
+                    : (uint?)null;
 
             rows.Add(gates.Row(
                 "title",
                 "Title",
-                row.Title.RowId,
-                row.Title.ValueNullable?.Masculine.ExtractText() ?? string.Empty,
-                row.Key.RowId,
+                titleRowId,
+                name,
+                gate,
                 "Achievement.Title",
-                description: descriptions.ForAchievement(row.RowId)));
+                description: descriptions.ForAchievement(achievementRowId)));
         }
     }
 

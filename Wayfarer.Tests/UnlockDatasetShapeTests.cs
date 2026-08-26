@@ -29,7 +29,15 @@ public class UnlockDatasetShapeTests
     /// gets a gate derived from that row — the duty's own unlock bit — and where that reads, the
     /// entry is graded on it. The flag records what the CATALOGUE can express, which is a
     /// different thing from what the client knows; see
-    /// <c>ResolvedUnlock.IdentityGate</c>.</para></summary>
+    /// <c>ResolvedUnlock.IdentityGate</c>.</para>
+    ///
+    /// <para><b>The third rule's premise was corrected when the catalogue gained a <c>state</c>
+    /// gate.</b> "Cites rows but no Quest row, therefore nothing says whether the unlock was taken"
+    /// held while a Quest row was the only thing the client recorded that an entry could point at.
+    /// An entry declaring a <c>state</c> gate points at a bit the client keeps about the unlock
+    /// ITSELF, which is a stronger statement than a quest binding rather than a weaker one. 669
+    /// titles are in exactly that position, and demanding <c>unverifiable</c> of them would be
+    /// demanding that they claim they cannot be checked while the plugin checks them.</para></summary>
     [Fact]
     public void EveryEntryEitherRestsOnAGameRowOrDeclaresItRestsOnNothing()
     {
@@ -44,13 +52,13 @@ public class UnlockDatasetShapeTests
                 hasQuestRow && d.Requires?.Unverifiable == true,
                 $"'{d.Unlock}' is marked unverifiable but cites a Quest row: {string.Join(", ", d.Sources)}");
             Assert.False(
-                hasRow && !hasQuestRow && d.Requires?.Unverifiable != true,
-                $"'{d.Unlock}' cites only non-quest rows, so nothing says whether the unlock was taken: {string.Join(", ", d.Sources)}");
+                hasRow && !hasQuestRow && d.State is null && d.Requires?.Unverifiable != true,
+                $"'{d.Unlock}' cites only non-quest rows and declares no state, so nothing says whether the unlock was taken: {string.Join(", ", d.Sources)}");
         }
     }
 
     /// <summary>Every kind the gate language defines has an evaluator behind it. This is the
-    /// non-vacuous half: it iterates the eighteen names in <see cref="GateKinds"/>, so emptying the
+    /// non-vacuous half: it iterates every name in <see cref="GateKinds"/>, so emptying the
     /// registry — or adding a kind string and forgetting to register it — goes red.</summary>
     [Fact]
     public void EveryGateKindTheLanguageDefines_HasARegisteredEvaluator()
@@ -69,20 +77,21 @@ public class UnlockDatasetShapeTests
     /// safely is not the same as visibly, and a kind misspelt in the data would otherwise ship as
     /// an entry that quietly says nothing.
     ///
-    /// <para><b>The shipped catalogue uses none of them.</b> Not one of the 587 entries carries a
-    /// <c>requires.gates</c> node — the only gate the plugin builds today is the one the identity
-    /// gate synthesises at runtime — so the loop below iterates nothing and cannot fail. That is
-    /// asserted rather than assumed: without the count, this test reads as a guarantee it is not
-    /// currently providing, and it would stay green with the evaluator registry emptied out (which is
-    /// why the test above exists). The day the catalogue starts declaring gates, this number changes
-    /// and the loop starts guarding for real.</para></summary>
+    /// <para><b>The shipped catalogue now uses one of them, and this stopped being a vacuous
+    /// loop.</b> It used to assert the shipped set was EMPTY — true while no entry declared a gate
+    /// of any kind, and stated explicitly so the test could not read as a guarantee it was not
+    /// providing. The 870 title entries declare a <c>state</c> gate of kind <c>titleUnlocked</c>,
+    /// so the set is now non-empty and the loop guards for real. The kind is named here as well as
+    /// counted: a regeneration that silently stopped emitting it would otherwise leave this test
+    /// green and the whole channel ungraded.</para></summary>
     [Fact]
     public void EveryShippedCatalogueKind_HasARegisteredEvaluator()
     {
         var registered = GateEvaluatorRegistry.Standard.Kinds;
         var shipped = CatalogueGateKinds.Of(Load()).ToList();
 
-        Assert.Empty(shipped);
+        Assert.NotEmpty(shipped);
+        Assert.Contains(GateKinds.TitleUnlocked, shipped, StringComparer.Ordinal);
         foreach (var kind in shipped)
         {
             Assert.Contains(kind, registered, StringComparer.Ordinal);

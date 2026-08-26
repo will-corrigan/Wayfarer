@@ -15,18 +15,23 @@ public class UnlockCatalogueShapeTests
     [Fact]
     public void Catalogue_HasTheExpectedSize()
     {
-        // Matches EXPECTED in data/validate-unlocks.mjs: 587 curated + 621 imported.
+        // Matches EXPECTED in data/validate-unlocks.mjs: 587 curated + 1,290 imported.
         //
         // The curated 587 are the wiki guide's rows, less the two the recovery removed (both on the
         // unreleased-expansion page, neither describing real content) and plus "Wings of Legacy
         // (Mount)" (Quest#71005), a live Dawntrail trophy-mount quest the guide does not list.
         //
-        // The imported 621 come from the game's own enumeration: one entry per row the coverage
+        // The imported 1,290 come from the game's own enumeration: one entry per row the coverage
         // policy says the catalogue lists and no curated entry covers. That half is a function of the
         // installed sqpack, so this number moving is what a patch adding an unlock looks like — and
         // data/validate-unlocks.mjs checks the two halves separately, so a change in one cannot hide
         // inside the other. See data/README.md.
-        Assert.Equal(1208, Load().Count);
+        //
+        // It was 621. The 669 it gained are the titles the enumeration could not see: it read only
+        // the achievements whose condition kind is quest completion, because that is the only kind
+        // whose `Key` is a quest, so 669 of the game's 870 titles — kill counts, duty feats,
+        // crafting, gathering, exploration, PvP rank — had no row to be enumerated as.
+        Assert.Equal(1877, Load().Count);
     }
 
     [Fact]
@@ -118,7 +123,15 @@ public class UnlockCatalogueShapeTests
 
     /// <summary>The invariant the whole schema exists for, restated over the shipped file: an
     /// entry with nothing to check must say so, or the calculator will fall through to Available
-    /// and send someone after something they cannot get.</summary>
+    /// and send someone after something they cannot get.
+    ///
+    /// <para><b>The list of what counts gained a member.</b> A declared <c>state</c> gate is a
+    /// statement about the entry's own identity — the client's own bit for the very thing the entry
+    /// is — which is stronger evidence than a quest binding rather than weaker: a quest is a
+    /// prerequisite, a state is the thing itself. 669 titles have no quest anywhere and are graded
+    /// off theirs. Leaving them out of this list would have meant either failing this test over
+    /// entries the plugin grades correctly, or making them declare <c>unverifiable</c> and lie about
+    /// it.</para></summary>
     [Fact]
     public void NoEntryIsSilentlyIdentityLess()
     {
@@ -126,9 +139,10 @@ public class UnlockCatalogueShapeTests
         {
             var identified = e.Quest is not null
                 || e.QuestAnyOf.Count > 0
+                || e.State is not null
                 || e.Requires?.Unverifiable == true
                 || e.Requires?.HasCheckableRequirement == true;
-            Assert.True(identified, $"{e.Unlock} (lv{e.Level}) has no quest, no questAnyOf and no requires");
+            Assert.True(identified, $"{e.Unlock} (lv{e.Level}) has no quest, no questAnyOf, no state and no requires");
         }
     }
 

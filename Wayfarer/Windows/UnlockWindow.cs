@@ -221,7 +221,7 @@ internal sealed class UnlockWindow(
 
     private void DrawRouteButton(List<ResolvedUnlock> visible)
     {
-        var routable = visible.Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null).ToList();
+        var routable = visible.Where(u => u.Status == UnlockStatus.Available && u.Routable).ToList();
 
         // Same words and same cap as the native button — through UnlockRouteCap, which is the point
         // of it being there. This window is what a player sees when the native one could not be
@@ -440,8 +440,13 @@ internal sealed class UnlockWindow(
     {
         if (u.Status == UnlockStatus.Available)
         {
-            ImGui.TextDisabled(u.GiverTerritory == null
-                ? "Location unknown — find the quest giver manually."
+            // Two different "no route" cases, and they get two different sentences: an entry whose
+            // channel HAS no place is not one whose giver we failed to find. See
+            // ResolvedUnlock.Routable.
+            ImGui.TextDisabled(!u.Routable
+                ? UnlockPlaceKinds.CanHaveACoordinate(u.Def.Place?.Kind)
+                    ? "Location unknown — find the quest giver manually."
+                    : "There is nowhere to go for this one — see what it needs."
                 : navigator != null
                     ? "Click to be guided there."
                     : "Enable Quest Helper to navigate.");

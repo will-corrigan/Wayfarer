@@ -463,7 +463,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         var routingUnlocks = mode == FollowMode.UnlockRoute;
         var routable = navigator is null
             ? 0
-            : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+            : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.Routable);
         var unlocksReady = routable > 0 && navigator is not null;
 
         // "8 of 47" rather than "47": this entry starts the same capped plan the button does, so the
@@ -2409,7 +2409,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         groupButton.String = GroupButtonLabel();
-        var routable = visible.Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
+        var routable = visible.Count(u => u.Status == UnlockStatus.Available && u.Routable);
 
         // Through UnlockRouteCap rather than composed here: the button is the only place the cap is
         // visible before it applies, and a second phrasing of it is a second chance to omit it.
@@ -2425,7 +2425,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        var routable = ComputeVisibleUnlocks().Where(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null).ToList();
+        var routable = ComputeVisibleUnlocks().Where(u => u.Status == UnlockStatus.Available && u.Routable).ToList();
         if (routable.Count == 0)
         {
             return;
@@ -2556,6 +2556,18 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             var contentId = duty.Id;
             actions.Add(new HubDetailAction("Duty Finder", () => OpenDuty(contentId)));
+        }
+
+        // The requirement, in the window that already draws it. An entry whose description comes
+        // from an Achievement row can hand the player straight to that row: the game states the
+        // condition, the progress and the reward there, already in the player's own language, and
+        // none of that is worth redrawing. This is what an entry with no place offers in place of a
+        // route — see ResolvedUnlock.Routable.
+        if (u.Def.DescriptionSource is { Sheet: "Achievement" } achievement)
+        {
+            var achievementRowId = achievement.Row;
+            actions.Add(new HubDetailAction(
+                "Show the requirement", () => AchievementWindowAction.Execute(achievementRowId)));
         }
 
         // Slot three, AcceptMapButton: the button whose job is "open the map at this". Ours plans

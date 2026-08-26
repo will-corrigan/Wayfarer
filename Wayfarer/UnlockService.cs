@@ -28,6 +28,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     private readonly IClientState clientState;
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly IDataManager dataManager;
+    private readonly IUnlockState unlockState;
     private readonly List<ResolvedUnlock> entries = [];
     private readonly UnlockLiveProgress liveProgress;
 
@@ -35,6 +36,13 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     /// for anything is warranted at all: fetching data no entry would read is the definition of a
     /// speculative request, so an absent kind means no packet.</summary>
     private HashSet<string> catalogueGateKinds = [];
+
+    /// <summary>Which <c>Achievement</c> rows award each <c>Title</c> row, from the game's own
+    /// sheet. There is exactly one <c>RowRef&lt;Title&gt;</c> in the whole schema —
+    /// <c>Achievement.Title</c> — so this is the only join between a title and anything that
+    /// explains it, and it is what lets an unread title list fall back on the achievement table the
+    /// plugin already fetches. Built once, at load.</summary>
+    private Dictionary<uint, List<Lumina.Excel.Sheets.Achievement>> titleAchievements = [];
 
     /// <summary>(level, territory) as of the last time a recompute was triggered from the
     /// framework-update change detector. Null means "never triggered" — including right after
@@ -54,13 +62,15 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         IObjectTable objects,
         IClientState clientState,
         IDalamudPluginInterface pluginInterface,
-        IDataManager dataManager)
+        IDataManager dataManager,
+        IUnlockState unlockState)
     {
         this.log = log;
         this.objects = objects;
         this.clientState = clientState;
         this.pluginInterface = pluginInterface;
         this.dataManager = dataManager;
+        this.unlockState = unlockState;
         liveProgress = new UnlockLiveProgress();
         try
         {
@@ -99,7 +109,7 @@ internal sealed unsafe class UnlockService : IUnlockProvider
     public IReadOnlyList<ResolvedUnlock> GlanceableHere { get; private set; } = [];
 
     public PickupTarget? ToPickupTarget(ResolvedUnlock u) =>
-        u.QuestRowId is { } rowId && u.GiverTerritory is { } t && u.GiverMap is { } m
+        u.Routable && u.QuestRowId is { } rowId && u.GiverTerritory is { } t && u.GiverMap is { } m
             ? new(u.Def.Unlock, u.Def.Quest ?? "?", rowId, t, m, u.GiverX, u.GiverY, u.GiverZ, u.GiverName)
             : null;
 
@@ -187,6 +197,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             IsAetherCurrentZoneComplete: id => ps != null ? ps->IsAetherCurrentZoneComplete(id) : null,
             SharedFateRankAtLeast: liveProgress.SharedFateRankAtLeast,
             ZoneProgressAtLeast: liveProgress.ZoneProgressAtLeast,
+            IsTitleUnlocked: IsTitleUnlocked,
+            GetTitleDataState: liveProgress.TitleData,
             GetSaddlebagItemCount: itemId => inventory != null ? SaddlebagCount(inventory, itemId) : 0);
 
         UnlockStatusCalculator.Compute(entries, ctx);
@@ -452,6 +464,86 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         return byKey;
     }
 
+    /// <summary>Whether this character has earned one title, from whichever of the two sources can
+    /// answer — and null when neither can.
+    ///
+    /// <para><b>Both reads go through Dalamud's own <see cref="IUnlockState"/></b> rather than the
+    /// client structures under it, for the reason <see cref="AetherCurrentService"/> gives: it takes
+    /// a typed Lumina row, so the bitfield's index and its offset are its problem rather than ours,
+    /// and its version is the one that gets fixed when a patch moves something. What it does NOT do
+    /// is tell "not earned" from "could not be read" — it answers false for both — so that
+    /// distinction is recovered here from its own <c>IsTitleListLoaded</c> and
+    /// <c>IsAchievementListLoaded</c>, which is the same shape of recovery the aether currents make
+    /// from login state.</para>
+    ///
+    /// <para><b>Why two sources, in this order.</b> The title list is the fresher of the two: a
+    /// title earned mid-session sets its own bit, where the achievement table is a snapshot of one
+    /// request. But Wayfarer never asks for the title list — every title in the catalogue is awarded
+    /// by an achievement, and the achievement table is a request the plugin already makes once per
+    /// character, so asking for both would buy a second gated source for one fact. The fallback is
+    /// therefore what answers for nearly every player; the title list is what answers first for the
+    /// one who has just earned something.</para>
+    ///
+    /// <para>A positive from either is an answer. A negative needs at least one source actually
+    /// loaded, because a title nobody could read must never render as one the player has not
+    /// earned.</para></summary>
+    private bool? IsTitleUnlocked(uint titleRowId)
+    {
+        if (!clientState.IsLoggedIn
+            || dataManager.GetExcelSheet<Title>().GetRowOrDefault(titleRowId) is not { } title)
+        {
+            return null;
+        }
+
+        var listLoaded = unlockState.IsTitleListLoaded;
+        if (listLoaded && unlockState.IsTitleUnlocked(title))
+        {
+            return true;
+        }
+
+        if (unlockState.IsAchievementListLoaded
+            && titleAchievements.TryGetValue(titleRowId, out var awardedBy))
+        {
+            foreach (var achievement in awardedBy)
+            {
+                if (unlockState.IsAchievementComplete(achievement))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return listLoaded ? false : null;
+    }
+
+    /// <summary>The <c>Title</c> to <c>Achievement</c> join, from the sheet rather than from the
+    /// catalogue: the game states which achievement awards which title, and reading it here means
+    /// the fallback covers every title the client knows about rather than only the ones an entry
+    /// happens to cite. Three titles are awarded by two achievements each, so the value is a
+    /// list.</summary>
+    private Dictionary<uint, List<Lumina.Excel.Sheets.Achievement>> BuildTitleAchievements()
+    {
+        var map = new Dictionary<uint, List<Lumina.Excel.Sheets.Achievement>>();
+        foreach (var row in dataManager.GetExcelSheet<Lumina.Excel.Sheets.Achievement>())
+        {
+            if (row.Title.RowId == 0)
+            {
+                continue;
+            }
+
+            if (!map.TryGetValue(row.Title.RowId, out var list))
+            {
+                map[row.Title.RowId] = list = [];
+            }
+
+            list.Add(row);
+        }
+
+        return map;
+    }
+
     /// <summary>Reads a <see cref="GameTextRef"/> against the running client's own sheets, in
     /// whatever client language the player is using — see <see cref="GameTextRef"/> for why a
     /// reference is stored rather than a copy of the text. The sheet read itself is
@@ -519,13 +611,20 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         var byKey = BuildNameIndex(sheet);
 
         catalogueGateKinds = CatalogueGateKinds.Of(defs);
+        titleAchievements = BuildTitleAchievements();
         entries.Clear();
         foreach (var def in defs)
         {
             var r = new ResolvedUnlock
             {
                 Def = def,
-                IdentityGate = UnlockIdentityGate.For(def.Reward, duties),
+
+                // The catalogue's own `state` gate wins over the derived one. Deriving works
+                // wherever the identity row alone names the read — a duty's own unlock bit — and
+                // cannot where the read needs a fact the identity sheet does not carry. An entry
+                // that states what proves it obtained is stating a fact rather than leaving one to
+                // be guessed at.
+                IdentityGate = def.State ?? UnlockIdentityGate.For(def.Reward, duties),
 
                 // The game's own sentence about the unlock, for the 621 entries nobody wrote one
                 // for. Read once here rather than per draw: it is a sheet lookup, the checklist is

@@ -26,6 +26,10 @@ internal sealed class GateContextLiveState(UnlockGateContext ctx)
 
     public int GrandCompanyRank => ctx.PlayerGrandCompanyRank;
 
+    // A host that wired no title reader has asked for nothing, which is exactly what NotRequested
+    // means — the same "not wired therefore unknown" rule every optional reader here follows.
+    public TitleDataState TitleData => ctx.GetTitleDataState?.Invoke() ?? TitleDataState.NotRequested;
+
     public int ClassJobLevel(uint classJobId) => ctx.GetClassJobLevel(classJobId);
 
     // Mounts, minions and reputation all live on the same always-resident player state, so the
@@ -58,6 +62,9 @@ internal sealed class GateContextLiveState(UnlockGateContext ctx)
 
     public bool TryAchievementComplete(uint achievementId, out bool complete) =>
         Unwrap(ctx.IsAchievementComplete?.Invoke(achievementId), out complete);
+
+    public bool TryTitleUnlocked(uint titleRowId, out bool unlocked) =>
+        Unwrap(ctx.IsTitleUnlocked?.Invoke(titleRowId), out unlocked);
 
     public bool TrySharedFateRankAtLeast(uint territoryTypeId, int rank, out bool met) =>
         Unwrap(ctx.SharedFateRankAtLeast?.Invoke(territoryTypeId, rank), out met);
