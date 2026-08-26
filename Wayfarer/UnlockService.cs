@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -355,6 +356,21 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 : null;
         }
 
+        // The row the entry itself cites, when it cites exactly one. That is the answer wherever it
+        // exists, and matching on the name below is what is left when it does not.
+        //
+        // The catalogue's own `quest` is a display name, and display names are not unique: the game
+        // ships two quests called "The Ultimate Weapon" and two called "Close to Home", so matching
+        // on the string binds one of each pair to both entries. Three entries in the shipped file are
+        // in exactly that position — the Porta Decumana wants 66060 while three other entries want
+        // 70058, and the marauder and arcanist unlocks want 65644 and 65645 — so a name match sends
+        // at least one of each group to a row it has nothing to do with and then grades it there. The
+        // row id has been in `sources` all along; this reads it.
+        if (SoleQuestRow(def) is { } cited && sheet.GetRowOrDefault(cited) is { } citedRow)
+        {
+            return (citedRow, []);
+        }
+
         if (def.Quest is not { } questName
             || !byKey.TryGetValue(QuestNameKey.For(questName), out var candidates))
         {
@@ -365,6 +381,35 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         return sheet.GetRowOrDefault(match.Best.RowId) is { } row
             ? (row, match.IsAmbiguous ? [.. match.Alternatives] : [])
             : null;
+    }
+
+    /// <summary>The one Quest row an entry's provenance names, or null when it names none or several.
+    ///
+    /// <para>Several means the entry is a set of alternatives, which <see cref="Bind"/>'s first
+    /// branch has already dealt with from <c>questAnyOf</c>. None means the entry is gated on a duty,
+    /// an item, or nothing the game states, and there is no row to prefer.</para></summary>
+    private static uint? SoleQuestRow(UnlockDefinition def)
+    {
+        const string Prefix = "game-data:Quest#";
+
+        uint? found = null;
+        foreach (var source in def.Sources)
+        {
+            if (!source.StartsWith(Prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (found is not null
+                || !uint.TryParse(source.AsSpan(Prefix.Length), CultureInfo.InvariantCulture, out var rowId))
+            {
+                return null;
+            }
+
+            found = rowId;
+        }
+
+        return found;
     }
 
     /// <summary>Groups every named Quest row under its folded name key, carrying the two facts
@@ -477,7 +522,16 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         entries.Clear();
         foreach (var def in defs)
         {
-            var r = new ResolvedUnlock { Def = def, IdentityGate = UnlockIdentityGate.For(def.Reward, duties) };
+            var r = new ResolvedUnlock
+            {
+                Def = def,
+                IdentityGate = UnlockIdentityGate.For(def.Reward, duties),
+
+                // The game's own sentence about the unlock, for the 621 entries nobody wrote one
+                // for. Read once here rather than per draw: it is a sheet lookup, the checklist is
+                // redrawn on every d-pad step, and the answer cannot change while the client runs.
+                GameDescription = def.DescriptionSource is { } source ? ResolveGameText(source) : null,
+            };
             if (Bind(def, sheet, byKey) is { } bound)
             {
                 QuestFacts.From(bound.Row, classJobs, enpcSheet, sheet, acceptConditions).ApplyTo(r, def.Level ?? 0);
@@ -486,6 +540,11 @@ internal sealed unsafe class UnlockService : IUnlockProvider
 
             entries.Add(r);
         }
+
+        // Once, here, rather than on every recompute: which names collide is a property of the
+        // catalogue, and the expansion and place that tell them apart come off the bound quest, which
+        // is settled by the loop above and does not change again.
+        UnlockDisambiguation.Apply(entries);
     }
 
     /// <summary>Everything pulled from a <see cref="Quest"/> sheet row, in one place so
@@ -531,6 +590,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
         float Y,
         float Z,
         string? Zone,
+        string? QuestExpansion,
+        string? QuestPlaceName,
         string? GiverName)
     {
         public static QuestFacts From(
@@ -629,6 +690,12 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             {
                 CollectAllowedJobs(q.ClassJobCategory1, classJobs, altJobRowIds, altJobNames);
             }
+
+            // The two facts that tell apart the catalogue entries sharing a name. Both come off the
+            // quest itself rather than out of the unlock name, which is the whole point of an entry
+            // binding to a quest ROW — see UnlockDisambiguation.
+            var expansion = q.Expansion.RowId != 0 ? q.Expansion.ValueNullable?.Name.ExtractText() : null;
+            var placeName = q.PlaceName.RowId != 0 ? q.PlaceName.ValueNullable?.Name.ExtractText() : null;
 
             // IssuerStart is an untyped RowRef: some quests are issued by objects/eobjects
             // rather than an ENpcResident, so a miss here is expected, not an error — degrade
@@ -732,6 +799,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
                 Y: y,
                 Z: z,
                 Zone: zone,
+                QuestExpansion: expansion,
+                QuestPlaceName: placeName,
                 GiverName: giverName);
         }
 
@@ -777,6 +846,8 @@ internal sealed unsafe class UnlockService : IUnlockProvider
             r.GiverY = Y;
             r.GiverZ = Z;
             r.ZoneName = Zone;
+            r.QuestExpansion = QuestExpansion;
+            r.QuestPlaceName = QuestPlaceName;
             r.GiverName = GiverName;
         }
     }

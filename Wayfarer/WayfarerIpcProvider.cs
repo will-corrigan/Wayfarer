@@ -104,7 +104,8 @@ internal sealed class WayfarerIpcProvider : IDisposable
                 Level = u.QuestLevel,
                 Zone = u.ZoneName,
                 Priority = u.Def.Priority,
-                Category = UnlockFilters.Category(u.Def),
+                Category = UnlockFilters.Domain(u.Def) ?? string.Empty,
+                Channel = u.Def.Channel,
                 Description = u.Def.Description,
             });
         }

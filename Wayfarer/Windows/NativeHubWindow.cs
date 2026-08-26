@@ -125,10 +125,19 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     /// each entry deciding for itself.</summary>
     private const string Following = "Following";
 
-    private static readonly string[] GroupModes = ["Zone", "Level", "Type"];
+    /// <summary>Available first, and it is the default: the player's question is "what should I do
+    /// next", and the default view used to be "Zone", which answers "what is near me" whether or not
+    /// any of it can be done. Then the three browse axes, domain first because a domain is a window
+    /// the game already has and the other two are ways of slicing one.</summary>
+    private static readonly UnlockGrouping[] GroupModes =
+        [UnlockGrouping.AvailableNow, UnlockGrouping.Domain, UnlockGrouping.Zone, UnlockGrouping.Level];
 
-    private static readonly (string Key, string Label)[] CategoryChips =
-        [("content", "Content"), ("system", "Systems"), ("cosmetic", "Cosmetics"), ("zone", "Zones")];
+    /// <summary>The seven domain chips, generated from <see cref="UnlockDomains"/> rather than
+    /// written out here. Written out, this list could omit a domain — and a domain missing from the
+    /// chips is a domain whose entries the player has no way to isolate, with nothing on screen
+    /// saying so. The count is asserted against the nav budget by <c>HubNavPlanTests</c>.</summary>
+    private static readonly (string Key, string Label)[] DomainChips =
+        [.. UnlockDomains.All.Select(d => (d, UnlockDomains.Label(d)))];
 
     private static readonly (string Key, string Label)[] PriorityChips =
         [("essential", "Essential"), ("nice", "Nice"), ("optional", "Optional")];
@@ -456,9 +465,13 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             ? 0
             : ComputeVisibleUnlocks().Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
         var unlocksReady = routable > 0 && navigator is not null;
+
+        // "8 of 47" rather than "47": this entry starts the same capped plan the button does, so the
+        // number beside it has to be the number of stops it will queue. Saying 47 here would put the
+        // honest count on one surface and the flattering one on the other.
         choices.Add(new FollowChoice(
             "Unlock Route",
-            routable > 0 ? $"{routable}" : string.Empty,
+            UnlockRouteCap.Caption(routable),
             routingUnlocks,
             unlocksReady ? OnRouteClicked : OpenUnlocksTab,
             unlocksReady));
@@ -731,9 +744,15 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private static string CountCaption(string detail) =>
         detail.Length > 0 && detail.All(char.IsAsciiDigit) ? detail : string.Empty;
 
-    private static string CategoryWord(string key) =>
-        Array.Find(CategoryChips, chip => string.Equals(chip.Key, key, StringComparison.Ordinal)).Label
-        ?? DisplayNames.TitleCase(key);
+    /// <summary>The status whose icon stands for a band. Borrowed from the states in it rather than
+    /// invented, so the shape over a band heading is the same shape as on the rows beneath it.</summary>
+    private static UnlockStatus BandIconStatus(UnlockBand band) => band switch
+    {
+        UnlockBand.Available => UnlockStatus.Available,
+        UnlockBand.Blocked => UnlockStatus.QuestLocked,
+        UnlockBand.NotKnown => UnlockStatus.RequirementsUnknown,
+        _ => UnlockStatus.Done,
+    };
 
     /// <summary>The catalogue's nine <c>type</c> values in the game's own words. A closed set — the
     /// dataset validator enforces it — so there is no unknown branch to design for, only a default
@@ -805,23 +824,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return zone is null ? $"From {giver}" : $"From {giver} · {zone}";
     }
 
-    private static IEnumerable<ResolvedUnlock> OrderInGroup(IEnumerable<ResolvedUnlock> group) =>
-        group.OrderBy(u => u.Status switch
-        {
-            UnlockStatus.Available => 0,
-            UnlockStatus.Accepted => 1,
-            UnlockStatus.QuestLocked => 2,
-            UnlockStatus.LevelLocked => 3,
-            UnlockStatus.InstanceLocked => 4,
-            UnlockStatus.GrandCompanyLocked => 5,
-            UnlockStatus.BeastTribeLocked => 6,
-            UnlockStatus.MountLocked => 7,
-            UnlockStatus.CollectionLocked => 8,
-            UnlockStatus.RequirementsUnknown => 9,
-            UnlockStatus.UnknownGate => 10,
-            UnlockStatus.LockedOut => 11,
-            _ => 12,
-        }).ThenBy(u => u.QuestLevel);
+    // The thirteen-way status sort that used to order a group is gone. It ordered the rows correctly
+    // and marked nothing, so a player scrolling a zone saw the available entries run into the locked
+    // ones with no line between them — and the three entries nothing could grade sorted into the
+    // middle of the locked ones, reading as "locked" without ever having said so. Bands say it:
+    // UnlockSections.Band.
 
     /// <summary>Line two of a hunting row: where the thing is. The zone alone for an overworld
     /// target, the zone and the duty for the Grand Company elites that live inside instanced
@@ -2191,7 +2198,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             Size = new Vector2(tabContentSize.X, ChecklistControlsHeight),
         };
 
-        checklistControls.AddNode(BuildFilterRow("Category", BuildCategoryChips()));
+        checklistControls.AddNode(BuildFilterRow("Domain", BuildDomainChips()));
         checklistControls.AddNode(BuildFilterRow("Priority", BuildPriorityChips()));
 
         // The game's own separator between a cluster of controls and the block under it —
@@ -2235,7 +2242,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         {
             Width = GameMetrics.Control.ButtonWidthMedium,
             Height = GameMetrics.Control.ButtonHeight,
-            String = $"Group: {GroupModes[groupMode]}",
+            String = GroupButtonLabel(),
             OnClick = () =>
             {
                 groupMode = (groupMode + 1) % GroupModes.Length;
@@ -2260,19 +2267,19 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         return row;
     }
 
-    private IEnumerable<CheckboxNode> BuildCategoryChips()
+    private IEnumerable<CheckboxNode> BuildDomainChips()
     {
-        foreach (var (key, label) in CategoryChips)
+        foreach (var (key, label) in DomainChips)
         {
             var chipKey = key;
             yield return new CheckboxNode
             {
                 Height = GameMetrics.Control.CheckboxHeight,
                 String = label,
-                IsChecked = filter.Categories.Contains(chipKey),
+                IsChecked = filter.Domains.Contains(chipKey),
                 OnClick = isOn =>
                 {
-                    ToggleMembership(filter.Categories, chipKey, isOn);
+                    ToggleMembership(filter.Domains, chipKey, isOn);
                     RebuildChecklist();
                 },
             };
@@ -2349,24 +2356,49 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         AddGuidanceUnavailableNote(navigator);
-        foreach (var group in GroupUnlockEntries(visible))
-        {
-            rows.Add(new HubListRow { Kind = HubRowKind.Heading, Label = group.Key, Detail = $"{group.Count()}" });
-            foreach (var u in OrderInGroup(group))
-            {
-                rows.Add(BuildChecklistRow(u, navigator));
-            }
-        }
-
+        AddChecklistSectionRows(visible, navigator);
         AddUnverifiedRows();
 
         if (rows.Count == 0)
         {
-            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = "Nothing to show with these filters." });
+            rows.Add(new HubListRow { Kind = HubRowKind.Note, Label = EmptyListNote() });
         }
 
         PublishRows(checklistControls);
         lastChecklistSignature = ComputeChecklistSignature();
+    }
+
+    /// <summary>The group headings, the band headings and the rows, flattened into the list in the
+    /// order <see cref="UnlockSections"/> put them in. Nothing is decided here — that is the point of
+    /// the sections existing — so this stays a walk over a shape a test already checked.</summary>
+    private void AddChecklistSectionRows(List<ResolvedUnlock> visible, INavigationProvider? navigator)
+    {
+        foreach (var group in ChecklistSections(visible))
+        {
+            rows.Add(new HubListRow
+            {
+                Kind = HubRowKind.Heading,
+                Label = group.Heading,
+                Detail = group.Count.ToString(CultureInfo.InvariantCulture),
+            });
+
+            foreach (var band in group.Bands)
+            {
+                // A band heading on every band, including the one whose name is the good news — the
+                // "Not known" band is the reason the headings exist at all, and a row cannot say
+                // "nothing checked this" about itself without repeating the sentence down the whole
+                // band. Suppressed only in the Available-now view, whose own heading already said it.
+                if (group.ShowBandHeadings)
+                {
+                    rows.Add(BuildBandHeadingRow(band));
+                }
+
+                foreach (var u in band.Entries)
+                {
+                    rows.Add(BuildChecklistRow(u, navigator));
+                }
+            }
+        }
     }
 
     private void UpdateRouteRow(List<ResolvedUnlock> visible, INavigationProvider? navigator)
@@ -2376,9 +2408,12 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             return;
         }
 
-        groupButton.String = $"Group: {GroupModes[groupMode]}";
+        groupButton.String = GroupButtonLabel();
         var routable = visible.Count(u => u.Status == UnlockStatus.Available && u.GiverTerritory != null);
-        routeButton.String = routable > 0 ? $"Route Me ({routable})" : "Route Me";
+
+        // Through UnlockRouteCap rather than composed here: the button is the only place the cap is
+        // visible before it applies, and a second phrasing of it is a second chance to omit it.
+        routeButton.String = UnlockRouteCap.ButtonLabel(routable);
         routeButton.IsEnabled = navigator != null && routable > 0;
     }
 
@@ -2397,7 +2432,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
 
         var player = objects.LocalPlayer;
-        var ordered = RoutePlanner.Order(routable, clientState.TerritoryType, player?.Position.X ?? 0, player?.Position.Z ?? 0);
+        var ordered = RoutePlanner.Plan(routable, clientState.TerritoryType, player?.Position.X ?? 0, player?.Position.Z ?? 0);
         var targets = ordered.Select(unlocks.ToPickupTarget).Where(t => t != null).Select(t => t!).ToList();
         if (targets.Count > 0)
         {
@@ -2447,7 +2482,7 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
 
         return new HubRowDetail
         {
-            Title = u.Def.Unlock,
+            Title = UnlockRowText.Name(u),
             Kind = token.Length > 0 ? $"{token} · {kind}" : kind,
             Level = number,
             RewardName = RewardLine(u, reward),
@@ -2481,8 +2516,11 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
     private string RewardLine(ResolvedUnlock u, UnlockReward? reward) => reward switch
     {
         { Kind: "ContentFinderCondition" } duty =>
-            UnlockRowText.DutyReward(duty.Name, journalFacts.DutyLevel(duty.Id)),
-        not null => reward.Name,
+            UnlockRowText.DutyReward(DisplayNames.SheetCase(duty.Name), journalFacts.DutyLevel(duty.Id)),
+
+        // Sheet text, cased the way the client cases it: Companion and Mount store 'wind-up
+        // brickman' and 'company chocobo' in lower case. Same transform as UnlockRowText.Name.
+        not null => DisplayNames.SheetCase(reward.Name),
         null => UnlockRowText.GrantedCapability(u),
     };
 
@@ -2625,6 +2663,37 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
         }
     }
 
+    /// <summary>The heading over one band inside a group.
+    ///
+    /// <para>A <see cref="HubRowKind.Heading"/> like the group's own rather than a third row kind:
+    /// the list virtualizes on one row height per kind, so a distinct band-heading kind would be a
+    /// second height to keep in step for no gain the player can see. The nesting is legible from the
+    /// words — a group heading is a place or a domain, a band heading is one of four fixed states —
+    /// and the game's own lists nest headings the same way.</para>
+    ///
+    /// <para>It carries a pane. That is how the "Not known" band actually gets labelled for a
+    /// controller player: they walk onto the heading and the pane says the game states nothing these
+    /// can be checked against, which is a sentence too long to fit on a row and too important to
+    /// leave to a player to infer from an icon.</para></summary>
+    private HubListRow BuildBandHeadingRow(UnlockBandSection band)
+    {
+        var count = band.Entries.Count.ToString(CultureInfo.InvariantCulture);
+        return new HubListRow
+        {
+            Kind = HubRowKind.Heading,
+            Label = UnlockBands.Label(band.Band),
+            Detail = count,
+            Pane = new HubRowDetail
+            {
+                Title = UnlockBands.Label(band.Band),
+                Kind = $"{count} entries",
+                StatusIconId = statusIcons.For(BandIconStatus(band.Band)),
+                Body = UnlockBands.Explanation(band.Band),
+            },
+            Hover = PublishDetail,
+        };
+    }
+
     private void ToggleUnverified()
     {
         unverifiedExpanded = !unverifiedExpanded;
@@ -2642,24 +2711,40 @@ internal sealed unsafe class NativeHubWindow : NativeAddon
             + "available.",
     };
 
-    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupUnlockEntries(List<ResolvedUnlock> visible) =>
-        GroupModes[groupMode] switch
-        {
-            "Level" => visible.GroupBy(u => $"Level {(u.QuestLevel / 10) * 10}–{((u.QuestLevel / 10) * 10) + 9}", StringComparer.Ordinal)
-                               .OrderBy(g => g.Min(u => u.QuestLevel)),
-            "Type" => visible
-                .GroupBy(u => CategoryWord(UnlockFilters.Category(u.Def)), StringComparer.Ordinal)
-                .OrderBy(g => g.Key, StringComparer.Ordinal),
-            _ => GroupByZone(visible),
-        };
+    /// <summary>The sections to draw. Grouping, banding and ordering all live in
+    /// <see cref="UnlockSections"/> — this window cannot be tested and that can, and the ImGui
+    /// fallback calls the same thing so the two cannot order the list differently.</summary>
+    private List<UnlockGroupSection> ChecklistSections(List<ResolvedUnlock> visible) =>
+        UnlockSections.Build(visible, GroupModes[groupMode], ViewPoint());
 
-    private IEnumerable<IGrouping<string, ResolvedUnlock>> GroupByZone(List<ResolvedUnlock> visible)
+    /// <summary>Where the player is, for the zone group that floats to the top and for what "nearest
+    /// first" means in the Available-now view. Falls back to <see cref="UnlockViewPoint.Unknown"/>
+    /// with no local player, which is a state this window can be drawn in.</summary>
+    private UnlockViewPoint ViewPoint()
     {
-        var currentZone = CurrentZoneName();
-        return visible.GroupBy(u => u.ZoneName ?? "Unknown location", StringComparer.Ordinal)
-                      .OrderByDescending(g => string.Equals(g.Key, currentZone, StringComparison.Ordinal))
-                      .ThenBy(g => g.Key, StringComparer.Ordinal);
+        var player = objects.LocalPlayer;
+        return new UnlockViewPoint(
+            CurrentZoneName(),
+            clientState.TerritoryType,
+            player?.Position.X ?? 0f,
+            player?.Position.Z ?? 0f);
     }
+
+    /// <summary>What an empty list says. In the Available-now view an empty list is not a filter
+    /// problem and must not be reported as one: it means every entry Wayfarer can check is either
+    /// done or waiting on something, which is a real state and a different instruction — switch views
+    /// to see what is in the way, rather than go and loosen a filter that is not set.</summary>
+    private string EmptyListNote() =>
+        GroupModes[groupMode] == UnlockGrouping.AvailableNow
+            ? "Nothing is available right now. Switch views to see what is blocked."
+            : "Nothing to show with these filters.";
+
+    /// <summary>"Available now" is a view rather than a grouping, so the button does not call it one.
+    /// Naming it "Group: AvailableNow" would say the list is grouped by something it is not.</summary>
+    private string GroupButtonLabel() =>
+        GroupModes[groupMode] == UnlockGrouping.AvailableNow
+            ? UnlockSections.AvailableNowHeading
+            : $"Group: {GroupModes[groupMode]}";
 
     private string? CurrentZoneName()
     {

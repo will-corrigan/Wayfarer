@@ -30,12 +30,12 @@ public sealed record UnlockReward(string Kind, uint Id, string Name);
 /// never heard of is exactly the blank square this field exists to avoid.</para></summary>
 public static class UnlockRewardKinds
 {
-    /// <summary>The twelve kinds whose own sheet carries an icon column, so the reward draws as
+    /// <summary>The thirteen kinds whose own sheet carries an icon column, so the reward draws as
     /// itself: <c>Mount.Icon</c>, <c>Companion.Icon</c>, <c>Emote.Icon</c>,
     /// <c>ContentFinderCondition.Image</c>, <c>Item.Icon</c>, <c>Ornament.Icon</c>,
     /// <c>BeastTribe.Icon</c>, <c>GrandCompanyRank.Icon*</c>, <c>BuddyEquip.Icon*</c>,
     /// <c>Glasses.Icon</c>, <c>CharaMakeCustomize.Icon</c>, <c>ClassJob</c> (through its soul
-    /// crystal's item icon).</summary>
+    /// crystal's item icon), <c>GeneralAction.Icon</c>.</summary>
     public static readonly IReadOnlyList<string> WithIcon =
     [
         "Mount",
@@ -50,6 +50,7 @@ public static class UnlockRewardKinds
         "Glasses",
         "CharaMakeCustomize",
         "ClassJob",
+        "GeneralAction",
     ];
 
     /// <summary>Kinds with no icon column of their own that reach one through the item that grants

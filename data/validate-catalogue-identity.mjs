@@ -27,9 +27,9 @@ const err = (m) => { console.error(m); errors++; };
 // canonical form, not decoration: without it a regeneration diff can show every entry as changed
 // because a serialiser emitted the same facts in a different order.
 const ENTRY_KEYS = [
-  'level', 'levelSource', 'category', 'unlock', 'type', 'reward', 'quest', 'questAnyOf',
-  'wikiUrl', 'questKind', 'notes', 'description', 'priority', 'cosmetic', 'requires', 'confidence',
-  'sources',
+  'level', 'levelSource', 'category', 'unlock', 'type', 'channel', 'reward', 'quest', 'questAnyOf',
+  'wikiUrl', 'questKind', 'notes', 'description', 'descriptionSource', 'priority', 'cosmetic',
+  'requires', 'confidence', 'sources',
 ];
 
 // ---------------------------------------------------------------- 1. canonical form
@@ -145,8 +145,16 @@ for (const [i, e] of d.unlocks.entries()) {
 // (unlock, level) precisely so that completing any one of them marks the group done.
 //
 // What must not happen is two entries that are the same unlock at the same level bound to the
-// SAME quest rows. That is not an alternative, it is one thing listed twice — two checklist rows
-// that can never disagree with each other, so nothing downstream would ever notice.
+// SAME quest rows AND naming the same thing. That is not an alternative, it is one thing listed
+// twice — two checklist rows that can never disagree with each other, so nothing downstream would
+// ever notice.
+//
+// The reward identity is part of the key because two DIFFERENT things can share a name: the quest
+// "Tiisol Ja" opens both a custom-delivery client and that client's crafting-log division, and the
+// quest behind "The Promise of Tomorrow" grants both a title and an orchestrion roll of that name.
+// Those are two unlocks with two sheet rows and two checklist rows, and calling them a duplicate
+// would mean the catalogue could only ever list one of them. The grouping they share is harmless
+// precisely because they also share the gate — see the rule below, which is what checks that.
 const seen = new Map();
 for (const [i, e] of d.unlocks.entries()) {
   const rows = questRows(e).sort((a, b) => a - b);
@@ -154,8 +162,9 @@ for (const [i, e] of d.unlocks.entries()) {
     e.unlock,
     typeof e.level === 'number' ? e.level : `cat:${e.category}`,
     rows.length ? rows.join('+') : `no-rows:${e.quest ?? ''}`,
+    e.reward ? `${e.reward.kind}#${e.reward.id}` : 'no-reward',
   ].join('|');
-  if (seen.has(identity)) err(`#${i} ${e.unlock}: duplicate of #${seen.get(identity)} — same unlock, same level, same quest rows`);
+  if (seen.has(identity)) err(`#${i} ${e.unlock}: duplicate of #${seen.get(identity)} — same unlock, same level, same quest rows, same reward`);
   else seen.set(identity, i);
 }
 

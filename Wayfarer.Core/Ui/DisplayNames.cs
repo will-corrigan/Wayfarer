@@ -24,6 +24,23 @@ public static class DisplayNames
         "the", "to", "with",
     };
 
+    /// <summary>Title-cases <paramref name="value"/> only when it carries no capital at all, and
+    /// returns it untouched otherwise.
+    ///
+    /// <para>For text that may be either sheet output or somebody's prose, where the two have to be
+    /// told apart without a flag to tell them apart by. The sheets write a whole name in lower case
+    /// and leave the casing to the client — "wind-up brickman", "paladin", "company chocobo" — so an
+    /// all-lower-case string is sheet text and is cased here. Anything carrying a capital has already
+    /// been cased by whoever wrote it, and re-casing it would change their words: the catalogue's own
+    /// "Armoury System: Class change" is a sentence, and <see cref="TitleCase"/> makes it "Class
+    /// Change".</para>
+    ///
+    /// <para>Note what this deliberately leaves alone: "the Palace of the Dead (Floors 1-10)" keeps
+    /// its lower-case "the", because that is how the sheet writes it and how the Duty Finder shows
+    /// it.</para></summary>
+    public static string SheetCase(string? value) =>
+        value is null || HasCapital(value) ? value ?? string.Empty : TitleCase(value);
+
     /// <summary>Title-cases <paramref name="value"/> for display. Null, empty and whitespace-only
     /// input is returned unchanged so callers can pass sheet text through without a guard.</summary>
     public static string TitleCase(string? value)

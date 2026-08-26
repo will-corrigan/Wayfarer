@@ -1,33 +1,48 @@
-// What the catalogue deliberately does NOT ship, and why — the reviewed half of the completeness
-// check.
+// What the catalogue ships and what it deliberately does NOT, and why — the reviewed half of the
+// completeness check, and now also the thing that decides what the generator imports.
 //
 // WHY THIS FILE EXISTS
 // The game's own sheets propose 3,091 unlockable things across 36 channels (see
-// tools/Wayfarer.CatalogueGen/UnlockEnumeration.cs). The catalogue ships 587 entries. Most of that
-// difference is not a gap: per-item dye conditions, individual PvP arenas and 475 Triple Triad
-// rows that name an NPC-match prerequisite rather than a reward are things a level checklist
-// should never list. But some of it IS a gap — every title, every orchestrion roll, the ARR job
-// unlocks, three live dungeons — and the whole failure this check exists to prevent is a gap
-// nobody can see.
+// tools/Wayfarer.CatalogueGen/UnlockEnumeration.cs). Some of that difference is not a gap:
+// per-item dye conditions, individual PvP arenas and 475 Triple Triad rows that name an NPC-match
+// prerequisite rather than a reward are things a checklist should never list. The rest of it IS a
+// gap — every title, every orchestrion roll, the ARR job unlocks, three live dungeons — and the
+// whole failure this check exists to prevent is a gap nobody can see.
 //
 // So the difference is classified, once, here:
 //
-//   recommended  a real, live, obtainable unlock the catalogue should list and does not.
-//   excluded     deliberately not shipped, with a stated reason.
-//   undecided    a real decision nobody has made yet. Left visible on purpose.
+//   recommended  a real, obtainable unlock the catalogue should list. The generator IMPORTS these,
+//                so a healthy artefact has none left: see the note below.
+//   excluded     deliberately not listed, with a stated reason.
+//   undecided    a real decision nobody has made yet. Left visible on purpose, and today empty.
+//
+// WHAT "RECOMMENDED" MEANS NOW
+// It used to mean "somebody should write this entry by hand". It means "the generator will write
+// this entry from the game's own row" — scripts/build-unlock-catalogue.mjs reads exactly this
+// classification and emits one catalogue entry per recommended row. So the steady state is
+// `recommended: 0`, and data/validate-coverage.mjs enforces that: a patch that adds an unlock of a
+// listed kind turns the count non-zero and CI says so, which is the same alarm as before with the
+// manual step taken out.
+//
+// THE TEST A CHANNEL HAS TO PASS
+// Does a player have to go and DO something to get it? A quest, a duty, a purchase, a collection,
+// an achievement, a discovery: that is an unlock. Something that arrives by gaining a level in a
+// class is not — the game teaches it, announces it, and there is nothing to track. That is the
+// whole of why `action`, `trait` and `craft-action` are out and everything else obtainable is in.
 //
 // THE RULE ABOUT RULES
 // Two layers, and mixing them up is the bug to watch for.
 //
 //   Layer 1 (CHANNELS, DUTY_CONTENT_TYPES) is editorial taste. It cannot be derived from anything
-//   and has to be written down: whether a channel belongs in a level checklist at all is a
-//   judgement about the product. It is also where 1,596 of the 2,172 uncovered rows are resolved,
-//   in about forty lines.
+//   and has to be written down: whether a channel belongs in the catalogue at all is a judgement
+//   about the product. It is also where most of the uncovered rows are resolved, in about forty
+//   lines.
 //
-//   Layer 2 (the per-row predicates in classifyMissing) is facts, and must NEVER be written down as
-//   a list, because the facts change every patch: does the gate quest still exist, does the
-//   identity have a name, is the gate a seasonal event. It settles the remaining 198. A fact that
-//   gets pasted into layer 1 is how an exclusion list rots.
+//   Layer 2 (the per-row predicates in classifyMissing, plus the duplicate rule in
+//   data/coverage-diff.mjs which needs to see the other rows) is facts, and must NEVER be written
+//   down as a list, because the facts change every patch: does the gate quest still exist, does the
+//   identity have a name, is this row the same thing as one already listed. A fact that gets pasted
+//   into layer 1 is how an exclusion list rots.
 //
 // There is no layer 3. There is deliberately no per-identity exception list — an exclusion that
 // has to name a row id is a sign the rule is wrong, and a list of row ids is precisely the thing
@@ -72,6 +87,10 @@ export const CHANNELS = {
   'stone-sky-sea': { ship: true },
   'variant-dungeon': { ship: true },
   'chocobo-companion': { ship: true },
+  // Desynthesis, materia melding, Dye, Decipher/Dig, Glamour Plate, Aetherial Reduction. Every one
+  // of the twelve is granted by a named quest and none of them arrives on a level-up, so they pass
+  // the test at the top of this file — unlike the combat actions and traits below.
+  'general-action': { ship: true },
 
   // ---- listed, at a coarser grain than the game's rows ------------------------------------
   'aether-current': {
@@ -87,17 +106,33 @@ export const CHANNELS = {
   // ---- not listed, each with the reason ---------------------------------------------------
   action: {
     ship: false,
-    reason: 'combat action granted by a job quest; the game announces it itself on level-up',
+    reason:
+      'a combat action: it arrives with the level, the game announces it itself, and there is '
+      + 'nothing for a player to go and do. Not an unlock by the test at the top of this file',
   },
-  trait: { ship: false, reason: 'passive job trait; same reason as action' },
-  'craft-action': { ship: false, reason: 'crafting action from a class quest; same reason as action' },
-  'general-action': {
+  trait: { ship: false, reason: 'a passive job trait, granted on level-up; same reason as action' },
+  'craft-action': {
     ship: false,
-    reason: 'general action already covered by the catalogue\'s own system entries',
+    reason: 'a crafting action, granted on level-up in the class; same reason as action',
   },
-  'dye-slot': { ship: false, reason: 'per-item dye condition, not a player-facing unlock' },
-  fate: { ship: false, reason: 'a FATE is world content, not something you unlock and keep' },
-  'triple-triad-npc': { ship: false, reason: 'an opponent, not an unlock' },
+  'dye-slot': {
+    ship: false,
+    reason:
+      'not a dye and not a slot a player earns: ItemStainCondition keys on an ITEM row and records '
+      + 'that that one item accepts a second dye channel. 242 of the 243 rows name the same single '
+      + 'quest, so the player-facing unlock is that one quest — which the catalogue lists — and the '
+      + 'rows themselves carry no name a checklist could show',
+  },
+  fate: {
+    ship: false,
+    reason:
+      'a FATE is repeatable world content that becomes available, not something you obtain and '
+      + 'keep; there is nothing to mark done',
+  },
+  'triple-triad-npc': {
+    ship: false,
+    reason: 'an opponent to play against rather than an unlock, and the rows carry no name',
+  },
   'occult-note': {
     ship: false,
     reason: 'internal Occult Crescent note rows, no player-facing name',
@@ -123,7 +158,18 @@ export const CHANNELS = {
  * everything from Sastasha to a chocobo-race course. The type name is the game's own word for the
  * distinction and is what the decision rests on. */
 export const DUTY_CONTENT_TYPES = {
-  /** Kinds the catalogue lists. Anything here that is missing is a real gap. */
+  /** Kinds the catalogue lists. Anything here that is missing is a real gap.
+   *
+   * Raids, Ultimate Raids and Deep Dungeons used to sit in `undecided` because the catalogue listed
+   * the TIER ("Alexander (Gordias) Access", "Palace of the Dead") and the game lists the FLOOR: 77
+   * Coil turns, 39 Alexander/Deltascape/Sigmascape/Alphascape floors, 36 Deep Dungeon floor bands.
+   * That was a presentation question dressed up as a correctness one. The per-floor rows are real
+   * duties a player clears one at a time, so they are listed; grouping them back under their tier is
+   * something a display can do and a missing row is not.
+   *
+   * Treasure Hunt and The Masked Carnivale joined for the same reason. A map dungeon is entered from
+   * an item rather than opened by a quest, and a Carnivale act is one of thirty-two the game tracks
+   * individually — neither of those makes it not a thing you go and do. */
   listed: [
     'Dungeons',
     'Trials',
@@ -134,33 +180,37 @@ export const DUTY_CONTENT_TYPES = {
     'Save The Queen',
     'Occult Crescent',
     'Chaotic Alliance Raid',
+    'Raids',
+    'Ultimate Raids',
+    'Deep Dungeons',
+    'Treasure Hunt',
+    'The Masked Carnivale',
   ],
 
-  /** Kinds the catalogue does not list, with the reason. */
+  /** Kinds the catalogue does not list, with the reason. Each of these fails the "did the player
+   * have to go and do something to get it" test in a different way, so each says how. */
   excluded: {
-    'Gold Saucer': 'chocobo-race courses and GATEs, not level-gated unlocks',
-    PvP: 'individual arenas; the catalogue lists PvP as one system entry',
-    'The Masked Carnivale': 'individual acts of one system the catalogue lists once',
-    'Quest Battles': 'MSQ solo instances, not separate unlocks',
-    'Treasure Hunt': 'map dungeons reached from an item, not a level-gated unlock',
-    '': 'tutorial and unnamed rows such as "Avoid Area of Effect Attacks"',
+    'Gold Saucer':
+      'a Duty Finder queue row for an attraction rather than an unlock: 61 of the 65 distinct names '
+      + 'have no gate of any kind, and the chocobo-race courses and Mahjong ranked/quick variants '
+      + 'are matchmaking modes for one activity. Reaching the Gold Saucer is the unlock, and the '
+      + 'catalogue lists it',
+    PvP:
+      'an individual arena in a rotation, not something a player unlocks and keeps; the catalogue '
+      + 'lists the PvP modes themselves as system entries',
+    'Quest Battles':
+      'a solo instance played once inside an MSQ quest. It is never entered from the finder and '
+      + 'never unlocked separately from the quest the catalogue already lists',
+    '':
+      'tutorial and retired rows with no ContentType of their own — the Hall of the Novice '
+      + 'exercises ("Avoid Area of Effect Attacks") and superseded Diadem variants',
   },
 
-  /** Kinds where the catalogue and the game disagree about GRANULARITY rather than about
-   * existence, and nobody has decided which is right. The catalogue lists the tier — "Alexander
-   * (Gordias) Access", "Palace of the Dead" — and the game lists the floor: 77 Coil turns, 39
-   * Alexander/Deltascape/Sigmascape/Alphascape floors, 36 Deep Dungeon floor bands. Shipping
-   * these is a UI decision, not a correctness fix, so they are left visible and undecided rather
-   * than quietly recommended or quietly dropped. */
-  undecided: {
-    Raids:
-      'the catalogue lists the raid TIER and the game lists the per-floor duty row; which '
-      + 'granularity the checklist wants is an open UI decision',
-    'Ultimate Raids': 'same open question as Raids',
-    'Deep Dungeons':
-      'the catalogue lists the dungeon and the game lists its floor bands; same open question '
-      + 'as Raids',
-  },
+  /** Kinds nobody has decided about. Empty, and that is the finding rather than an oversight: the
+   * granularity question that used to live here was settled by listing the game's rows and leaving
+   * the grouping to the display. A NEW ContentType lands in `unclassified-duty-kind` instead, which
+   * is undecided by construction and says so. */
+  undecided: {},
 };
 
 /** Reasons layer 2 produces, keyed. Reasons are cited by KEY on each row of data/coverage.json
@@ -172,11 +222,12 @@ export const ROW_REASONS = {
   'row:unnameable':
     'the identity has no player-facing name in any sheet, so there is nothing a checklist could '
     + 'display',
-  'row:seasonal':
-    'the gate quest belongs to a seasonal event (Quest.Festival is set), so it is real but not '
-    + 'obtainable today; showing it as available in a level checklist would be a lie. Ships only '
-    + 'behind a seasonal status the gate calculator can map to "not right now"',
-  'duty:retired': 'retired: not in the duty finder and the game names no unlock quest',
+  'row:duplicate-identity':
+    'a second sheet row for a thing the catalogue already lists — 22 ContentFinderCondition rows '
+    + 'say "Ocean Fishing", one per route, and superseded rows keep the name of the row that '
+    + 'replaced them. The multiplicity is a routing detail of the game\'s own tables, not 22 '
+    + 'unlocks, so one row of each name carries the entry — the one the catalogue already covers, '
+    + 'or failing that the first — and the rest are accounted for here',
   'triple-triad-card:npc-match-prerequisite':
     'TripleTriadCardResident.Quest names the NPC-match prerequisite, not a quest that awards the '
     + 'card; only the cards that arrive through an ItemAction are genuine quest rewards',
@@ -238,7 +289,15 @@ export function classifyMissing(row) {
     return { classification: 'excluded', reason: 'row:dead-gate' };
   }
   if (row.unnamed) return { classification: 'excluded', reason: 'row:unnameable' };
-  if (row.festival) return { classification: 'excluded', reason: 'row:seasonal' };
+
+  // Seasonal rows (Quest.Festival set) used to be excluded here. They are real, permanent once
+  // earned, and exactly the kind of thing a player wants a list of — what they are not is
+  // obtainable today, and that is a fact about STATUS rather than about existence. So they are
+  // listed, and the generator gives them requires.unverifiable with a label saying so, which is the
+  // one thing that stops the checklist reporting a Starlight emote as available in August.
+  if (row.duplicateOf !== null && row.duplicateOf !== undefined) {
+    return { classification: 'excluded', reason: 'row:duplicate-identity' };
+  }
 
   // ---- per-channel refinements
   if (row.channel === 'duty') return classifyDuty(row);
@@ -258,13 +317,12 @@ function classifyDuty(row) {
     return { classification: 'undecided', reason: `duty-granularity:${type}` };
   }
 
-  // A duty that is neither in the finder nor gated on a quest the game names is not reachable and
-  // is not a gap. Note the ORDER against the ContentType rules above: a retired Gold Saucer row is
-  // reported under its kind, because that is the more useful of the two true statements.
-  const gated = row.questRowId !== null && row.questRowId !== undefined;
-  if (!gated && row.inDutyFinder === false) {
-    return { classification: 'excluded', reason: 'duty:retired' };
-  }
+  // There used to be a `duty:retired` rule here — no gate quest and not in the duty finder — and it
+  // was wrong in both directions. It caught two superseded "the Diadem" rows, which the duplicate
+  // rule now catches properly, and it also called "the Unmaking (Extreme)" and "Shinryu's Domain
+  // (Unreal)" retired: both are live content that the finder flag simply does not cover, because
+  // whole kinds of duty (Ultimates, Deep Dungeons, Treasure Hunt, the Carnivale) have that flag
+  // false on every row. A flag that is false for a whole kind cannot be evidence about one row.
 
   if (!DUTY_CONTENT_TYPES.listed.includes(type)) {
     return { classification: 'undecided', reason: `unclassified-duty-kind:${type}` };

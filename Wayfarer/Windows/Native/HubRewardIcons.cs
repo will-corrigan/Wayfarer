@@ -15,7 +15,7 @@ namespace Wayfarer.Windows.Native;
 /// checks that an icon exists at the moment it writes the field, so a kind that claims to draw
 /// something and cannot is caught before it ships — see <c>tools/Wayfarer.CatalogueGen</c>.</para>
 ///
-/// <para><b>The ladder, and where it stops.</b> Twelve kinds carry an icon on their own sheet.
+/// <para><b>The ladder, and where it stops.</b> Thirteen kinds carry an icon on their own sheet.
 /// <c>Orchestrion</c> has no picture anywhere — the sheet is two columns, Name and Description — so
 /// it goes through the roll you are handed. The rest have none at all: there is no artwork for a
 /// title, an Aether Current, a folklore book, a crafting-log division or a hunt board. Those return
@@ -118,6 +118,7 @@ internal sealed class HubRewardIcons(IDataManager data, IPluginLog log)
         // The soul crystal IS the job, it is a real reference, and its icon is the picture the game
         // draws on the job's own item.
         "ClassJob" => ItemIcon(data.GetExcelSheet<ClassJob>().GetRowOrDefault(reward.Id)?.ItemSoulCrystal.RowId ?? 0),
+        "GeneralAction" => Unsigned(data.GetExcelSheet<GeneralAction>().GetRowOrDefault(reward.Id)?.Icon ?? 0),
         "Orchestrion" => ItemIcon(OrchestrionRoll(reward.Id)),
         _ => 0u,
     };

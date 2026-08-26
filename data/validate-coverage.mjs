@@ -24,13 +24,16 @@
 //      from the committed enumeration and the committed catalogue by the SAME code the generator
 //      used, and must come out identical. A hand-edited coverage.json fails here.
 //
-// WHAT IT DOES NOT DO
-// It does not fail because rows are missing. 378 recommended and 157 undecided rows are the point
-// of the artefact, not a defect in it — the gap is meant to be visible and worked through, and a
-// check that went red for it would be turned off within a week. It fails when the artefact and the
-// catalogue stop describing the same thing.
+//   4. Nothing is left recommended. This used to be the thing the check deliberately did NOT do:
+//      378 recommended and 157 undecided rows were the point of the artefact, and a check that went
+//      red for them would have been turned off within a week. The generator now imports every
+//      recommended row, so the baseline is zero and a non-zero count means the game has shipped an
+//      unlock of a kind the catalogue lists and the committed file does not have it. That is exactly
+//      the alarm the artefact was written for, with the manual step taken out — and the fix is to
+//      regenerate, not to edit a number.
 //
-// It reads nothing but this repository: no sqpack, no wiki, no tools/.
+// WHAT IT DOES NOT DO
+// It does not read anything but this repository: no sqpack, no wiki, no tools/.
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -200,6 +203,31 @@ if (canonical !== rawCoverage) {
   err(`coverage.json is not in canonical form (first difference at line ${at + 1}):`
     + `\n  committed:  ${JSON.stringify((a[at] ?? '').slice(0, 160))}`
     + `\n  canonical:  ${JSON.stringify((b[at] ?? '').slice(0, 160))}\n  ${REGENERATE}`);
+}
+
+// ---------------------------------------------------------------- 7. nothing left recommended
+//
+// The baseline the import established, and the one number in this file that is about the CONTENT of
+// the catalogue rather than about the artefact's internal consistency.
+//
+// `recommended` means "a real, obtainable unlock of a kind the catalogue lists, that the catalogue
+// does not have". The generator writes an entry for every one of them, so the steady state is zero;
+// a non-zero count means the installed game data has moved since the committed file was generated
+// and the file is now incomplete. `undecided` is zero for the same reason: every channel and every
+// duty kind has a verdict, and a new one the policy has never seen lands here rather than being
+// quietly swallowed.
+//
+// Both are stated as "must be zero" rather than as a number to update, so growth in the catalogue
+// cannot turn this red on its own — only a gap can.
+const missing = coverage.totals ?? {};
+if ((missing.recommended ?? 0) !== 0) {
+  err(`${missing.recommended} enumerated row(s) are recommended for inclusion and not in the `
+    + 'catalogue. The generator imports every recommended row, so this means the installed game '
+    + `data has unlocks the committed file does not. ${REGENERATE}`);
+}
+if ((missing.undecided ?? 0) !== 0) {
+  err(`${missing.undecided} enumerated row(s) are undecided — a channel or duty kind the policy has `
+    + 'never seen. Classify it in data/coverage-policy.mjs, then regenerate.');
 }
 
 // ---------------------------------------------------------------- report

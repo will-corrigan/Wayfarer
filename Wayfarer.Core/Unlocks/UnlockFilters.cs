@@ -1,17 +1,24 @@
 namespace Wayfarer.Core.Unlocks;
 
-/// <summary>The chip filters over the checklist — category, priority, level band, zone — and the
-/// mapping from an entry's type to the category chip it answers to. Kept out of the windows so the
-/// native window and the ImGui fallback cannot filter differently.</summary>
+/// <summary>The chip filters over the checklist — domain, priority, search, whether finished entries
+/// are listed. Kept out of the windows so the native window and the ImGui fallback cannot filter
+/// differently.</summary>
 public static class UnlockFilters
 {
-    public static string Category(UnlockDefinition d) => d.Type switch
-    {
-        "dungeon" or "trial" or "raid" or "alliance-raid" => "content",
-        "mount" or "minion" or "emote" => "cosmetic",
-        "zone" => "zone",
-        _ => d.Cosmetic ? "cosmetic" : "system",
-    };
+    /// <summary>The domain chip an entry answers to.
+    ///
+    /// <para><b>This used to be four buckets read off <c>type</c>, and it is now
+    /// <see cref="UnlockDomains"/>.</b> The old mapping asked <c>type</c>, which has nine values
+    /// chosen when the catalogue was 587 duties and systems, and every value it had no word for fell
+    /// through <c>d.Cosmetic ? "cosmetic" : "system"</c>. At 1,208 entries that put 158 titles, 53
+    /// orchestrion rolls and every emote on one chip, and buried the 235 entries that open a game
+    /// feature inside it — the single most useful category in the catalogue, invisible.</para>
+    ///
+    /// <para>Reads <c>channel</c> rather than <c>type</c>: the channel is the enumeration's own
+    /// vocabulary, generated per entry, and it has a word for every kind of thing the catalogue
+    /// holds. Null when no domain claims the channel, which is a state
+    /// <c>UnlockDomainTests</c> asserts the shipped catalogue is never in.</para></summary>
+    public static string? Domain(UnlockDefinition d) => UnlockDomains.Of(d);
 
     public static bool Matches(ResolvedUnlock u, FilterState f)
     {
@@ -20,7 +27,10 @@ public static class UnlockFilters
             return false;
         }
 
-        if (f.Categories.Count > 0 && !f.Categories.Contains(Category(u.Def)))
+        // An entry with no domain is never hidden by a domain chip. It is already the one row the
+        // taxonomy failed to place, and silently filtering it out is how it would stop being
+        // noticed — see UnlockDomains for why there is no bucket for it to land in instead.
+        if (f.Domains.Count > 0 && Domain(u.Def) is { } domain && !f.Domains.Contains(domain))
         {
             return false;
         }
@@ -49,11 +59,13 @@ public static class UnlockFilters
 }
 
 /// <summary>What the player has narrowed the checklist to right now — the chip selections, the
-/// level band, the zone, and whether finished entries are shown. Held by whichever window is
-/// drawing so the two presentations cannot drift apart on what "filtered" means.</summary>
+/// search text, and whether finished entries are shown. Held by whichever window is drawing so the
+/// two presentations cannot drift apart on what "filtered" means.</summary>
 public sealed class FilterState
 {
-    public HashSet<string> Categories { get; set; } = [];
+    /// <summary>Selected domain chips, by <see cref="UnlockDomains"/> key. Empty means all of them,
+    /// which is what the tab opens on.</summary>
+    public HashSet<string> Domains { get; set; } = [];
 
     public HashSet<string> Priorities { get; set; } = [];
 

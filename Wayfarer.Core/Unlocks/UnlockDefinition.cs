@@ -35,6 +35,25 @@ public sealed class UnlockDefinition
 
     public string Type { get; set; } = string.Empty;
 
+    /// <summary>What KIND of thing this is, in the vocabulary the game-data enumeration walks:
+    /// <c>duty</c>, <c>title</c>, <c>orchestrion</c>, <c>job</c>, <c>minion</c>,
+    /// <c>gathering-folklore</c>, <c>challenge-log</c> and the rest — plus <c>zone</c> for the
+    /// handful of entries that open a place the game keeps no row for.
+    ///
+    /// <para><b>Why this is not <see cref="Type"/>.</b> <c>Type</c> answers "which filter chip", and
+    /// its nine values were chosen when the catalogue was 587 duties, systems and a few cosmetics. It
+    /// has no word for a title, an orchestrion roll or a folklore book, so by the time it was asked
+    /// to describe 1,208 entries it was answering <c>system</c> for a third of them. This is the
+    /// field a display groups by when it wants to show titles as their own page, and it is
+    /// deliberately the enumeration's own vocabulary so that the taxonomy and the completeness check
+    /// cannot drift apart. See <c>data/unlock-channels.mjs</c>.</para>
+    ///
+    /// <para>Generated, not curated: an imported entry carries the channel it was enumerated under,
+    /// and a curated one has it derived from the sheet its <see cref="Reward"/> names, or failing
+    /// that from its <c>Type</c>. <c>data/validate-unlocks.mjs</c> re-derives it in CI, so a
+    /// hand-edited channel does not survive.</para></summary>
+    public string Channel { get; set; } = string.Empty;
+
     public string? Quest { get; set; }
 
     /// <summary>Quest sheet row ids, any ONE of which completes this unlock — the Grand Company,
@@ -72,6 +91,22 @@ public sealed class UnlockDefinition
     public string? Notes { get; set; }
 
     public string? Description { get; set; }
+
+    /// <summary>Where the GAME says what this unlock is, for the entries nobody has written a
+    /// sentence about — a sheet, a row and a column rather than a copy of the text.
+    ///
+    /// <para>621 of the catalogue's entries are imported from the game's own sheets, which state a
+    /// name and a gate and no prose, and generating a sentence for each would be the same error as
+    /// inventing a level in the field a player reads first. For titles, orchestrion rolls and duties
+    /// the game HAS a sentence — Square Enix's own, already localised into whatever language the
+    /// player's client runs in — and this cites it. Resolved at load through
+    /// <see cref="UnlockGateContext.ResolveGameText"/>, exactly as
+    /// <see cref="UnlockRequirement.ConditionSource"/> is, and never copied into the committed file:
+    /// see <see cref="GameTextRef"/> for why a reference beats a paraphrase.</para>
+    ///
+    /// <para>Null on every curated entry, which has real prose in <see cref="Description"/>.</para>
+    /// </summary>
+    public GameTextRef? DescriptionSource { get; set; }
 
     public string Priority { get; set; } = "nice";
 

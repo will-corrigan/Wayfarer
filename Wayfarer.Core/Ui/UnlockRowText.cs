@@ -18,17 +18,41 @@ public static class UnlockRowText
     /// <summary>Line one: what the entry is, and nothing else. The giver's name deliberately does
     /// not appear here — it is <i>where you go</i>, not <i>what it is</i>, and it belongs with the
     /// rest of the directions in the detail pane. The game's own journal titles behave the same
-    /// way.</summary>
+    /// way.
+    ///
+    /// <para>Title-cased, for the same reason the Hunting Log's monster names are. An entry the
+    /// catalogue imported from the game's own sheets carries that sheet's own string, and the sheets
+    /// store "wind-up brickman" and "paladin" in lower case and leave the casing to the client.
+    /// Doing it here rather than in the data file keeps the committed value equal to the row it came
+    /// from — see <see cref="DisplayNames.SheetCase"/>, which cases a name only when the sheet wrote
+    /// all of it in lower case and leaves curated prose exactly as somebody wrote it.</para></summary>
+    /// <param name="unlock">The entry to name.</param>
+    /// <returns>The entry's name, with its qualifier in parentheses when it has one.</returns>
     public static string Name(ResolvedUnlock unlock)
     {
         ArgumentNullException.ThrowIfNull(unlock);
-        return unlock.Def.Unlock;
+
+        var name = DisplayNames.SheetCase(unlock.Def.Unlock);
+
+        // Parenthesised, which is the game's own habit for exactly this — "the Palace of the Dead
+        // (Floors 1-10)", "Sastasha (Hard)". Twelve names cover thirty-five entries and they are not
+        // duplicates: one Sightseeing Log per expansion, one Levequest unlock per city. See
+        // UnlockDisambiguation for where the qualifier comes from and why most rows have none.
+        return unlock.Qualifier is { Length: > 0 } qualifier ? $"{name} ({qualifier})" : name;
     }
 
     /// <summary>Line two: the catalogue's own sentence about what this unlock gives the player.
     /// Falls back through the editorial note and then the curated requirement label, because a row
     /// with a blank second line is the state this whole change exists to remove — and returns empty
-    /// rather than repeating the name, which would read as a rendering fault.</summary>
+    /// rather than repeating the name, which would read as a rendering fault.
+    ///
+    /// <para>Empty is now a real answer rather than a defensive branch. Every curated entry carries a
+    /// description and <c>data/validate-unlocks.mjs</c> still requires one; the 621 entries the
+    /// catalogue imports from the game's own sheets do not, because the sheets state a name and a
+    /// gate and no prose, and manufacturing a sentence to satisfy a length rule would be the same
+    /// error as inventing a level. An ungated imported entry falls back to its requirement label,
+    /// which says what the game withholds; a gated one has nothing to say here and says
+    /// nothing.</para></summary>
     public static string Description(ResolvedUnlock unlock)
     {
         ArgumentNullException.ThrowIfNull(unlock);
@@ -36,6 +60,15 @@ public static class UnlockRowText
         if (unlock.Def.Description is { Length: > 0 } description)
         {
             return description;
+        }
+
+        // The game's own sentence about it, read live from the sheet the entry cites. After the
+        // catalogue's prose, because a curated description was written about the entry as the
+        // checklist means it — and before the notes, because a note is an editorial aside and this is
+        // an actual answer to "what is this thing".
+        if (unlock.GameDescription is { Length: > 0 } fromGame)
+        {
+            return fromGame;
         }
 
         if (unlock.Def.Notes is { Length: > 0 } notes)
@@ -105,11 +138,16 @@ public static class UnlockRowText
 
     /// <summary>What a reward-less entry gives you, said as the reward it is: the catalogue's own
     /// opening clause about the capability, because the unlock IS the reward when there is no item
-    /// behind it — a duty cleared, a system turned on, a feature switched on. 272 of the 587
+    /// behind it — a duty cleared, a system turned on, a feature switched on. 275 of the 1,208
     /// shipped entries carry no sheet-backed <see cref="UnlockDefinition.Reward"/> at all — mostly
-    /// the 223 <c>system</c> entries — and every one of them still has a real sentence in
-    /// <see cref="Description"/>, because the data validators require one (20 to 400 characters,
-    /// checked in CI). This is never empty as a result.
+    /// the 223 <c>system</c> entries — and all of those are CURATED entries, which the validators do
+    /// still require a 20-to-400-character <see cref="Description"/> of. So this is never empty:
+    /// every entry that reaches it has a sentence, and the entries with no sentence (the imported
+    /// half) all carry a reward identity and never ask.
+    ///
+    /// <para>The name fallback below is kept anyway, and is not dead code with a comment on it: it is
+    /// what makes the guarantee hold without depending on the two facts above staying true together.
+    /// An imported entry that lost its reward would otherwise draw a blank reward line.</para>
     ///
     /// <para>Not the whole sentence: <see cref="Description"/> already has its own line further
     /// down the page, and repeating all of it here would be the same words twice rather than a
@@ -128,7 +166,7 @@ public static class UnlockRowText
         var description = Description(unlock);
         if (description.Length == 0)
         {
-            return unlock.Def.Unlock;
+            return DisplayNames.SheetCase(unlock.Def.Unlock);
         }
 
         var sentenceEnd = FirstSentenceEnd(description);
