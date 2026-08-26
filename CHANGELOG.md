@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.0](https://github.com/will-corrigan/Wayfarer/compare/v0.9.0...v0.10.0) (2026-08-26)
+
+
+### New
+
+* **navigation:** route through a zone's unattuned aether currents ([#43](https://github.com/will-corrigan/Wayfarer/issues/43)) ([5b22a22](https://github.com/will-corrigan/Wayfarer/commit/5b22a22a0d5185194bc20a483fe9f0bb6e82c3e9))
+* the full unlock catalogue, in the shape of the game's own logs ([#44](https://github.com/will-corrigan/Wayfarer/issues/44)) ([a0497fe](https://github.com/will-corrigan/Wayfarer/commit/a0497fe7abfe8c3b2502ca58871cc37079ebfa00))
+* the readout's direction indicator is a compass ([#41](https://github.com/will-corrigan/Wayfarer/issues/41)) ([ca683ba](https://github.com/will-corrigan/Wayfarer/commit/ca683ba5f934516f40fca053a26daca4debc845d))
+* **unlocks:** list every title the game awards, not only the ones a quest does ([#45](https://github.com/will-corrigan/Wayfarer/issues/45)) ([656c4a4](https://github.com/will-corrigan/Wayfarer/commit/656c4a46224bf84b95cb36d399d7c05e136289c5))
+
+
+### Fixed
+
+* a hunt counts the rank, and the readout always has a way home ([#39](https://github.com/will-corrigan/Wayfarer/issues/39)) ([7a81a81](https://github.com/will-corrigan/Wayfarer/commit/7a81a81f1e8bd4b75fc70a9c3b47f7f5ff92f499))
+* **hub:** make the Settings page follow the controller cursor ([#36](https://github.com/will-corrigan/Wayfarer/issues/36)) ([d6d3fa8](https://github.com/will-corrigan/Wayfarer/commit/d6d3fa8b7bd8297ff30389bfc4f215d44871d3db))
+* **readout:** stop every line reporting two rows, and give actionable lines the game's own marks ([#38](https://github.com/will-corrigan/Wayfarer/issues/38)) ([4ad070c](https://github.com/will-corrigan/Wayfarer/commit/4ad070c81a5a568a9995ff8f0acb73ef8d0bdf9d))
+
 ## [0.9.0](https://github.com/will-corrigan/Wayfarer/compare/v0.8.1...v0.9.0) (2026-08-25)
 
 
