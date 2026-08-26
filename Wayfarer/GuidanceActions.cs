@@ -78,6 +78,7 @@ internal sealed class GuidanceActions(
         // so it sits where Stop would be: the thing to do when nothing is happening.
         Add(actions, StartHunting(navigator));
         Add(actions, StartUnlockRoute(navigator, "Start Unlock Route"));
+        Add(actions, StartAetherCurrents());
         return actions;
     }
 
@@ -100,6 +101,7 @@ internal sealed class GuidanceActions(
 
         Add(actions, StartUnlockRoute(navigator, null));
         Add(actions, StartHunting(navigator));
+        Add(actions, StartAetherCurrents());
 
         // Choosing which quest needs a list of quests, which is a list and not a menu entry — so it
         // is the one choice that hands off to the window, at the tab the switcher cap reads too.
@@ -242,6 +244,33 @@ internal sealed class GuidanceActions(
         }
 
         return new GuidanceAction(HuntingPlan.StartLabel(remaining), navigator.StartHunt);
+    }
+
+    /// <summary>"Attune Aether Currents (4)" for the zone the player is standing in, absent
+    /// everywhere else — which is most of the game: only 31 territories carry currents at all, and a
+    /// zone that is already flyable has nothing to offer.
+    ///
+    /// <para>The count is read when the menu opens and the territory is read again when the entry is
+    /// confirmed. Those can disagree if the player walks into another zone with the menu open, and
+    /// the deliberate outcome is a route for where they actually are with a stale number in the label
+    /// they already dismissed — the other way round would route them back to the zone they
+    /// left.</para></summary>
+    private GuidanceAction? StartAetherCurrents()
+    {
+        if (modules.Get<AetherCurrentsModule>() is not { Enabled: true } module)
+        {
+            return null;
+        }
+
+        var remaining = module.Currents.RemainingIn(clientState.TerritoryType);
+        if (remaining.Count == 0)
+        {
+            return null;
+        }
+
+        return new GuidanceAction(
+            $"Attune Aether Currents ({remaining.Count})",
+            () => module.StartRoute(clientState.TerritoryType));
     }
 
     /// <summary>A route through every available, locatable unlock — the same predicate and ordering

@@ -83,6 +83,7 @@ public sealed class Plugin : IDalamudPlugin
         INamePlateGui namePlateGui,
         ITextureProvider textureProvider,
         IDtrBar dtrBar,
+        IUnlockState unlockState,
         IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
@@ -109,7 +110,8 @@ public sealed class Plugin : IDalamudPlugin
         // Declared once, rendered by the native window and by the ImGui fallback alike.
         settings = new SettingsCatalog(config, modules, readoutPlacement, SaveConfig);
 
-        var guidance = BuildGuidance(log, config, clientState, condition, objects, dataManager, hunting);
+        var guidance = BuildGuidance(
+            log, config, clientState, condition, objects, dataManager, hunting, unlockState);
         mapFlag = guidance.MapFlag;
 
         // Built here, before the window that reads it: the readout, its ImGui fallback, the info-bar
@@ -118,15 +120,7 @@ public sealed class Plugin : IDalamudPlugin
         hub = BuildHub(unlocks, hunting, objects, clientState, framework, config, textureProvider, dataManager);
 
         var readoutHosts = new ReadoutHosts(framework, clientState, objects, textureProvider);
-        modules.Register(BuildQuestHelperModule(readoutHosts, config, SaveConfig, log, guidance), enabledByDefault: true);
-
-        modules.Register(
-            BuildUnlockChecklistModule(framework, objects, clientState, unlocks, inputMode, config, log, guidance),
-            enabledByDefault: true);
-
-        modules.Register(
-            BuildHuntingLogModule(framework, objects, hunting, config, log, guidance),
-            enabledByDefault: true);
+        RegisterModules(readoutHosts, unlocks, hunting, config, SaveConfig, log, guidance);
 
         ipcProvider = new(pluginInterface, modules, clientState);
         contextMenuActions = BuildContextMenuActions(contextMenu, config, log);
@@ -205,13 +199,23 @@ public sealed class Plugin : IDalamudPlugin
         ICondition condition,
         IObjectTable objects,
         IDataManager dataManager,
-        HuntingLogService hunting)
+        HuntingLogService hunting,
+        IUnlockState unlockState)
     {
         var arbiter = new GuidanceArbiter((message, ex) => log.Error(ex, message));
         var router = new GuidanceRouter(dataManager);
         var questSource = new QuestObjectiveSource(dataManager);
         var unlockSource = new UnlockRouteSource(arbiter);
         var huntingSource = new HuntingSource(arbiter, hunting, router, clientState, objects);
+
+        // Built here rather than beside the other feature services because it needs nothing they
+        // need: no framework subscription and no cached progress, since every aether-current fact is
+        // either fixed in a sheet or a free local bit read. Its module comes with it, having no
+        // window to assemble first.
+        var aetherCurrents = new AetherCurrentService(log, dataManager, clientState, unlockState);
+        var aetherCurrentSource =
+            new AetherCurrentSource(arbiter, aetherCurrents, router, clientState, objects);
+        var aetherCurrentModule = new AetherCurrentsModule(arbiter, aetherCurrents, aetherCurrentSource);
         var service = new GuidanceService(
             log, config.QuestHelper, clientState, condition, objects, arbiter, router);
         var navigator = new QuestNavigator(service, questSource, unlockSource, huntingSource);
@@ -227,7 +231,37 @@ public sealed class Plugin : IDalamudPlugin
             gameFlag.Set,
             gameFlag.Restore).Start();
 
-        return new GuidanceGraph(arbiter, questSource, unlockSource, huntingSource, navigator, flagCoordinator);
+        return new GuidanceGraph(
+            arbiter, questSource, unlockSource, huntingSource, aetherCurrentModule, navigator, flagCoordinator);
+    }
+
+    /// <summary>Every module, in registration order, which is also disposal order reversed. Factored
+    /// out of the constructor purely to stay under the method-length analyzer; the Dalamud services
+    /// the builders need come bundled in <paramref name="services"/> so this stays inside the
+    /// parameter-count one too.</summary>
+    private void RegisterModules(
+        ReadoutHosts services,
+        UnlockService unlocks,
+        HuntingLogService hunting,
+        Configuration config,
+        Action saveConfig,
+        IPluginLog log,
+        GuidanceGraph guidance)
+    {
+        modules.Register(
+            BuildQuestHelperModule(services, config, saveConfig, log, guidance), enabledByDefault: true);
+
+        modules.Register(
+            BuildUnlockChecklistModule(
+                services.Framework, services.Objects, services.ClientState, unlocks, inputMode, config, log, guidance),
+            enabledByDefault: true);
+
+        modules.Register(
+            BuildHuntingLogModule(services.Framework, services.Objects, hunting, config, log, guidance),
+            enabledByDefault: true);
+
+        // No factory: this one owns no window, so there is nothing to assemble before it.
+        modules.Register(guidance.AetherCurrents, enabledByDefault: true);
     }
 
     private void SubscribeAndStart(IDalamudPluginInterface pluginInterface)
@@ -528,6 +562,7 @@ public sealed class Plugin : IDalamudPlugin
         QuestObjectiveSource QuestSource,
         UnlockRouteSource UnlockSource,
         HuntingSource HuntingSource,
+        AetherCurrentsModule AetherCurrents,
         QuestNavigator Navigator,
         MapFlagCoordinator MapFlag);
 }
