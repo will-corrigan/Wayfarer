@@ -31,7 +31,7 @@
        need explicit versions here (kept in sync with Directory.Packages.props). -->
   <ItemGroup>
     <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.556"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="3.0.177"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="3.0.203"/>
   </ItemGroup>
 
   <!-- Re-installs the Husky.Net git hooks on restore, since .husky/_ is gitignored
