@@ -133,6 +133,21 @@ public class RouteGraphTests
     }
 
     [Fact]
+    public void A_one_way_door_cannot_be_walked_back_through()
+    {
+        // A ledge: drop from the upper map to the lower one, never the other way. No aetheryte in
+        // this world, so the ledge is the only link and the climb back has no route at all.
+        var ledge = new DoorLink("Ledge", new Place(Field, 1, 100f, 0f, 0f), new Place(Field, 9, 0f, 0f, 0f), OneWay: true);
+        var graph = new RouteGraph([], [ledge]);
+
+        var down = graph.FindRoute(At(Field, 1, 90f), [At(Field, 9, 15f)], AllAttuned);
+        var up = graph.FindRoute(At(Field, 9, 15f), [At(Field, 1, 90f)], AllAttuned);
+
+        Assert.Equal("Ledge", Assert.IsType<Leg.Door>(down!.Legs[1]).Name);
+        Assert.Null(up);
+    }
+
+    [Fact]
     public void Among_several_places_the_cheapest_to_reach_wins()
     {
         var graph = World();

@@ -54,7 +54,10 @@ public sealed class RouteGraph
             doorEnds[i * 2] = new DoorEnd(door.Name, door.From);
             doorEnds[(i * 2) + 1] = new DoorEnd(door.Name, door.To);
             edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name)));
-            edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name)));
+            if (!door.OneWay)
+            {
+                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name)));
+            }
         }
 
         // Hops: every pair on one network. A city's main aetheryte is on its network, so a route
