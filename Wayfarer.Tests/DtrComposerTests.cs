@@ -11,7 +11,7 @@ namespace Wayfarer.Tests;
 public class DtrComposerTests
 {
     [Fact]
-    public void Idle_and_nothing_nearby_falls_back_to_the_plugin_name()
+    public void Idle_falls_back_to_the_plugin_name()
     {
         var text = DtrComposer.Compose(new DtrInputs());
 
@@ -68,35 +68,6 @@ public class DtrComposerTests
     }
 
     [Fact]
-    public void A_solo_hunt_walking_shows_its_label_and_the_distance()
-    {
-        var text = DtrComposer.Compose(new DtrInputs
-        {
-            Engaged = true,
-            Step = DtrNextStep.Walk,
-            HuntingIsPrimary = true,
-            HuntingLabel = "Rank 2 4/5",
-            DistanceYalms = 120f,
-        });
-
-        Assert.Equal("Rank 2 4/5, 120y", text.Text);
-        Assert.Equal(DtrGlyph.None, text.Glyph);
-    }
-
-    [Fact]
-    public void A_hunting_label_is_ignored_when_hunting_is_not_the_primary_objective()
-    {
-        var text = DtrComposer.Compose(new DtrInputs
-        {
-            Engaged = true,
-            HuntingIsPrimary = false,
-            HuntingLabel = "Rank 2 4/5",
-        });
-
-        Assert.Equal(DtrText.Wayfarer, text);
-    }
-
-    [Fact]
     public void Engaged_with_nothing_more_specific_falls_back_to_the_plugin_name()
     {
         var text = DtrComposer.Compose(new DtrInputs { Engaged = true });
@@ -117,53 +88,5 @@ public class DtrComposerTests
         });
 
         Assert.DoesNotContain("900", text.Text, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Nearby_unlocks_are_named_while_nothing_is_engaged()
-    {
-        var idle = DtrComposer.Compose(new DtrInputs { NearbyUnlockCount = 3 });
-
-        Assert.Equal("3 unlocks here", idle.Text);
-        Assert.True(idle.UnlocksNearby);
-    }
-
-    [Fact]
-    public void The_alert_survives_being_in_the_middle_of_something()
-    {
-        // Passive, not guidance: the mode keeps the text and the glyph, and the alert rides
-        // alongside it — walking past a pickup while on a route is exactly when it is useful.
-        var route = DtrComposer.Compose(new DtrInputs
-        {
-            Engaged = true,
-            Step = DtrNextStep.Walk,
-            RouteStop = 3,
-            RouteTotal = 11,
-            NearbyUnlockCount = 2,
-        });
-
-        Assert.Equal("3/11", route.Text);
-        Assert.Equal(DtrGlyph.None, route.Glyph);
-        Assert.True(route.UnlocksNearby);
-    }
-
-    [Fact]
-    public void Nothing_nearby_means_no_alert()
-    {
-        // The exclamation has exactly one cause. If it is on the bar, there are unlocks; if there
-        // are none, it cannot appear — which is what makes it honest beside the readout.
-        Assert.False(DtrComposer.Compose(new DtrInputs { Engaged = true }).UnlocksNearby);
-        Assert.False(DtrComposer.Compose(new DtrInputs()).UnlocksNearby);
-        Assert.False(DtrComposer
-            .Compose(new DtrInputs { Engaged = true, Step = DtrNextStep.Teleport, StepTarget = "Horizon" })
-            .UnlocksNearby);
-    }
-
-    [Fact]
-    public void A_single_nearby_unlock_is_not_pluralised()
-    {
-        var text = DtrComposer.Compose(new DtrInputs { NearbyUnlockCount = 1 });
-
-        Assert.Equal("1 unlock here", text.Text);
     }
 }

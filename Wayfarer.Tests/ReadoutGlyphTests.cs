@@ -139,19 +139,6 @@ public class ReadoutGlyphTests
         Assert.DoesNotContain(locked, l => l.Glyph != DtrGlyph.None);
     }
 
-    /// <summary>The hunting summary, stated as the rule rather than as a fixed expectation, because
-    /// whether that line becomes pressable is being decided elsewhere. It takes the game's own monster
-    /// mark exactly when it takes a press — so the mark arrives with the press and never before it, and
-    /// a mark of some other kind fails here either way.</summary>
-    [Fact]
-    public void The_hunting_summary_takes_the_monster_mark_exactly_when_it_becomes_pressable()
-    {
-        var line = Assert.Single(
-            Composed["hunting summary"].Lines, l => l.Text.Contains("Ornery Karakul", StringComparison.Ordinal));
-
-        Assert.Equal(line.Action != ReadoutLineAction.None, line.Glyph == DtrGlyph.Monster);
-    }
-
     /// <summary>Every glyph the composer can emit has a concrete icon behind it. Enumerated off the
     /// enum rather than listed, so a value added to it without a mapping fails here instead of
     /// silently drawing a line with no mark — which looks exactly like a line that was never meant to
@@ -160,7 +147,7 @@ public class ReadoutGlyphTests
     public void The_drawing_layer_maps_every_glyph_the_composer_can_emit()
     {
         var icon = SourceGuard.Body(
-            SourceGuard.SourceOf("Wayfarer/Windows/Native/ReadoutBodyNode.cs"),
+            SourceGuard.SourceOf("Wayfarer/Windows/Native/ScenarioTreeGuidanceNode.cs"),
             "private static BitmapFontIcon? Icon(DtrGlyph glyph)");
 
         foreach (var glyph in Enum.GetValues<DtrGlyph>().Where(g => g != DtrGlyph.None))
@@ -192,18 +179,6 @@ public class ReadoutGlyphTests
         ["duty locked"] = Compose(Duty(unlocked: false)),
         ["hunt engaged"] = Compose(Engaged("Hunting Log - Gladiator")),
         ["unlock route engaged"] = Compose(Engaged("Unlock route") with { IsPickup = true }),
-        ["hunting summary"] = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = SameZone(),
-            DistanceYalms = 120f,
-            HuntingSummary = "Ornery Karakul 2/3",
-        }),
-        ["nearby unlocks"] = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = SameZone(),
-            DistanceYalms = 120f,
-            NearbyUnlocks = ["Chocobo racing", "Glamours"],
-        }),
         ["reason only"] = Compose(new NavigationState
         {
             Mode = NavigationState.Modes.OtherZone,

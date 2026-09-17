@@ -9,7 +9,7 @@ namespace Wayfarer.Tests;
 /// three times over, against a layout whose own arithmetic kept auditing as correct — a bare line is
 /// worth <see cref="GameMetrics.Banner.AnnotationBlock"/>, 14, the quest tracker's own Axis-12
 /// leading, and the spacing unit either side of it is two pixels. The looseness was not a metric. It
-/// was <c>ReadoutBodyNode.WrappedLines</c> reporting two rows for text that fits on one, and
+/// was the drawing node's own <c>WrappedLines</c> reporting two rows for text that fits on one, and
 /// <see cref="ReadoutBodyLayout.TextHeight"/> faithfully doubling 14 to 28 for every line on the
 /// readout.</para>
 ///
@@ -22,7 +22,7 @@ namespace Wayfarer.Tests;
 /// wrong.</para></summary>
 public class ReadoutMeasurementTests
 {
-    private const string Node = "Wayfarer/Windows/Native/ReadoutBodyNode.cs";
+    private const string Node = "Wayfarer/Windows/Native/ScenarioTreeGuidanceNode.cs";
 
     /// <summary>The cost of the bug, in the layout's own arithmetic: a row count of two on a line
     /// whose words fit on one row is not a rounding error, it is the line's whole height again.

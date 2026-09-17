@@ -4,8 +4,8 @@ namespace Wayfarer.Core.Ui;
 
 /// <summary>Turns the published guidance snapshot into the exact lines the readout draws.
 ///
-/// This exists as pure, tested code because of a specific complaint: with a hunt running, the
-/// readout also showed the followed quest, in the same weight, so there was no way to tell which
+/// This exists as pure, tested code because of a specific complaint: with an explicit mode engaged,
+/// the readout also showed the followed quest, in the same weight, so there was no way to tell which
 /// one the arrow was pointing at. The rules that fix it are invariants, not styling, and they are
 /// enforced here rather than in whichever presentation happens to be drawing:
 ///
@@ -16,10 +16,10 @@ namespace Wayfarer.Core.Ui;
 /// else in the readout gets a direction indicator.</description></item>
 /// <item><description><b>No competing peers.</b> While an explicit mode is engaged, the quest the
 /// player happens to be on is not shown at all. Showing it — even demoted — was the "which one is
-/// this pointing at?" confusion this exists to remove: the player asked for the arrow to follow a
-/// hunt or a route, and everything above the rule belongs to that mode.</description></item>
-/// <item><description><b>Nothing appears twice.</b> A hunting summary is emitted only when the
-/// hunt is not already the primary objective.</description></item>
+/// this pointing at?" confusion this exists to remove: the player asked for the arrow to follow
+/// something in particular, and everything above the rule belongs to that mode.</description></item>
+/// <item><description><b>Nothing appears twice.</b> A place the readout has already named is not
+/// named again further down — see <see cref="AlreadySaid"/>.</description></item>
 /// <item><description><b>A subordinate line has a glyph if and only if it has an action.</b> One of
 /// the game's own bitmap-font icons inside a line's words is the readout's only way of saying "this
 /// can be pressed", so the two are handed out together or not at all — see <see cref="Pressable"/>,
@@ -31,12 +31,6 @@ namespace Wayfarer.Core.Ui;
 /// </list></summary>
 public static class ReadoutComposer
 {
-    /// <summary>How many "available here" unlocks the readout will name at once. The service that
-    /// supplies them already keeps to the nearest few, but the budget is enforced here as well
-    /// because it is a property of the readout — legibility at TV distance — rather than of the
-    /// unlock scan, and this is where it can be tested.</summary>
-    public const int MaxNearbyUnlockLines = 3;
-
     /// <summary>What the banner's header pill says when nothing is being followed, and the fallback
     /// whenever the active source has not named itself. The plugin's own name is the honest answer to
     /// "what is this element?" when the answer to "what is it tracking?" is nothing.</summary>
@@ -46,16 +40,6 @@ public static class ReadoutComposer
     /// than at either end of the sentence it makes: the module supplies "Quest", the pill says
     /// "Current Quest", and neither half is complete on its own.</summary>
     private const string CurrentlyTracking = "Current";
-
-    /// <summary>What pressing the hunting summary does, and for now it is nothing.
-    ///
-    /// <para><b>It is a named seam rather than a literal because of the glyph rule.</b> The line
-    /// deserves the game's own monster mark — the player asked why it had an aetheryte crystal beside
-    /// it, and the honest answer was that the crystal was the only glyph the readout had. But a glyph
-    /// is the readout's way of saying "press this" (see <see cref="Pressable"/>), so the mark cannot
-    /// go on until the press does. Give this a real action and the mark appears with it; leave it
-    /// alone and the line stays correctly bare. One edit, both halves.</para></summary>
-    private const ReadoutLineAction HuntingLineAction = ReadoutLineAction.None;
 
     public static ReadoutContent Compose(ReadoutInputs inputs)
     {
@@ -71,7 +55,6 @@ public static class ReadoutComposer
         AddHeading(lines, state);
         AddObjective(lines, state);
         var (showArrow, x, y, z) = AddRoute(lines, inputs);
-        AddContext(lines, inputs);
 
         return lines.Count == 0
             ? ReadoutContent.Empty
@@ -105,7 +88,7 @@ public static class ReadoutComposer
     ///
     /// <para><b>Why the module's name and not its mode label.</b> The mode label already exists
     /// (<see cref="NavigationState.SourceLabel"/>) and names the objective's context — "Main
-    /// Scenario", "Hunting Log - Warrior". The pill is a different statement: it names the element
+    /// Scenario". The pill is a different statement: it names the element
     /// itself, the way the game's own pill says "Current Main Scenario Quest" above whichever quest
     /// happens to be in the plate. So it takes the module's name, which the module supplies, and
     /// nothing here or downstream ever maps a source id to a word.</para>
@@ -133,8 +116,8 @@ public static class ReadoutComposer
 
         // "Stop 3 of 11" belongs on the mode line, not on the objective: it describes the plan the
         // mode is executing, and putting it here is what makes an ordered chain legible at a glance.
-        // Parenthesised rather than dash-separated because the heading may already carry a dash
-        // ("Hunting Log - Warrior"), and because the em dash that used to be here is not a character
+        // Parenthesised rather than dash-separated because the heading may already carry a dash,
+        // and because the em dash that used to be here is not a character
         // the heading font can be relied on to draw — see HeadingText.
         if (state.RouteStop is { } stop && state.RouteTotal is { } total)
         {
@@ -430,66 +413,6 @@ public static class ReadoutComposer
         lines.Add(new ReadoutLine(text, ReadoutEmphasis.Primary));
     }
 
-    private static void AddContext(List<ReadoutLine> lines, ReadoutInputs inputs)
-    {
-        var state = inputs.State;
-        var separated = true;
-
-        // A hunt that is not the current objective still deserves a line — but only one, and only
-        // when it is not already the primary objective two lines above.
-        if (!inputs.HuntingIsPrimary && inputs.HuntingSummary is { Length: > 0 } hunting)
-        {
-            // The game's own monster mark is the right glyph for this line, and it goes on the moment
-            // the line does something — see HuntingLineAction, which is the one place that decides.
-            lines.Add(Pressable(
-                hunting, ReadoutEmphasis.Muted, HuntingLineAction, DtrGlyph.Monster, separated: separated));
-            separated = false;
-        }
-
-        AddNearbyUnlocks(lines, inputs, separated);
-    }
-
-    private static void AddNearbyUnlocks(List<ReadoutLine> lines, ReadoutInputs inputs, bool separated)
-    {
-        if (inputs.NearbyUnlocks.Count == 0)
-        {
-            return;
-        }
-
-        // Engaged: one count, because the player asked to be guided somewhere and a list of other
-        // things to do is exactly the clutter that made the old widget hard to read. Ambient:
-        // the names and their distances, because that is the moment they are useful.
-        if (inputs.State.Engaged)
-        {
-            // Phrased the way the game phrases a count — "3 unlocks nearby", not "Unlocks nearby:
-            // 3" — and kept in sentence case because it is content, not a label.
-            var count = inputs.NearbyUnlocks.Count;
-            lines.Add(new ReadoutLine(
-                count == 1 ? "1 unlock nearby" : $"{count} unlocks nearby",
-                ReadoutEmphasis.Muted,
-                separated));
-            return;
-        }
-
-        var first = separated;
-        var shown = 0;
-        foreach (var unlock in inputs.NearbyUnlocks)
-        {
-            if (shown == MaxNearbyUnlockLines)
-            {
-                return;
-            }
-
-            // The only lines the readout marks. Each one names a place with a quest at the end of
-            // it, which is exactly what the banner's medallion means — see ReadoutLine.Marked. The
-            // engaged case above is deliberately NOT marked: "3 unlocks nearby" is a count, and a
-            // count is not somewhere you can walk to.
-            lines.Add(new ReadoutLine(unlock, ReadoutEmphasis.Muted, first, Marked: true));
-            first = false;
-            shown++;
-        }
-    }
-
     /// <summary>"To the Brume aetheryte", but "To The Forgotten Knight aetheryte" — the game's shard
     /// names carry their own article where they have one, so adding a second produces "To the The
     /// Forgotten Knight aetheryte". Two of Ishgard's five Pillars shards and two of Foundation's
@@ -501,7 +424,7 @@ public static class ReadoutComposer
 
     /// <summary>Whether a place name has already appeared in the lines composed so far.
     ///
-    /// <para>This enforces the readout's fourth invariant — <b>nothing appears twice</b> — for place
+    /// <para>This enforces the readout's third invariant — <b>nothing appears twice</b> — for place
     /// names, which is where it was being broken: an interior objective produced the zone's name in
     /// the step line, again in the interior-entrance message, and a third time as the bare zone
     /// line. The rule is that a place is named ONCE, at its first and most informative occurrence,

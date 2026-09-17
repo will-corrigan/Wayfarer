@@ -23,8 +23,8 @@ namespace Wayfarer.Core.Ui;
 /// <para>It exists because the banner the readout wears has exactly one shape for a subordinate
 /// line: the game's own job-quest row, a 32x32 "!" medallion beside Axis-12 text at a 26-pixel
 /// pitch. The game gives every one of those rows a medallion because every one of them <i>is</i> a
-/// quest you can go do. Our subordinate lines are not homogeneous — "1,240 yalms away" and "Unlocks
-/// The Fractal Continuum" are not the same kind of statement — and putting a quest medallion on a
+/// quest you can go do. Our subordinate lines are not homogeneous — "1,240 yalms away" and "Speak
+/// with Momodi" are not the same kind of statement — and putting a quest medallion on a
 /// distance would be a lie about what it is. So the composer says which lines are which, here, where
 /// it can be tested, rather than the drawn readout guessing from emphasis or from position.</para>
 ///

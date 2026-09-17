@@ -18,20 +18,18 @@ public readonly record struct ObjectiveKey(string SourceId, string Value)
 
 /// <summary>The player-facing words for an objective, owned by the source that produced it.</summary>
 /// <param name="Headline">A name the GAME itself would print, never a label of ours: the quest's
-/// name, the monster's name. It goes in the readout's bar, which is the game's own Main Scenario
-/// Guide plate, and a player reads whatever sits on that plate as a game element — see
-/// <see cref="UnlockRoutePlan.Headline"/>, which is where this rule was broken and put back.</param>
+/// name. It goes in the readout's bar, which is the game's own Main Scenario Guide plate, and a
+/// player reads whatever sits on that plate as a game element.</param>
 /// <param name="Detail">Our own words about the headline, and the only place they belong: "Speak to
-/// Momodi", "Speak with Claribel to unlock Ceremony of Eternal Bonding". Null when the headline says
-/// it all.</param>
-/// <param name="SourceLabel">The MODE indicator: "Main Scenario", "Unlock route", "Hunting Log ·
-/// Gladiator". Required whenever the objective is <see cref="GuidanceEngagement.Engaged"/> — the
-/// readout IS the mode indicator, so an engaged objective with no label would leave the player in
-/// a mode with nothing naming it. <see cref="GuidanceArbiter"/> throws rather than publish one.</param>
+/// Momodi". Null when the headline says it all.</param>
+/// <param name="SourceLabel">The MODE indicator: "Main Scenario". Required whenever the objective is
+/// <see cref="GuidanceEngagement.Engaged"/> — the readout IS the mode indicator, so an engaged
+/// objective with no label would leave the player in a mode with nothing naming it.
+/// <see cref="GuidanceArbiter"/> throws rather than publish one.</param>
 /// <param name="SourceName">What the MODULE calls itself, in Title Case and in the singular:
-/// "Quest", "Unlock", "Hunting Log". Not the mode label — <paramref name="SourceLabel"/> describes
-/// this objective's context ("Main Scenario", "Hunting Log - Warrior"), while this names the feature
-/// that produced it and is the same string every time that feature speaks.
+/// "Quest". Not the mode label — <paramref name="SourceLabel"/> describes this objective's context
+/// ("Main Scenario"), while this names the feature that produced it and is the same string every
+/// time that feature speaks.
 ///
 /// <para>It exists so the readout's banner can print "Current Quest" above whatever is in the plate,
 /// the way the game's own banner prints "Current Main Scenario Quest". The SOURCE supplies it

@@ -3,22 +3,18 @@ using Dalamud.Plugin.Services;
 using Wayfarer.Core.Navigation;
 using Wayfarer.Core.Ui;
 using Wayfarer.Guidance;
-using Wayfarer.Modules;
 
 namespace Wayfarer.Windows;
 
 /// <summary>Gathers what the guidance readout should say, once, for whichever surface is drawing
-/// it. The native overlay and the ImGui fallback both read this, so the two can never disagree
-/// about what is on screen — before this existed the widget's layout logic was the only definition
-/// of the readout, and anything that replaced it would have had to reproduce it by hand.</summary>
+/// it. Every surface reads this, so no two can disagree about what is on screen — before this
+/// existed the widget's layout logic was the only definition of the readout, and anything that
+/// replaced it would have had to reproduce it by hand.</summary>
 internal sealed class ReadoutFeed(
     INavigationProvider navigator,
-    ModuleRegistry modules,
     QuestHelperConfig cfg,
     IObjectTable objects)
 {
-    private const string HuntingSourceId = "hunting";
-
     /// <summary>What the readout said about elevation last frame, which is what supplies the
     /// hysteresis in <see cref="Core.Ui.Elevation.Classify"/> — see there for why a single
     /// threshold is not enough.</summary>
@@ -56,9 +52,6 @@ internal sealed class ReadoutFeed(
         {
             State = state,
             DistanceYalms = distance,
-            HuntingSummary = HuntingSummary(),
-            HuntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal),
-            NearbyUnlocks = NearbyUnlocks(),
             Elevation = TargetElevation(state),
             AreaHint = AreaHint(state, distance),
         };
@@ -151,7 +144,6 @@ internal sealed class ReadoutFeed(
     public DtrText ComposeDtr()
     {
         var state = navigator.Current;
-        var huntingIsPrimary = string.Equals(state.SourceId, HuntingSourceId, StringComparison.Ordinal);
         return DtrComposer.Compose(new DtrInputs
         {
             Engaged = state.Engaged,
@@ -160,12 +152,6 @@ internal sealed class ReadoutFeed(
             Step = NextStep(state),
             StepTarget = StepTarget(state),
             DistanceYalms = Distance(state),
-            HuntingIsPrimary = huntingIsPrimary,
-            HuntingLabel = huntingIsPrimary ? DtrHuntingLabel() : null,
-
-            // The same call the readout's own content is built from, deliberately: the info bar
-            // must not be able to alert about a pickup the readout has been told not to mention.
-            NearbyUnlockCount = NearbyUnlocks().Count,
         });
     }
 
@@ -217,77 +203,5 @@ internal sealed class ReadoutFeed(
         }
 
         return groundedHeight;
-    }
-
-    // "Rank 2 4/5" — the hunting rank the game itself reports (see HuntingWindow's identical
-    // "rank {N}" wording) alongside the current target's kill count, already short enough for the
-    // bar. Rank is occasionally unknown (e.g. between log reads) without the target itself being
-    // gone, so it degrades to the kill count alone rather than disappearing.
-    private string? DtrHuntingLabel()
-    {
-        if (modules.Get<HuntingLogModule>() is not { Enabled: true } hunting
-            || hunting.Hunting.CurrentTarget is not { } target)
-        {
-            return null;
-        }
-
-        return hunting.Hunting.CurrentRank is { } rank
-            ? $"Rank {rank} {target.Killed}/{target.Required}"
-            : $"{target.Killed}/{target.Required}";
-    }
-
-    private string? HuntingSummary()
-    {
-        if (modules.Get<HuntingLogModule>() is not { Enabled: true } hunting
-            || !hunting.Config.ShowOnWidget
-            || hunting.Hunting.CurrentTarget is not { } target)
-        {
-            return null;
-        }
-
-        return $"Hunting: {target.MonsterName} {target.Killed}/{target.Required}";
-    }
-
-    /// <summary>The unlocks available in this zone right now, with a live distance to each —
-    /// restored from the pre-rewrite widget, where this was the thing that made opening the
-    /// checklist optional.
-    ///
-    /// Read straight off <see cref="UnlockService.GlanceableHere"/>, which the module already keeps
-    /// to the nearest few and recomputes only on a zone or level change. Nothing here rescans; only
-    /// the distance is recomputed, and that is the same arithmetic the arrow already pays for.
-    /// These are display lines and nothing more — they carry no direction and cannot become the
-    /// active objective, which is what keeps the one-active-objective rule intact.</summary>
-    private List<string> NearbyUnlocks()
-    {
-        if (modules.Get<UnlockChecklistModule>() is not { Enabled: true } unlockModule
-            || !unlockModule.Config.ShowOnWidget)
-        {
-            return [];
-        }
-
-        var here = unlockModule.Unlocks.GlanceableHere;
-        if (here.Count == 0)
-        {
-            return [];
-        }
-
-        var player = objects.LocalPlayer;
-        var names = new List<string>(here.Count);
-        foreach (var unlock in here)
-        {
-            if (player is null)
-            {
-                names.Add(unlock.Def.Unlock);
-                continue;
-            }
-
-            var distance = NavMath.Distance(
-                unlock.GiverX - player.Position.X,
-                unlock.GiverY - player.Position.Y,
-                unlock.GiverZ - player.Position.Z);
-            names.Add($"{unlock.Def.Unlock} ({NavMath.FormatDistance(distance)})");
-        }
-
-        return names;
     }
 }

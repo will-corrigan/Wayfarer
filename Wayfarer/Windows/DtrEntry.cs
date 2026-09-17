@@ -8,14 +8,11 @@ namespace Wayfarer.Windows;
 /// <summary>The plugin's one entry in Dalamud's server info bar (the "DTR" — the row of addon
 /// text beside the clock).
 ///
-/// It does two jobs. It is the way back into Wayfarer that is always on screen and always
-/// clickable: the readout can be hidden, hidden in combat, or — on a controller — click-through,
-/// and before this existed the only remaining routes in were the plugin installer's buttons, the
-/// slash commands and the context menu. And it is where the ambient loop's alert lives: an
-/// exclamation marker whenever this zone has an unlock available, which keeps showing while a route
-/// or a hunt is running, because walking past a pickup mid-route is exactly when it is worth
-/// knowing. It sits in the corner the game itself reserves for addon status text and never depends
-/// on the readout's own visibility.
+/// It is the way back into Wayfarer that is always on screen and always clickable: the readout can
+/// be hidden, hidden in combat, or — on a controller — click-through, and before this existed the
+/// only remaining routes in were the plugin installer's buttons, the slash commands and the context
+/// menu. It sits in the corner the game itself reserves for addon status text and never depends on
+/// the readout's own visibility.
 ///
 /// Text is refreshed from <see cref="ReadoutFeed.ComposeDtr"/>, so it can never say something the
 /// readout itself disagrees with, and the decision of what to say lives in the tested
@@ -25,7 +22,6 @@ internal sealed class DtrEntry(
     ReadoutFeed feed,
     QuestHelperConfig cfg,
     IFramework framework,
-    Action openChecklist,
     Action openSettings,
     Action stop,
     IPluginLog log) : IDisposable
@@ -82,25 +78,13 @@ internal sealed class DtrEntry(
     /// while the target was fifty-six yalms away in the same zone.</summary>
     private static SeString BuildTooltip() =>
         new SeStringBuilder()
-            .AddText("Wayfarer. A crystal means the next step is a teleport; no crystal, walk it. "
-                + "An exclamation mark means an unlock you can pick up here.\n"
-                + "Left-click: unlocks. Right-click: settings. Shift-click: stop.")
+            .AddText("Wayfarer. A crystal means the next step is a teleport; no crystal, walk it.\n"
+                + "Click: settings. Shift-click: stop.")
             .Build();
 
     private static SeString BuildText(DtrText text)
     {
         var builder = new SeStringBuilder();
-
-        // The alert first, because it is the thing that has to catch the eye without being read.
-        // ExclamationRectangle is the game's own "there is a quest here" marker — the same shape a
-        // player already scans for over an NPC's head, which is exactly the association wanted.
-        // It is emitted from exactly one condition — DtrComposer sets UnlocksNearby only when the
-        // unlock count the READOUT is given is non-zero — so the bar cannot claim a pickup the
-        // readout has been told to keep quiet about.
-        if (text.UnlocksNearby)
-        {
-            builder.AddIcon(BitmapFontIcon.ExclamationRectangle);
-        }
 
         if (Icon(text.Glyph) is { } icon)
         {
@@ -153,19 +137,15 @@ internal sealed class DtrEntry(
         {
             // Shift beats which button was clicked — the universal exit needs exactly one gesture
             // regardless of hand position, and MouseClickType only ever distinguishes Left/Right
-            // (there is no middle-click on the bar), so a modifier is the only third option cheap
+            // (there is no middle-click on the bar), so a modifier is the only second option cheap
             // enough to add without a whole submenu.
             if (evt.ModifierKeys == ClickModifierKeys.Shift)
             {
                 stop();
             }
-            else if (evt.ClickType == MouseClickType.Right)
-            {
-                openSettings();
-            }
             else
             {
-                openChecklist();
+                openSettings();
             }
         }
         catch (Exception ex)

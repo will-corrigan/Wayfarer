@@ -39,7 +39,6 @@ public enum DtrGlyph
     /// raid — and pressing it queues for that duty. Readout only.</summary>
     Duty,
 
-    /// <summary>The line names monsters to go and kill: the hunting log's own summary of what is left
-    /// of a rank. Readout only.</summary>
+    /// <summary>The line names monsters to go and kill. Readout only.</summary>
     Monster,
 }

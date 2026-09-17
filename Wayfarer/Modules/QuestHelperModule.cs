@@ -1,24 +1,18 @@
 using Dalamud.Game.Command;
-using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Guidance.Sources;
-using Wayfarer.Windows;
 
 namespace Wayfarer.Modules;
 
-/// <summary>Draws an on-screen arrow guiding the player to their followed quest's objective,
-/// with teleport and city-aethernet routing. Exposes <see cref="Navigator"/> so
-/// <see cref="UnlockChecklistModule"/> can route the arrow to unlock-quest pickups
-/// (task-5-brief.md delta 3).</summary>
+/// <summary>Guides the player to their followed quest's objective, with teleport and city-aethernet
+/// routing. Exposes <see cref="Navigator"/> so the surfaces that render guidance can read it.</summary>
 internal sealed class QuestHelperModule(
     IFramework framework,
-    WindowSystem windows,
     ICommandManager commands,
     QuestHelperConfig cfg,
     Action saveConfig,
     QuestNavigator navigator,
-    ArrowWindow arrowWindow,
     IGuidanceArbiter arbiter,
     QuestObjectiveSource questSource) : IModule
 {
@@ -39,7 +33,6 @@ internal sealed class QuestHelperModule(
         // and the arrow correctly shows nothing rather than state nobody is maintaining.
         arbiter.Register(questSource);
         framework.Update += Navigator.OnUpdate;
-        windows.AddWindow(arrowWindow);
         commands.AddHandler("/way", new((_, _) =>
         {
             cfg.WidgetHidden = !cfg.WidgetHidden;
@@ -52,7 +45,6 @@ internal sealed class QuestHelperModule(
     {
         Enabled = false;
         commands.RemoveHandler("/way");
-        windows.RemoveWindow(arrowWindow);
         framework.Update -= Navigator.OnUpdate;
         arbiter.Unregister(questSource);
     }

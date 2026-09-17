@@ -73,39 +73,4 @@ internal static class GameColors
             return fallback;
         }
     }
-
-    /// <summary>The journal page's text, which is dark-on-cream and so cannot use any of the roles
-    /// above.
-    ///
-    /// <para><b>Why this is a separate set at all.</b> Every other text role in this file is
-    /// light-on-transparent, because everything else Wayfarer draws sits over the 3D world. The
-    /// journal page is a sheet of parchment, and the page shipped wearing the readout's colours: a
-    /// near-white giver line on cream, which the player photographed and could not read. Never white
-    /// on parchment.</para>
-    ///
-    /// <para><b>The values live in Core.</b> They are literals rather than <c>UIColor</c> rows — see
-    /// <see cref="JournalPalette"/> for what that admits and why — and being literals is exactly what
-    /// lets them be checked without a client attached, which is what <c>JournalPaletteTests</c> does.
-    /// This class is the seam: everything else Wayfarer draws asks the game for its colour, so the
-    /// four that cannot are reached through the same door as the rest.</para>
-    ///
-    /// <para><b>The one exception is not here.</b> The level badge's numeral stays light —
-    /// <see cref="Heading"/> over <see cref="HeadingEdge"/>, exactly as JournalDetail <c>#9</c> —
-    /// because the badge is the game's own black disc (<c>Journal_Detail.tex</c> (420,124)) and not
-    /// parchment. There is deliberately no value for it below: it is not a parchment role.</para>
-    /// </summary>
-    public static class JournalPage
-    {
-        /// <inheritdoc cref="JournalPalette.Title"/>
-        public static Vector4 Title => JournalPalette.Title;
-
-        /// <inheritdoc cref="JournalPalette.Body"/>
-        public static Vector4 Body => JournalPalette.Body;
-
-        /// <inheritdoc cref="JournalPalette.Heading"/>
-        public static Vector4 Heading => JournalPalette.Heading;
-
-        /// <inheritdoc cref="JournalPalette.Meta"/>
-        public static Vector4 Meta => JournalPalette.Meta;
-    }
 }

@@ -16,8 +16,8 @@ namespace Wayfarer.Core.Ui;
 /// <param name="StripLabel">What goes in the banner's header pill — the small dark strip above the
 /// plate, where the game itself prints "Current Main Scenario Quest".
 ///
-/// <para><b>It says what KIND of thing is being tracked, never which one.</b> "Current Quest",
-/// "Current Unlock", "Current Hunting Log", or the plugin's own name when nothing is being followed.
+/// <para><b>It says what KIND of thing is being tracked, never which one.</b> "Current Quest", or
+/// the plugin's own name when nothing is being followed.
 /// The name of the actual thing is the subject line, which the banner draws on the plate itself, so
 /// the pill and the plate are a category and an instance — exactly what the game's own pair
 /// are.</para>

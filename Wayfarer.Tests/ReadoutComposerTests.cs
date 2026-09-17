@@ -29,8 +29,6 @@ public class ReadoutComposerTests
         var content = ReadoutComposer.Compose(new ReadoutInputs
         {
             State = Engaged("Unlock route"),
-            HuntingSummary = "Ornery Karakul 2/3",
-            NearbyUnlocks = ["Chocobo racing"],
             DistanceYalms = 120f,
         });
 
@@ -58,33 +56,6 @@ public class ReadoutComposerTests
         Assert.DoesNotContain(
             content.Lines,
             line => line.Text.StartsWith("Main Scenario:", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void A_hunt_that_is_already_the_primary_objective_is_not_repeated_further_down()
-    {
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = Engaged("Hunting Log · Gladiator") with { QuestName = "Ornery Karakul" },
-            HuntingSummary = "Ornery Karakul 2/3",
-            HuntingIsPrimary = true,
-        });
-
-        Assert.Single(content.Lines, line => line.Text.Contains("Ornery Karakul", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void A_hunt_that_is_not_the_active_objective_still_gets_one_muted_line()
-    {
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = Engaged("Unlock route") with { QuestName = "The Ties That Bind" },
-            HuntingSummary = "Ornery Karakul 2/3",
-            HuntingIsPrimary = false,
-        });
-
-        var line = Assert.Single(content.Lines, l => l.Text.Contains("Karakul", StringComparison.Ordinal));
-        Assert.Equal(ReadoutEmphasis.Muted, line.Emphasis);
     }
 
     [Fact]
@@ -273,65 +244,6 @@ public class ReadoutComposerTests
     }
 
     [Fact]
-    public void Nearby_unlocks_collapse_to_a_count_while_a_mode_is_engaged()
-    {
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = Engaged("Hunting Log · Gladiator"),
-            NearbyUnlocks = ["Chocobo racing", "Triple Triad", "The Gold Saucer"],
-        });
-
-        Assert.Contains(content.Lines, line => string.Equals(line.Text, "3 unlocks nearby", StringComparison.Ordinal));
-        Assert.DoesNotContain(content.Lines, line => line.Text.Contains("Triple Triad", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Nearby_unlocks_are_named_when_nothing_is_engaged()
-    {
-        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
-
-        var content = ReadoutComposer.Compose(Inputs(state) with { NearbyUnlocks = ["Chocobo racing", "Triple Triad"] });
-
-        Assert.Contains(content.Lines, line => string.Equals(line.Text, "Triple Triad", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Nearby_unlocks_never_exceed_the_line_budget()
-    {
-        var state = new NavigationState { Mode = NavigationState.Modes.Idle, SourceLabel = "Wayfarer" };
-        var many = Enumerable.Range(0, 12).Select(i => $"Unlock {i} (30 yalms)").ToList();
-
-        var content = ReadoutComposer.Compose(Inputs(state) with { NearbyUnlocks = many });
-
-        var shown = content.Lines.Count(line => line.Text.StartsWith("Unlock ", StringComparison.Ordinal));
-        Assert.Equal(ReadoutComposer.MaxNearbyUnlockLines, shown);
-    }
-
-    [Fact]
-    public void Nearby_unlocks_are_display_only_and_never_take_the_arrow()
-    {
-        // They are context, not guidance: naming them must not make one of them the thing the
-        // arrow is pointing at, and must not add a second direction indicator.
-        var state = new NavigationState
-        {
-            Mode = NavigationState.Modes.SameZone,
-            SourceLabel = "Main Scenario",
-            TargetX = 10f,
-            TargetZ = 20f,
-        };
-
-        var content = ReadoutComposer.Compose(
-            Inputs(state) with { NearbyUnlocks = ["Chocobo racing (30 yalms)"], DistanceYalms = 80f });
-
-        Assert.True(content.ShowArrow);
-        Assert.Equal(10f, content.TargetX);
-        Assert.Equal(20f, content.TargetZ);
-        Assert.All(
-            content.Lines.Where(line => line.Text.Contains("Chocobo", StringComparison.Ordinal)),
-            line => Assert.Equal(ReadoutEmphasis.Muted, line.Emphasis));
-    }
-
-    [Fact]
     public void An_arrival_reads_as_words_rather_than_a_meaningless_bearing()
     {
         var state = new NavigationState
@@ -505,8 +417,6 @@ public class ReadoutComposerTests
         var content = ReadoutComposer.Compose(new ReadoutInputs
         {
             State = Engaged("Unlock route"),
-            HuntingSummary = "Ornery Karakul 2/3",
-            NearbyUnlocks = ["Chocobo racing"],
             DistanceYalms = 120f,
         });
 

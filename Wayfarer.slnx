@@ -5,7 +5,6 @@
        build otherwise. `dotnet format` is told to skip it via the exclude flag (see
        ci.yml/README): it owns its own style (see Directory.Build.props' submodule guard). -->
   <Project Path="external/KamiToolKit/KamiToolKit.csproj" />
-  <Project Path="Wayfarer.Api/Wayfarer.Api.csproj" />
   <Project Path="Wayfarer.Core/Wayfarer.Core.csproj" />
   <Project Path="Wayfarer.Tests/Wayfarer.Tests.csproj" />
   <Project Path="Wayfarer/Wayfarer.csproj" />

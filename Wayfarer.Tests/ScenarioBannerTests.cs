@@ -69,31 +69,15 @@ public class ScenarioBannerTests
     public void A_sources_own_name_reaches_the_pill_through_the_projection()
     {
         var objective = new GuidanceObjective(
-            new ObjectiveKey("unlocks", "1234"),
+            new ObjectiveKey("quest", "1234"),
             new ObjectiveDestination.WorldPoint(129u, 1u, 10f, 0f, 20f),
-            new ObjectiveCopy("The Ties That Bind", null, UnlockRoutePlan.SourceLabel, UnlockRoutePlan.SourceName));
+            new ObjectiveCopy("The Ties That Bind", null, "Main Scenario", "Quest"));
 
         var state = GuidanceProjection.Build(
             objective, GuidanceEngagement.Engaged, new RouteResult.SameZone(10f, 0f, 20f, 40f));
 
-        Assert.Equal("Unlock", state.SourceName);
-        Assert.Equal("Current Unlock", ReadoutComposer.Compose(Inputs(state)).StripLabel);
-    }
-
-    [Fact]
-    public void Nearby_unlocks_are_the_lines_that_get_the_quest_medallion()
-    {
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = SameZone() with { SourceName = "Quest" },
-            DistanceYalms = 120f,
-            NearbyUnlocks = ["Chocobo Companion (240 yalms)", "Blue Mage (1.2k yalms)"],
-        });
-
-        var marked = content.Lines.Where(line => line.Marked).ToList();
-
-        Assert.Equal(2, marked.Count);
-        Assert.All(marked, line => Assert.Contains("yalms)", line.Text, StringComparison.Ordinal));
+        Assert.Equal("Quest", state.SourceName);
+        Assert.Equal("Current Quest", ReadoutComposer.Compose(Inputs(state)).StripLabel);
     }
 
     [Fact]
@@ -107,20 +91,6 @@ public class ScenarioBannerTests
             DistanceYalms = 1240f,
         });
 
-        Assert.DoesNotContain(content.Lines, line => line.Marked);
-    }
-
-    [Fact]
-    public void A_count_of_nearby_unlocks_is_an_annotation_rather_than_a_destination()
-    {
-        var content = ReadoutComposer.Compose(new ReadoutInputs
-        {
-            State = SameZone() with { SourceName = "Hunting Log", Engaged = true },
-            DistanceYalms = 60f,
-            NearbyUnlocks = ["Chocobo Companion", "Blue Mage", "Amaro"],
-        });
-
-        Assert.Contains(content.Lines, line => line.Text.Contains("3 unlocks nearby", StringComparison.Ordinal));
         Assert.DoesNotContain(content.Lines, line => line.Marked);
     }
 
@@ -183,46 +153,12 @@ public class ScenarioBannerTests
     {
         // Reported off a screenshot: the bar read "Unlocks: Ceremony of Eternal..." — cut short —
         // while the real quest name sat in a subordinate line underneath it. Exactly backwards. The
-        // bar is the game's plate and only ever carries a string the game itself would print.
-        Assert.Equal("The Ties That Bind", UnlockRoutePlan.Headline("The Ties That Bind"));
-        Assert.DoesNotContain(":", UnlockRoutePlan.Headline("The Ties That Bind"), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void What_an_unlock_gives_and_who_gives_it_go_under_the_bar_not_on_it()
-    {
-        var detail = UnlockRoutePlan.Detail("Ceremony of Eternal Bonding", "Claribel");
-
-        Assert.Contains("Claribel", detail, StringComparison.Ordinal);
-        Assert.Contains("Ceremony of Eternal Bonding", detail, StringComparison.Ordinal);
-
-        // No data-model prefixes: "Unlocks:" and "Pick up:" are both labels about how we store this,
-        // not anything the game would write.
-        Assert.DoesNotContain("Unlocks:", detail, StringComparison.Ordinal);
-        Assert.DoesNotContain("Pick up:", detail, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void An_unlock_with_no_known_giver_still_says_what_it_gives()
-    {
-        Assert.Equal(
-            "Unlocks Ceremony of Eternal Bonding",
-            UnlockRoutePlan.Detail("Ceremony of Eternal Bonding", null));
-    }
-
-    [Fact]
-    public void The_whole_unlock_objective_puts_the_quest_on_the_plate()
-    {
-        // End to end through the projection, because what was wrong was the CALL SITE rather than
-        // either method: the source used to hand Headline the unlock's name and Detail the quest's.
+        // bar is the game's plate and only ever carries a string the game itself would print, which
+        // is what the projection hands the plate: the objective's headline, with nothing prepended.
         var objective = new GuidanceObjective(
-            new ObjectiveKey("unlocks", "1234"),
+            new ObjectiveKey("quest", "1234"),
             new ObjectiveDestination.WorldPoint(129u, 1u, 10f, 0f, 20f),
-            new ObjectiveCopy(
-                UnlockRoutePlan.Headline("The Ties That Bind"),
-                UnlockRoutePlan.Detail("Ceremony of Eternal Bonding", "Claribel"),
-                UnlockRoutePlan.SourceLabel,
-                UnlockRoutePlan.SourceName));
+            new ObjectiveCopy("The Ties That Bind", "Speak with Claribel", "Main Scenario", "Quest"));
 
         var state = GuidanceProjection.Build(
             objective, GuidanceEngagement.Engaged, new RouteResult.SameZone(10f, 0f, 20f, 40f));
@@ -231,7 +167,7 @@ public class ScenarioBannerTests
         Assert.Equal("The Ties That Bind", Assert.Single(content.Lines, l => l.Subject).Text);
         Assert.Contains(
             content.Lines,
-            l => !l.Subject && l.Text.Contains("Ceremony of Eternal Bonding", StringComparison.Ordinal));
+            l => !l.Subject && l.Text.Contains("Speak with Claribel", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -314,22 +250,6 @@ public class ScenarioBannerTests
         // under 24 slices through it and the readout gets a smeared chevron at every width.
         Assert.True(GameMetrics.Banner.PlateInsetX >= 300f - 288f + 12f);
         Assert.True(GameMetrics.Banner.PlateInsetX * 2f < GameMetrics.Banner.PlateWidth);
-    }
-
-    [Fact]
-    public void The_whole_banner_and_a_full_readout_still_fit_the_placement_slot()
-    {
-        // The no-overflow property the metrics pass established, restated for the banner: the plate,
-        // its pill, and the deepest block of subordinate lines the composer can produce have to fit
-        // inside the fixed slot every placement decision is made against, or the readout grows out
-        // of the bottom of the screen instead of down its own box.
-        var deepest = GameMetrics.Banner.Height
-            + (ReadoutComposer.MaxNearbyUnlockLines * GameMetrics.Banner.SubLinePitch)
-            + (4f * GameMetrics.Banner.AnnotationBlock);
-
-        Assert.True(
-            deepest <= ReadoutLayout.ReferenceHeight,
-            $"a full readout is {deepest} tall against a {ReadoutLayout.ReferenceHeight} slot");
     }
 
     private static ReadoutInputs Inputs(NavigationState state) => new() { State = state };
