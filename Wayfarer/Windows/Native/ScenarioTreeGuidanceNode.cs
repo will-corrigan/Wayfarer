@@ -210,9 +210,15 @@ internal sealed unsafe class ScenarioTreeGuidanceNode : ResNode
         _ => null,
     };
 
-    /// <summary>How many rows this line's text will occupy at the width it has been given, measured
-    /// unscaled because the node's own units are the ones every number here is in — see
-    /// <c>ReadoutBodyNode.WrappedLines</c> for the two unit-domain traps this avoids.</summary>
+    /// <summary>How many rows this line's text will occupy at the width it has been given.
+    ///
+    /// <para>Two unit-domain traps are avoided here, and both are invisible at exactly 100% interface
+    /// scale. The measurement is taken <b>unscaled</b>, because the node's own units are the ones
+    /// every number here is in — a scaled measurement divided by an addon-unit width carries the
+    /// scale twice. And the row count is one row plus the steps beyond it, measured against a probe
+    /// row of this node's own face, never the drawn height over the leading: this block leads its
+    /// lines deliberately tighter than the face's own rows, so that division reads a single row as
+    /// two.</para></summary>
     private static float WrappedLines(TextNode node, float width)
     {
         if (width <= 1f)

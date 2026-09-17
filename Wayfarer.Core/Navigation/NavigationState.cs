@@ -68,23 +68,24 @@ public sealed record NavigationState
     /// <see cref="Engaged"/> (an explicit mode is by definition not the followed quest).</summary>
     public bool IsPickup { get; init; }
 
-    /// <summary>Stable id of the feature that owns the arrow right now: "quest", "unlocks",
-    /// "hunting", or null when nothing is being guided to.</summary>
+    /// <summary>Stable id of the feature that owns the arrow right now — "quest" — or null when
+    /// nothing is being guided to.</summary>
     public string? SourceId { get; init; }
 
-    /// <summary>The mode indicator — "Main Scenario". Non-null whenever <see cref="Engaged"/> is true: an explicit mode must always name itself,
-    /// because this readout is the only mode indicator the player has.</summary>
+    /// <summary>The mode indicator — "Main Scenario". Non-null whenever <see cref="Engaged"/> is
+    /// true: an explicit mode must always name itself, because this readout is the only mode
+    /// indicator the player has.</summary>
     public string? SourceLabel { get; init; }
 
     /// <summary>What the owning MODULE calls itself, in Title Case and in the singular — "Quest" —
-    /// as against <see cref="SourceLabel"/>, which describes this
-    /// particular objective's context. Supplied by the source; see
-    /// <see cref="Guidance.ObjectiveCopy.SourceName"/> for why it is never derived from
-    /// <see cref="SourceId"/> anywhere downstream. Null when nothing owns the arrow.</summary>
+    /// as against <see cref="SourceLabel"/>, which describes this particular objective's context.
+    /// Supplied by the source; see <see cref="Guidance.ObjectiveCopy.SourceName"/> for why it is
+    /// never derived from <see cref="SourceId"/> anywhere downstream. Null when nothing owns the
+    /// arrow.</summary>
     public string? SourceName { get; init; }
 
-    /// <summary>An explicit mode is active (a route, a hunt) rather than the ambient followed
-    /// quest. Presentations MUST offer a reachable exit whenever this is true.</summary>
+    /// <summary>An explicit mode is active rather than the ambient followed quest. Presentations
+    /// MUST offer a reachable exit whenever this is true.</summary>
     public bool Engaged { get; init; }
 
     /// <summary>"sourceId:value" — the active objective's stable identity. Consumers key their own
