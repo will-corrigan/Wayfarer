@@ -917,4 +917,77 @@ public static class GameMetrics
         /// here.</para></summary>
         public const float CogSize = 13f;
     }
+
+    /// <summary>The game's own Main Scenario Guide — the <c>ScenarioTree</c> addon — as authored in
+    /// <c>ui/uld/ScenarioTree.uld</c> (game 2026.09.01), read out of the file with Lumina rather
+    /// than measured off a screenshot. Every number is a node's own X, Y, W or H in the widget's
+    /// root coordinates, and nothing here is chosen.
+    ///
+    /// <para>The tree, for the record: root <c>#1</c> is 340x86. The header pill is nine-grid
+    /// <c>#12</c> at (58,3) with its words <c>#11</c> at (95,7). The headline row is component
+    /// <c>#13</c> at (0,20) 340x48, holding the crest at (0,-20), the quest name text at (63,15)
+    /// 250x18 and the plate at (39,0) 300x48. Under it, <c>#6</c> at (44,54) holds the two
+    /// job-quest rows <c>#7</c> and <c>#8</c> at y=0 and y=26, each a 32x32 icon with Axis-12 words
+    /// at x=28, and <c>#9</c> at (30,0), a nine-grid text tag.</para></summary>
+    public static class ScenarioTree
+    {
+        /// <summary>Root node <c>#1</c>, width and height.</summary>
+        public const float RootWidth = 340f;
+
+        /// <inheritdoc cref="RootWidth"/>
+        public const float RootHeight = 86f;
+
+        /// <summary>Where the job-quest rows begin: container <c>#6</c> is at y=54.</summary>
+        public const float RowsTop = 54f;
+
+        /// <summary>The distance between the two job-quest rows: <c>#8</c> is at y=26 inside the
+        /// container.</summary>
+        public const float RowPitch = 26f;
+
+        /// <summary>The job-quest icon column: container <c>#6</c> is at x=44 and each row's icon
+        /// sits at x=0 inside it.</summary>
+        public const float RowIconLeft = 44f;
+
+        /// <summary>The job-quest words: x=28 inside a row that starts at 44.</summary>
+        public const float RowTextLeft = RowIconLeft + 28f;
+
+        /// <summary>The quest name's left edge — component <c>#13</c>'s text at x=63.</summary>
+        public const float HeadlineTextLeft = 63f;
+
+        /// <summary>The quest name's top edge in root coordinates: the component at y=20 plus the
+        /// text at y=15 inside it. Recorded for whatever is later hung beside the name — a
+        /// switcher, or the compass.</summary>
+        public const float HeadlineTextTop = 35f;
+
+        /// <summary>The node ids the host reads. They are the widget's own, in the ULD.</summary>
+        public const uint RootNodeId = 1;
+
+        /// <inheritdoc cref="RootNodeId"/>
+        public const uint RowContainerNodeId = 6;
+
+        /// <inheritdoc cref="RootNodeId"/>
+        public const uint FirstRowNodeId = 7;
+
+        /// <inheritdoc cref="RootNodeId"/>
+        public const uint SecondRowNodeId = 8;
+
+        /// <inheritdoc cref="RootNodeId"/>
+        public const uint TagNodeId = 9;
+
+        /// <inheritdoc cref="RootNodeId"/>
+        public const uint HeadlineNodeId = 13;
+
+        /// <summary>Where Wayfarer's guidance block sits inside the root, horizontally. Our sub-line
+        /// geometry was authored against a headline at <see cref="Banner.HeadlineLeft"/> (48) where
+        /// the game's is at 63 — the plate moved left by fifteen when the crest lost its chapter
+        /// ring — so shifting the whole block right by that difference puts our marker gutter on
+        /// the game's icon column and our words on the game's text column. Proved in
+        /// <c>ScenarioTreeGeometryTests</c>.</summary>
+        public const float GuidanceLeft = HeadlineTextLeft - Banner.HeadlineLeft;
+
+        /// <summary>Where the block starts vertically: the pitch after the last job-quest row the
+        /// game is showing, which is exactly where a third row would go. With no rows at all that is
+        /// the first pitch under the plate — the same place the game's own first row goes.</summary>
+        public static float GuidanceTop(int visibleRows) => RowsTop + (RowPitch * Math.Max(visibleRows, 0));
+    }
 }
