@@ -52,6 +52,15 @@ public sealed class Plugin : IDalamudPlugin
 
     private readonly IPluginLog log;
 
+    private readonly IFramework framework;
+
+    /// <summary>KamiToolKit's own start-up, which is asynchronous since upstream reworked it:
+    /// it reads its addon-config file and then hops to the framework thread to install the
+    /// close-callback hook. Dalamud constructs plugins on the framework thread, so blocking on
+    /// this here would wait for a hop onto the thread doing the waiting. Every native surface is
+    /// therefore started as a continuation of it instead.</summary>
+    private readonly Task kamiToolKitReady;
+
     /// <summary>The one overlay controller the plugin ever creates — a second would duplicate
     /// KamiToolKit's addon-creation state machine. Built inside the quest-helper module factory
     /// because that is where the readout's inputs are assembled, held here because it outlives any
@@ -90,8 +99,13 @@ public sealed class Plugin : IDalamudPlugin
         this.commands = commands;
         this.log = log;
 
-        // Required before any KamiToolKit type (native windows, nodes) is touched.
-        KamiToolKitLibrary.Initialize(pluginInterface, "Wayfarer");
+        this.framework = framework;
+
+        // Required before any KamiToolKit type (native windows, nodes) is touched. The async part
+        // is the addon-config file and the close-callback hook; PluginInterface and the default
+        // subtitle are set synchronously before the first await, so constructing nodes and addons
+        // below is safe. Opening one is not, until this completes — see SubscribeAndStart.
+        kamiToolKitReady = KamiToolKitLibrary.InitializeAsync(pluginInterface, "Wayfarer");
 
         var config = LoadConfig(pluginInterface, log);
         void SaveConfig() => pluginInterface.SavePluginConfig(config);
@@ -160,7 +174,7 @@ public sealed class Plugin : IDalamudPlugin
             // own Dispose() guards each module individually, and NativeHubWindow.Dispose() guards
             // its own main-thread marshalling — but this try/finally is the actual fix for the
             // unload crash + leaked hook: whatever throws or however long disposal takes
-            // above, KamiToolKitLibrary.Cleanup() below is what releases the static FireCallback
+            // above, ShutDownKamiToolKit() below is what releases the static FireCallback
             // hook, and it must always run.
             mapFlag.Dispose();
             modules.Dispose();
@@ -170,7 +184,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         finally
         {
-            KamiToolKitLibrary.Cleanup();
+            ShutDownKamiToolKit();
         }
     }
 
@@ -236,6 +250,31 @@ public sealed class Plugin : IDalamudPlugin
             arbiter, questSource, unlockSource, huntingSource, aetherCurrentModule, navigator, flagCoordinator);
     }
 
+    /// <summary>Releases everything KamiToolKit allocated, on whichever thread Dalamud unloads
+    /// on. The synchronous variant asserts the main thread; the asynchronous one hops there
+    /// itself, and is bounded because on game exit the framework has stopped ticking and the hop
+    /// would never land.</summary>
+    private void ShutDownKamiToolKit()
+    {
+        try
+        {
+            if (framework.IsInFrameworkUpdateThread)
+            {
+                KamiToolKitLibrary.Dispose();
+                return;
+            }
+
+            if (!KamiToolKitLibrary.DisposeAsync().Wait(TimeSpan.FromSeconds(2)))
+            {
+                log.Warning("Wayfarer: KamiToolKit's shutdown timed out, so some native nodes may be leaked until the game is restarted.");
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Warning(ex, "Wayfarer: KamiToolKit's shutdown threw, so some native nodes may be leaked until the game is restarted.");
+        }
+    }
+
     /// <summary>Every module, in registration order, which is also disposal order reversed. Factored
     /// out of the constructor purely to stay under the method-length analyzer; the Dalamud services
     /// the builders need come bundled in <paramref name="services"/> so this stays inside the
@@ -274,9 +313,22 @@ public sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
         pluginInterface.UiBuilder.OpenMainUi += OpenMain;
 
-        // The readout is native from here on. Start() marshals onto the framework thread, because
-        // every node constructor asserts it and plugin construction is not guaranteed to be on it.
-        overlay.Start();
+        // The readout is native from here on, and it may only be built once KamiToolKit's own
+        // start-up has finished. Start() marshals onto the framework thread itself.
+        _ = kamiToolKitReady.ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted)
+                {
+                    log.Error(task.Exception, "Wayfarer: KamiToolKit failed to initialise, so no native surface can be shown this session.");
+                    return;
+                }
+
+                overlay.Start();
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
 
         commands.AddHandler("/wayfarer", new(OnCommand)
         {

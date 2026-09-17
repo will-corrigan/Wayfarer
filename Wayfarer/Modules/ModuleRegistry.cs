@@ -84,7 +84,7 @@ public sealed class ModuleRegistry(IPluginLog log, Configuration config) : IDisp
     /// try/catch so a single module throwing during teardown — e.g.
     /// a native window's <see cref="IDisposable.Dispose"/> asserting the main thread when Dalamud
     /// unloads plugins from a thread-pool thread — can't abort the rest of the chain and strand
-    /// <see cref="Plugin"/> before it reaches <c>KamiToolKitLibrary.Cleanup()</c>.</summary>
+    /// <see cref="Plugin"/> before it reaches <c>KamiToolKitLibrary.Dispose()</c>.</summary>
     public void Dispose()
     {
         for (var i = modules.Count - 1; i >= 0; i--)
