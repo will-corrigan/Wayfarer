@@ -78,6 +78,28 @@ public static class ReadoutComposer
             : new ReadoutContent(lines, showArrow, x, y, z, inputs.Elevation, StripLabel(state));
     }
 
+    /// <summary>The objective's step text as one subordinate line, or nothing when the step only
+    /// repeats the quest's name — "The Ul'dahn Envoy" under "The Ul'dahn Envoy" says nothing
+    /// twice. The one rule for it, shared by the full readout and by the block drawn under the
+    /// game's own banner.</summary>
+    internal static ReadoutLine? StepLine(NavigationState state) =>
+        state.StepLabel is { Length: > 0 } step
+        && !string.Equals(step, state.QuestName, StringComparison.OrdinalIgnoreCase)
+            ? new ReadoutLine(step, ReadoutEmphasis.Secondary)
+            : null;
+
+    internal static (bool ShowArrow, float? X, float? Y, float? Z) AddRoute(List<ReadoutLine> lines, ReadoutInputs inputs)
+    {
+        var state = inputs.State;
+        return state.Mode switch
+        {
+            NavigationState.Modes.SameZone => AddSameZone(lines, inputs),
+            NavigationState.Modes.OtherZone => AddOtherZone(lines, inputs),
+            NavigationState.Modes.DutyObjective => AddDuty(lines, state),
+            _ => AddReasonOnly(lines, state),
+        };
+    }
+
     /// <summary>The header pill's words: "Current" plus whatever the active module calls itself, or
     /// the plugin's own name when no module owns the arrow.
     ///
@@ -147,10 +169,9 @@ public static class ReadoutComposer
         var action = state.QuestId is > 0 ? ReadoutLineAction.OpenJournal : ReadoutLineAction.None;
         lines.Add(new ReadoutLine(headline, ReadoutEmphasis.Primary, Separated: false, action, Subject: true));
 
-        if (state.StepLabel is { Length: > 0 } step
-            && !string.Equals(step, state.QuestName, StringComparison.OrdinalIgnoreCase))
+        if (StepLine(state) is { } stepLine)
         {
-            lines.Add(new ReadoutLine(step, ReadoutEmphasis.Secondary));
+            lines.Add(stepLine);
         }
     }
 
@@ -178,18 +199,6 @@ public static class ReadoutComposer
         action == ReadoutLineAction.None
             ? new ReadoutLine(text, emphasis, separated)
             : new ReadoutLine(text, emphasis, separated, action, Glyph: glyph, GlyphAt: glyphAt);
-
-    private static (bool ShowArrow, float? X, float? Y, float? Z) AddRoute(List<ReadoutLine> lines, ReadoutInputs inputs)
-    {
-        var state = inputs.State;
-        return state.Mode switch
-        {
-            NavigationState.Modes.SameZone => AddSameZone(lines, inputs),
-            NavigationState.Modes.OtherZone => AddOtherZone(lines, inputs),
-            NavigationState.Modes.DutyObjective => AddDuty(lines, state),
-            _ => AddReasonOnly(lines, state),
-        };
-    }
 
     /// <summary>The objective is inside instanced content, so the line names the duty and — when the
     /// player has unlocked it — queues for it.
