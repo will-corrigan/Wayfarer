@@ -238,7 +238,7 @@ public static class ReadoutBodyLayout
 
         var placed = Flow(heights, new ScreenRect(0f, 0f, width, FlowHeight(heights)));
         var banner = placed[1];
-        var lineParts = ComposeLines(request, factor, placed);
+        var lineParts = ComposeLines(lines, factor, placed, firstSection: 2, request.Arrow, markers: request.Banner);
         var arrowCentre = lineParts.ArrowCentre;
 
         // No subordinate lines at all and still something to point at: the arrow parks where the first
@@ -276,11 +276,19 @@ public static class ReadoutBodyLayout
     /// <para>Every rectangle here is its section's own <see cref="ScreenRect.Y"/> plus an offset
     /// <i>within</i> that section. That is the property the whole conversion turns on: nothing added up
     /// here can reach a different line, because the only running total is the flow's, and the flow
-    /// reads no text.</para></summary>
-    private static LineParts ComposeLines(
-        ReadoutBodyRequest request, float factor, IReadOnlyList<ScreenRect> placed)
+    /// reads no text.</para>
+    ///
+    /// <para>Shared by the readout, whose lines start after its words and banner sections, and by
+    /// the block under the game's own banner, whose lines start at the top — which is what
+    /// <paramref name="firstSection"/> is.</para></summary>
+    internal static LineParts ComposeLines(
+        IReadOnlyList<ReadoutBlock> lines,
+        float factor,
+        IReadOnlyList<ScreenRect> placed,
+        int firstSection,
+        bool arrow,
+        bool markers)
     {
-        var lines = request.Lines;
         var parts = new LineParts
         {
             Sections = new ScreenRect[lines.Count],
@@ -292,7 +300,7 @@ public static class ReadoutBodyLayout
         for (var i = 0; i < lines.Count; i++)
         {
             var block = lines[i];
-            var section = placed[i + 2];
+            var section = placed[i + firstSection];
             parts.Sections[i] = section;
 
             if (block.Separated)
@@ -311,19 +319,43 @@ public static class ReadoutBodyLayout
             // The arrow takes the first subordinate line — the objective — and that line gives up its
             // own medallion while it has it: one mark per line, and the arrow is the stronger statement
             // about the same thing.
-            if (request.Arrow && parts.ArrowCentre is null)
+            if (arrow && parts.ArrowCentre is null)
             {
                 parts.ArrowCentre = textTop + (SubLineFontSize(factor) * GameMetrics.Type.CapHeightCentre);
                 continue;
             }
 
-            if (block.Marked && request.Banner)
+            if (block.Marked && markers)
             {
                 parts.Markers[i] = Marker(section, block, factor);
             }
         }
 
         return parts;
+    }
+
+    /// <summary>The direction indicator's whole footprint — the compass ring — centred in the
+    /// medallion's own column so that it and the marks below it share one left edge, but never
+    /// allowed to reach the words it belongs to.
+    ///
+    /// <para><b>Why the second rule exists.</b> Centring alone is only safe up to the mark's own
+    /// authored size: the gutter is 32 wide and the words start 28 past its left edge, so anything
+    /// larger grows straight into the objective line. The player's arrow-size setting goes to double,
+    /// so at anything above the default the old arrow was drawn over the sentence it was pointing
+    /// for. Past that size it grows leftward into the margin instead, which is empty. The two rules
+    /// agree exactly at the default size and at every size below it.</para>
+    ///
+    /// <para>The ring rather than the needle, because the ring is the outer edge of what is drawn —
+    /// the needle is concentric inside it (see <see cref="CompassNeedleBox"/>) and cannot reach
+    /// anything the ring does not. That makes the containment proof a proof about the whole
+    /// element.</para></summary>
+    internal static ScreenRect Arrow(float centre, float factor, float arrowScale)
+    {
+        var size = CompassRingBox(factor, arrowScale);
+        var centred = GutterLeft(factor) + ((GutterWidth(factor) - size) / 2f);
+        var clear = SubLineLeft(factor) - size;
+
+        return new ScreenRect(Math.Max(Math.Min(centred, clear), 0f), centre - (size / 2f), size, size);
     }
 
     /// <summary>The medallion, centred on its line's own row pitch rather than on a wrapped line's
@@ -406,34 +438,10 @@ public static class ReadoutBodyLayout
             GameMetrics.Banner.PlateHeight * factor);
     }
 
-    /// <summary>The direction indicator's whole footprint — the compass ring — centred in the
-    /// medallion's own column so that it and the marks below it share one left edge, but never
-    /// allowed to reach the words it belongs to.
-    ///
-    /// <para><b>Why the second rule exists.</b> Centring alone is only safe up to the mark's own
-    /// authored size: the gutter is 32 wide and the words start 28 past its left edge, so anything
-    /// larger grows straight into the objective line. The player's arrow-size setting goes to double,
-    /// so at anything above the default the old arrow was drawn over the sentence it was pointing
-    /// for. Past that size it grows leftward into the margin instead, which is empty. The two rules
-    /// agree exactly at the default size and at every size below it.</para>
-    ///
-    /// <para>The ring rather than the needle, because the ring is the outer edge of what is drawn —
-    /// the needle is concentric inside it (see <see cref="CompassNeedleBox"/>) and cannot reach
-    /// anything the ring does not. That makes the containment proof a proof about the whole
-    /// element.</para></summary>
-    private static ScreenRect Arrow(float centre, float factor, float arrowScale)
-    {
-        var size = CompassRingBox(factor, arrowScale);
-        var centred = GutterLeft(factor) + ((GutterWidth(factor) - size) / 2f);
-        var clear = SubLineLeft(factor) - size;
-
-        return new ScreenRect(Math.Max(Math.Min(centred, clear), 0f), centre - (size / 2f), size, size);
-    }
-
     /// <summary>The pieces of the line block, filled in as the sections are walked. A mutable holder
     /// rather than a return tuple only because there are five of them and they are written once each.
     /// </summary>
-    private sealed class LineParts
+    internal sealed class LineParts
     {
         public ScreenRect[] Sections { get; init; } = [];
 
