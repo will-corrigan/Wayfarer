@@ -14,6 +14,7 @@ public class ReadoutFocusTests
     private const string Host = "Wayfarer/Windows/Native/ReadoutAddon.cs";
     private const string Owner = "Wayfarer/Windows/Native/GuidanceOverlay.cs";
     private const string Body = "Wayfarer/Windows/Native/ReadoutBodyNode.cs";
+    private const string Shared = "Wayfarer/Windows/Native/PressTargets.cs";
 
     /// <summary>The two flags that kept a controller out are gone. <c>DisableFocusability</c> says
     /// "never focus this at all", and the second bit of <c>Flags1A2</c> is what KamiToolKit sets to
@@ -67,7 +68,7 @@ public class ReadoutFocusTests
     [Fact]
     public void TheControllerAnchorsClaimNothingOnScreen()
     {
-        var anchor = SourceGuard.Body(SourceGuard.SourceOf(Body), "BuildNavAnchor(Action? onSelected");
+        var anchor = SourceGuard.Body(SourceGuard.SourceOf(Shared), "BuildNavAnchor(Action? onSelected");
 
         Assert.Contains("Size = Vector2.Zero", anchor, StringComparison.Ordinal);
         Assert.Contains("RemoveNodeFlags(NodeFlags.Fill)", anchor, StringComparison.Ordinal);
@@ -90,9 +91,10 @@ public class ReadoutFocusTests
         var anchors = SourceGuard.SourceOf(Body);
         var slots = new[] { "NavCog", "NavBanner", "NavSwitcher", "NavTeleport", "NavDuty" };
 
-        // "= BuildNavAnchor(" counts call sites only; a bare "BuildNavAnchor(" also matches the
-        // helper's own declaration.
-        Assert.Equal(slots.Length, SourceGuard.Occurrences(anchors, "= BuildNavAnchor("));
+        // "= PressTargets.BuildNavAnchor(" counts call sites only; the helper's own declaration
+        // now lives in PressTargets.cs, not in this file, so a bare "BuildNavAnchor(" would count
+        // exactly the same five, but the qualified form is what every call site here actually reads.
+        Assert.Equal(slots.Length, SourceGuard.Occurrences(anchors, "= PressTargets.BuildNavAnchor("));
         foreach (var slot in slots)
         {
             Assert.Contains($"navTargets[{slot}]", anchors, StringComparison.Ordinal);
@@ -171,7 +173,7 @@ public class ReadoutFocusTests
         // was named for the quest it was wired to the Journal alone, which is a press that did nothing
         // on a hunt. Class scope rather than one method's body, for the same reason as above.
         Assert.Contains(
-            "navTargets[NavBanner] = BuildNavAnchor(onSubjectClicked",
+            "navTargets[NavBanner] = PressTargets.BuildNavAnchor(onSubjectClicked",
             SourceGuard.SourceOf(Body),
             StringComparison.Ordinal);
     }

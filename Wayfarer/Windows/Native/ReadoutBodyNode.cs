@@ -167,12 +167,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// <inheritdoc cref="TeleportTarget"/>
     private const int DutyTarget = 32;
 
-    /// <summary>Where a control's controller anchor sits inside that control's own rectangle: two
-    /// units in from its left edge, and half its height down. The same offsets KamiToolKit's own
-    /// navigable list rows use (<c>ListItemWithFocusNav</c>), so the game's cursor comes to rest
-    /// beside a control here exactly as it does beside a row there.</summary>
-    private const float NavAnchorInset = 2f;
-
     /// <summary>Where each control sits in the order a controller walks them, top to bottom as they
     /// are drawn: the cog on the pill, then the plate, then the cap at the plate's right end, then the
     /// pressable lines beneath the banner. Down moves along this list and up moves back, both
@@ -617,7 +611,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         // The parchment's own click target: the obvious, large thing on the readout opens the
         // subject at whatever is being followed — see the field's own note for why settings moved
         // off the plate entirely and lives on the cog alone.
-        bannerHitBox = onSubjectClicked is null ? null : BuildHitBox(onSubjectClicked, bannerSection);
+        bannerHitBox = onSubjectClicked is null ? null : PressTargets.BuildHitBox(onSubjectClicked, bannerSection);
         headlineNode = BuildHeadline();
 
         arrowWordsNode = BuildArrowWords();
@@ -928,70 +922,6 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         node.Position = centre - new Vector2(size / 2f, size / 2f);
     }
 
-    /// <summary>An invisible rectangle that turns a region of the readout into a click.
-    ///
-    /// <para>A <c>ResNode</c> draws nothing of its own, so the readout looks byte-for-byte the same
-    /// with or without one — the only difference is a collision rectangle and the hand cursor over
-    /// it. <c>MouseClick</c> is also the only event that adds <c>HasCollision</c>, so what swallows a
-    /// world click is exactly this rectangle and nothing more.</para></summary>
-    private static ResNode BuildHitBox(Action onClicked, NodeBase parent)
-    {
-        var box = new ResNode { IsVisible = false };
-        box.AddEvent(AtkEventType.MouseClick, onClicked);
-        box.ShowClickableCursor = true;
-        box.AttachNode(parent);
-        return box;
-    }
-
-    /// <summary>The controller's half of a hit box: a component the game's cursor can come to rest
-    /// on, whose Confirm runs the same action the mouse's click does.
-    ///
-    /// <para><b>Zero size, and one flag off.</b> A component's collision node is built to fill and to
-    /// answer the mouse; this one is sized to nothing and has <c>Fill</c> taken away, so whatever
-    /// that flag would have made it cover, it covers nothing. That is what keeps a nav anchor from
-    /// being a rectangle over the world — the guarantee the readout has always had to hold, and the
-    /// reason the drag handle is a mode rather than a permanent listener.</para>
-    ///
-    /// <para>Null when there is no action to run: a host that was given no callbacks (the fallback
-    /// overlay) grows no anchors, exactly as it grows no hit boxes.</para></summary>
-    private static NavFocusNode? BuildNavAnchor(Action? onSelected, NodeBase parent)
-    {
-        if (onSelected is null)
-        {
-            return null;
-        }
-
-        var nav = new NavFocusNode
-        {
-            OnSelected = onSelected,
-            Size = Vector2.Zero,
-            IsVisible = false,
-        };
-
-        nav.CollisionNode.RemoveNodeFlags(NodeFlags.Fill);
-        nav.AttachNode(parent);
-        return nav;
-    }
-
-    /// <summary>Parks one anchor on one control: visible exactly when that control is, and two units
-    /// in from its left edge at half its height, so the game's cursor sits beside the thing it is
-    /// about to press rather than in its corner.</summary>
-    private static void MirrorNav(NavFocusNode? nav, NodeBase? target)
-    {
-        if (nav is null || target is null)
-        {
-            return;
-        }
-
-        nav.IsVisible = target.IsVisible;
-        if (!target.IsVisible)
-        {
-            return;
-        }
-
-        nav.Position = target.Position + new Vector2(NavAnchorInset, target.Height / 2f);
-    }
-
     /// <summary>Which of the composer's action marks each pressable line answers to. The mark is the
     /// only thing that decides — never the wording, never the position — which is the whole reason
     /// <see cref="ReadoutLineAction"/> exists.</summary>
@@ -1057,7 +987,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return null;
         }
 
-        var box = BuildHitBox(onClicked, this);
+        var box = PressTargets.BuildHitBox(onClicked, this);
         box.AddEvent(AtkEventType.MouseOver, () => SetLineHighlight(line, hovered: true));
         box.AddEvent(AtkEventType.MouseOut, () => SetLineHighlight(line, hovered: false));
         return box;
@@ -1173,7 +1103,7 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
             return null;
         }
 
-        var box = BuildHitBox(onFollowClicked, bannerSection);
+        var box = PressTargets.BuildHitBox(onFollowClicked, bannerSection);
         box.TextTooltip = SwitcherTooltip;
         return box;
     }
@@ -1223,11 +1153,11 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
         Action? onTeleportClicked,
         Action? onDutyClicked)
     {
-        navTargets[NavCog] = BuildNavAnchor(onSettingsClicked, bannerSection);
-        navTargets[NavBanner] = BuildNavAnchor(onSubjectClicked, bannerSection);
-        navTargets[NavSwitcher] = BuildNavAnchor(onFollowClicked, bannerSection);
-        navTargets[NavTeleport] = BuildNavAnchor(onTeleportClicked, this);
-        navTargets[NavDuty] = BuildNavAnchor(onDutyClicked, this);
+        navTargets[NavCog] = PressTargets.BuildNavAnchor(onSettingsClicked, bannerSection);
+        navTargets[NavBanner] = PressTargets.BuildNavAnchor(onSubjectClicked, bannerSection);
+        navTargets[NavSwitcher] = PressTargets.BuildNavAnchor(onFollowClicked, bannerSection);
+        navTargets[NavTeleport] = PressTargets.BuildNavAnchor(onTeleportClicked, this);
+        navTargets[NavDuty] = PressTargets.BuildNavAnchor(onDutyClicked, this);
     }
 
     /// <summary>Takes every anchor down with the controls they shadow: a cursor resting on a control
@@ -1260,15 +1190,15 @@ internal sealed unsafe class ReadoutBodyNode : ResNode
     /// careful not to do.</para></summary>
     private void SettleNav()
     {
-        MirrorNav(navTargets[NavCog], cogNode);
-        MirrorNav(navTargets[NavBanner], bannerHitBox);
-        MirrorNav(navTargets[NavSwitcher], switcherHitBox);
+        PressTargets.MirrorNav(navTargets[NavCog], cogNode);
+        PressTargets.MirrorNav(navTargets[NavBanner], bannerHitBox);
+        PressTargets.MirrorNav(navTargets[NavSwitcher], switcherHitBox);
 
         // Every pressable line, onto the box the pointer clicks — one loop rather than a line each, so
         // the d-pad cannot come to rest anywhere the pointer cannot click on any of them.
         for (var line = 0; line < PressableLineCount; line++)
         {
-            MirrorNav(navTargets[NavFor(line)], lineHitBoxes[line]);
+            PressTargets.MirrorNav(navTargets[NavFor(line)], lineHitBoxes[line]);
         }
 
         if (ClickTargets == lastNavTargets)
