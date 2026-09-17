@@ -41,15 +41,18 @@ internal sealed class ReadoutFeed(
     /// the same <see cref="INavigationProvider"/> every other consumer already has.</summary>
     public INavigationProvider Navigator => navigator;
 
-    /// <summary>Builds this frame's content. The words are the same on every surface: what differs
-    /// between the readout's own addon and the fallback overlay is whether the line can be pressed,
-    /// which each host decides for itself from the line's own <see cref="ReadoutLineAction"/> mark.
-    /// </summary>
-    public ReadoutContent Compose()
+    /// <summary>Builds this frame's content for the full readout. See <see cref="Inputs"/> for the
+    /// half every composer shares.</summary>
+    public ReadoutContent Compose() => ReadoutComposer.Compose(Inputs());
+
+    /// <summary>Everything a composer needs this frame, gathered once. Both composers — the full
+    /// readout's and the block under the game's own banner — read exactly this, so neither can be
+    /// told something the other was not.</summary>
+    public ReadoutInputs Inputs()
     {
         var state = navigator.Current;
         var distance = Distance(state);
-        return ReadoutComposer.Compose(new ReadoutInputs
+        return new ReadoutInputs
         {
             State = state,
             DistanceYalms = distance,
@@ -58,7 +61,7 @@ internal sealed class ReadoutFeed(
             NearbyUnlocks = NearbyUnlocks(),
             Elevation = TargetElevation(state),
             AreaHint = AreaHint(state, distance),
-        });
+        };
     }
 
     /// <summary>Whether the player is outside or inside a search-area objective's circle right now
