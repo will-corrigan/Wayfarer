@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/will-corrigan/Wayfarer/compare/v1.0.2...v1.0.3) (2026-09-18)
+
+
+### Fixed
+
+* **surface:** take the pad cursor ourselves instead of asking the plate ([#58](https://github.com/will-corrigan/Wayfarer/issues/58)) ([033e7b2](https://github.com/will-corrigan/Wayfarer/commit/033e7b230ef5aa9c6097e5f50785bfff14099449))
+
 ## [1.0.2](https://github.com/will-corrigan/Wayfarer/compare/v1.0.1...v1.0.2) (2026-09-18)
 
 
