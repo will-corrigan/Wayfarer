@@ -6,6 +6,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using Lumina.Text.ReadOnly;
 using Wayfarer.App;
+using Wayfarer.App.Guidance;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Presentation;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;

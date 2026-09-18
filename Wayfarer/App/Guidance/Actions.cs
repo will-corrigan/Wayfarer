@@ -4,7 +4,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>The game's own agents and managers behind <see cref="IActions"/>. A refusal is logged,
 /// because a press that does nothing in silence looks like a control that was never wired up.</summary>

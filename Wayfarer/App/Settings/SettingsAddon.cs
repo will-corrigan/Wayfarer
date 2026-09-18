@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.BaseTypes.ComponentNode;
 using KamiToolKit.Nodes;
+using Wayfarer.App.Modules;
 
 namespace Wayfarer.App.Settings;
 

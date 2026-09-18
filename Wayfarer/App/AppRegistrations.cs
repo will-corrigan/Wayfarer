@@ -1,6 +1,9 @@
 using Autofac;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Wayfarer.App.Config;
+using Wayfarer.App.Guidance;
+using Wayfarer.App.Modules;
 using Wayfarer.App.Settings;
 using Wayfarer.Surfaces.ScenarioTree;
 

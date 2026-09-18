@@ -2,7 +2,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using Wayfarer.Core.Routing;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>The needle and the distance, computed on demand to the end of the route's first walk.
 /// A route that starts with a teleport has nothing to walk to, so it has no needle: the player

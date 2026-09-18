@@ -1,6 +1,6 @@
 using Wayfarer.Core.Guidance;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>The one thing between modules and surfaces. Modules claim it to guide; surfaces read
 /// what it publishes. It never writes words and never draws.</summary>

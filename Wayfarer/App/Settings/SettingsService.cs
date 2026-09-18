@@ -1,6 +1,7 @@
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Wayfarer.App.Modules;
 
 namespace Wayfarer.App.Settings;
 

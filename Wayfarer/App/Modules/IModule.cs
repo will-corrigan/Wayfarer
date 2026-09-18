@@ -1,4 +1,4 @@
-namespace Wayfarer.App;
+namespace Wayfarer.App.Modules;
 
 /// <summary>A feature the player can switch on and off: quests, hunting, unlocks. The app knows a
 /// module only by this — its name, and how to start and stop it — never by type. Which modules

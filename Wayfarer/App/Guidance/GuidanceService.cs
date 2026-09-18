@@ -3,7 +3,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Routing;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>Holds focus, runs the frame loop, publishes. Every frame while a source holds focus:
 /// read its objective, route to its first reachable entry from where the player stands, and if the

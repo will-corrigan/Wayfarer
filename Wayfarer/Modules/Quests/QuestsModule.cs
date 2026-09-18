@@ -1,4 +1,6 @@
 using Wayfarer.App;
+using Wayfarer.App.Guidance;
+using Wayfarer.App.Modules;
 
 namespace Wayfarer.Modules.Quests;
 

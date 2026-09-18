@@ -1,4 +1,4 @@
-namespace Wayfarer.App;
+namespace Wayfarer.App.Modules;
 
 /// <summary>Every module the container holds, and which of them are on. The settings window reads
 /// and writes this; the modules themselves never ask.</summary>

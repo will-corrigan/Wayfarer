@@ -1,4 +1,4 @@
-namespace Wayfarer.App;
+namespace Wayfarer.App.Config;
 
 /// <summary>One JSON file per named config in the plugin's config folder. The app keeps its own in
 /// <c>app.json</c>; a module that has settings keeps its own under its own name, so a module's
