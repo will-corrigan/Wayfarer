@@ -22,8 +22,8 @@
       "unlocks",
       "qol"
     ],
-    "DownloadLinkTesting": "https://github.com/will-corrigan/Wayfarer/releases/download/v1.0.3/Wayfarer.zip",
-    "TestingAssemblyVersion": "1.0.3.0",
+    "DownloadLinkTesting": "https://github.com/will-corrigan/Wayfarer/releases/download/v1.0.4/Wayfarer.zip",
+    "TestingAssemblyVersion": "1.0.4.0",
     "TestingDalamudApiLevel": 15
   }
 ]
