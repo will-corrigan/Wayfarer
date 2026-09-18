@@ -30,6 +30,7 @@ public sealed class Plugin(
     ICommandManager commands,
     IAddonLifecycle addonLifecycle,
     ITextureProvider textures,
+    IGameGui gameGui,
     IPluginLog log) : IAsyncDalamudPlugin
 {
     private IContainer? container;
@@ -50,6 +51,7 @@ public sealed class Plugin(
         builder.RegisterInstance(commands).ExternallyOwned();
         builder.RegisterInstance(addonLifecycle).ExternallyOwned();
         builder.RegisterInstance(textures).ExternallyOwned();
+        builder.RegisterInstance(gameGui).ExternallyOwned();
         builder.RegisterInstance(log).ExternallyOwned();
 
         builder.RegisterModule<AppModule>();

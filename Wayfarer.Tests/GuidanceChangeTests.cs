@@ -90,6 +90,15 @@ public class GuidanceChangeTests
     }
 
     [Fact]
+    public void A_different_action_on_the_same_words_is_a_change()
+    {
+        var a = Guide(Walk(100f));
+        var b = a with { Target = a.Target! with { Action = new EntryAction.Say("Well met!") } };
+
+        Assert.False(GuidanceChange.IsSame(a, b));
+    }
+
+    [Fact]
     public void The_route_moving_to_the_next_entry_is_a_change()
     {
         var momodi = new ObjectiveEntry("Speak with Momodi.", null, new Destination.Reachable([There]));

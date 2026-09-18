@@ -1,7 +1,9 @@
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
+using Lumina.Text.ReadOnly;
 using Wayfarer.App;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Presentation;
@@ -11,12 +13,16 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>Hangs the guidance block inside the game's Main Scenario Guide and keeps it current.
 /// The block is a child of the addon's root, so the game decides everything about being on screen.
-/// Words are re-laid when the guidance changes; the needle and distance are read every frame.</summary>
+/// Words are re-laid when the guidance changes; the needle and distance are read every frame.
+/// Presses are read off the guidance at the moment of the press, never captured when the line was
+/// drawn, so a press cannot act on a stale route or entry.</summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
+    private const string SayCommand = "/say ";
+
     private readonly IGuidance guidance;
     private readonly IHeading heading;
-    private readonly ITravel travel;
+    private readonly IActions actions;
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
     private readonly AddonController controller;
@@ -24,11 +30,11 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private bool wordsChanged = true;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, ITravel travel, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
-        this.travel = travel;
+        this.actions = actions;
         this.textures = textures;
         this.log = log;
 
@@ -54,13 +60,38 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private static unsafe int VisibleJobRows(AtkUnitBase* addon) =>
         JobRowNodeIds.Count(id => addon->GetNodeById(id) is var node && node != null && node->IsVisible());
 
+    private static LineContent? EntryContent(ObjectiveEntry? entry) =>
+        entry is null ? null : new LineContent(EntryWords.Describe(entry), IconFor(entry.Action), entry.Action is not null);
+
+    private static uint? IconFor(EntryAction? action) => action switch
+    {
+        EntryAction.UseItem item => item.IconId,
+        EntryAction.Emote emote => emote.IconId,
+        _ => null,
+    };
+
+    private static LineContent? RouteContent(RouteLine? line) =>
+        line is null ? null : new LineContent(WithGlyph(line), null, line.Press is not null);
+
+    private static ReadOnlySeString WithGlyph(RouteLine line) =>
+        Glyph(line.Glyph) is { } icon
+            ? new ReadOnlySeString(new SeStringBuilder().AddIcon(icon).AddText(line.Text).Build().Encode())
+            : line.Text;
+
+    private static BitmapFontIcon? Glyph(RouteGlyph glyph) => glyph switch
+    {
+        RouteGlyph.Aetheryte => BitmapFontIcon.Aetheryte,
+        RouteGlyph.Duty => BitmapFontIcon.WaitingForDutyFinder,
+        _ => null,
+    };
+
     private void OnGuidanceChanged(object? sender, GuidanceChangedEventArgs e) => wordsChanged = true;
 
     private unsafe void Attach(AtkUnitBase* addon)
     {
         try
         {
-            block = new GuidanceBlockNode(textures, log, OnRoutePressed) { IsVisible = false };
+            block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
             block.AttachNode(addon);
             wordsChanged = true;
         }
@@ -101,8 +132,8 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     }
 
     /// <summary>Re-lays the words when the guidance changed. The game only dispatches clicks to
-    /// nodes in the addon's collision list, so it is rebuilt when the route line becomes pressable
-    /// or stops being.</summary>
+    /// nodes in the addon's collision list, so it is rebuilt when a line becomes pressable or
+    /// stops being.</summary>
     private unsafe void RefreshWords(AtkUnitBase* addon)
     {
         if (!wordsChanged)
@@ -111,10 +142,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         }
 
         wordsChanged = false;
-        var wasPressable = block!.RoutePressable;
+        var wasPressable = block!.AnyPressable;
         var current = guidance.Current;
-        block.SetWords(current?.Target is { } target ? EntryWords.Describe(target) : null, RouteWords.Compose(current));
-        if (block.RoutePressable != wasPressable)
+        block.SetWords(EntryContent(current?.Target), RouteContent(RouteWords.Compose(current)));
+        if (block.AnyPressable != wasPressable)
         {
             addon->UpdateCollisionNodeList(false);
         }
@@ -131,17 +162,33 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         }
     }
 
-    /// <summary>Read off the guidance at the moment of the press, never captured when the line was
-    /// drawn, so a press cannot act on a stale route.</summary>
+    private void OnEntryPressed()
+    {
+        switch (guidance.Current?.Target?.Action)
+        {
+            case EntryAction.UseItem item:
+                actions.UseItem(item.ItemId);
+                break;
+            case EntryAction.Emote emote:
+                actions.Emote(emote.EmoteId);
+                break;
+            case EntryAction.Say say:
+                actions.FillChat(SayCommand + say.Phrase);
+                break;
+            default:
+                break;
+        }
+    }
+
     private void OnRoutePressed()
     {
         switch (RouteWords.Compose(guidance.Current)?.Press)
         {
             case RoutePress.Teleport teleport:
-                travel.TeleportTo(teleport.AetheryteId);
+                actions.TeleportTo(teleport.AetheryteId);
                 break;
             case RoutePress.OpenDuty duty:
-                travel.OpenDutyFinder(duty.DutyId);
+                actions.OpenDutyFinder(duty.DutyId);
                 break;
             default:
                 break;

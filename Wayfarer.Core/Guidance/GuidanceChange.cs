@@ -57,6 +57,7 @@ public static class GuidanceChange
     private static bool SameEntry(ObjectiveEntry a, ObjectiveEntry b) =>
         string.Equals(a.Text, b.Text, StringComparison.Ordinal)
         && a.Progress == b.Progress
+        && a.Action == b.Action
         && SameDestination(a.Where, b.Where);
 
     private static bool SameDestination(Destination a, Destination b) => (a, b) switch

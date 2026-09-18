@@ -28,6 +28,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
 
+    /// <summary>Key items live in their own id range; a ToDo's item below it is a turn-in, not a use.</summary>
+    private const uint FirstEventItemId = 2_000_000;
+
     /// <summary>Macros that only style text. Any other macro in a to-do line is a value the game
     /// fills in at runtime and the sheet alone cannot.</summary>
     private static readonly HashSet<MacroCode> PresentationalMacroCodes =
@@ -43,6 +46,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodo>> todosByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
+    private Dictionary<string, EmoteCommand>? emotesByCommand;
 
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
@@ -71,7 +75,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
     /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
     /// event handler. Empty when the handler is not loaded or there is no player.</summary>
-    public static List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
+    public List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
     {
         var handler = (QuestEventHandler*)EventFramework.Instance()->GetEventHandlerById(questId + QuestRowIdOffset);
         var player = Control.Instance()->LocalPlayer;
@@ -83,9 +87,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         var progress = new List<QuestTodoProgress>();
         foreach (var index in todoIndexes)
         {
-            uint have, needed, unused;
-            handler->GetTodoArgs(player, (byte)index, &have, &needed, &unused);
-            progress.Add(new QuestTodoProgress(index, handler->IsTodoChecked(player, (byte)index), (int)have, (int)needed));
+            uint have, needed, itemId;
+            handler->GetTodoArgs(player, (byte)index, &have, &needed, &itemId);
+            progress.Add(new QuestTodoProgress(index, handler->IsTodoChecked(player, (byte)index), (int)have, (int)needed, KeyItem(itemId)));
         }
 
         return progress;
@@ -104,6 +108,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         var questId = data->MainScenarioQuestIds[data->MSQPathIndex];
         return questId != 0 && QuestManager.Instance()->IsQuestAccepted(questId) ? questId : null;
     }
+
+    /// <summary>Every emote by each of its chat commands, "/bow".</summary>
+    public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
     public string Name(ushort questId) =>
         namesByQuest.TryGetValue(questId, out var name) ? name : namesByQuest[questId] = ReadName(questId);
@@ -141,6 +148,34 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
             .Select(reference => reference.ValueNullable)
             .OfType<Level>()
             .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
+
+    private QuestItem? KeyItem(uint itemId) =>
+        itemId >= FirstEventItemId && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
+            ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
+            : null;
+
+    private Dictionary<string, EmoteCommand> ReadEmotes()
+    {
+        var emotes = new Dictionary<string, EmoteCommand>(StringComparer.Ordinal);
+        foreach (var emote in dataManager.GetExcelSheet<Emote>())
+        {
+            if (emote.TextCommand.ValueNullable is not { } command)
+            {
+                continue;
+            }
+
+            foreach (var text in new[] { command.Command, command.ShortCommand, command.Alias, command.ShortAlias })
+            {
+                var key = text.ExtractText();
+                if (key.Length > 0)
+                {
+                    emotes.TryAdd(key, new EmoteCommand((ushort)emote.RowId, command.Command.ExtractText(), emote.Icon));
+                }
+            }
+        }
+
+        return emotes;
+    }
 
     private Quest? QuestRow(ushort questId) => dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset);
 

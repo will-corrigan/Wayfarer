@@ -45,7 +45,7 @@ internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
 
         var sequence = QuestReader.Sequence(questId);
         var todos = reader.Todos(questId);
-        var progress = QuestReader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
+        var progress = reader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
         var markers = QuestReader.Markers(questId);
 
         var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers));
@@ -55,7 +55,7 @@ internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
         }
 
         last = signature;
-        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers);
+        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes());
     }
 
     private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers);
