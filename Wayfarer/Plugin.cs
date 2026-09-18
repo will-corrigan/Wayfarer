@@ -13,7 +13,7 @@ namespace Wayfarer;
 /// calls <see cref="LoadAsync"/>, which is where the container is built and anything that has to
 /// start does so — asynchronously, which is what a toolkit with an async initialisation needs.
 /// Everything below this class is built by the container: the app's own services from
-/// <see cref="AppModule"/>, and one Autofac module per feature module, each registering what it
+/// <see cref="AppRegistrations"/>, and one Autofac module per feature module, each registering what it
 /// owns. This class never constructs anything itself.</para>
 ///
 /// <para>Dalamud's services are registered as externally owned: Dalamud created them and Dalamud
@@ -54,8 +54,8 @@ public sealed class Plugin(
         builder.RegisterInstance(gameGui).ExternallyOwned();
         builder.RegisterInstance(log).ExternallyOwned();
 
-        builder.RegisterModule<AppModule>();
-        builder.RegisterModule<QuestsModule>();
+        builder.RegisterModule<AppRegistrations>();
+        builder.RegisterModule<QuestsRegistrations>();
 
         container = builder.Build();
         await container.Resolve<ModuleHost>().StartAsync().ConfigureAwait(false);

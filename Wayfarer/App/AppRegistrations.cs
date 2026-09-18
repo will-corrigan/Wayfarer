@@ -6,9 +6,9 @@ using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.App;
 
-/// <summary>Registers the app: the part every feature module plugs into. Each service the app
-/// gains is registered here and nowhere else.</summary>
-internal sealed class AppModule : Module
+/// <summary>Wires the app into the container: the part every feature module plugs into. Each
+/// service the app gains is registered here and nowhere else.</summary>
+internal sealed class AppRegistrations : Module
 {
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)

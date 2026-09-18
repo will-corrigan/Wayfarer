@@ -6,7 +6,7 @@ namespace Wayfarer.Modules.Quests;
 /// <summary>The quests module's guidance half. Follows the main scenario: whichever quest the
 /// banner names, and nothing while it shows "???". Reads the game each frame, but only rebuilds
 /// the objective when something it depends on changed: the quest, the step, the ToDos' progress
-/// or the markers. Focus is claimed and released by <see cref="QuestsFeature"/> as the module
+/// or the markers. Focus is claimed and released by <see cref="QuestsModule"/> as the module
 /// goes up and down.</summary>
 internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
 {

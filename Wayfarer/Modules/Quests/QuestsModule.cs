@@ -1,19 +1,28 @@
-using Autofac;
 using Wayfarer.App;
-using Wayfarer.Core.Guidance;
 
 namespace Wayfarer.Modules.Quests;
 
-/// <summary>Registers the quests module: everything in this folder, and nothing outside it. The
-/// app learns of the module through the <see cref="IModule"/> registered here, and switches it
-/// on and off through that.</summary>
-internal sealed class QuestsModule : Module
+/// <summary>The quests module: what the settings checkbox switches. Up means
+/// <see cref="QuestObjectives"/> holds guidance focus; down means it has let go.</summary>
+internal sealed class QuestsModule(QuestObjectives objectives, IGuidance guidance) : IModule
 {
     /// <inheritdoc/>
-    protected override void Load(ContainerBuilder builder)
+    public string Name => "Quests";
+
+    /// <inheritdoc/>
+    public string Description => "Follows the main scenario in the Main Scenario Guide.";
+
+    /// <inheritdoc/>
+    public Task EnableAsync()
     {
-        builder.RegisterType<QuestReader>().SingleInstance();
-        builder.RegisterType<QuestObjectives>().As<IObjectiveSource>().AsSelf().SingleInstance();
-        builder.RegisterType<QuestsFeature>().As<IModule>().SingleInstance();
+        guidance.Claim(objectives);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public Task DisableAsync()
+    {
+        guidance.Yield(objectives);
+        return Task.CompletedTask;
     }
 }
