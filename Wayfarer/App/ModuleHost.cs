@@ -5,11 +5,11 @@ namespace Wayfarer.App;
 /// <summary>Owns the enabled set and the modules' up/down state. Brings the enabled modules up on
 /// <see cref="StartAsync"/> and takes every module that is up down when disposed.
 ///
-/// <para>Modules come up and go down on the framework thread, because what they do there, claim
-/// focus, subscribe, put nodes on screen, is read by the frame loop. A module that throws while
-/// coming up is logged and left down; one that throws while going down is logged and treated as
-/// down. Neither stops the other modules.</para></summary>
-internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, IFramework framework, IPluginLog log) : IModuleHost, IAsyncDisposable
+/// <para>A module that needs the framework thread marshals there itself, as the toolkit's calls
+/// do; the host awaits each module plainly so an unload never waits on a tick. A module that
+/// throws while coming up is logged and left down; one that throws while going down is logged and
+/// treated as down. Neither stops the other modules.</para></summary>
+internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, IPluginLog log) : IModuleHost, IAsyncDisposable
 {
     private const string ConfigName = "app";
 
@@ -75,7 +75,7 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
     {
         try
         {
-            await framework.RunOnTick(module.EnableAsync).ConfigureAwait(false);
+            await module.EnableAsync().ConfigureAwait(false);
             up.Add(module);
         }
         catch (Exception ex)
@@ -89,7 +89,7 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
         up.Remove(module);
         try
         {
-            await framework.RunOnTick(module.DisableAsync).ConfigureAwait(false);
+            await module.DisableAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

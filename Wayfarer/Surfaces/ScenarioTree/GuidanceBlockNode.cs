@@ -78,14 +78,14 @@ internal sealed class GuidanceBlockNode : ResNode
     }
 
     /// <summary>Moves the pad cursor between our lines and the plate ourselves, because the plate's
-    /// own input code never consults the index table: down from a line reaches the next pressable
-    /// line, and up from the top one hands focus back to the plate.</summary>
+    /// own input code never consults the index table. The cursor goes round in a loop: plate, step
+    /// line, route line, plate; up runs the loop the other way.</summary>
     public unsafe void WireFocus(AtkUnitBase* addon, AtkResNode* plateFocus)
     {
         entry.OnUp = () => Focus(addon, plateFocus);
-        entry.OnDown = () => Focus(addon, route.Pressable ? route.FocusTarget : null);
+        entry.OnDown = () => Focus(addon, route.Pressable ? route.FocusTarget : plateFocus);
         route.OnUp = () => Focus(addon, entry.Pressable ? entry.FocusTarget : plateFocus);
-        route.OnDown = null;
+        route.OnDown = () => Focus(addon, plateFocus);
         entry.SetNav(EntryNavIndex, EntryNavIndex, EntryNavIndex);
         route.SetNav(RouteNavIndex, RouteNavIndex, RouteNavIndex);
     }
