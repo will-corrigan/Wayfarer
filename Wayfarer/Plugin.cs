@@ -25,6 +25,7 @@ public sealed class Plugin(
     IFramework framework,
     IClientState clientState,
     IObjectTable objects,
+    IDataManager dataManager,
     IPluginLog log) : IAsyncDalamudPlugin
 {
     private IContainer? container;
@@ -38,6 +39,7 @@ public sealed class Plugin(
         builder.RegisterInstance(framework).ExternallyOwned();
         builder.RegisterInstance(clientState).ExternallyOwned();
         builder.RegisterInstance(objects).ExternallyOwned();
+        builder.RegisterInstance(dataManager).ExternallyOwned();
         builder.RegisterInstance(log).ExternallyOwned();
 
         builder.RegisterModule<AppModule>();

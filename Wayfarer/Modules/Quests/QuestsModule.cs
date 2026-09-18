@@ -10,6 +10,10 @@ internal sealed class QuestsModule : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
-        builder.RegisterType<QuestObjectives>().As<IObjectiveSource>().AsSelf().SingleInstance();
+        builder.RegisterType<QuestReader>().SingleInstance();
+
+        // Auto-activated so it claims focus when the container is built: following the main
+        // scenario is the default, and a default nobody asks for has to start itself.
+        builder.RegisterType<QuestObjectives>().As<IObjectiveSource>().AsSelf().SingleInstance().AutoActivate();
     }
 }
