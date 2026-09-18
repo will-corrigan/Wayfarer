@@ -33,7 +33,7 @@ public class GuidanceChangeTests
     public void A_different_leg_shape_is_a_change()
     {
         var walk = Guide(Walk(250f));
-        var teleport = Guide(new Route([new Leg.Teleport(10, "Field"), new Leg.Walk(40f)], 160f, There));
+        var teleport = Guide(new Route([new Leg.Teleport(10, "Field"), new Leg.Walk(There, 40f)], 160f, There));
 
         Assert.False(GuidanceChange.IsSame(walk, teleport));
     }
@@ -41,8 +41,8 @@ public class GuidanceChangeTests
     [Fact]
     public void A_different_aetheryte_is_a_change_even_at_the_same_shape()
     {
-        var a = Guide(new Route([new Leg.Teleport(10, "Field"), new Leg.Walk(40f)], 160f, There));
-        var b = Guide(new Route([new Leg.Teleport(11, "Forest"), new Leg.Walk(40f)], 160f, There));
+        var a = Guide(new Route([new Leg.Teleport(10, "Field"), new Leg.Walk(There, 40f)], 160f, There));
+        var b = Guide(new Route([new Leg.Teleport(11, "Forest"), new Leg.Walk(There, 40f)], 160f, There));
 
         Assert.False(GuidanceChange.IsSame(a, b));
     }
@@ -52,7 +52,7 @@ public class GuidanceChangeTests
     {
         var elsewhere = There with { X = 500f };
 
-        Assert.False(GuidanceChange.IsSame(Guide(Walk(100f)), Guide(new Route([new Leg.Walk(500f)], 500f, elsewhere))));
+        Assert.False(GuidanceChange.IsSame(Guide(Walk(100f)), Guide(new Route([new Leg.Walk(elsewhere, 500f)], 500f, elsewhere))));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class GuidanceChangeTests
         Assert.False(GuidanceChange.IsSame(a, b));
     }
 
-    private static Route Walk(float yalms) => new([new Leg.Walk(yalms)], yalms, There);
+    private static Route Walk(float yalms) => new([new Leg.Walk(There, yalms)], yalms, There);
 
     private static PublishedGuidance Guide(Route route)
     {

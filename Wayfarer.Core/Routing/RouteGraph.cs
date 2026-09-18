@@ -224,7 +224,7 @@ public sealed class RouteGraph
 
                 if (SameMap(here, places[other]))
                 {
-                    yield return (other, new Leg.Walk(Distance(here, places[other])));
+                    yield return (other, new Leg.Walk(places[other], Distance(here, places[other])));
                 }
             }
 
@@ -251,7 +251,7 @@ public sealed class RouteGraph
             legs.Reverse();
             if (legs.Count == 0)
             {
-                legs.Add(new Leg.Walk(0f));
+                legs.Add(new Leg.Walk(places[target], 0f));
             }
 
             return new Route(legs, cost[target], places[target]);

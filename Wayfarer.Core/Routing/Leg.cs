@@ -22,8 +22,11 @@ public abstract record Leg
     /// <summary>This leg's cost in yalms-equivalent.</summary>
     public abstract float Cost { get; }
 
-    /// <summary>Walk this far, on the map you are on.</summary>
-    public sealed record Walk(float Yalms) : Leg
+    /// <summary>Walk to <paramref name="To"/>, on the map you are on. The one leg the compass can
+    /// point at: when a walk is first, the needle and the distance are to its end.</summary>
+    /// <param name="To">Where the walk ends: the next node, door side or target.</param>
+    /// <param name="Yalms">How far, from where the walk starts.</param>
+    public sealed record Walk(Place To, float Yalms) : Leg
     {
         /// <inheritdoc/>
         public override float Cost => Yalms;

@@ -22,17 +22,20 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
     private readonly IGuidance guidance;
     private readonly IHeading heading;
+    private readonly ITravel travel;
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
     private readonly AddonController controller;
     private GuidanceBlockNode? block;
     private bool wordsChanged = true;
+    private bool routeWasPressable;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, ITravel travel, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
+        this.travel = travel;
         this.textures = textures;
         this.log = log;
 
@@ -77,7 +80,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         try
         {
-            block = new GuidanceBlockNode(textures, log) { IsVisible = false };
+            block = new GuidanceBlockNode(textures, log, OnRoutePressed) { IsVisible = false };
             block.AttachNode(addon);
             wordsChanged = true;
         }
@@ -92,6 +95,20 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         block?.Dispose();
         block = null;
+        addon->RootNode->SetHeight((ushort)ScenarioTreeMetrics.RootHeight);
+    }
+
+    /// <summary>Grows the addon's root to cover the block while it shows, so clicks on the route
+    /// line land inside the addon's own bounds, and shrinks it back when the block hides.</summary>
+    private unsafe void FitRootToBlock(AtkUnitBase* addon)
+    {
+        var wanted = block!.IsVisible
+            ? Math.Max(ScenarioTreeMetrics.RootHeight, block.Y + block.Height)
+            : ScenarioTreeMetrics.RootHeight;
+        if (addon->RootNode->Height != (ushort)wanted)
+        {
+            addon->RootNode->SetHeight((ushort)wanted);
+        }
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -109,9 +126,17 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             {
                 wordsChanged = false;
                 ApplyWords();
+                if (block.RoutePressable != routeWasPressable)
+                {
+                    // The game only dispatches clicks to nodes in the addon's collision list, which
+                    // it built at setup, before our box existed or changed.
+                    routeWasPressable = block.RoutePressable;
+                    addon->UpdateCollisionNodeList(false);
+                }
             }
 
             block.SetHeading(heading.Needle, heading.DistanceYalms);
+            FitRootToBlock(addon);
         }
         catch (Exception ex)
         {
@@ -125,13 +150,25 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     private void ApplyWords()
     {
-        if (guidance.Current is not { Target: { } target } current)
-        {
-            block!.SetWords(null, null);
-            return;
-        }
+        var current = guidance.Current;
+        block!.SetWords(current?.Target?.Text, RouteWords.Compose(current));
+    }
 
-        var routeWords = current.Route is { } route ? RouteWords.Describe(route) : RouteWords.NoRoute;
-        block!.SetWords(target.Text, routeWords);
+    /// <summary>Acts on the route line: read off the guidance at the moment of the press rather
+    /// than captured when the line was drawn, so a press can never act on a stale route.</summary>
+    private void OnRoutePressed()
+    {
+        log.Debug("Wayfarer: the route line was pressed.");
+        switch (RouteWords.Compose(guidance.Current)?.Press)
+        {
+            case RoutePress.Teleport teleport:
+                travel.TeleportTo(teleport.AetheryteId);
+                break;
+            case RoutePress.OpenDuty duty:
+                travel.OpenDutyFinder(duty.DutyId);
+                break;
+            default:
+                break;
+        }
     }
 }

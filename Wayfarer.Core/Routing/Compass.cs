@@ -4,8 +4,8 @@ namespace Wayfarer.Core.Routing;
 /// so north is -Z; a bearing here is 0 at north and clockwise-positive, and a screen angle is
 /// that bearing turned by the camera so the needle points the way the player is looking.
 ///
-/// <para>The camera's own yaw is counter-clockwise-positive from north (0 north, +π/2 west), which
-/// is why it is negated before it is subtracted. That sign was settled by a live four-direction
+/// <para>The camera's own yaw is counter-clockwise-positive from north (0 north, +π/2 west), so
+/// turning a clockwise bearing into the camera's frame is an addition, not a subtraction. That sign was settled by a live four-direction
 /// test on 2026-08-21 and matches the shipping Compass plugin's documented convention; do not flip
 /// it without new evidence.</para></summary>
 public static class Compass

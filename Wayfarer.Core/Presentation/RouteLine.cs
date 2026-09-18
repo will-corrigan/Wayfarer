@@ -1,0 +1,8 @@
+namespace Wayfarer.Core.Presentation;
+
+/// <summary>The one line a surface draws about the route: a mark, the words, and what a press
+/// does, or null press when the line is words only.</summary>
+/// <param name="Glyph">The mark in front of the words.</param>
+/// <param name="Text">The words.</param>
+/// <param name="Press">What pressing the line does, or null when nothing.</param>
+public sealed record RouteLine(RouteGlyph Glyph, string Text, RoutePress? Press);

@@ -6,7 +6,7 @@ namespace Wayfarer.Core.Guidance;
 ///
 /// <para>A walk's length changes every frame the player moves, and so would a naive comparison.
 /// What a surface has to re-lay-out for is the words and the shape of the route: which legs, in
-/// which order, to which place. So a walk is compared as "a walk", never by its length; the
+/// which order, to which place. So a walk is compared by where it ends, never by its length; the
 /// distance is a per-frame number the surfaces that show it read for themselves.</para></summary>
 public static class GuidanceChange
 {
@@ -92,7 +92,7 @@ public static class GuidanceChange
 
     private static bool SameLeg(Leg a, Leg b) => (a, b) switch
     {
-        (Leg.Walk, Leg.Walk) => true,
+        (Leg.Walk x, Leg.Walk y) => x.To == y.To,
         (Leg.Teleport x, Leg.Teleport y) => x.AetheryteId == y.AetheryteId,
         (Leg.ShardHop x, Leg.ShardHop y) =>
             string.Equals(x.EntryShard, y.EntryShard, StringComparison.Ordinal)

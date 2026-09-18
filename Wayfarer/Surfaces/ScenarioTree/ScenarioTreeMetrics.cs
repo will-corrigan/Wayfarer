@@ -10,8 +10,12 @@ internal static class ScenarioTreeMetrics
     /// <summary>The addon's internal name.</summary>
     public const string AddonName = "ScenarioTree";
 
-    /// <summary>The root node's width.</summary>
+    /// <summary>The root node's width and height. The game hit-tests clicks against the root, so the
+    /// root is grown to cover our block while it shows and restored when it hides.</summary>
     public const float RootWidth = 340f;
+
+    /// <inheritdoc cref="RootWidth"/>
+    public const float RootHeight = 86f;
 
     /// <summary>Where the first job-quest row starts, in root coordinates.</summary>
     public const float JobRowsTop = 54f;
