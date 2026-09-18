@@ -101,12 +101,14 @@ jobs:
       # scanner itself cannot leak what it looks for. The switch is the other half: a fork's pull
       # request cannot read repository secrets, so on those the gate has nothing to scan with and
       # says so — but on a push or a same-repo pull request a missing secret is a broken gate, not a
-      # clean tree, and it now fails instead of passing vacuously.
+      # clean tree, and it now fails instead of passing vacuously. Dependabot's own runs are the
+      # other exception: GitHub withholds repository secrets from them too, and its commits are
+      # machine-made, so the gate is not required there either.
       - name: Hygiene check
         shell: pwsh
         env:
           WAYFARER_HYGIENE_PATTERNS: ${{ secrets.HYGIENE_PATTERNS }}
-          WAYFARER_HYGIENE_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          WAYFARER_HYGIENE_REQUIRED: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         run: |
           if ($env:WAYFARER_HYGIENE_REQUIRED -eq 'true') {
             ./scripts/check-hygiene.ps1 -RequirePatterns
