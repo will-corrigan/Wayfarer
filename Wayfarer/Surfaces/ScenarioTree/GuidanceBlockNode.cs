@@ -54,6 +54,9 @@ internal sealed class GuidanceBlockNode : ResNode
     /// surface when this changes.</summary>
     public bool AnyPressable => entry.Pressable || route.Pressable;
 
+    /// <summary>The controls the addon should treat as focusable: each pressable line's, in order.</summary>
+    public unsafe nint[] FocusTargets => [.. new[] { entry, route }.Where(line => line.Pressable).Select(line => (nint)line.FocusTarget)];
+
     /// <summary>The first of our stops the cursor can move down to from the plate, or null.</summary>
     public int? FirstStop => entry.Pressable ? EntryNavIndex : route.Pressable ? RouteNavIndex : null;
 

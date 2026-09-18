@@ -121,6 +121,11 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             plate->Component->CursorNavigationInfo.DownIndex = original;
         }
 
+        foreach (ref var slot in addon->AdditionalFocusableNodes)
+        {
+            slot = null;
+        }
+
         plateDownBeforeUs = null;
         block?.Dispose();
         block = null;
@@ -143,6 +148,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         plateDownBeforeUs ??= nav.DownIndex;
         nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
         block.LinkNav(nav.Index);
+        OfferFocusable(addon);
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -196,6 +202,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         if (addon->RootNode->Height != wanted)
         {
             addon->RootNode->SetHeight(wanted);
+        }
+    }
+
+    /// <summary>Puts our pressable controls in the addon's two extra focusable slots, which is how
+    /// the toolkit's own dropdowns are reached when they hang outside their window. Cleared when
+    /// nothing is pressable and on detach.</summary>
+    private unsafe void OfferFocusable(AtkUnitBase* addon)
+    {
+        var targets = block!.FocusTargets;
+        var slots = addon->AdditionalFocusableNodes;
+        for (var i = 0; i < slots.Length; i++)
+        {
+            slots[i] = i < targets.Length ? (AtkResNode*)targets[i] : null;
         }
     }
 
