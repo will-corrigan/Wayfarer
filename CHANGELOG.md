@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/will-corrigan/Wayfarer/compare/v1.0.4...v1.0.5) (2026-09-18)
+
+
+### Fixed
+
+* withdraw the plate listener; remote log for a tester who cannot send logs ([#63](https://github.com/will-corrigan/Wayfarer/issues/63)) ([8df8f77](https://github.com/will-corrigan/Wayfarer/commit/8df8f77a5966e9904f6397b75bca526eab03d2a3))
+
 ## [1.0.4](https://github.com/will-corrigan/Wayfarer/compare/v1.0.3...v1.0.4) (2026-09-18)
 
 
