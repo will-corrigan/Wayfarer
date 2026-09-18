@@ -20,7 +20,18 @@ public static class GuidanceChange
 
         return ReferenceEquals(a.Source, b.Source)
             && SameObjective(a.Objective, b.Objective)
+            && SameTarget(a.Target, b.Target)
             && SameRoute(a.Route, b.Route);
+    }
+
+    private static bool SameTarget(ObjectiveEntry? a, ObjectiveEntry? b)
+    {
+        if (a is null || b is null)
+        {
+            return a is null && b is null;
+        }
+
+        return SameEntry(a, b);
     }
 
     private static bool SameObjective(Objective a, Objective b)

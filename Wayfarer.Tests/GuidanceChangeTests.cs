@@ -89,15 +89,26 @@ public class GuidanceChangeTests
         Assert.True(GuidanceChange.IsSame(Guide(Walk(100f)), Guide(Walk(100f))));
     }
 
+    [Fact]
+    public void The_route_moving_to_the_next_entry_is_a_change()
+    {
+        var momodi = new ObjectiveEntry("Speak with Momodi.", null, new Destination.Reachable([There]));
+        var aetheryte = new ObjectiveEntry("Attune to the aetheryte.", null, new Destination.Reachable([There]));
+        var objective = new Objective("Close to Home", null, [momodi, aetheryte]);
+
+        var a = new PublishedGuidance(Quests, objective, momodi, Walk(100f));
+        var b = new PublishedGuidance(Quests, objective, aetheryte, Walk(100f));
+
+        Assert.False(GuidanceChange.IsSame(a, b));
+    }
+
     private static Route Walk(float yalms) => new([new Leg.Walk(yalms)], yalms, There);
 
-    private static PublishedGuidance Guide(Route route) => new(
-        Quests,
-        new Objective(
-            "The Ul'dahn Envoy",
-            null,
-            [new ObjectiveEntry("Speak with Momodi.", new Progress(1, 3), new Destination.Reachable([There]))]),
-        route);
+    private static PublishedGuidance Guide(Route route)
+    {
+        var entry = new ObjectiveEntry("Speak with Momodi.", new Progress(1, 3), new Destination.Reachable([There]));
+        return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", null, [entry]), entry, route);
+    }
 
     private sealed class FakeSource(string name) : IObjectiveSource
     {

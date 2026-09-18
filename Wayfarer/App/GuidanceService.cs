@@ -6,9 +6,9 @@ using Wayfarer.Core.Routing;
 namespace Wayfarer.App;
 
 /// <summary>Holds focus, runs the frame loop, publishes. Every frame while a source holds focus:
-/// read its objective, route the reachable places from where the player stands, and if the words
-/// or the shape of the route differ from last frame, publish. Nothing else in the app has a frame
-/// loop; modules are read by this one and surfaces are told by it.</summary>
+/// read its objective, route to its first reachable entry from where the player stands, and if the
+/// words or the shape of the route differ from last frame, publish. Nothing else in the app has a
+/// frame loop; modules are read by this one and surfaces are told by it.</summary>
 internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 {
     private readonly IFramework framework;
@@ -76,20 +76,6 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         return ui != null && ui->IsAetheryteUnlocked(aetheryteId);
     }
 
-    private static List<Place> ReachablePlaces(Objective objective)
-    {
-        var places = new List<Place>();
-        foreach (var entry in objective.Entries)
-        {
-            if (entry.Where is Destination.Reachable reachable)
-            {
-                places.AddRange(reachable.Places);
-            }
-        }
-
-        return places;
-    }
-
     private void OnUpdate(IFramework tick)
     {
         try
@@ -117,8 +103,11 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
             return null;
         }
 
-        var route = Standing() is { } from ? graph.FindRoute(from, ReachablePlaces(objective), Attuned) : null;
-        return new PublishedGuidance(source, objective, route);
+        var target = objective.FirstReachable();
+        var route = target?.Where is Destination.Reachable reachable && Standing() is { } from
+            ? graph.FindRoute(from, reachable.Places, Attuned)
+            : null;
+        return new PublishedGuidance(source, objective, target, route);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>
