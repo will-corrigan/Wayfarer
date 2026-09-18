@@ -30,6 +30,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private bool wordsChanged = true;
     private bool broken;
     private byte? plateDownBeforeUs;
+    private nint focusBeforeUs;
 
     public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
@@ -103,6 +104,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         try
         {
+            focusBeforeUs = (nint)addon->FocusNode;
             block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
             block.AttachNode(addon);
             wordsChanged = true;
@@ -126,6 +128,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             slot = null;
         }
 
+        addon->FocusNode = (AtkResNode*)focusBeforeUs;
         plateDownBeforeUs = null;
         block?.Dispose();
         block = null;
@@ -147,8 +150,13 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         ref var nav = ref plate->Component->CursorNavigationInfo;
         plateDownBeforeUs ??= nav.DownIndex;
         nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
-        block.LinkNav(nav.Index);
         OfferFocusable(addon);
+
+        // HUD Select lands on the addon's focus node. While a line is pressable that is our first
+        // line, so the pad reaches it without the plate's help; up from it returns to the plate.
+        var targets = block.FocusTargets;
+        addon->FocusNode = targets.Length > 0 ? (AtkResNode*)targets[0] : (AtkResNode*)focusBeforeUs;
+        block.WireFocus(addon, (AtkResNode*)focusBeforeUs);
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)

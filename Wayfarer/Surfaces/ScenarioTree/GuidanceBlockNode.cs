@@ -77,14 +77,17 @@ internal sealed class GuidanceBlockNode : ResNode
         Height = RowTextTop + entryBlock + (route.IsVisible ? route.Height : 0f);
     }
 
-    /// <summary>Chains our stops under the plate: down from the plate reaches the first pressable
-    /// line, down again the next, and up from the top one returns to the plate.</summary>
-    public void LinkNav(int plateIndex)
+    /// <summary>Moves the pad cursor between our lines and the plate ourselves, because the plate's
+    /// own input code never consults the index table: down from a line reaches the next pressable
+    /// line, and up from the top one hands focus back to the plate.</summary>
+    public unsafe void WireFocus(AtkUnitBase* addon, AtkResNode* plateFocus)
     {
-        var below = route.Pressable ? RouteNavIndex : plateIndex;
-        var above = entry.Pressable ? EntryNavIndex : plateIndex;
-        entry.SetNav(EntryNavIndex, plateIndex, below);
-        route.SetNav(RouteNavIndex, above, plateIndex);
+        entry.OnUp = () => Focus(addon, plateFocus);
+        entry.OnDown = () => Focus(addon, route.Pressable ? route.FocusTarget : null);
+        route.OnUp = () => Focus(addon, entry.Pressable ? entry.FocusTarget : plateFocus);
+        route.OnDown = null;
+        entry.SetNav(EntryNavIndex, EntryNavIndex, EntryNavIndex);
+        route.SetNav(RouteNavIndex, RouteNavIndex, RouteNavIndex);
     }
 
     public void SetHeading(float? needle, float? yalms, float? rise)
@@ -114,6 +117,14 @@ internal sealed class GuidanceBlockNode : ResNode
         Position = new Vector2(IconColumnLeft + ((IconColumnWidth - DistanceWidth) / 2f), CompassOrigin.Y + CompassSize),
         Size = new Vector2(DistanceWidth, RouteLeading),
     };
+
+    private static unsafe void Focus(AtkUnitBase* addon, AtkResNode* node)
+    {
+        if (node != null)
+        {
+            AtkStage.Instance()->AtkInputManager->SetFocus(node, addon, 0);
+        }
+    }
 
     private T Attach<T>(T node)
         where T : KamiToolKit.BaseTypes.NodeBase
