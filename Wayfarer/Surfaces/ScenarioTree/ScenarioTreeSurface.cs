@@ -25,6 +25,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly IActions actions;
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
+    private readonly IFaultLog faults;
     private readonly AddonController controller;
     private GuidanceBlockNode? block;
     private bool wordsChanged = true;
@@ -32,13 +33,14 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private byte? plateDownBeforeUs;
     private nint focusBeforeUs;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log, IFaultLog faults)
     {
         this.guidance = guidance;
         this.heading = heading;
         this.actions = actions;
         this.textures = textures;
         this.log = log;
+        this.faults = faults;
 
         controller = new AddonController
         {
@@ -112,7 +114,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         catch (Exception ex)
         {
             block = null;
-            log.Error(ex, "Wayfarer: the guidance block could not be added to the Main Scenario Guide, so nothing is drawn this session.");
+            faults.Record("adding the block to the Main Scenario Guide; nothing is drawn this session", ex);
         }
     }
 
@@ -178,7 +180,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             broken = true;
             block.IsVisible = false;
-            log.Error(ex, "Wayfarer: drawing the guidance block failed, so it is hidden for this session.");
+            faults.Record("drawing the block; it is hidden for this session", ex);
         }
     }
 

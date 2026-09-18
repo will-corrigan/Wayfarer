@@ -8,7 +8,7 @@ namespace Wayfarer.App;
 
 /// <summary>The game's own agents and managers behind <see cref="IActions"/>. A refusal is logged,
 /// because a press that does nothing in silence looks like a control that was never wired up.</summary>
-internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, IPluginLog log) : IActions
+internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, IFaultLog faults) : IActions
 {
     /// <summary>The sub-index is for aetherytes with several destinations, such as housing; every
     /// aetheryte on a route is a plain one.</summary>
@@ -29,7 +29,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
 
         if (!UIState.Instance()->IsAetheryteUnlocked(aetheryteId))
         {
-            log.Warning($"Wayfarer: no teleport was cast: aetheryte {aetheryteId} is not attuned.");
+            faults.Record("teleport", $"aetheryte {aetheryteId} is not attuned");
             return;
         }
 
@@ -37,7 +37,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
         telepo->UpdateAetheryteList();
         if (!telepo->Teleport(aetheryteId, PlainAetheryte))
         {
-            log.Warning($"Wayfarer: the game rejected the teleport to aetheryte {aetheryteId}: not enough gil, in combat, or in a duty are the usual reasons.");
+            faults.Record("teleport", $"the game rejected the teleport to aetheryte {aetheryteId}");
         }
     }
 
@@ -50,7 +50,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
         var kind = itemId >= FirstEventItemId ? ActionType.EventItem : ActionType.Item;
         if (!ActionManager.Instance()->UseAction(kind, itemId))
         {
-            log.Warning($"Wayfarer: the game did not use item {itemId}: the usual reason is that nothing suitable is targeted.");
+            faults.Record("use item", $"the game did not use item {itemId}; is a suitable target selected?");
         }
     }
 
@@ -60,7 +60,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
         var agent = AgentEmote.Instance();
         if (!agent->CanUseEmote(emoteId))
         {
-            log.Warning($"Wayfarer: emote {emoteId} cannot be used right now.");
+            faults.Record("emote", $"emote {emoteId} cannot be used right now");
             return;
         }
 
@@ -73,7 +73,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
         var chat = (AddonChatLog*)gameGui.GetAddonByName(ChatLogAddon).Address;
         if (chat == null || chat->TextInput == null)
         {
-            log.Warning("Wayfarer: the chat window is not open, so the phrase could not be written into it.");
+            faults.Record("say", "the chat window is not open");
             return;
         }
 

@@ -20,13 +20,14 @@ internal sealed class SettingsService : IAsyncDisposable
         IDalamudPluginInterface pluginInterface,
         ICommandManager commands,
         IFramework framework,
-        IModuleHost host)
+        IModuleHost host,
+        IFaultLog faults)
     {
         this.pluginInterface = pluginInterface;
         this.commands = commands;
         this.framework = framework;
 
-        window = new SettingsAddon(host)
+        window = new SettingsAddon(host, faults)
         {
             InternalName = "WayfarerSettings",
             Title = "Wayfarer",

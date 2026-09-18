@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.BaseTypes.ComponentNode;
 using KamiToolKit.Nodes;
+using Wayfarer.Ui;
 
 namespace Wayfarer.App.Settings;
 
@@ -14,9 +15,13 @@ namespace Wayfarer.App.Settings;
 /// <para>A module's own settings, when it has some, go under its checkbox one tab in — the same
 /// list, the next tab index. The list is rebuilt on every open and freed on every close, because
 /// the game frees the addon's node tree when it closes.</para></summary>
-internal sealed class SettingsAddon(IModuleHost host) : NativeAddon
+internal sealed class SettingsAddon(IModuleHost host, IFaultLog faults) : NativeAddon
 {
     private const string ModulesHeading = "Modules";
+    private const string FaultsHeading = "Recent faults";
+    private const string NoFaults = "None this session.";
+    private const uint FaultFontSize = 12;
+    private const float FaultLineHeight = 32f;
     private const float WindowWidth = 400f;
     private const float TallestWindow = 400f;
     private const float CheckboxHeight = 24f;
@@ -47,6 +52,13 @@ internal sealed class SettingsAddon(IModuleHost host) : NativeAddon
             list.ContentNode.AddNode(ModuleTab, Toggle(module));
         }
 
+        // What went wrong, readable in game: for the player who cannot open the log or send it.
+        list.ContentNode.AddNode(HeadingTab, new CategoryTextNode { String = FaultsHeading });
+        foreach (var line in faults.Recent.Count > 0 ? faults.Recent : [NoFaults])
+        {
+            list.ContentNode.AddNode(ModuleTab, FaultLine(line));
+        }
+
         if (list.ContentNode.GetNodes<ComponentNode>().FirstOrDefault()?.FocusNode is { } focus)
         {
             addon->FocusNode = focus;
@@ -61,6 +73,18 @@ internal sealed class SettingsAddon(IModuleHost host) : NativeAddon
         list?.Dispose();
         list = null;
     }
+
+    private static TextNode FaultLine(string words) => new()
+    {
+        FontType = FontType.Axis,
+        FontSize = FaultFontSize,
+        LineSpacing = FaultFontSize + 2,
+        AlignmentType = AlignmentType.TopLeft,
+        TextFlags = TextFlags.WordWrap | TextFlags.MultiLine | TextFlags.Edge,
+        TextColor = GameColors.Dimmed,
+        Height = FaultLineHeight,
+        String = words,
+    };
 
     private CheckboxNode Toggle(IModule module)
     {

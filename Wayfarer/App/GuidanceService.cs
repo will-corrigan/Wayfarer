@@ -15,7 +15,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     private readonly IClientState clientState;
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
-    private readonly IPluginLog log;
+    private readonly IFaultLog faults;
     private bool loggedFailure;
 
     public GuidanceService(
@@ -23,13 +23,13 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         IClientState clientState,
         IObjectTable objects,
         RouteGraph graph,
-        IPluginLog log)
+        IFaultLog faults)
     {
         this.framework = framework;
         this.clientState = clientState;
         this.objects = objects;
         this.graph = graph;
-        this.log = log;
+        this.faults = faults;
         framework.Update += OnUpdate;
     }
 
@@ -83,7 +83,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
             if (!loggedFailure)
             {
                 loggedFailure = true;
-                log.Error(ex, "Wayfarer: computing guidance threw, so guidance is switched off for this session.");
+                faults.Record("computing guidance; guidance is off for this session", ex);
             }
 
             Publish(null);
