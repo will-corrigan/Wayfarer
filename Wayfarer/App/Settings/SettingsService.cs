@@ -7,7 +7,7 @@ namespace Wayfarer.App.Settings;
 /// <summary>The doors onto the settings window: the plugin installer's cog, its main button, and
 /// <c>/wayfarer</c>. Owns the window and opens it on the framework thread, where the toolkit needs
 /// it.</summary>
-internal sealed class SettingsService : IDisposable
+internal sealed class SettingsService : IAsyncDisposable
 {
     private const string Command = "/wayfarer";
 
@@ -38,13 +38,15 @@ internal sealed class SettingsService : IDisposable
         commands.AddHandler(Command, new CommandInfo((_, _) => Open()) { HelpMessage = "Opens Wayfarer's settings." });
     }
 
-    /// <inheritdoc/>
-    public void Dispose()
+    /// <summary>Unhooks the doors, then closes the window. The close has to happen on the
+    /// framework thread and Dalamud unloads plugins off it, so the toolkit's async dispose is
+    /// awaited: it marshals itself there and waits for the window to finish closing.</summary>
+    public async ValueTask DisposeAsync()
     {
         commands.RemoveHandler(Command);
         pluginInterface.UiBuilder.OpenConfigUi -= Open;
         pluginInterface.UiBuilder.OpenMainUi -= Open;
-        window.Dispose();
+        await window.DisposeAsync().ConfigureAwait(false);
     }
 
     private void Open() => _ = framework.RunOnFrameworkThread(window.Toggle);

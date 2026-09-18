@@ -17,6 +17,10 @@ internal static class GameColors
     /// <summary>List text, warm cream: the Duty Finder's own row colour.</summary>
     public static Vector4 ListText => Get(8, new Vector4(0.933f, 0.882f, 0.773f, 1f));
 
+    /// <summary>The dark edge under list text, which is what keeps small text crisp rather than
+    /// haloed.</summary>
+    public static Vector4 ListTextEdge => Get(7, new Vector4(0.157f, 0.157f, 0.157f, 1f));
+
     /// <summary>Secondary, dimmed label text: mid-grey.</summary>
     public static Vector4 Dimmed => Get(3, new Vector4(0.627f, 0.627f, 0.627f, 1f));
 

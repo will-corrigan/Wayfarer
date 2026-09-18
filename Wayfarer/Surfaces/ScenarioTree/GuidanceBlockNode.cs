@@ -20,6 +20,7 @@ internal sealed class GuidanceBlockNode : ResNode
 {
     private const TextFlags WordFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
     private const TextFlags SingleLineFlags = TextFlags.Edge | TextFlags.Ellipsis;
+    private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
 
     private readonly TextNode entry;
@@ -32,27 +33,30 @@ internal sealed class GuidanceBlockNode : ResNode
     {
         Width = ScenarioTreeMetrics.RootWidth;
 
-        entry = Words(WordFlags, GameColors.Body);
-        entry.Position = new Vector2(ScenarioTreeMetrics.WordsLeft, 0f);
+        entry = Words(WordFlags, GameColors.Body, ScenarioTreeMetrics.WordsFontSize, ScenarioTreeMetrics.WordsLeading);
+        entry.Position = new Vector2(ScenarioTreeMetrics.WordsLeft, ScenarioTreeMetrics.RowTextTop);
         entry.Width = ScenarioTreeMetrics.WordsWidth;
         entry.AttachNode(this);
 
-        route = Words(SingleLineFlags, GameColors.ListText);
-        route.Position = new Vector2(ScenarioTreeMetrics.WordsLeft, ScenarioTreeMetrics.LinePitch);
-        route.Size = new Vector2(ScenarioTreeMetrics.WordsWidth, ScenarioTreeMetrics.LinePitch);
+        route = Words(SingleLineFlags, GameColors.ListText, ScenarioTreeMetrics.RouteFontSize, ScenarioTreeMetrics.RouteLeading);
+        route.Position = new Vector2(ScenarioTreeMetrics.WordsLeft, ScenarioTreeMetrics.RowTextTop + ScenarioTreeMetrics.WordsBlock);
+        route.Size = new Vector2(ScenarioTreeMetrics.WordsWidth, ScenarioTreeMetrics.RouteLeading);
         route.AttachNode(this);
 
+        // Centred in the icon column and on the first line of words.
         compass = new CompassNode(textures, log) { IsVisible = false };
         compass.Position = new Vector2(
             ScenarioTreeMetrics.IconColumnLeft + ((ScenarioTreeMetrics.IconColumnWidth - ScenarioTreeMetrics.CompassSize) / 2f),
-            (ScenarioTreeMetrics.LinePitch - ScenarioTreeMetrics.CompassSize) / 2f);
+            ScenarioTreeMetrics.RowTextTop + ((ScenarioTreeMetrics.WordsLeading - ScenarioTreeMetrics.CompassSize) / 2f));
         compass.AttachNode(this);
 
-        distance = Words(SingleLineFlags, GameColors.Dimmed);
-        distance.FontSize = ScenarioTreeMetrics.DistanceFontSize;
+        distance = Words(DistanceFlags, GameColors.ListText, ScenarioTreeMetrics.DistanceFontSize, ScenarioTreeMetrics.RouteLeading);
+        distance.TextOutlineColor = GameColors.ListTextEdge;
         distance.AlignmentType = AlignmentType.Top;
-        distance.Position = new Vector2(ScenarioTreeMetrics.IconColumnLeft, compass.Position.Y + ScenarioTreeMetrics.CompassSize);
-        distance.Size = new Vector2(ScenarioTreeMetrics.IconColumnWidth, ScenarioTreeMetrics.LinePitch);
+        distance.Position = new Vector2(
+            ScenarioTreeMetrics.IconColumnLeft + ((ScenarioTreeMetrics.IconColumnWidth - ScenarioTreeMetrics.DistanceWidth) / 2f),
+            compass.Position.Y + ScenarioTreeMetrics.CompassSize);
+        distance.Size = new Vector2(ScenarioTreeMetrics.DistanceWidth, ScenarioTreeMetrics.RouteLeading);
         distance.AttachNode(this);
     }
 
@@ -66,14 +70,16 @@ internal sealed class GuidanceBlockNode : ResNode
         }
 
         entry.String = entryWords;
-        var lines = Math.Clamp(MathF.Ceiling(entry.GetTextDrawSize(considerScale: false).Y / ScenarioTreeMetrics.LinePitch), 1, ScenarioTreeMetrics.MaxEntryLines);
-        entry.Height = lines * ScenarioTreeMetrics.LinePitch;
+        var lines = Math.Clamp(MathF.Ceiling(entry.GetTextDrawSize(considerScale: false).Y / ScenarioTreeMetrics.WordsLeading), 1, ScenarioTreeMetrics.MaxEntryLines);
+        entry.Height = lines * ScenarioTreeMetrics.WordsLeading;
 
+        // The last line gets the tracker's full block before anything hangs under it.
+        var entryBlock = ((lines - 1) * ScenarioTreeMetrics.WordsLeading) + ScenarioTreeMetrics.WordsBlock;
         route.String = routeWords ?? string.Empty;
         route.IsVisible = routeWords is not null;
-        route.Y = entry.Height;
+        route.Y = ScenarioTreeMetrics.RowTextTop + entryBlock;
 
-        Height = entry.Height + (route.IsVisible ? ScenarioTreeMetrics.LinePitch : 0f);
+        Height = ScenarioTreeMetrics.RowTextTop + entryBlock + (route.IsVisible ? ScenarioTreeMetrics.RouteLeading : 0f);
         IsVisible = true;
     }
 
@@ -100,11 +106,11 @@ internal sealed class GuidanceBlockNode : ResNode
         distance.IsVisible = true;
     }
 
-    private static TextNode Words(TextFlags flags, Vector4 color) => new()
+    private static TextNode Words(TextFlags flags, Vector4 color, uint fontSize, float leading) => new()
     {
         FontType = FontType.Axis,
-        FontSize = ScenarioTreeMetrics.FontSize,
-        LineSpacing = (uint)ScenarioTreeMetrics.LinePitch,
+        FontSize = fontSize,
+        LineSpacing = (uint)leading,
         AlignmentType = AlignmentType.TopLeft,
         TextFlags = flags,
         TextColor = color,

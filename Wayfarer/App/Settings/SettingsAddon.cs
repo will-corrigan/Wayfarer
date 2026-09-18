@@ -1,79 +1,96 @@
 using System.Numerics;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
+using KamiToolKit.BaseTypes.ComponentNode;
 using KamiToolKit.Nodes;
-using Wayfarer.Ui;
 
 namespace Wayfarer.App.Settings;
 
-/// <summary>The settings window: a game-drawn window with one row per module, a checkbox and a
-/// line saying what the module does. It knows the modules only through <see cref="IModuleHost"/>,
-/// so a new module appears here by being registered and nothing else.
+/// <summary>The settings window, built the way VanillaPlus builds its config windows: a scrolling
+/// tabbed list sized to the window's content, a category heading, and one game checkbox per
+/// module with its description as the tooltip. It knows the modules only through
+/// <see cref="IModuleHost"/>, so a new module appears here by being registered and nothing else.
 ///
-/// <para>The rows are built on every open and torn down on every close, because the game frees
-/// the addon's node tree when it closes and rebuilds nothing of ours.</para></summary>
-internal sealed class SettingsAddon : NativeAddon
+/// <para>A module's own settings, when it has some, go under its checkbox one tab in — the same
+/// list, the next tab index. The list is rebuilt on every open and freed on every close, because
+/// the game frees the addon's node tree when it closes.</para></summary>
+internal sealed class SettingsAddon(IModuleHost host) : NativeAddon
 {
-    private const float CheckboxHeight = 20f;
-    private const float DescriptionHeight = 18f;
-    private const float RowGap = 6f;
-    private const float RowHeight = CheckboxHeight + DescriptionHeight + RowGap;
-    private const float DescriptionIndent = 26f;
-    private const uint DescriptionFontSize = 12;
-    private const float WindowWidth = 360f;
+    private const string ModulesHeading = "Modules";
+    private const float WindowWidth = 400f;
+    private const float TallestWindow = 400f;
+    private const float CheckboxHeight = 24f;
+    private const float BottomPadding = 24f;
+    private const int HeadingTab = 0;
+    private const int ModuleTab = 1;
 
-    /// <summary>The window's title bar, padding and bottom border, which the rows sit inside.</summary>
-    private const float WindowChrome = 90f;
-
-    private readonly IModuleHost host;
-    private readonly List<NodeBase> rows = [];
-
-    public SettingsAddon(IModuleHost host)
-    {
-        this.host = host;
-        Size = new Vector2(WindowWidth, WindowChrome + (RowHeight * Math.Max(1, host.Modules.Count)));
-    }
+    private ScrollingNode<TabbedVerticalListNode>? list;
 
     /// <inheritdoc/>
     protected override unsafe void OnSetup(AtkUnitBase* addon, Span<AtkValue> atkValueSpan)
     {
-        var y = ContentStartPosition.Y;
+        list = new ScrollingNode<TabbedVerticalListNode>
+        {
+            ContentNode =
+            {
+                FitContents = true,
+                FitWidth = true,
+                NavIndex = 1,
+            },
+            AutoHideScrollBar = true,
+        };
+        list.AttachNode(this);
+
+        list.ContentNode.AddNode(HeadingTab, new CategoryTextNode { String = ModulesHeading });
         foreach (var module in host.Modules)
         {
-            var toggle = new CheckboxNode
-            {
-                Position = new Vector2(ContentStartPosition.X, y),
-                Size = new Vector2(ContentSize.X, CheckboxHeight),
-                String = module.Name,
-                IsChecked = host.IsEnabled(module),
-            };
-            toggle.OnClick = enabled => _ = host.SetEnabledAsync(module, enabled);
-            AddNode(toggle);
-            rows.Add(toggle);
-
-            var description = new TextNode
-            {
-                Position = new Vector2(ContentStartPosition.X + DescriptionIndent, y + CheckboxHeight),
-                Size = new Vector2(ContentSize.X - DescriptionIndent, DescriptionHeight),
-                String = module.Description,
-                TextColor = GameColors.Dimmed,
-                FontSize = DescriptionFontSize,
-            };
-            AddNode(description);
-            rows.Add(description);
-
-            y += RowHeight;
+            list.ContentNode.AddNode(ModuleTab, Toggle(module));
         }
+
+        if (list.ContentNode.GetNodes<ComponentNode>().FirstOrDefault()?.FocusNode is { } focus)
+        {
+            addon->FocusNode = focus;
+        }
+
+        FitWindowToList();
     }
 
     /// <inheritdoc/>
     protected override unsafe void OnFinalize(AtkUnitBase* addon)
     {
-        foreach (var row in rows)
+        list?.Dispose();
+        list = null;
+    }
+
+    private CheckboxNode Toggle(IModule module)
+    {
+        var toggle = new CheckboxNode
         {
-            row.Dispose();
+            Height = CheckboxHeight,
+            String = module.Name,
+            IsChecked = host.IsEnabled(module),
+            TextTooltip = module.Description,
+        };
+        toggle.OnClick = enabled => _ = host.SetEnabledAsync(module, enabled);
+        return toggle;
+    }
+
+    /// <summary>Sizes the window to the list, up to a ceiling past which the list scrolls, then
+    /// fits the list into the content area that gives.</summary>
+    private void FitWindowToList()
+    {
+        if (list is null)
+        {
+            return;
         }
 
-        rows.Clear();
+        list.RecalculateSizes();
+        var listHeight = Math.Min(list.ContentNode.Height, TallestWindow);
+        SetWindowSize(new Vector2(WindowWidth, listHeight + ContentStartPosition.Y + BottomPadding));
+
+        list.Size = ContentSize + new Vector2(0f, ContentPadding.Y);
+        list.Position = ContentStartPosition - new Vector2(0f, ContentPadding.Y);
+        list.RecalculateSizes();
+        list.ContentNode.RecalculateLayout();
     }
 }
