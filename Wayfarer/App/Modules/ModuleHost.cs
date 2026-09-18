@@ -1,6 +1,7 @@
 using Dalamud.Plugin.Services;
+using Wayfarer.App.Config;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Modules;
 
 /// <summary>Owns the enabled set and the modules' up/down state. Brings the enabled modules up on
 /// <see cref="StartAsync"/> and takes every module that is up down when disposed.

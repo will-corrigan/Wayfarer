@@ -1,4 +1,4 @@
-namespace Wayfarer.App;
+namespace Wayfarer.App.Modules;
 
 /// <summary>The app's own settings: which modules are on, by name. Saved as <c>app.json</c>.
 /// Nothing about any module's own settings lives here.</summary>

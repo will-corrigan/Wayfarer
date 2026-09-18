@@ -2,7 +2,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Wayfarer.Core.Routing;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>The routing graph from the data file shipped beside the plugin's DLL. If the file is
 /// missing or unreadable the graph is empty, which is logged once: every route is then a walk on

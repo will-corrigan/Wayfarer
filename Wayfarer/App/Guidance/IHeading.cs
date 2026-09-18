@@ -1,4 +1,4 @@
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>The two numbers that change every frame the player moves or turns, for the surfaces
 /// that draw them: the compass needle and the distance line. Read on the surface's own draw, not

@@ -3,6 +3,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KamiToolKit;
 using Wayfarer.App;
+using Wayfarer.App.Modules;
 using Wayfarer.Modules.Quests;
 
 namespace Wayfarer;

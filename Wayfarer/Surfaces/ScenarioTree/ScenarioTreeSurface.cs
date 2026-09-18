@@ -6,6 +6,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using Lumina.Text.ReadOnly;
 using Wayfarer.App;
+using Wayfarer.App.Guidance;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Presentation;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
@@ -18,14 +19,12 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// Presses are read off the guidance at the moment of the press, never captured when the line was
 /// drawn, so a press cannot act on a stale route or entry.
 ///
-/// <para>The pad does not reach the block yet. The guide's plate is a stock button whose layout
-/// record chains it to the two job rows by index (2, 3, 4). Our lines are linked into that chain,
-/// which <c>/wayfarer pad</c> switches off for comparison; the cursor's every move is logged so a
-/// remote tester can be read.</para></summary>
-internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
+/// <para>The pad reaches the block through the guide's own index chain: the plate is a stock button
+/// whose layout record chains it to the job rows by index, and our lines are spliced in after
+/// the last visible row, before the cursor wraps back to the plate.</para></summary>
+internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
     private const string SayCommand = "/say ";
-    private const string PadSwitch = "pad";
 
     private readonly IGuidance guidance;
     private readonly IHeading heading;
@@ -33,12 +32,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
     private readonly AddonController controller;
+    private readonly NavSplice splice = new();
     private GuidanceBlockNode? block;
     private nint addonAddress;
     private nint plateFocus;
-    private nint lastFocused;
-    private byte? plateDownBeforeUs;
-    private bool padLinking = true;
     private bool wordsChanged = true;
     private bool broken;
 
@@ -69,51 +66,6 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         await controller.DisposeAsync().ConfigureAwait(false);
     }
 
-    /// <inheritdoc/>
-    public unsafe void Dump()
-    {
-        var addon = (AtkUnitBase*)addonAddress;
-        if (addon == null || block is null)
-        {
-            log.Information("nav: the Main Scenario Guide is not open, or the block is not attached.");
-            return;
-        }
-
-        var input = AtkStage.Instance()->AtkInputManager;
-        log.Information($"nav: pad linking {padLinking}; addon focus {Hex((nint)addon->FocusNode)} component focus {Hex((nint)addon->ComponentFocusNode)} own index {addon->CursorNavigationOwnIndex} flags1A2 {addon->Flags1A2:X2} root {addon->RootNode->Width}x{addon->RootNode->Height}");
-        log.Information($"nav: input focused node {Hex((nint)input->FocusedNode)} focus list index {input->FocusListIndex}");
-        var plate = Plate(addon);
-        if (plate != null && plate->Component != null)
-        {
-            var nav = plate->Component->CursorNavigationInfo;
-            log.Information($"nav: plate node {Hex((nint)plate)} focus node {Hex((nint)plate->Component->GetFocusNode())} index {nav.Index} up {nav.UpIndex} down {nav.DownIndex} left {nav.LeftIndex} right {nav.RightIndex} mode {nav.NavigationMode} cursor type {nav.CursorType}");
-        }
-
-        log.Information($"nav: our lines {string.Join(", ", block.FocusTargets.Select(Hex))} pressable {block.AnyPressable} first stop {block.FirstStop}");
-        for (var i = 0; i < addon->CollisionNodeListCount; i++)
-        {
-            var node = addon->CollisionNodeList[i];
-            var component = node->Type == NodeType.Collision ? ((AtkCollisionNode*)node)->LinkedComponent : null;
-            var index = component == null ? "-" : component->CursorNavigationInfo.Index.ToString(CultureInfo.InvariantCulture);
-            log.Information($"nav: collision {i} node {Hex((nint)node)} id {node->NodeId} flags {node->NodeFlags} nav index {index} at {node->X},{node->Y} {node->Width}x{node->Height}");
-        }
-    }
-
-    /// <inheritdoc/>
-    public string? Toggle(string switchName)
-    {
-        if (!string.Equals(switchName, PadSwitch, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        padLinking = !padLinking;
-        log.Information($"nav: pad linking is now {(padLinking ? "on" : "off")}");
-        return padLinking ? "on" : "off";
-    }
-
-    private static string Hex(nint address) => address.ToString("X", CultureInfo.InvariantCulture);
-
     private static unsafe bool NodeShown(AtkUnitBase* addon, uint id) =>
         addon->GetNodeById(id) is var node && node != null && node->IsVisible();
 
@@ -125,7 +77,29 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     private static unsafe AtkComponentNode* Plate(AtkUnitBase* addon)
     {
         var node = addon->GetNodeById(PlateNodeId);
-        return node == null || (int)node->Type < (int)NodeType.Component ? null : (AtkComponentNode*)node;
+        return node == null ? null : node->GetAsAtkComponentNode();
+    }
+
+    private static unsafe AtkComponentNode* LastVisibleJobRow(AtkUnitBase* addon)
+    {
+        foreach (var id in JobRowNodeIds.Reverse())
+        {
+            if (NodeShown(addon, id) && addon->GetNodeById(id) is var node && node != null && node->GetAsAtkComponentNode() is var row && row != null)
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
+
+    private static unsafe void SetRootHeight(AtkUnitBase* addon, ushort height)
+    {
+        var root = addon->RootNode;
+        if (root != null && root->Height != height)
+        {
+            root->SetHeight(height);
+        }
     }
 
     private static LineContent? EntryContent(ObjectiveEntry? entry) =>
@@ -160,11 +134,12 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         try
         {
             addonAddress = (nint)addon;
-            plateFocus = (nint)addon->FocusNode;
+            var plate = Plate(addon);
+            plateFocus = plate == null || plate->Component == null ? 0 : (nint)plate->Component->GetFocusNode();
             block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
             block.AttachNode(addon);
+            block.GuestOf(addon, (AtkResNode*)plateFocus);
             wordsChanged = true;
-            log.Debug($"nav: block attached to the guide; addon {Hex(addonAddress)} plate focus {Hex(plateFocus)}");
         }
         catch (Exception ex)
         {
@@ -173,13 +148,15 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         }
     }
 
+    /// <summary>Undoes everything the attach did. The lines hand the guide's focus back to the plate
+    /// as they dispose, so nothing in the guide can reach a freed node afterwards.</summary>
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        RestorePlateLink(addon);
+        splice.Restore();
         block?.Dispose();
         block = null;
         addonAddress = 0;
-        addon->RootNode->SetHeight((ushort)RootHeight);
+        SetRootHeight(addon, (ushort)RootHeight);
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -193,19 +170,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         {
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
-            if (padLinking)
-            {
-                LinkIntoPlateChain(addon);
-            }
-            else
-            {
-                RestorePlateLink(addon);
-            }
+            SpliceIntoChain(addon);
 
-            block.WireFocus(addon, (AtkResNode*)plateFocus);
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
             FitRootToBlock(addon);
-            TraceFocus(addon);
         }
         catch (Exception ex)
         {
@@ -235,30 +203,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         }
     }
 
-    /// <summary>The investigation: point the plate's "down" at our first line and our lines' records
-    /// back at the plate, so the game's own index navigation can find us if it looks.</summary>
-    private unsafe void LinkIntoPlateChain(AtkUnitBase* addon)
+    /// <summary>Our lines go into the cursor chain after the last visible job row, which is what
+    /// sits between the plate and us on screen. With no row showing, they follow the plate.</summary>
+    private unsafe void SpliceIntoChain(AtkUnitBase* addon)
     {
         var plate = Plate(addon);
         if (plate == null || plate->Component == null)
         {
+            splice.Restore();
             return;
         }
 
-        ref var nav = ref plate->Component->CursorNavigationInfo;
-        plateDownBeforeUs ??= nav.DownIndex;
-        nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
-        block.LinkNav(nav.Index);
-    }
-
-    private unsafe void RestorePlateLink(AtkUnitBase* addon)
-    {
-        if (plateDownBeforeUs is { } original && Plate(addon) is var plate && plate != null && plate->Component != null)
-        {
-            plate->Component->CursorNavigationInfo.DownIndex = original;
-        }
-
-        plateDownBeforeUs = null;
+        var above = LastVisibleJobRow(addon) is var row && row != null && row->Component != null ? row->Component : plate->Component;
+        splice.Splice(plate->Component, above, block!);
     }
 
     /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
@@ -266,28 +223,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     private unsafe void FitRootToBlock(AtkUnitBase* addon)
     {
         var wanted = (ushort)(block!.IsVisible ? Math.Max(RootHeight, block.Y + block.Height) : RootHeight);
-        if (addon->RootNode->Height != wanted)
-        {
-            addon->RootNode->SetHeight(wanted);
-        }
-    }
-
-    /// <summary>Logs every move of the game's input focus, saying whether it landed on the plate,
-    /// on one of our lines, or elsewhere.</summary>
-    private unsafe void TraceFocus(AtkUnitBase* addon)
-    {
-        var focused = (nint)AtkStage.Instance()->AtkInputManager->FocusedNode;
-        if (focused == lastFocused)
-        {
-            return;
-        }
-
-        lastFocused = focused;
-        var where = focused == 0 ? "nothing"
-            : focused == plateFocus ? "the plate"
-            : block!.FocusTargets.Contains(focused) ? "one of our lines"
-            : "elsewhere";
-        log.Debug($"nav: input focus moved to {Hex(focused)} ({where}); addon focus node {Hex((nint)addon->FocusNode)}");
+        SetRootHeight(addon, wanted);
     }
 
     private void OnEntryPressed()

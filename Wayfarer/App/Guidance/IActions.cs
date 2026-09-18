@@ -1,4 +1,4 @@
-namespace Wayfarer.App;
+namespace Wayfarer.App.Guidance;
 
 /// <summary>Everything a press on the guidance block can do in the game. Each is one deliberate
 /// press for one action; nothing here repeats, queues or automates. The teleport is the only one

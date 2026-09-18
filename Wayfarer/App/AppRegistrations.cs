@@ -1,6 +1,9 @@
 using Autofac;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Wayfarer.App.Config;
+using Wayfarer.App.Guidance;
+using Wayfarer.App.Modules;
 using Wayfarer.App.Settings;
 using Wayfarer.Surfaces.ScenarioTree;
 
@@ -26,6 +29,6 @@ internal sealed class AppRegistrations : Module
         builder.RegisterType<SettingsService>().SingleInstance().AutoActivate();
 
         // The one surface for now: the block inside the game's Main Scenario Guide.
-        builder.RegisterType<ScenarioTreeSurface>().AsSelf().As<IDiagnostics>().SingleInstance().AutoActivate();
+        builder.RegisterType<ScenarioTreeSurface>().AsSelf().SingleInstance().AutoActivate();
     }
 }

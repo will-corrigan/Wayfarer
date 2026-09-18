@@ -40,11 +40,11 @@ internal sealed class GuidanceBlockNode : ResNode
     {
         Width = RootWidth;
 
-        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed, words => log.Debug(words)));
+        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed));
         entry.Position = new Vector2(WordsLeft, RowTextTop);
         entry.Width = WordsWidth;
 
-        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed, words => log.Debug(words)));
+        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed));
         route.Width = WordsWidth;
 
         compass = Attach(new CompassNode(textures, log) { Position = CompassOrigin, IsVisible = false });
@@ -55,11 +55,14 @@ internal sealed class GuidanceBlockNode : ResNode
     /// surface when this changes.</summary>
     public bool AnyPressable => entry.Pressable || route.Pressable;
 
-    /// <summary>The controls the addon should treat as focusable: each pressable line's, in order.</summary>
-    public unsafe nint[] FocusTargets => [.. new[] { entry, route }.Where(line => line.Pressable).Select(line => (nint)line.FocusTarget)];
+    /// <summary>The nodes the pad cursor can rest on in the block, pressable or not.</summary>
+    public unsafe nint[] FocusTargets => [(nint)entry.FocusTarget, (nint)route.FocusTarget];
 
     /// <summary>The first of our stops the cursor can move down to from the plate, or null.</summary>
     public int? FirstStop => entry.Pressable ? EntryNavIndex : route.Pressable ? RouteNavIndex : null;
+
+    /// <summary>The last pressable line's stop, or null when nothing can be pressed.</summary>
+    public int? LastStop => route.Pressable ? RouteNavIndex : entry.Pressable ? EntryNavIndex : null;
 
     public void SetWords(LineContent? entryContent, LineContent? routeContent)
     {
@@ -78,25 +81,20 @@ internal sealed class GuidanceBlockNode : ResNode
         Height = RowTextTop + entryBlock + (route.IsVisible ? route.Height : 0f);
     }
 
-    /// <summary>Moves the pad cursor between our lines and the plate ourselves, because the plate's
-    /// own input code never consults the index table. The cursor goes round in a loop: plate, step
-    /// line, route line, plate; up runs the loop the other way.</summary>
-    /// <summary>Puts our lines into the plate's index chain: our indexes, up to the plate, down to
-    /// the next pressable line or back to the plate.</summary>
-    public void LinkNav(int plateIndex)
+    /// <summary>Tells both lines which addon they live in and where its focus falls back to when
+    /// they go: the plate, the addon's own control.</summary>
+    public unsafe void GuestOf(AtkUnitBase* addon, AtkResNode* plateFocus)
     {
-        entry.SetNav(EntryNavIndex, plateIndex, route.Pressable ? RouteNavIndex : plateIndex);
-        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : plateIndex, plateIndex);
+        entry.GuestOf(addon, plateFocus);
+        route.GuestOf(addon, plateFocus);
     }
 
-    public unsafe void WireFocus(AtkUnitBase* addon, AtkResNode* plateFocus)
+    /// <summary>Writes our lines' own cursor records: up from the first pressable line goes to the
+    /// stop above us, down from the last goes to the stop below, and the lines chain to each other.</summary>
+    public void LinkNav(int aboveUs, int belowUs)
     {
-        entry.OnUp = () => Focus(addon, plateFocus);
-        entry.OnDown = () => Focus(addon, route.Pressable ? route.FocusTarget : plateFocus);
-        route.OnUp = () => Focus(addon, entry.Pressable ? entry.FocusTarget : plateFocus);
-        route.OnDown = () => Focus(addon, plateFocus);
-        entry.SetNav(EntryNavIndex, EntryNavIndex, EntryNavIndex);
-        route.SetNav(RouteNavIndex, RouteNavIndex, RouteNavIndex);
+        entry.SetNav(EntryNavIndex, aboveUs, route.Pressable ? RouteNavIndex : belowUs);
+        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : aboveUs, belowUs);
     }
 
     public void SetHeading(float? needle, float? yalms, float? rise)
@@ -126,14 +124,6 @@ internal sealed class GuidanceBlockNode : ResNode
         Position = new Vector2(IconColumnLeft + ((IconColumnWidth - DistanceWidth) / 2f), CompassOrigin.Y + CompassSize),
         Size = new Vector2(DistanceWidth, RouteLeading),
     };
-
-    private static unsafe void Focus(AtkUnitBase* addon, AtkResNode* node)
-    {
-        if (node != null)
-        {
-            AtkStage.Instance()->AtkInputManager->SetFocus(node, addon, 0);
-        }
-    }
 
     private T Attach<T>(T node)
         where T : KamiToolKit.BaseTypes.NodeBase

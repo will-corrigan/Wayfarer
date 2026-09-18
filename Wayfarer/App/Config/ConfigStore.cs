@@ -2,7 +2,7 @@ using System.Text.Json;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
-namespace Wayfarer.App;
+namespace Wayfarer.App.Config;
 
 /// <summary>The config folder Dalamud gives the plugin, one indented JSON file per name.</summary>
 internal sealed class ConfigStore(IDalamudPluginInterface pluginInterface, IPluginLog log) : IConfigStore

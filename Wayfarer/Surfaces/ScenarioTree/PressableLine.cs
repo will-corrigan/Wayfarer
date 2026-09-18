@@ -1,5 +1,4 @@
 using System.Numerics;
-using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
@@ -20,12 +19,10 @@ internal sealed class PressableLine : ResNode
     private readonly int maxLines;
     private readonly IconImageNode icon;
     private readonly TextNode words;
-    private readonly NavFocusNode control;
-    private readonly Action<string> trace;
+    private readonly LineControl control;
 
-    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed, Action<string> trace)
+    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed)
     {
-        this.trace = trace;
         this.leading = leading;
         this.maxLines = maxLines;
 
@@ -44,7 +41,7 @@ internal sealed class PressableLine : ResNode
         };
         words.AttachNode(this);
 
-        control = new NavFocusNode
+        control = new LineControl
         {
             OnSelected = onPressed,
             OnHoverStart = () => words.Alpha = 1f,
@@ -55,20 +52,18 @@ internal sealed class PressableLine : ResNode
         control.CollisionNode.AddEvent(AtkEventType.MouseClick, onPressed);
         control.CollisionNode.AddEvent(AtkEventType.MouseOver, () => words.Alpha = 1f);
         control.CollisionNode.AddEvent(AtkEventType.MouseOut, () => words.Alpha = PressableIdleAlpha);
-        control.AddEvent(AtkEventType.InputReceived, HandlePadInput);
         control.AttachNode(this);
     }
 
     public bool Pressable => control.IsVisible;
 
-    /// <summary>What a press of up or down on the pad does while the cursor is on this line.</summary>
-    public Action? OnUp { get; set; }
+    /// <summary>The node the game's cursor rests on when this line is focused: the control's
+    /// collision node, which is what the toolkit focuses too.</summary>
+    public unsafe AtkResNode* FocusTarget => (AtkResNode*)control.CollisionNode.Node;
 
-    /// <inheritdoc cref="OnUp"/>
-    public Action? OnDown { get; set; }
-
-    /// <summary>The control's own node, for the addon's focusable slots.</summary>
-    public unsafe AtkResNode* FocusTarget => (AtkResNode*)control.Node;
+    /// <summary>Tells the control which addon it lives in, so its dispose can take back any of the
+    /// addon's pointers aimed at it.</summary>
+    public unsafe void GuestOf(AtkUnitBase* addon, AtkResNode* fallbackFocus) => control.GuestOf(addon, fallbackFocus);
 
     /// <summary>The controller cursor's stop on this line: its index and where up and down lead.</summary>
     public void SetNav(int index, int up, int down)
@@ -101,32 +96,6 @@ internal sealed class PressableLine : ResNode
         control.Position = words.Position;
         control.Size = words.Size;
         control.IsVisible = content.Pressable;
-    }
-
-    private unsafe void HandlePadInput(AtkEventListener* listener, AtkEventType type, int param, AtkEvent* atkEvent, AtkEventData* data)
-    {
-        if (type != AtkEventType.InputReceived)
-        {
-            return;
-        }
-
-        trace($"pad input on a line: id {data->InputData.InputId} state {data->InputData.State}");
-        if (data->InputData.State != InputState.Down)
-        {
-            return;
-        }
-
-        switch ((InputId)data->InputData.InputId)
-        {
-            case InputId.UP:
-                OnUp?.Invoke();
-                break;
-            case InputId.DOWN:
-                OnDown?.Invoke();
-                break;
-            default:
-                break;
-        }
     }
 
     private int Lines() =>
