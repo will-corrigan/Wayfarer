@@ -1,4 +1,5 @@
 using Autofac;
+using Wayfarer.App.Settings;
 using Wayfarer.Core.Routing;
 
 namespace Wayfarer.App;
@@ -18,5 +19,9 @@ internal sealed class AppModule : Module
         // first asks for it, and stops when the container is disposed.
         builder.RegisterType<GuidanceService>().As<IGuidance>().SingleInstance().AutoActivate();
         builder.RegisterType<Heading>().As<IHeading>().SingleInstance();
+
+        builder.RegisterType<ConfigStore>().As<IConfigStore>().SingleInstance();
+        builder.RegisterType<ModuleHost>().As<IModuleHost>().AsSelf().SingleInstance();
+        builder.RegisterType<SettingsService>().SingleInstance().AutoActivate();
     }
 }

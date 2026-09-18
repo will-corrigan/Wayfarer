@@ -1,4 +1,3 @@
-using Wayfarer.App;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Quests;
 
@@ -9,20 +8,13 @@ namespace Wayfarer.Modules.Quests;
 /// the objective when something it depends on changed — the quest, the step, or the markers —
 /// so the app is handed the same objective until there is a new one.
 ///
-/// <para>Claims focus when it starts, because following the main scenario is what Wayfarer does
-/// when nothing else has been asked of it. There is nothing to reset on being displaced: the main
-/// scenario is not a selection.</para></summary>
-internal sealed class QuestObjectives : IObjectiveSource
+/// <para>Focus is claimed and released by <see cref="QuestsFeature"/> as the module goes up and
+/// down. There is nothing to reset on being displaced: the main scenario is not a selection.</para>
+/// </summary>
+internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
 {
-    private readonly QuestReader reader;
     private Signature? last;
     private Objective? cached;
-
-    public QuestObjectives(QuestReader reader, IGuidance guidance)
-    {
-        this.reader = reader;
-        guidance.Claim(this);
-    }
 
     /// <inheritdoc/>
     public string Name => "Quests";

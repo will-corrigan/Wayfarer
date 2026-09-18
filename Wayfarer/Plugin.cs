@@ -1,6 +1,7 @@
 using Autofac;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using KamiToolKit;
 using Wayfarer.App;
 using Wayfarer.Modules.Quests;
 
@@ -26,13 +27,18 @@ public sealed class Plugin(
     IClientState clientState,
     IObjectTable objects,
     IDataManager dataManager,
+    ICommandManager commands,
+    IAddonLifecycle addonLifecycle,
     IPluginLog log) : IAsyncDalamudPlugin
 {
     private IContainer? container;
 
     /// <inheritdoc/>
-    public Task LoadAsync(CancellationToken cancellationToken)
+    public async Task LoadAsync(CancellationToken cancellationToken)
     {
+        // Required before any KamiToolKit type (native windows, nodes) is touched.
+        await KamiToolKitLibrary.InitializeAsync(pluginInterface, "Wayfarer").ConfigureAwait(false);
+
         var builder = new ContainerBuilder();
 
         builder.RegisterInstance(pluginInterface).ExternallyOwned();
@@ -40,18 +46,29 @@ public sealed class Plugin(
         builder.RegisterInstance(clientState).ExternallyOwned();
         builder.RegisterInstance(objects).ExternallyOwned();
         builder.RegisterInstance(dataManager).ExternallyOwned();
+        builder.RegisterInstance(commands).ExternallyOwned();
+        builder.RegisterInstance(addonLifecycle).ExternallyOwned();
         builder.RegisterInstance(log).ExternallyOwned();
 
         builder.RegisterModule<AppModule>();
         builder.RegisterModule<QuestsModule>();
 
         container = builder.Build();
+        await container.Resolve<ModuleHost>().StartAsync().ConfigureAwait(false);
 
         // The version belongs in this line: it is the first question asked of every pasted log.
         log.Information($"Wayfarer {typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "?"} loaded.");
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
-    public ValueTask DisposeAsync() => container?.DisposeAsync() ?? ValueTask.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        if (container is { } owned)
+        {
+            container = null;
+            await owned.DisposeAsync().ConfigureAwait(false);
+        }
+
+        await KamiToolKitLibrary.DisposeAsync().ConfigureAwait(false);
+    }
 }
