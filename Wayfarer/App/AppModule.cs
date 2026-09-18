@@ -1,6 +1,7 @@
 using Autofac;
+using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Wayfarer.App.Settings;
-using Wayfarer.Core.Routing;
 using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.App;
@@ -12,9 +13,7 @@ internal sealed class AppModule : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
-        // Empty until the generator writes the routing data file: with no aetherytes, shards or
-        // doors, every route is a walk on the current map, which is still honest guidance.
-        builder.Register(_ => new RouteGraph([], [])).SingleInstance();
+        builder.Register(c => ShippedRoutingGraph.Load(c.Resolve<IDalamudPluginInterface>(), c.Resolve<IPluginLog>())).SingleInstance();
 
         // Auto-activated: the frame loop starts when the container is built, not when something
         // first asks for it, and stops when the container is disposed.

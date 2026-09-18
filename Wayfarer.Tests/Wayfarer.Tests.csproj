@@ -20,4 +20,9 @@
     <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj" />
   </ItemGroup>
 
+  <!-- The shipped routing data, so its validator can read it. -->
+  <ItemGroup>
+    <Content Include="../data/routing-graph.json" Link="routing-graph.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

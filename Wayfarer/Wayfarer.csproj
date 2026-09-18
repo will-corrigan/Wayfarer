@@ -22,6 +22,10 @@
          from this repo's Directory.Build.props (see the guard there). -->
     <ProjectReference Include="../external/KamiToolKit/KamiToolKit.csproj"/>
   </ItemGroup>
+  <!-- The routing data the generator wrote (tools/Wayfarer.RoutingGen), shipped beside the DLL. -->
+  <ItemGroup>
+    <Content Include="../data/routing-graph.json" Link="routing-graph.json" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
   <!-- CPM is disabled above, so the analyzer references from Directory.Build.props
        need explicit versions here (kept in sync with Directory.Packages.props). -->
   <ItemGroup>

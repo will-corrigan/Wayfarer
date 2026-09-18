@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Wayfarer.RoutingGen</AssemblyName>
+    <RootNamespace>Wayfarer.RoutingGen</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- The graph's own records come from Wayfarer.Core, so the file the generator writes is
+       exactly the file the plugin reads. -->
+  <ItemGroup>
+    <ProjectReference Include="../../Wayfarer.Core/Wayfarer.Core.csproj"/>
+  </ItemGroup>
+
+  <!-- Lumina reads the game's Excel sheets straight out of sqpack. Both DLLs ship with
+       Dalamud; DALAMUD_HOME overrides the default XIVLauncher location. -->
+  <PropertyGroup>
+    <DalamudLibPath Condition="'$(DALAMUD_HOME)' != ''">$(DALAMUD_HOME)</DalamudLibPath>
+    <DalamudLibPath Condition="'$(DalamudLibPath)' == '' and '$(AppData)' != ''">$(AppData)/XIVLauncher/addon/Hooks/dev</DalamudLibPath>
+    <DalamudLibPath Condition="'$(DalamudLibPath)' == ''">$(HOME)/.xlcore/dalamud/Hooks/dev</DalamudLibPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Lumina">
+      <HintPath>$(DalamudLibPath)/Lumina.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lumina.Excel">
+      <HintPath>$(DalamudLibPath)/Lumina.Excel.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
