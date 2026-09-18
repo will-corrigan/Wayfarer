@@ -157,7 +157,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
             LinkControllerNav(addon);
-            block.SetHeading(heading.Needle, heading.DistanceYalms);
+            block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
             FitRootToBlock(addon);
         }
         catch (Exception ex)

@@ -4,6 +4,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
+using Wayfarer.Core.Ui;
 using Wayfarer.Ui;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
@@ -32,6 +33,7 @@ internal sealed class GuidanceBlockNode : ResNode
     private readonly TextNode distance;
     private readonly CompassNode compass;
     private string lastDistance = string.Empty;
+    private ElevationHint elevation = ElevationHint.Level;
 
     public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed)
     {
@@ -82,16 +84,18 @@ internal sealed class GuidanceBlockNode : ResNode
         route.SetNav(RouteNavIndex, above, plateIndex);
     }
 
-    public void SetHeading(float? needle, float? yalms)
+    public void SetHeading(float? needle, float? yalms, float? rise)
     {
         distance.IsVisible = needle is not null && yalms is not null;
         if (needle is not { } radians || yalms is not { } distanceYalms)
         {
             compass.IsVisible = false;
+            elevation = ElevationHint.Level;
             return;
         }
 
-        compass.Show(CompassSize, radians);
+        elevation = Elevation.Classify(rise, elevation);
+        compass.Show(CompassSize, radians, elevation);
         SetDistance(MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
     }
 

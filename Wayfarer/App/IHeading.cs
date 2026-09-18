@@ -12,4 +12,8 @@ public interface IHeading
     /// <summary>Straight-line distance to the current route's end, in yalms; null when there is no
     /// route.</summary>
     float? DistanceYalms { get; }
+
+    /// <summary>How far above the player the next walk ends, in yalms, negative when below, or
+    /// null when there is nothing to walk to.</summary>
+    float? RiseYalms { get; }
 }

@@ -15,6 +15,9 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects) :
     /// <inheritdoc/>
     public float? DistanceYalms => Offset() is var (dx, dy, dz) ? MathF.Sqrt((dx * dx) + (dy * dy) + (dz * dz)) : null;
 
+    /// <inheritdoc/>
+    public float? RiseYalms => Offset() is var (_, dy, _) ? dy : null;
+
     private static float CameraYaw() => CameraManager.Instance()->Camera->DirH;
 
     private (float Dx, float Dy, float Dz)? Offset()
