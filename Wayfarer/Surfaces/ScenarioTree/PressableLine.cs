@@ -1,4 +1,5 @@
 using System.Numerics;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
@@ -21,7 +22,7 @@ internal sealed class PressableLine : ResNode
     private readonly TextNode words;
     private readonly NavFocusNode control;
 
-    public PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed)
+    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed)
     {
         this.leading = leading;
         this.maxLines = maxLines;
@@ -52,10 +53,17 @@ internal sealed class PressableLine : ResNode
         control.CollisionNode.AddEvent(AtkEventType.MouseClick, onPressed);
         control.CollisionNode.AddEvent(AtkEventType.MouseOver, () => words.Alpha = 1f);
         control.CollisionNode.AddEvent(AtkEventType.MouseOut, () => words.Alpha = PressableIdleAlpha);
+        control.AddEvent(AtkEventType.InputReceived, HandlePadInput);
         control.AttachNode(this);
     }
 
     public bool Pressable => control.IsVisible;
+
+    /// <summary>What a press of up or down on the pad does while the cursor is on this line.</summary>
+    public Action? OnUp { get; set; }
+
+    /// <inheritdoc cref="OnUp"/>
+    public Action? OnDown { get; set; }
 
     /// <summary>The control's own node, for the addon's focusable slots.</summary>
     public unsafe AtkResNode* FocusTarget => (AtkResNode*)control.Node;
@@ -91,6 +99,26 @@ internal sealed class PressableLine : ResNode
         control.Position = words.Position;
         control.Size = words.Size;
         control.IsVisible = content.Pressable;
+    }
+
+    private unsafe void HandlePadInput(AtkEventListener* listener, AtkEventType type, int param, AtkEvent* atkEvent, AtkEventData* data)
+    {
+        if (type != AtkEventType.InputReceived || data->InputData.State != InputState.Down)
+        {
+            return;
+        }
+
+        switch ((InputId)data->InputData.InputId)
+        {
+            case InputId.UP:
+                OnUp?.Invoke();
+                break;
+            case InputId.DOWN:
+                OnDown?.Invoke();
+                break;
+            default:
+                break;
+        }
     }
 
     private int Lines() =>
