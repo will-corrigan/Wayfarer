@@ -19,9 +19,9 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// drawn, so a press cannot act on a stale route or entry.
 ///
 /// <para>The pad does not reach the block yet. The guide's plate is a stock button whose layout
-/// record chains it to the two job rows by index (2, 3, 4). Linking our lines into that chain is
-/// an investigation switch, off by default, toggled by <c>/wayfarer pad</c>; the cursor's every
-/// move is logged so a remote tester can be read.</para></summary>
+/// record chains it to the two job rows by index (2, 3, 4). Our lines are linked into that chain,
+/// which <c>/wayfarer pad</c> switches off for comparison; the cursor's every move is logged so a
+/// remote tester can be read.</para></summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
 {
     private const string SayCommand = "/say ";
@@ -38,7 +38,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     private nint plateFocus;
     private nint lastFocused;
     private byte? plateDownBeforeUs;
-    private bool padLinking;
+    private bool padLinking = true;
     private bool wordsChanged = true;
     private bool broken;
 
