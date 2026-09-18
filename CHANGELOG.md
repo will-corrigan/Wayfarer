@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/will-corrigan/Wayfarer/compare/v0.10.0...v1.0.0) (2026-09-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* the unlock checklist, the hunting log, the aether-current routes, the hub window, the quest journal page and the Wayfarer.Api IPC package are removed. Settings written for them are dropped from the config file on the next save.
+
+### New
+
+* rebuild on the Main Scenario Guide ([#52](https://github.com/will-corrigan/Wayfarer/issues/52)) ([a1ff238](https://github.com/will-corrigan/Wayfarer/commit/a1ff2387c9cb164752af7bde5474a02a514ef12e))
+
 ## [0.10.0](https://github.com/will-corrigan/Wayfarer/compare/v0.9.0...v0.10.0) (2026-08-26)
 
 
