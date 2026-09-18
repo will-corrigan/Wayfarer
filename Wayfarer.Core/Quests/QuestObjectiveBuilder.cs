@@ -5,14 +5,14 @@ namespace Wayfarer.Core.Quests;
 
 /// <summary>Turns a quest's current step into the objective the app guides to.
 ///
-/// <para>The game never says which lines of a step are done; it only takes their markers down. So
-/// a line is kept while a marker stands at one of its authored locations and dropped once none
-/// does, unless the quest has no markers at all, when the authored locations stand in. A line whose
+/// <para>The game never says which ToDos of a step are done; it only removes their quest markers.
+/// So a ToDo is kept while a quest marker sits on one of its positions and dropped once none does,
+/// unless the quest has no markers at all, when its positions from the data stand in. A ToDo whose
 /// words still hold a runtime placeholder takes its marker's label, which the game has already
 /// filled in.</para></summary>
 public static class QuestObjectiveBuilder
 {
-    /// <summary>How close a live marker has to stand to an authored location to be its marker:
+    /// <summary>How close a quest marker has to be to a ToDo's position to count as its marker:
     /// slack for float error and for markers the game nudges, not a search radius.</summary>
     public const float MatchYalms = 5f;
 
@@ -35,17 +35,17 @@ public static class QuestObjectiveBuilder
 
     private static ObjectiveEntry? Entry(QuestTodo todo, IReadOnlyList<QuestMarker> markers)
     {
-        var standing = markers.Where(marker => todo.Locations.Any(location => Near(location, marker.At))).ToList();
+        var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
 
-        var lineHasLiveMarker = standing.Count > 0;
-        var questHasAnyLiveMarker = markers.Count > 0;
-        var lineHasAuthoredLocation = todo.Locations.Count > 0;
+        var todoHasMarker = markersAtThisTodo.Count > 0;
+        var questHasMarkers = markers.Count > 0;
+        var todoHasPosition = todo.Positions.Count > 0;
 
-        return (lineHasLiveMarker, questHasAnyLiveMarker, lineHasAuthoredLocation) switch
+        return (todoHasMarker, questHasMarkers, todoHasPosition) switch
         {
-            (true, _, _) => new ObjectiveEntry(Words(todo, standing), null, Reachable(standing)),
+            (true, _, _) => new ObjectiveEntry(Words(todo, markersAtThisTodo), null, Reachable(markersAtThisTodo)),
             (false, true, _) => null,
-            (false, false, true) => new ObjectiveEntry(todo.Text, null, new Destination.Reachable(todo.Locations)),
+            (false, false, true) => new ObjectiveEntry(todo.Text, null, new Destination.Reachable(todo.Positions)),
             (false, false, false) => new ObjectiveEntry(todo.Text, null, new Destination.Blocked(NoLocation)),
         };
     }
@@ -55,8 +55,8 @@ public static class QuestObjectiveBuilder
             ? []
             : [new ObjectiveEntry(FirstLabel(markers) ?? questName, null, Reachable(markers))];
 
-    private static string Words(QuestTodo todo, IEnumerable<QuestMarker> standing) =>
-        todo.HasUnresolvedPlaceholder ? FirstLabel(standing) ?? todo.Text : todo.Text;
+    private static string Words(QuestTodo todo, IEnumerable<QuestMarker> markersAtThisTodo) =>
+        todo.HasUnresolvedPlaceholder ? FirstLabel(markersAtThisTodo) ?? todo.Text : todo.Text;
 
     private static string? FirstLabel(IEnumerable<QuestMarker> markers) =>
         markers.Select(marker => marker.Label).FirstOrDefault(label => !string.IsNullOrEmpty(label));
@@ -64,8 +64,8 @@ public static class QuestObjectiveBuilder
     private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers) =>
         new([.. markers.Select(marker => marker.At)]);
 
-    private static bool Near(Place authored, Place live) =>
-        authored.Territory == live.Territory
-        && MathF.Abs(authored.X - live.X) <= MatchYalms
-        && MathF.Abs(authored.Z - live.Z) <= MatchYalms;
+    private static bool Near(Place position, Place marker) =>
+        position.Territory == marker.Territory
+        && MathF.Abs(position.X - marker.X) <= MatchYalms
+        && MathF.Abs(position.Z - marker.Z) <= MatchYalms;
 }

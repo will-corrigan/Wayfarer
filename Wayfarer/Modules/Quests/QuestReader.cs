@@ -111,7 +111,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         return rows;
     }
 
-    private static List<Place> Locations(Quest.TodoParamsStruct param) =>
+    private static List<Place> Positions(Quest.TodoParamsStruct param) =>
         [.. param.ToDoLocation
             .Where(reference => reference.RowId != 0)
             .Select(reference => reference.ValueNullable)
@@ -142,7 +142,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
             }
 
             var (text, hasPlaceholder) = rows.GetValueOrDefault(i, (string.Empty, false));
-            todos.Add(new QuestTodo(i, param.ToDoCompleteSeq, text, hasPlaceholder, param.ToDoQty, Locations(param)));
+            todos.Add(new QuestTodo(i, param.ToDoCompleteSeq, text, hasPlaceholder, param.ToDoQty, Positions(param)));
         }
 
         return todos;

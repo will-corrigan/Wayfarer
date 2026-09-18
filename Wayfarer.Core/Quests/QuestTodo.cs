@@ -12,7 +12,7 @@ namespace Wayfarer.Core.Quests;
 /// <param name="HasUnresolvedPlaceholder">Whether the words still contain a macro the game fills in
 /// at runtime and the sheet alone cannot.</param>
 /// <param name="Needed">How many of the thing this line wants.</param>
-/// <param name="Locations">Where the data places it: one entry per location row, possibly empty.
+/// <param name="Positions">Where the quest data puts it: one per Level row, possibly none.
 /// </param>
 public sealed record QuestTodo(
     int Index,
@@ -20,4 +20,4 @@ public sealed record QuestTodo(
     string Text,
     bool HasUnresolvedPlaceholder,
     int Needed,
-    IReadOnlyList<Place> Locations);
+    IReadOnlyList<Place> Positions);
