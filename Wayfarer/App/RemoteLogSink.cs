@@ -11,6 +11,13 @@ namespace Wayfarer.App;
 /// retried, if the server is unreachable, so a dead server costs nothing but the lines.</summary>
 internal sealed class RemoteLogSink : ILogEventSink, IAsyncDisposable
 {
+    /// <summary>The developer's receiver on the home network. Any copy of the plugin elsewhere
+    /// asks this address to name itself, gets no answer or the wrong one, and sends nothing.</summary>
+    public const string DefaultUrl = "http://192.168.178.25:7792/log";
+
+    private const string PingPath = "/ping";
+    private const string LogPath = "/log";
+    private const string ReceiverName = "wayfarer-log-server";
     private const int MostQueued = 500;
     private const string TimeFormat = "HH:mm:ss.fff";
     private static readonly TimeSpan FlushEvery = TimeSpan.FromSeconds(2);
@@ -22,14 +29,16 @@ internal sealed class RemoteLogSink : ILogEventSink, IAsyncDisposable
     private Task? pump;
     private string? url;
 
-    /// <summary>Starts sending to <paramref name="remoteUrl"/>, or does nothing when it is null.</summary>
+    /// <summary>Starts sending to <paramref name="remoteUrl"/> once it has answered to its name, or
+    /// does nothing when it is null, unreachable, or something other than a Wayfarer receiver.</summary>
     public void Start(string? remoteUrl)
     {
-        url = string.IsNullOrWhiteSpace(remoteUrl) ? null : remoteUrl;
-        if (url is not null && pump is null)
+        if (string.IsNullOrWhiteSpace(remoteUrl) || pump is not null)
         {
-            pump = Task.Run(PumpAsync);
+            return;
         }
+
+        pump = Task.Run(() => PumpAsync(remoteUrl));
     }
 
     /// <inheritdoc/>
@@ -74,12 +83,32 @@ internal sealed class RemoteLogSink : ILogEventSink, IAsyncDisposable
         stopping.Dispose();
     }
 
-    private async Task PumpAsync()
+    private async Task PumpAsync(string remoteUrl)
     {
+        if (!await IsWayfarerReceiverAsync(remoteUrl).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        url = remoteUrl;
         while (!stopping.IsCancellationRequested)
         {
             await Task.Delay(FlushEvery, stopping.Token).ConfigureAwait(false);
             await FlushAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task<bool> IsWayfarerReceiverAsync(string remoteUrl)
+    {
+        try
+        {
+            var ping = remoteUrl.EndsWith(LogPath, StringComparison.Ordinal) ? remoteUrl[..^LogPath.Length] + PingPath : remoteUrl + PingPath;
+            var answer = await http.GetStringAsync(ping, stopping.Token).ConfigureAwait(false);
+            return string.Equals(answer.Trim(), ReceiverName, StringComparison.Ordinal);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or UriFormatException)
+        {
+            return false;
         }
     }
 

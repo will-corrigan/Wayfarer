@@ -10,6 +10,10 @@ const logDir = process.argv[3] ?? join(process.cwd(), "logs");
 mkdirSync(logDir, { recursive: true });
 
 const server = createServer((request, response) => {
+  if (request.method === "GET" && request.url === "/ping") {
+    response.writeHead(200, { "Content-Type": "text/plain" }).end("wayfarer-log-server");
+    return;
+  }
   if (request.method !== "POST" || request.url !== "/log") {
     response.writeHead(404).end();
     return;
