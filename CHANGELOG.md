@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/will-corrigan/Wayfarer/compare/v1.0.0...v1.0.1) (2026-09-18)
+
+
+### Fixed
+
+* controller reach on the guide, and the above/below mark ([#54](https://github.com/will-corrigan/Wayfarer/issues/54)) ([c8acd52](https://github.com/will-corrigan/Wayfarer/commit/c8acd52cc37f1de780cbd7efb8ab0809f08c8a60))
+
 ## [1.0.0](https://github.com/will-corrigan/Wayfarer/compare/v0.10.0...v1.0.0) (2026-09-18)
 
 
