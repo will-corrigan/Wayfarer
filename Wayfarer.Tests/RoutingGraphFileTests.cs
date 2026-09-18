@@ -12,6 +12,8 @@ public class RoutingGraphFileTests
 
     private const int FewestShards = 80;
     private const int FewestDoors = 100;
+    private const uint ThePillarsMap = 219;
+    private const uint FortempsManorMap = 222;
 
     private static readonly RoutingGraphFile Shipped = RoutingGraphFile.Parse(File.ReadAllText(RoutingGraphFile.FileName));
 
@@ -52,6 +54,16 @@ public class RoutingGraphFileTests
             Assert.NotEqual(0u, d.To.Map);
             Assert.NotEqual(d.From.Map, d.To.Map);
         });
+    }
+
+    [Fact]
+    public void An_interior_named_only_by_a_label_on_the_city_map_has_a_door()
+    {
+        // Fortemps Manor draws no markers and no map link leads to it; the label on The Pillars is its door.
+        var manor = Shipped.Doors.Single(d => d.To.Map == FortempsManorMap);
+
+        Assert.Equal(ThePillarsMap, manor.From.Map);
+        Assert.NotNull(Shipped.ToGraph().FindRoute(manor.From with { X = 0f, Z = 0f }, [manor.To], _ => true));
     }
 
     [Fact]

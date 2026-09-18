@@ -10669,6 +10669,686 @@
         "Radius": 0
       },
       "OneWay": false
+    },
+    {
+      "Name": "Sanctum of the Twelve",
+      "From": {
+        "Territory": 152,
+        "Map": 5,
+        "X": -194,
+        "Y": 0,
+        "Z": -233,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 392,
+        "Map": 180,
+        "X": -194,
+        "Y": 0,
+        "Z": -233,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Sanctum of the Twelve",
+      "From": {
+        "Territory": 152,
+        "Map": 5,
+        "X": -194,
+        "Y": 0,
+        "Z": -233,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 393,
+        "Map": 180,
+        "X": -194,
+        "Y": 0,
+        "Z": -233,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Intercessory",
+      "From": {
+        "Territory": 155,
+        "Map": 53,
+        "X": 265,
+        "Y": 0,
+        "Z": -234,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 395,
+        "Map": 179,
+        "X": 265,
+        "Y": 0,
+        "Z": -234,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Amdapor Keep",
+      "From": {
+        "Territory": 153,
+        "Map": 6,
+        "X": 180,
+        "Y": 0,
+        "Z": 168,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 396,
+        "Map": 210,
+        "X": 180,
+        "Y": 0,
+        "Z": 168,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Saint Endalim\u0027s Scholasticate",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": -153,
+        "Y": 0,
+        "Z": -131,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 427,
+        "Map": 220,
+        "X": -153,
+        "Y": 0,
+        "Z": -131,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Fortemps Manor",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 32,
+        "Y": 0,
+        "Z": -6,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 433,
+        "Map": 222,
+        "X": 32,
+        "Y": 0,
+        "Z": -6,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Lightfeather Proving Grounds",
+      "From": {
+        "Territory": 418,
+        "Map": 218,
+        "X": 106,
+        "Y": 0,
+        "Z": -40.5,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 439,
+        "Map": 224,
+        "X": 106,
+        "Y": 0,
+        "Z": -40.5,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Twin Adder Barracks",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": -82,
+        "Y": 0,
+        "Z": -7.5,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 534,
+        "Map": 308,
+        "X": -82,
+        "Y": 0,
+        "Z": -7.5,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Flame Barracks",
+      "From": {
+        "Territory": 130,
+        "Map": 13,
+        "X": -153.5,
+        "Y": 0,
+        "Z": -100,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 535,
+        "Map": 309,
+        "X": -153.5,
+        "Y": 0,
+        "Z": -100,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Maelstrom Barracks",
+      "From": {
+        "Territory": 128,
+        "Map": 11,
+        "X": 100.5,
+        "Y": 0,
+        "Z": 62,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 536,
+        "Map": 310,
+        "X": 100.5,
+        "Y": 0,
+        "Z": 62,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Steps of Faith",
+      "From": {
+        "Territory": 155,
+        "Map": 53,
+        "X": -190,
+        "Y": 0,
+        "Z": -352,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 559,
+        "Map": 304,
+        "X": -190,
+        "Y": 0,
+        "Z": -352,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Steps of Faith",
+      "From": {
+        "Territory": 155,
+        "Map": 53,
+        "X": -190,
+        "Y": 0,
+        "Z": -352,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 566,
+        "Map": 304,
+        "X": -190,
+        "Y": 0,
+        "Z": -352,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Steps of Faith",
+      "From": {
+        "Territory": 155,
+        "Map": 53,
+        "X": -190,
+        "Y": 0,
+        "Z": -352,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 569,
+        "Map": 307,
+        "X": -190,
+        "Y": 0,
+        "Z": -352,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Sanctum of the Twelve",
+      "From": {
+        "Territory": 152,
+        "Map": 5,
+        "X": -194,
+        "Y": 0,
+        "Z": -233,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 741,
+        "Map": 451,
+        "X": -194,
+        "Y": 0,
+        "Z": -233,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Burn",
+      "From": {
+        "Territory": 614,
+        "Map": 354,
+        "X": 336,
+        "Y": 0,
+        "Z": -535,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 769,
+        "Map": 478,
+        "X": 336,
+        "Y": 0,
+        "Z": -535,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Heaven-on-High",
+      "From": {
+        "Territory": 613,
+        "Map": 371,
+        "X": 38,
+        "Y": 0,
+        "Z": -674,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 780,
+        "Map": 477,
+        "X": 38,
+        "Y": 0,
+        "Z": -674,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Reisen Temple Road",
+      "From": {
+        "Territory": 742,
+        "Map": 439,
+        "X": 88,
+        "Y": 0,
+        "Z": -236,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 781,
+        "Map": 469,
+        "X": 88,
+        "Y": 0,
+        "Z": -236,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Ridorana Cataract",
+      "From": {
+        "Territory": 776,
+        "Map": 470,
+        "X": -49,
+        "Y": 0,
+        "Z": -42.5,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 787,
+        "Map": 483,
+        "X": -49,
+        "Y": 0,
+        "Z": -42.5,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Core",
+      "From": {
+        "Territory": 878,
+        "Map": 565,
+        "X": -14.75,
+        "Y": 0,
+        "Z": 23.75,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 849,
+        "Map": 559,
+        "X": -14.75,
+        "Y": 0,
+        "Z": 23.75,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Core",
+      "From": {
+        "Territory": 878,
+        "Map": 565,
+        "X": -14.75,
+        "Y": 0,
+        "Z": 23.75,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 853,
+        "Map": 559,
+        "X": -14.75,
+        "Y": 0,
+        "Z": 23.75,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Core",
+      "From": {
+        "Territory": 878,
+        "Map": 565,
+        "X": -14.75,
+        "Y": 0,
+        "Z": 23.75,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 857,
+        "Map": 564,
+        "X": -14.75,
+        "Y": 0,
+        "Z": 23.75,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Last Trace",
+      "From": {
+        "Territory": 920,
+        "Map": 606,
+        "X": 678,
+        "Y": 0,
+        "Z": 122,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 955,
+        "Map": 655,
+        "X": 678,
+        "Y": 0,
+        "Z": 122,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Last Trace",
+      "From": {
+        "Territory": 920,
+        "Map": 606,
+        "X": 678,
+        "Y": 0,
+        "Z": 122,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 964,
+        "Map": 655,
+        "X": 678,
+        "Y": 0,
+        "Z": 122,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Propylaion",
+      "From": {
+        "Territory": 961,
+        "Map": 700,
+        "X": 276,
+        "Y": 0,
+        "Z": 816,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1031,
+        "Map": 749,
+        "X": 276,
+        "Y": 0,
+        "Z": 816,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Porta Decumana",
+      "From": {
+        "Territory": 1044,
+        "Map": 103,
+        "X": -843,
+        "Y": 0,
+        "Z": 1,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1048,
+        "Map": 763,
+        "X": -843,
+        "Y": 0,
+        "Z": 1,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Backroom",
+      "From": {
+        "Territory": 1186,
+        "Map": 856,
+        "X": 301.6667,
+        "Y": 0,
+        "Z": 205,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1207,
+        "Map": 934,
+        "X": 301.6667,
+        "Y": 0,
+        "Z": 205,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Tritails Training",
+      "From": {
+        "Territory": 1186,
+        "Map": 856,
+        "X": 498.33334,
+        "Y": 0,
+        "Z": 128.8889,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1223,
+        "Map": 937,
+        "X": 498.33334,
+        "Y": 0,
+        "Z": 128.8889,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Greenroom",
+      "From": {
+        "Territory": 1186,
+        "Map": 856,
+        "X": 363.8889,
+        "Y": 0,
+        "Z": 356.6667,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1224,
+        "Map": 938,
+        "X": 363.8889,
+        "Y": 0,
+        "Z": 356.6667,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Sphere of Naught",
+      "From": {
+        "Territory": 151,
+        "Map": 184,
+        "X": -274,
+        "Y": 0,
+        "Z": -448.5,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1241,
+        "Map": 952,
+        "X": -274,
+        "Y": 0,
+        "Z": -448.5,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Zorgor the Boundless",
+      "From": {
+        "Territory": 1185,
+        "Map": 855,
+        "X": 41.111115,
+        "Y": 0,
+        "Z": -461.11115,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1246,
+        "Map": 966,
+        "X": 41.111115,
+        "Y": 0,
+        "Z": -461.11115,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Windward Wilds",
+      "From": {
+        "Territory": 1190,
+        "Map": 860,
+        "X": -216,
+        "Y": 0,
+        "Z": -758,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1300,
+        "Map": 1063,
+        "X": -216,
+        "Y": 0,
+        "Z": -758,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Windward Wilds",
+      "From": {
+        "Territory": 1190,
+        "Map": 860,
+        "X": -216,
+        "Y": 0,
+        "Z": -758,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1301,
+        "Map": 1064,
+        "X": -216,
+        "Y": 0,
+        "Z": -758,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "The Windward Wilds",
+      "From": {
+        "Territory": 1190,
+        "Map": 860,
+        "X": -216,
+        "Y": 0,
+        "Z": -758,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1306,
+        "Map": 1063,
+        "X": -216,
+        "Y": 0,
+        "Z": -758,
+        "Radius": 0
+      },
+      "OneWay": false
+    },
+    {
+      "Name": "Tritails Training",
+      "From": {
+        "Territory": 1186,
+        "Map": 856,
+        "X": 498.33334,
+        "Y": 0,
+        "Z": 128.8889,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1344,
+        "Map": 1137,
+        "X": 498.33334,
+        "Y": 0,
+        "Z": 128.8889,
+        "Radius": 0
+      },
+      "OneWay": false
     }
   ]
 }
