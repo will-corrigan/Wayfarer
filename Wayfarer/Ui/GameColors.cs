@@ -1,7 +1,7 @@
 using System.Numerics;
 using KamiToolKit.Classes;
 
-namespace Wayfarer.App.Settings;
+namespace Wayfarer.Ui;
 
 /// <summary>The game's own themed UI colours, read from the <c>UIColor</c> sheet so everything
 /// Wayfarer draws follows the player's interface theme. The fallbacks are the Dark theme's values
@@ -13,6 +13,9 @@ internal static class GameColors
 
     /// <summary>The game's standard body-text edge: teal-blue.</summary>
     public static Vector4 BodyEdge => Get(53, new Vector4(0.039f, 0.412f, 0.573f, 1f));
+
+    /// <summary>List text, warm cream: the Duty Finder's own row colour.</summary>
+    public static Vector4 ListText => Get(8, new Vector4(0.933f, 0.882f, 0.773f, 1f));
 
     /// <summary>Secondary, dimmed label text: mid-grey.</summary>
     public static Vector4 Dimmed => Get(3, new Vector4(0.627f, 0.627f, 0.627f, 1f));

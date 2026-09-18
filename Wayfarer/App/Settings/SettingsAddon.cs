@@ -2,6 +2,7 @@ using System.Numerics;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.Nodes;
+using Wayfarer.Ui;
 
 namespace Wayfarer.App.Settings;
 
@@ -13,9 +14,16 @@ namespace Wayfarer.App.Settings;
 /// the addon's node tree when it closes and rebuilds nothing of ours.</para></summary>
 internal sealed class SettingsAddon : NativeAddon
 {
-    private const float RowHeight = 44f;
+    private const float CheckboxHeight = 20f;
+    private const float DescriptionHeight = 18f;
+    private const float RowGap = 6f;
+    private const float RowHeight = CheckboxHeight + DescriptionHeight + RowGap;
     private const float DescriptionIndent = 26f;
+    private const uint DescriptionFontSize = 12;
     private const float WindowWidth = 360f;
+
+    /// <summary>The window's title bar, padding and bottom border, which the rows sit inside.</summary>
+    private const float WindowChrome = 90f;
 
     private readonly IModuleHost host;
     private readonly List<NodeBase> rows = [];
@@ -23,7 +31,7 @@ internal sealed class SettingsAddon : NativeAddon
     public SettingsAddon(IModuleHost host)
     {
         this.host = host;
-        Size = new Vector2(WindowWidth, 90f + (RowHeight * Math.Max(1, host.Modules.Count)));
+        Size = new Vector2(WindowWidth, WindowChrome + (RowHeight * Math.Max(1, host.Modules.Count)));
     }
 
     /// <inheritdoc/>
@@ -35,7 +43,7 @@ internal sealed class SettingsAddon : NativeAddon
             var toggle = new CheckboxNode
             {
                 Position = new Vector2(ContentStartPosition.X, y),
-                Size = new Vector2(ContentSize.X, 20f),
+                Size = new Vector2(ContentSize.X, CheckboxHeight),
                 String = module.Name,
                 IsChecked = host.IsEnabled(module),
             };
@@ -45,11 +53,11 @@ internal sealed class SettingsAddon : NativeAddon
 
             var description = new TextNode
             {
-                Position = new Vector2(ContentStartPosition.X + DescriptionIndent, y + 20f),
-                Size = new Vector2(ContentSize.X - DescriptionIndent, 18f),
+                Position = new Vector2(ContentStartPosition.X + DescriptionIndent, y + CheckboxHeight),
+                Size = new Vector2(ContentSize.X - DescriptionIndent, DescriptionHeight),
                 String = module.Description,
                 TextColor = GameColors.Dimmed,
-                FontSize = 12,
+                FontSize = DescriptionFontSize,
             };
             AddNode(description);
             rows.Add(description);
