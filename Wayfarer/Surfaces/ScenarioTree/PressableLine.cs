@@ -21,9 +21,11 @@ internal sealed class PressableLine : ResNode
     private readonly IconImageNode icon;
     private readonly TextNode words;
     private readonly NavFocusNode control;
+    private readonly Action<string> trace;
 
-    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed)
+    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed, Action<string> trace)
     {
+        this.trace = trace;
         this.leading = leading;
         this.maxLines = maxLines;
 
@@ -103,7 +105,13 @@ internal sealed class PressableLine : ResNode
 
     private unsafe void HandlePadInput(AtkEventListener* listener, AtkEventType type, int param, AtkEvent* atkEvent, AtkEventData* data)
     {
-        if (type != AtkEventType.InputReceived || data->InputData.State != InputState.Down)
+        if (type != AtkEventType.InputReceived)
+        {
+            return;
+        }
+
+        trace($"pad input on a line: id {data->InputData.InputId} state {data->InputData.State}");
+        if (data->InputData.State != InputState.Down)
         {
             return;
         }

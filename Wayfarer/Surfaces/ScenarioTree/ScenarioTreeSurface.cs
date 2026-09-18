@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
@@ -17,38 +18,38 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// Presses are read off the guidance at the moment of the press, never captured when the line was
 /// drawn, so a press cannot act on a stale route or entry.
 ///
-/// <para>The pad reaches the block through the plate: HUD Select lands on the plate as it always
-/// has, a Down press there is heard by our own listener on the plate's node, and the cursor is
-/// moved to our first line. From there the lines move it between themselves and back up to the
-/// plate.</para></summary>
+/// <para>The pad does not reach the block yet. The guide's plate is a stock button whose layout
+/// record chains it to the two job rows by index (2, 3, 4). Linking our lines into that chain is
+/// an investigation switch, off by default, toggled by <c>/wayfarer pad</c>; the cursor's every
+/// move is logged so a remote tester can be read.</para></summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
 {
     private const string SayCommand = "/say ";
+    private const string PadSwitch = "pad";
 
     private readonly IGuidance guidance;
     private readonly IHeading heading;
     private readonly IActions actions;
     private readonly ITextureProvider textures;
-    private readonly IPluginLog log;
-    private readonly IFramework framework;
+    private readonly ILog log;
     private readonly AddonController controller;
-    private readonly PlatePadListener plateListener;
     private GuidanceBlockNode? block;
     private nint addonAddress;
     private nint plateFocus;
+    private nint lastFocused;
+    private byte? plateDownBeforeUs;
+    private bool padLinking;
     private bool wordsChanged = true;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, ILog log)
     {
         this.guidance = guidance;
         this.heading = heading;
         this.actions = actions;
         this.textures = textures;
         this.log = log;
-        this.framework = framework;
 
-        plateListener = new PlatePadListener(OnPlateDown);
         controller = new AddonController
         {
             AddonName = AddonName,
@@ -66,7 +67,6 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     {
         guidance.OnChanged -= OnGuidanceChanged;
         await controller.DisposeAsync().ConfigureAwait(false);
-        await framework.RunOnFrameworkThread(plateListener.Dispose).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -75,27 +75,44 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         var addon = (AtkUnitBase*)addonAddress;
         if (addon == null || block is null)
         {
-            log.Information("Wayfarer nav: the Main Scenario Guide is not open, or the block is not attached.");
+            log.Info("nav: the Main Scenario Guide is not open, or the block is not attached.");
             return;
         }
 
-        var plate = Plate(addon);
         var input = AtkStage.Instance()->AtkInputManager;
-        log.Information($"Wayfarer nav: addon focus {(nint)addon->FocusNode:X} component focus {(nint)addon->ComponentFocusNode:X} own index {addon->CursorNavigationOwnIndex} flags1A2 {addon->Flags1A2:X2} root {addon->RootNode->Width}x{addon->RootNode->Height}");
-        log.Information($"Wayfarer nav: input focused node {(nint)input->FocusedNode:X} focus list index {input->FocusListIndex}");
+        log.Info($"nav: pad linking {padLinking}; addon focus {Hex((nint)addon->FocusNode)} component focus {Hex((nint)addon->ComponentFocusNode)} own index {addon->CursorNavigationOwnIndex} flags1A2 {addon->Flags1A2:X2} root {addon->RootNode->Width}x{addon->RootNode->Height}");
+        log.Info($"nav: input focused node {Hex((nint)input->FocusedNode)} focus list index {input->FocusListIndex}");
+        var plate = Plate(addon);
         if (plate != null && plate->Component != null)
         {
             var nav = plate->Component->CursorNavigationInfo;
-            log.Information($"Wayfarer nav: plate node {(nint)plate:X} focus node {(nint)plate->Component->GetFocusNode():X} index {nav.Index} up {nav.UpIndex} down {nav.DownIndex} left {nav.LeftIndex} right {nav.RightIndex} mode {nav.NavigationMode} cursor type {nav.CursorType}");
+            log.Info($"nav: plate node {Hex((nint)plate)} focus node {Hex((nint)plate->Component->GetFocusNode())} index {nav.Index} up {nav.UpIndex} down {nav.DownIndex} left {nav.LeftIndex} right {nav.RightIndex} mode {nav.NavigationMode} cursor type {nav.CursorType}");
         }
 
-        log.Information($"Wayfarer nav: our lines {string.Join(", ", block.FocusTargets.Select(t => t.ToString("X", System.Globalization.CultureInfo.InvariantCulture)))} pressable {block.AnyPressable}");
+        log.Info($"nav: our lines {string.Join(", ", block.FocusTargets.Select(Hex))} pressable {block.AnyPressable} first stop {block.FirstStop}");
         for (var i = 0; i < addon->CollisionNodeListCount; i++)
         {
             var node = addon->CollisionNodeList[i];
-            log.Information($"Wayfarer nav: collision {i} node {(nint)node:X} id {node->NodeId} flags {node->NodeFlags} at {node->X},{node->Y} {node->Width}x{node->Height}");
+            var component = node->Type == NodeType.Collision ? ((AtkCollisionNode*)node)->LinkedComponent : null;
+            var index = component == null ? "-" : component->CursorNavigationInfo.Index.ToString(CultureInfo.InvariantCulture);
+            log.Info($"nav: collision {i} node {Hex((nint)node)} id {node->NodeId} flags {node->NodeFlags} nav index {index} at {node->X},{node->Y} {node->Width}x{node->Height}");
         }
     }
+
+    /// <inheritdoc/>
+    public string? Toggle(string switchName)
+    {
+        if (!string.Equals(switchName, PadSwitch, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        padLinking = !padLinking;
+        log.Info($"nav: pad linking is now {(padLinking ? "on" : "off")}");
+        return padLinking ? "on" : "off";
+    }
+
+    private static string Hex(nint address) => address.ToString("X", CultureInfo.InvariantCulture);
 
     private static unsafe bool NodeShown(AtkUnitBase* addon, uint id) =>
         addon->GetNodeById(id) is var node && node != null && node->IsVisible();
@@ -147,23 +164,18 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
             block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
             block.AttachNode(addon);
             wordsChanged = true;
-
-            var plate = Plate(addon);
-            if (plate != null && plate->Component != null)
-            {
-                plateListener.Attach(plate);
-            }
+            log.Debug($"nav: block attached to the guide; addon {Hex(addonAddress)} plate focus {Hex(plateFocus)}");
         }
         catch (Exception ex)
         {
             block = null;
-            log.Error(ex, "Wayfarer: the guidance block could not be added to the Main Scenario Guide, so nothing is drawn this session.");
+            log.Error("the guidance block could not be added to the Main Scenario Guide, so nothing is drawn this session.", ex);
         }
     }
 
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        plateListener.Detach();
+        RestorePlateLink(addon);
         block?.Dispose();
         block = null;
         addonAddress = 0;
@@ -181,15 +193,25 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         {
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
+            if (padLinking)
+            {
+                LinkIntoPlateChain(addon);
+            }
+            else
+            {
+                RestorePlateLink(addon);
+            }
+
             block.WireFocus(addon, (AtkResNode*)plateFocus);
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
             FitRootToBlock(addon);
+            TraceFocus(addon);
         }
         catch (Exception ex)
         {
             broken = true;
             block.IsVisible = false;
-            log.Error(ex, "Wayfarer: drawing the guidance block failed, so it is hidden for this session.");
+            log.Error("drawing the guidance block failed, so it is hidden for this session.", ex);
         }
     }
 
@@ -213,6 +235,32 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         }
     }
 
+    /// <summary>The investigation: point the plate's "down" at our first line and our lines' records
+    /// back at the plate, so the game's own index navigation can find us if it looks.</summary>
+    private unsafe void LinkIntoPlateChain(AtkUnitBase* addon)
+    {
+        var plate = Plate(addon);
+        if (plate == null || plate->Component == null)
+        {
+            return;
+        }
+
+        ref var nav = ref plate->Component->CursorNavigationInfo;
+        plateDownBeforeUs ??= nav.DownIndex;
+        nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
+        block.LinkNav(nav.Index);
+    }
+
+    private unsafe void RestorePlateLink(AtkUnitBase* addon)
+    {
+        if (plateDownBeforeUs is { } original && Plate(addon) is var plate && plate != null && plate->Component != null)
+        {
+            plate->Component->CursorNavigationInfo.DownIndex = original;
+        }
+
+        plateDownBeforeUs = null;
+    }
+
     /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
     /// while the block shows and restored when it hides.</summary>
     private unsafe void FitRootToBlock(AtkUnitBase* addon)
@@ -224,14 +272,22 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         }
     }
 
-    /// <summary>The pad pressed Down while the plate had the cursor: move it to our first line.</summary>
-    private unsafe void OnPlateDown()
+    /// <summary>Logs every move of the game's input focus, saying whether it landed on the plate,
+    /// on one of our lines, or elsewhere.</summary>
+    private unsafe void TraceFocus(AtkUnitBase* addon)
     {
-        var targets = block?.FocusTargets;
-        if (targets is { Length: > 0 } && addonAddress != 0)
+        var focused = (nint)AtkStage.Instance()->AtkInputManager->FocusedNode;
+        if (focused == lastFocused)
         {
-            AtkStage.Instance()->AtkInputManager->SetFocus((AtkResNode*)targets[0], (AtkUnitBase*)addonAddress, 0);
+            return;
         }
+
+        lastFocused = focused;
+        var where = focused == 0 ? "nothing"
+            : focused == plateFocus ? "the plate"
+            : block!.FocusTargets.Contains(focused) ? "one of our lines"
+            : "elsewhere";
+        log.Debug($"nav: input focus moved to {Hex(focused)} ({where}); addon focus node {Hex((nint)addon->FocusNode)}");
     }
 
     private void OnEntryPressed()

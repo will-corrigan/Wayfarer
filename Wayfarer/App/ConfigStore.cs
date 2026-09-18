@@ -5,7 +5,7 @@ using Dalamud.Plugin.Services;
 namespace Wayfarer.App;
 
 /// <summary>The config folder Dalamud gives the plugin, one indented JSON file per name.</summary>
-internal sealed class ConfigStore(IDalamudPluginInterface pluginInterface, IPluginLog log) : IConfigStore
+internal sealed class ConfigStore(IDalamudPluginInterface pluginInterface, ILog log) : IConfigStore
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
@@ -25,7 +25,7 @@ internal sealed class ConfigStore(IDalamudPluginInterface pluginInterface, IPlug
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
-            log.Warning(ex, $"Wayfarer: {name}.json could not be read, so its defaults are in use until it is next saved.");
+            log.Warning($"{name}.json could not be read, so its defaults are in use until it is next saved.", ex);
             return new T();
         }
     }

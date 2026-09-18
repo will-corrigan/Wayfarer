@@ -11,6 +11,10 @@ internal sealed class AppConfig
     /// switched on; after that the set is exactly what the player left it as, including empty.</summary>
     public bool Initialised { get; set; }
 
+    /// <summary>Where to post log lines, or null for nowhere. Set by hand for a tester who cannot
+    /// send logs; nothing in the plugin turns it on.</summary>
+    public string? RemoteLogUrl { get; set; }
+
     /// <summary>The names of the modules that are on.</summary>
     public HashSet<string> EnabledModules { get; set; } = new(StringComparer.Ordinal);
 }

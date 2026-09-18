@@ -3,6 +3,7 @@ using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin.Services;
 using KamiToolKit.Nodes;
+using Wayfarer.App;
 using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
@@ -24,13 +25,13 @@ internal sealed class CompassNode : ResNode
     private const float MarkOffsetY = 0.52f;
 
     private readonly ITextureProvider textures;
-    private readonly IPluginLog log;
+    private readonly ILog log;
     private readonly ImGuiImageNode ring = Glyph(CompassBitmap.Size);
     private readonly ImGuiImageNode needle = Glyph(CompassBitmap.Size);
     private readonly ImGuiImageNode mark = Glyph(ChevronBitmap.Size);
     private TextureState state = TextureState.NotLoaded;
 
-    public CompassNode(ITextureProvider textures, IPluginLog log)
+    public CompassNode(ITextureProvider textures, ILog log)
     {
         this.textures = textures;
         this.log = log;
@@ -104,7 +105,7 @@ internal sealed class CompassNode : ResNode
         }
         catch (Exception ex)
         {
-            log.Error(ex, "Wayfarer: the compass could not be generated, so none is drawn this session.");
+            log.Error("the compass could not be generated, so none is drawn this session.", ex);
             return TextureState.Failed;
         }
     }

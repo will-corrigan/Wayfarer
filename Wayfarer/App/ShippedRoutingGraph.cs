@@ -1,5 +1,4 @@
 using Dalamud.Plugin;
-using Dalamud.Plugin.Services;
 using Wayfarer.Core.Routing;
 
 namespace Wayfarer.App;
@@ -9,7 +8,7 @@ namespace Wayfarer.App;
 /// the current map, and nothing else is affected.</summary>
 internal static class ShippedRoutingGraph
 {
-    public static RouteGraph Load(IDalamudPluginInterface pluginInterface, IPluginLog log)
+    public static RouteGraph Load(IDalamudPluginInterface pluginInterface, ILog log)
     {
         var path = Path.Combine(pluginInterface.AssemblyLocation.DirectoryName ?? string.Empty, RoutingGraphFile.FileName);
         try
@@ -18,7 +17,7 @@ internal static class ShippedRoutingGraph
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            log.Error(ex, $"Wayfarer: {RoutingGraphFile.FileName} could not be read, so routes are walks on the current map only.");
+            log.Error($"{RoutingGraphFile.FileName} could not be read, so routes are walks on the current map only.", ex);
             return new RouteGraph([], []);
         }
     }

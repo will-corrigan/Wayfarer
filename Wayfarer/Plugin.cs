@@ -61,7 +61,7 @@ public sealed class Plugin(
         await container.Resolve<ModuleHost>().StartAsync().ConfigureAwait(false);
 
         // The version belongs in this line: it is the first question asked of every pasted log.
-        log.Information($"Wayfarer {typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "?"} loaded.");
+        container.Resolve<ILog>().Info($"{typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "?"} loaded.");
     }
 
     /// <inheritdoc/>
