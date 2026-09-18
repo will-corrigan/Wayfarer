@@ -1,6 +1,8 @@
 using System.Globalization;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
@@ -65,6 +67,28 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         }
 
         return markers;
+    }
+
+    /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
+    /// event handler. Empty when the handler is not loaded or there is no player.</summary>
+    public static List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
+    {
+        var handler = (QuestEventHandler*)EventFramework.Instance()->GetEventHandlerById(questId + QuestRowIdOffset);
+        var player = Control.Instance()->LocalPlayer;
+        if (handler == null || player == null)
+        {
+            return [];
+        }
+
+        var progress = new List<QuestTodoProgress>();
+        foreach (var index in todoIndexes)
+        {
+            uint have, needed, unused;
+            handler->GetTodoArgs(player, (byte)index, &have, &needed, &unused);
+            progress.Add(new QuestTodoProgress(index, handler->IsTodoChecked(player, (byte)index), (int)have, (int)needed));
+        }
+
+        return progress;
     }
 
     /// <summary>The main scenario quest the banner names, or null while it shows "???": the branch

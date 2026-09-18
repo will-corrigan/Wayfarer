@@ -3,13 +3,10 @@ using Wayfarer.Core.Routing;
 
 namespace Wayfarer.Core.Quests;
 
-/// <summary>Turns a quest's current step into the objective the app guides to.
-///
-/// <para>The game never says which ToDos of a step are done; it only removes their quest markers.
-/// So a ToDo is kept while a quest marker sits on one of its positions and dropped once none does,
-/// unless the quest has no markers at all, when its positions from the data stand in. A ToDo whose
-/// words still hold a runtime placeholder takes its marker's label, which the game has already
-/// filled in.</para></summary>
+/// <summary>Turns a quest's current step into the objective the app guides to: every ToDo of the
+/// step the game has not ticked, with its count when it has one, placed at its quest markers when
+/// the game is showing them and at its positions from the data otherwise. A ToDo whose words hold
+/// a runtime placeholder takes its marker's label, which the game has already filled in.</summary>
 public static class QuestObjectiveBuilder
 {
     /// <summary>How close a quest marker has to be to a ToDo's position to count as its marker:
@@ -19,35 +16,46 @@ public static class QuestObjectiveBuilder
     private const string NoLocation = "no map location for this step";
 
     /// <summary>The objective for one step, or null when nothing in it is left to do.</summary>
-    public static Objective? Build(string questName, byte sequence, IReadOnlyList<QuestTodo> todos, IReadOnlyList<QuestMarker> markers)
+    public static Objective? Build(
+        string questName,
+        byte sequence,
+        IReadOnlyList<QuestTodo> todos,
+        IReadOnlyList<QuestTodoProgress> progress,
+        IReadOnlyList<QuestMarker> markers)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
+        ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(markers);
 
         var step = todos.Where(todo => todo.Sequence == sequence).ToList();
         var entries = step.Count > 0
-            ? [.. step.Select(todo => Entry(todo, markers)).OfType<ObjectiveEntry>()]
+            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers))]
             : DescribedByMarkers(questName, markers);
 
         return entries.Count > 0 ? new Objective(questName, null, entries) : null;
     }
 
-    private static ObjectiveEntry? Entry(QuestTodo todo, IReadOnlyList<QuestMarker> markers)
+    private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>
+        progress.Any(p => p.Index == todo.Index && p.Done);
+
+    private static ObjectiveEntry Entry(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress, IReadOnlyList<QuestMarker> markers)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
+        Destination where = markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo)
+            : todo.Positions.Count > 0 ? new Destination.Reachable(todo.Positions)
+            : new Destination.Blocked(NoLocation);
 
-        var todoHasMarker = markersAtThisTodo.Count > 0;
-        var questHasMarkers = markers.Count > 0;
-        var todoHasPosition = todo.Positions.Count > 0;
+        return new ObjectiveEntry(Words(todo, markersAtThisTodo), Count(todo, progress), where);
+    }
 
-        return (todoHasMarker, questHasMarkers, todoHasPosition) switch
-        {
-            (true, _, _) => new ObjectiveEntry(Words(todo, markersAtThisTodo), null, Reachable(markersAtThisTodo)),
-            (false, true, _) => null,
-            (false, false, true) => new ObjectiveEntry(todo.Text, null, new Destination.Reachable(todo.Positions)),
-            (false, false, false) => new ObjectiveEntry(todo.Text, null, new Destination.Blocked(NoLocation)),
-        };
+    /// <summary>The count for a ToDo that wants more than one of something; null otherwise. The
+    /// game's own needed figure wins over the data's when it reports one.</summary>
+    private static Progress? Count(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress)
+    {
+        var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
+        var needed = reported?.Needed > 0 ? reported.Needed : todo.Needed;
+        return needed > 1 ? new Progress(reported?.Have ?? 0, needed) : null;
     }
 
     private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers) =>

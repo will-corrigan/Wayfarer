@@ -113,7 +113,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         wordsChanged = false;
         var wasPressable = block!.RoutePressable;
         var current = guidance.Current;
-        block.SetWords(current?.Target?.Text, RouteWords.Compose(current));
+        block.SetWords(current?.Target is { } target ? EntryWords.Describe(target) : null, RouteWords.Compose(current));
         if (block.RoutePressable != wasPressable)
         {
             addon->UpdateCollisionNodeList(false);

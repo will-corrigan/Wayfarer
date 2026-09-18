@@ -5,12 +5,9 @@ namespace Wayfarer.Modules.Quests;
 
 /// <summary>The quests module's guidance half. Follows the main scenario: whichever quest the
 /// banner names, and nothing while it shows "???". Reads the game each frame, but only rebuilds
-/// the objective when something it depends on changed — the quest, the step, or the markers —
-/// so the app is handed the same objective until there is a new one.
-///
-/// <para>Focus is claimed and released by <see cref="QuestsFeature"/> as the module goes up and
-/// down. There is nothing to reset on being displaced: the main scenario is not a selection.</para>
-/// </summary>
+/// the objective when something it depends on changed: the quest, the step, the ToDos' progress
+/// or the markers. Focus is claimed and released by <see cref="QuestsFeature"/> as the module
+/// goes up and down.</summary>
 internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
 {
     private Signature? last;
@@ -27,44 +24,39 @@ internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
     {
     }
 
-    /// <summary>A cheap summary of the markers, so a frame in which none moved and none went away
-    /// costs a comparison and nothing else.</summary>
-    private static int Fingerprint(List<QuestMarker> markers)
+    private static int Fingerprint<T>(IEnumerable<T> items)
     {
         var hash = default(HashCode);
-        hash.Add(markers.Count);
-        foreach (var marker in markers)
+        foreach (var item in items)
         {
-            hash.Add(marker.At);
-            hash.Add(marker.Label, StringComparer.Ordinal);
+            hash.Add(item);
         }
 
         return hash.ToHashCode();
     }
 
-    /// <summary>Reads the game and returns the objective it describes: the cached one while
-    /// nothing it depends on has changed, a freshly built one otherwise.</summary>
     private Objective? Refresh()
     {
         if (reader.CurrentMainScenarioQuest() is not { } questId)
         {
             last = null;
-            cached = null;
-            return null;
+            return cached = null;
         }
 
         var sequence = QuestReader.Sequence(questId);
+        var todos = reader.Todos(questId);
+        var progress = QuestReader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
         var markers = QuestReader.Markers(questId);
-        var signature = new Signature(questId, sequence, Fingerprint(markers));
+
+        var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers));
         if (signature == last)
         {
             return cached;
         }
 
         last = signature;
-        cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, reader.Todos(questId), markers);
-        return cached;
+        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers);
     }
 
-    private sealed record Signature(ushort QuestId, byte Sequence, int Markers);
+    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers);
 }

@@ -5,7 +5,7 @@ using Wayfarer.Core.Routing;
 namespace Wayfarer.Tests;
 
 /// <summary>How a quest step becomes an objective. The fixtures are the shapes the quest sheet
-/// really has: "Close to Home" with three lines in one step, and a single-line step.</summary>
+/// really has: "Close to Home" with three ToDos in one step, and a kill count.</summary>
 public class QuestObjectiveBuilderTests
 {
     private const uint Gridania = 132;
@@ -22,12 +22,12 @@ public class QuestObjectiveBuilderTests
         new(3, 255, "Report to Miounne at the Carline Canopy.", false, 1, [new Place(Gridania, 2, 23.8f, -8f, 115.9f)]),
     ];
 
-    [Fact]
-    public void Every_line_of_the_step_is_an_entry_while_its_marker_stands()
-    {
-        var markers = new QuestMarker[] { new(Aetheryte, null), new(Lancers, null), new(Markets, null) };
+    private static readonly QuestMarker[] AllThreeMarkers = [new(Aetheryte, null), new(Lancers, null), new(Markets, null)];
 
-        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, markers);
+    [Fact]
+    public void Every_todo_of_the_step_is_an_entry_while_none_is_done()
+    {
+        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, [], AllThreeMarkers);
 
         Assert.Equal("Close to Home", objective!.Headline);
         Assert.Equal(3, objective.Entries.Count);
@@ -36,63 +36,81 @@ public class QuestObjectiveBuilderTests
     }
 
     [Fact]
-    public void A_line_whose_marker_the_game_took_down_is_done_and_dropped()
+    public void A_todo_the_game_has_ticked_is_dropped()
     {
-        var markers = new QuestMarker[] { new(Lancers, null), new(Markets, null) };
+        var progress = new QuestTodoProgress[] { new(0, Done: true, 1, 1) };
 
-        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, markers);
+        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, progress, AllThreeMarkers);
 
         Assert.Equal(2, objective!.Entries.Count);
         Assert.DoesNotContain(objective.Entries, e => e.Text.StartsWith("Attune", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Lines_of_other_steps_are_never_entries()
+    public void Todos_of_other_steps_are_never_entries()
     {
-        var markers = new QuestMarker[] { new(Aetheryte, null), new(Lancers, null), new(Markets, null) };
-
-        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, markers);
+        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, [], AllThreeMarkers);
 
         Assert.DoesNotContain(objective!.Entries, e => e.Text.StartsWith("Report", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void With_no_markers_at_all_the_authored_locations_stand_in()
+    public void A_quest_marker_is_preferred_over_the_position_it_stands_on()
     {
-        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, []);
-
-        Assert.Equal(3, objective!.Entries.Count);
-        Assert.Equal([Aetheryte], Assert.IsType<Destination.Reachable>(objective.Entries[0].Where).Places);
-    }
-
-    [Fact]
-    public void A_live_marker_wins_over_the_authored_location_it_stands_on()
-    {
-        // The game nudged the marker two yalms; the place handed on is the marker's, radius included.
         var live = Aetheryte with { X = Aetheryte.X + 2f, Radius = 30f };
 
-        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, [new QuestMarker(live, null)]);
+        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, [], [new QuestMarker(live, null)]);
 
         Assert.Equal([live], Assert.IsType<Destination.Reachable>(objective!.Entries[0].Where).Places);
+        Assert.Equal([Lancers], Assert.IsType<Destination.Reachable>(objective.Entries[1].Where).Places);
     }
 
     [Fact]
-    public void A_placeholder_line_takes_the_markers_resolved_label()
+    public void A_kill_count_shows_have_over_needed()
+    {
+        var todos = new QuestTodo[] { new(2, 3, "Slay opo-opos.", false, 8, [Lancers]) };
+        var progress = new QuestTodoProgress[] { new(2, Done: false, 3, 8) };
+
+        var objective = QuestObjectiveBuilder.Build("A Matter of Perspective", 3, todos, progress, []);
+
+        Assert.Equal(new Progress(3, 8), objective!.Entries[0].Progress);
+    }
+
+    [Fact]
+    public void A_count_the_game_has_not_reported_yet_starts_at_zero_of_the_data_quantity()
+    {
+        var todos = new QuestTodo[] { new(2, 3, "Slay opo-opos.", false, 8, [Lancers]) };
+
+        var objective = QuestObjectiveBuilder.Build("A Matter of Perspective", 3, todos, [], []);
+
+        Assert.Equal(new Progress(0, 8), objective!.Entries[0].Progress);
+    }
+
+    [Fact]
+    public void A_plain_todo_has_no_count()
+    {
+        var objective = QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, [new QuestTodoProgress(1, false, 0, 1)], []);
+
+        Assert.All(objective!.Entries, e => Assert.Null(e.Progress));
+    }
+
+    [Fact]
+    public void A_placeholder_todo_takes_the_markers_resolved_label()
     {
         var todos = new QuestTodo[] { new(0, 1, "Slay  karakul.", true, 3, [Lancers]) };
         var markers = new QuestMarker[] { new(Lancers, "Slay 2/3 karakul.") };
 
-        var objective = QuestObjectiveBuilder.Build("Way of the Lancer", 1, todos, markers);
+        var objective = QuestObjectiveBuilder.Build("Way of the Lancer", 1, todos, [], markers);
 
         Assert.Equal("Slay 2/3 karakul.", objective!.Entries[0].Text);
     }
 
     [Fact]
-    public void A_line_with_no_location_anywhere_is_blocked_so_its_words_still_show()
+    public void A_todo_with_no_position_anywhere_is_blocked_so_its_words_still_show()
     {
         var todos = new QuestTodo[] { new(0, 1, "Wait for nightfall.", false, 1, []) };
 
-        var objective = QuestObjectiveBuilder.Build("A Vigil", 1, todos, []);
+        var objective = QuestObjectiveBuilder.Build("A Vigil", 1, todos, [], []);
 
         var entry = Assert.Single(objective!.Entries);
         Assert.IsType<Destination.Blocked>(entry.Where);
@@ -103,7 +121,7 @@ public class QuestObjectiveBuilderTests
     {
         var markers = new QuestMarker[] { new(Lancers, "Speak with the guildmaster."), new(Markets, null) };
 
-        var objective = QuestObjectiveBuilder.Build("Unwritten", 7, CloseToHome, markers);
+        var objective = QuestObjectiveBuilder.Build("Unwritten", 7, CloseToHome, [], markers);
 
         var entry = Assert.Single(objective!.Entries);
         Assert.Equal("Speak with the guildmaster.", entry.Text);
@@ -113,6 +131,9 @@ public class QuestObjectiveBuilderTests
     [Fact]
     public void Nothing_left_to_do_is_null()
     {
-        Assert.Null(QuestObjectiveBuilder.Build("Unwritten", 7, CloseToHome, []));
+        var allDone = CloseToHome.Select(todo => new QuestTodoProgress(todo.Index, true, 1, 1)).ToList();
+
+        Assert.Null(QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, allDone, []));
+        Assert.Null(QuestObjectiveBuilder.Build("Unwritten", 7, CloseToHome, [], []));
     }
 }
