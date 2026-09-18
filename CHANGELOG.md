@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/will-corrigan/Wayfarer/compare/v1.0.3...v1.0.4) (2026-09-18)
+
+
+### Fixed
+
+* **surface:** hear the plate's Down press and take the cursor; drop the tick wait ([#61](https://github.com/will-corrigan/Wayfarer/issues/61)) ([b0a7918](https://github.com/will-corrigan/Wayfarer/commit/b0a7918e4f9194a6bb4bbd5270eb611d95c6aba4))
+
 ## [1.0.3](https://github.com/will-corrigan/Wayfarer/compare/v1.0.2...v1.0.3) (2026-09-18)
 
 
