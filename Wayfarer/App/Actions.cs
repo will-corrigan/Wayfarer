@@ -8,7 +8,7 @@ namespace Wayfarer.App;
 
 /// <summary>The game's own agents and managers behind <see cref="IActions"/>. A refusal is logged,
 /// because a press that does nothing in silence looks like a control that was never wired up.</summary>
-internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, ILog log) : IActions
+internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, IPluginLog log) : IActions
 {
     /// <summary>The sub-index is for aetherytes with several destinations, such as housing; every
     /// aetheryte on a route is a plain one.</summary>

@@ -31,7 +31,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     private readonly IHeading heading;
     private readonly IActions actions;
     private readonly ITextureProvider textures;
-    private readonly ILog log;
+    private readonly IPluginLog log;
     private readonly AddonController controller;
     private GuidanceBlockNode? block;
     private nint addonAddress;
@@ -42,7 +42,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
     private bool wordsChanged = true;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, ILog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
@@ -75,27 +75,27 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         var addon = (AtkUnitBase*)addonAddress;
         if (addon == null || block is null)
         {
-            log.Info("nav: the Main Scenario Guide is not open, or the block is not attached.");
+            log.Information("nav: the Main Scenario Guide is not open, or the block is not attached.");
             return;
         }
 
         var input = AtkStage.Instance()->AtkInputManager;
-        log.Info($"nav: pad linking {padLinking}; addon focus {Hex((nint)addon->FocusNode)} component focus {Hex((nint)addon->ComponentFocusNode)} own index {addon->CursorNavigationOwnIndex} flags1A2 {addon->Flags1A2:X2} root {addon->RootNode->Width}x{addon->RootNode->Height}");
-        log.Info($"nav: input focused node {Hex((nint)input->FocusedNode)} focus list index {input->FocusListIndex}");
+        log.Information($"nav: pad linking {padLinking}; addon focus {Hex((nint)addon->FocusNode)} component focus {Hex((nint)addon->ComponentFocusNode)} own index {addon->CursorNavigationOwnIndex} flags1A2 {addon->Flags1A2:X2} root {addon->RootNode->Width}x{addon->RootNode->Height}");
+        log.Information($"nav: input focused node {Hex((nint)input->FocusedNode)} focus list index {input->FocusListIndex}");
         var plate = Plate(addon);
         if (plate != null && plate->Component != null)
         {
             var nav = plate->Component->CursorNavigationInfo;
-            log.Info($"nav: plate node {Hex((nint)plate)} focus node {Hex((nint)plate->Component->GetFocusNode())} index {nav.Index} up {nav.UpIndex} down {nav.DownIndex} left {nav.LeftIndex} right {nav.RightIndex} mode {nav.NavigationMode} cursor type {nav.CursorType}");
+            log.Information($"nav: plate node {Hex((nint)plate)} focus node {Hex((nint)plate->Component->GetFocusNode())} index {nav.Index} up {nav.UpIndex} down {nav.DownIndex} left {nav.LeftIndex} right {nav.RightIndex} mode {nav.NavigationMode} cursor type {nav.CursorType}");
         }
 
-        log.Info($"nav: our lines {string.Join(", ", block.FocusTargets.Select(Hex))} pressable {block.AnyPressable} first stop {block.FirstStop}");
+        log.Information($"nav: our lines {string.Join(", ", block.FocusTargets.Select(Hex))} pressable {block.AnyPressable} first stop {block.FirstStop}");
         for (var i = 0; i < addon->CollisionNodeListCount; i++)
         {
             var node = addon->CollisionNodeList[i];
             var component = node->Type == NodeType.Collision ? ((AtkCollisionNode*)node)->LinkedComponent : null;
             var index = component == null ? "-" : component->CursorNavigationInfo.Index.ToString(CultureInfo.InvariantCulture);
-            log.Info($"nav: collision {i} node {Hex((nint)node)} id {node->NodeId} flags {node->NodeFlags} nav index {index} at {node->X},{node->Y} {node->Width}x{node->Height}");
+            log.Information($"nav: collision {i} node {Hex((nint)node)} id {node->NodeId} flags {node->NodeFlags} nav index {index} at {node->X},{node->Y} {node->Width}x{node->Height}");
         }
     }
 
@@ -108,7 +108,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         }
 
         padLinking = !padLinking;
-        log.Info($"nav: pad linking is now {(padLinking ? "on" : "off")}");
+        log.Information($"nav: pad linking is now {(padLinking ? "on" : "off")}");
         return padLinking ? "on" : "off";
     }
 
@@ -169,7 +169,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         catch (Exception ex)
         {
             block = null;
-            log.Error("the guidance block could not be added to the Main Scenario Guide, so nothing is drawn this session.", ex);
+            log.Error(ex, "the guidance block could not be added to the Main Scenario Guide, so nothing is drawn this session.");
         }
     }
 
@@ -211,7 +211,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
         {
             broken = true;
             block.IsVisible = false;
-            log.Error("drawing the guidance block failed, so it is hidden for this session.", ex);
+            log.Error(ex, "drawing the guidance block failed, so it is hidden for this session.");
         }
     }
 

@@ -1,13 +1,15 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using Serilog.Core;
+using Serilog.Events;
 
 namespace Wayfarer.App;
 
-/// <summary>Posts log lines in batches to the URL in <see cref="AppConfig.RemoteLogUrl"/>, when
-/// there is one. Off by default; meant for a tester on the developer's own network who cannot
-/// send logs any other way. Lines are dropped, never retried, if the server is unreachable, so a
-/// dead server costs nothing but the lines.</summary>
-internal sealed class RemoteLogSink : IAsyncDisposable
+/// <summary>A Serilog sink that posts events in batches to the URL in
+/// <see cref="AppConfig.RemoteLogUrl"/>, when there is one. Off by default; meant for a tester on
+/// the developer's own network who cannot send logs any other way. Events are dropped, never
+/// retried, if the server is unreachable, so a dead server costs nothing but the lines.</summary>
+internal sealed class RemoteLogSink : ILogEventSink, IAsyncDisposable
 {
     private const int MostQueued = 500;
     private const string TimeFormat = "HH:mm:ss.fff";
@@ -16,14 +18,9 @@ internal sealed class RemoteLogSink : IAsyncDisposable
     private readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(3) };
     private readonly Queue<Entry> queue = [];
     private readonly CancellationTokenSource stopping = new();
-    private readonly string version;
+    private readonly string version = typeof(RemoteLogSink).Assembly.GetName().Version?.ToString(3) ?? "?";
     private Task? pump;
     private string? url;
-
-    public RemoteLogSink()
-    {
-        version = typeof(RemoteLogSink).Assembly.GetName().Version?.ToString(3) ?? "?";
-    }
 
     /// <summary>Starts sending to <paramref name="remoteUrl"/>, or does nothing when it is null.</summary>
     public void Start(string? remoteUrl)
@@ -35,18 +32,24 @@ internal sealed class RemoteLogSink : IAsyncDisposable
         }
     }
 
-    public void Offer(string level, string message)
+    /// <inheritdoc/>
+    public void Emit(LogEvent logEvent)
     {
+        ArgumentNullException.ThrowIfNull(logEvent);
         if (url is null)
         {
             return;
         }
 
+        var message = logEvent.Exception is null
+            ? logEvent.RenderMessage(CultureInfo.InvariantCulture)
+            : $"{logEvent.RenderMessage(CultureInfo.InvariantCulture)} | {logEvent.Exception.GetType().Name}: {logEvent.Exception.Message}";
+
         lock (queue)
         {
             if (queue.Count < MostQueued)
             {
-                queue.Enqueue(new Entry(DateTime.Now.ToString(TimeFormat, CultureInfo.InvariantCulture), level, message, version));
+                queue.Enqueue(new Entry(logEvent.Timestamp.ToString(TimeFormat, CultureInfo.InvariantCulture), logEvent.Level.ToString(), message, version));
             }
         }
     }

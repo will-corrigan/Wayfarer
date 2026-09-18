@@ -36,15 +36,15 @@ internal sealed class GuidanceBlockNode : ResNode
     private string lastDistance = string.Empty;
     private ElevationHint elevation = ElevationHint.Level;
 
-    public GuidanceBlockNode(ITextureProvider textures, ILog log, Action onEntryPressed, Action onRoutePressed)
+    public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed)
     {
         Width = RootWidth;
 
-        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed, log.Debug));
+        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed, words => log.Debug(words)));
         entry.Position = new Vector2(WordsLeft, RowTextTop);
         entry.Width = WordsWidth;
 
-        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed, log.Debug));
+        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed, words => log.Debug(words)));
         route.Width = WordsWidth;
 
         compass = Attach(new CompassNode(textures, log) { Position = CompassOrigin, IsVisible = false });

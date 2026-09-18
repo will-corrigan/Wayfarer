@@ -25,13 +25,13 @@ internal sealed class CompassNode : ResNode
     private const float MarkOffsetY = 0.52f;
 
     private readonly ITextureProvider textures;
-    private readonly ILog log;
+    private readonly IPluginLog log;
     private readonly ImGuiImageNode ring = Glyph(CompassBitmap.Size);
     private readonly ImGuiImageNode needle = Glyph(CompassBitmap.Size);
     private readonly ImGuiImageNode mark = Glyph(ChevronBitmap.Size);
     private TextureState state = TextureState.NotLoaded;
 
-    public CompassNode(ITextureProvider textures, ILog log)
+    public CompassNode(ITextureProvider textures, IPluginLog log)
     {
         this.textures = textures;
         this.log = log;
@@ -105,7 +105,7 @@ internal sealed class CompassNode : ResNode
         }
         catch (Exception ex)
         {
-            log.Error("the compass could not be generated, so none is drawn this session.", ex);
+            log.Error(ex, "the compass could not be generated, so none is drawn this session.");
             return TextureState.Failed;
         }
     }

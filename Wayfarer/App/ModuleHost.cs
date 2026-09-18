@@ -1,3 +1,5 @@
+using Dalamud.Plugin.Services;
+
 namespace Wayfarer.App;
 
 /// <summary>Owns the enabled set and the modules' up/down state. Brings the enabled modules up on
@@ -7,7 +9,7 @@ namespace Wayfarer.App;
 /// do; the host awaits each module plainly so an unload never waits on a tick. A module that
 /// throws while coming up is logged and left down; one that throws while going down is logged and
 /// treated as down. Neither stops the other modules.</para></summary>
-internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, RemoteLogSink remoteLog, ILog log) : IModuleHost, IAsyncDisposable
+internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, RemoteLogSink remoteLog, IPluginLog log) : IModuleHost, IAsyncDisposable
 {
     private const string ConfigName = "app";
 
@@ -79,7 +81,7 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
         }
         catch (Exception ex)
         {
-            log.Error($"the {module.Name} module failed to start and is off for this session.", ex);
+            log.Error(ex, $"the {module.Name} module failed to start and is off for this session.");
         }
     }
 
@@ -92,7 +94,7 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
         }
         catch (Exception ex)
         {
-            log.Error($"the {module.Name} module failed to stop cleanly.", ex);
+            log.Error(ex, $"the {module.Name} module failed to stop cleanly.");
         }
     }
 }

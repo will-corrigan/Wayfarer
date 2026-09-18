@@ -13,7 +13,7 @@ internal sealed class AppRegistrations : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
-        builder.Register(c => ShippedRoutingGraph.Load(c.Resolve<IDalamudPluginInterface>(), c.Resolve<ILog>())).SingleInstance();
+        builder.Register(c => ShippedRoutingGraph.Load(c.Resolve<IDalamudPluginInterface>(), c.Resolve<IPluginLog>())).SingleInstance();
 
         // Auto-activated: the frame loop starts when the container is built, not when something
         // first asks for it, and stops when the container is disposed.
@@ -22,7 +22,7 @@ internal sealed class AppRegistrations : Module
         builder.RegisterType<Actions>().As<IActions>().SingleInstance();
 
         builder.RegisterType<RemoteLogSink>().SingleInstance();
-        builder.RegisterType<Log>().As<ILog>().SingleInstance();
+        builder.RegisterDecorator<LanMirroredPluginLog, IPluginLog>();
         builder.RegisterType<ConfigStore>().As<IConfigStore>().SingleInstance();
         builder.RegisterType<ModuleHost>().As<IModuleHost>().AsSelf().SingleInstance();
         builder.RegisterType<SettingsService>().SingleInstance().AutoActivate();
