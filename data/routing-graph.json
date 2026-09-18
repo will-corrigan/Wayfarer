@@ -491,6 +491,20 @@
       }
     },
     {
+      "Id": 37,
+      "Name": "Alchemists\u0027 Guild",
+      "Kind": "Shard",
+      "Network": 3,
+      "At": {
+        "Territory": 131,
+        "Map": 73,
+        "X": -97.5,
+        "Y": 0,
+        "Z": 85.5,
+        "Radius": 0
+      }
+    },
+    {
       "Id": 38,
       "Name": "Gate of the Sultana (Western Thanalan)",
       "Kind": "Shard",
@@ -669,6 +683,20 @@
         "X": -20,
         "Y": 0,
         "Z": 73,
+        "Radius": 0
+      }
+    },
+    {
+      "Id": 51,
+      "Name": "The Chamber of Rule",
+      "Kind": "Shard",
+      "Network": 3,
+      "At": {
+        "Territory": 131,
+        "Map": 73,
+        "X": 6.5,
+        "Y": 0,
+        "Z": -27,
         "Radius": 0
       }
     },
@@ -1159,6 +1187,48 @@
         "X": -220.536,
         "Y": 104.263,
         "Z": -600.225,
+        "Radius": 0
+      }
+    },
+    {
+      "Id": 93,
+      "Name": "Airship Landing",
+      "Kind": "Shard",
+      "Network": 1,
+      "At": {
+        "Territory": 128,
+        "Map": 11,
+        "X": 61,
+        "Y": 0,
+        "Z": 32,
+        "Radius": 0
+      }
+    },
+    {
+      "Id": 94,
+      "Name": "Airship Landing",
+      "Kind": "Shard",
+      "Network": 2,
+      "At": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 5.5,
+        "Y": 0,
+        "Z": 128,
+        "Radius": 0
+      }
+    },
+    {
+      "Id": 95,
+      "Name": "Airship Landing",
+      "Kind": "Shard",
+      "Network": 3,
+      "At": {
+        "Territory": 130,
+        "Map": 13,
+        "X": -39,
+        "Y": 0,
+        "Z": -36.5,
         "Radius": 0
       }
     },
@@ -1985,6 +2055,20 @@
         "X": 826.286,
         "Y": 35.9453,
         "Z": 407.199,
+        "Radius": 0
+      }
+    },
+    {
+      "Id": 157,
+      "Name": "The Mainstay",
+      "Kind": "Shard",
+      "Network": 11,
+      "At": {
+        "Territory": 820,
+        "Map": 554,
+        "X": 11,
+        "Y": 0,
+        "Z": -4,
         "Radius": 0
       }
     },

@@ -1,5 +1,4 @@
 using Lumina;
-using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Wayfarer.Core.Routing;
 
@@ -8,20 +7,23 @@ namespace Wayfarer.RoutingGen;
 /// <summary>Every aetheryte and aethernet shard as a route node.
 ///
 /// <para>A row's position comes from its Level reference when it has one, height included.
-/// When it has none, the row's map marker stands in: an aetheryte's marker is keyed by the
-/// aetheryte row, a shard's by its aethernet name. The row's own Map reference is not reliable —
-/// every Ishgard shard row carries Map 0 while the territory's map carries the markers — so the
-/// territory's map is searched too.</para></summary>
+/// Otherwise its map marker stands in: an aetheryte's marker is keyed by the aetheryte row, a
+/// shard's by its aethernet name, and it may sit on any map of the city, not the one the row
+/// names. A shard with no marker at all, the airship landings, takes the place-name label the
+/// city map draws for it.</para></summary>
 internal static class AetheryteNodes
 {
+    private const byte PlaceNameMarker = 0;
     private const byte AetheryteMarker = 3;
     private const byte ShardMarker = 4;
 
     public static List<RouteNode> Read(GameData game, MapSpace maps)
     {
-        var markers = game.Excel.GetSubrowSheet<MapMarker>();
-        var nodes = new List<RouteNode>();
+        var placed = new Dictionary<(byte Type, uint Key), Place>();
+        var labelled = new Dictionary<uint, List<Place>>();
+        IndexMarkers(game, maps, placed, labelled);
 
+        var nodes = new List<RouteNode>();
         foreach (var row in game.Excel.GetSheet<Aetheryte>())
         {
             var isShard = !row.IsAetheryte && row.AethernetGroup != 0;
@@ -36,7 +38,7 @@ internal static class AetheryteNodes
                 continue;
             }
 
-            if (Position(row, maps, markers) is not { } at)
+            if (Position(row, isShard, placed, labelled) is not { } at)
             {
                 Console.Error.WriteLine($"no position for {(isShard ? "shard" : "aetheryte")} {row.RowId} {name}; skipped");
                 continue;
@@ -48,7 +50,33 @@ internal static class AetheryteNodes
         return nodes;
     }
 
-    private static Place? Position(Aetheryte row, MapSpace maps, SubrowExcelSheet<MapMarker> markers)
+    private static void IndexMarkers(GameData game, MapSpace maps, Dictionary<(byte Type, uint Key), Place> placed, Dictionary<uint, List<Place>> labelled)
+    {
+        var markers = game.Excel.GetSubrowSheet<MapMarker>();
+        foreach (var map in game.Excel.GetSheet<Map>())
+        {
+            if (map.MapMarkerRange == 0 || !markers.HasRow(map.MapMarkerRange) || maps.TerritoryOf(map.RowId) == 0)
+            {
+                continue;
+            }
+
+            foreach (var marker in markers[map.MapMarkerRange])
+            {
+                switch (marker.DataType)
+                {
+                    case AetheryteMarker or ShardMarker when marker.DataKey.RowId != 0:
+                        placed.TryAdd((marker.DataType, marker.DataKey.RowId), maps.Place(map, marker));
+                        break;
+                    case PlaceNameMarker when marker.PlaceNameSubtext.RowId != 0:
+                        labelled.TryGetValue(marker.PlaceNameSubtext.RowId, out var places);
+                        (places ?? (labelled[marker.PlaceNameSubtext.RowId] = [])).Add(maps.Place(map, marker));
+                        break;
+                }
+            }
+        }
+    }
+
+    private static Place? Position(Aetheryte row, bool isShard, Dictionary<(byte Type, uint Key), Place> placed, Dictionary<uint, List<Place>> labelled)
     {
         foreach (var reference in row.Level)
         {
@@ -58,32 +86,23 @@ internal static class AetheryteNodes
             }
         }
 
-        var territoryMap = row.Territory.ValueNullable?.Map.RowId ?? 0;
-        foreach (var mapId in new[] { row.Map.RowId, territoryMap }.Where(id => id != 0).Distinct())
+        var key = isShard ? (ShardMarker, row.AethernetName.RowId) : (AetheryteMarker, row.RowId);
+        if (placed.TryGetValue(key, out var marked))
         {
-            if (maps.Row(mapId) is not { } map || !markers.HasRow(map.MapMarkerRange))
-            {
-                continue;
-            }
+            return OwnedBy(row, marked);
+        }
 
-            foreach (var marker in markers[map.MapMarkerRange])
-            {
-                var matches = marker.DataType switch
-                {
-                    AetheryteMarker => marker.DataKey.RowId == row.RowId,
-                    ShardMarker => marker.DataKey.RowId == row.AethernetName.RowId,
-                    _ => false,
-                };
-
-                if (matches)
-                {
-                    // The row knows its own territory better than the map does.
-                    var place = maps.Place(map, marker);
-                    return row.Territory.RowId == 0 ? place : place with { Territory = row.Territory.RowId };
-                }
-            }
+        if (isShard && labelled.TryGetValue(row.AethernetName.RowId, out var labels))
+        {
+            var territoryMap = row.Territory.ValueNullable?.Map.RowId ?? 0;
+            var label = labels.FirstOrDefault(place => place.Map == territoryMap) ?? labels[0];
+            return OwnedBy(row, label);
         }
 
         return null;
     }
+
+    /// <summary>The row knows its own territory better than the map does.</summary>
+    private static Place OwnedBy(Aetheryte row, Place place) =>
+        row.Territory.RowId == 0 ? place : place with { Territory = row.Territory.RowId };
 }
