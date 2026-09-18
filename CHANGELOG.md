@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/will-corrigan/Wayfarer/compare/v1.0.1...v1.0.2) (2026-09-18)
+
+
+### Fixed
+
+* **surface:** make each line one sized control the game's cursor can find ([#56](https://github.com/will-corrigan/Wayfarer/issues/56)) ([ba07a01](https://github.com/will-corrigan/Wayfarer/commit/ba07a0116a9cc33578e889884715b8f42cf5f220))
+
 ## [1.0.1](https://github.com/will-corrigan/Wayfarer/compare/v1.0.0...v1.0.1) (2026-09-18)
 
 
