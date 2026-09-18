@@ -73,6 +73,17 @@ internal static class ScenarioTreeMetrics
     /// <summary>The compass ring's box, a little smaller than the icon column it sits in.</summary>
     public const float CompassSize = 26f;
 
+    /// <summary>The controller hint strip ("Back / Confirm Destination") the game draws in the
+    /// job-row band while the guide has focus: node 9, 28 tall.</summary>
+    public const uint HintBarNodeId = 9;
+
+    /// <inheritdoc cref="HintBarNodeId"/>
+    public const float HintBarHeight = 28f;
+
+    /// <summary>The headline plate, component node 13: the stop the controller cursor rests on when
+    /// HUD Select reaches the guide, and the one our lines hang below in its navigation.</summary>
+    public const uint PlateNodeId = 13;
+
     /// <summary>The job-quest row nodes, by id, whose visibility says how many rows are showing.</summary>
     public static readonly uint[] JobRowNodeIds = [7, 8];
 }

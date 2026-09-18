@@ -18,8 +18,10 @@ internal sealed class GuidanceBlockNode : ResNode
     private const TextFlags SingleLineFlags = TextFlags.Edge | TextFlags.Ellipsis;
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
-    private const int EntryNavIndex = 1;
-    private const int RouteNavIndex = 2;
+
+    /// <summary>Our stops in the addon's controller navigation, well clear of the game's own.</summary>
+    private const int EntryNavIndex = 100;
+    private const int RouteNavIndex = 101;
 
     private static readonly Vector2 CompassOrigin = new(
         IconColumnLeft + ((IconColumnWidth - CompassSize) / 2f),
@@ -50,6 +52,9 @@ internal sealed class GuidanceBlockNode : ResNode
     /// surface when this changes.</summary>
     public bool AnyPressable => entry.Pressable || route.Pressable;
 
+    /// <summary>The first of our stops the cursor can move down to from the plate, or null.</summary>
+    public int? FirstStop => entry.Pressable ? EntryNavIndex : route.Pressable ? RouteNavIndex : null;
+
     public void SetWords(LineContent? entryContent, LineContent? routeContent)
     {
         IsVisible = entryContent is not null;
@@ -64,10 +69,17 @@ internal sealed class GuidanceBlockNode : ResNode
         route.Position = new Vector2(WordsLeft, RowTextTop + entryBlock);
         route.Set(routeContent);
 
-        entry.SetNav(EntryNavIndex, route.Pressable ? RouteNavIndex : EntryNavIndex, route.Pressable ? RouteNavIndex : EntryNavIndex);
-        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : RouteNavIndex, entry.Pressable ? EntryNavIndex : RouteNavIndex);
-
         Height = RowTextTop + entryBlock + (route.IsVisible ? route.Height : 0f);
+    }
+
+    /// <summary>Chains our stops under the plate: down from the plate reaches the first pressable
+    /// line, down again the next, and up from the top one returns to the plate.</summary>
+    public void LinkNav(int plateIndex)
+    {
+        var below = route.Pressable ? RouteNavIndex : plateIndex;
+        var above = entry.Pressable ? EntryNavIndex : plateIndex;
+        entry.SetNav(EntryNavIndex, plateIndex, below);
+        route.SetNav(RouteNavIndex, above, plateIndex);
     }
 
     public void SetHeading(float? needle, float? yalms)

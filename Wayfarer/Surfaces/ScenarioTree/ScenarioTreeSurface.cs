@@ -29,6 +29,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private GuidanceBlockNode? block;
     private bool wordsChanged = true;
     private bool broken;
+    private byte? plateDownBeforeUs;
 
     public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
@@ -57,8 +58,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         await controller.DisposeAsync().ConfigureAwait(false);
     }
 
-    private static unsafe int VisibleJobRows(AtkUnitBase* addon) =>
-        JobRowNodeIds.Count(id => addon->GetNodeById(id) is var node && node != null && node->IsVisible());
+    private static unsafe bool NodeShown(AtkUnitBase* addon, uint id) =>
+        addon->GetNodeById(id) is var node && node != null && node->IsVisible();
+
+    /// <summary>How far down the game's own rows push our block: one pitch per job-quest row, and
+    /// the controller hint strip while the guide has focus.</summary>
+    private static unsafe float RowsAbove(AtkUnitBase* addon) =>
+        (JobRowPitch * JobRowNodeIds.Count(id => NodeShown(addon, id))) + (NodeShown(addon, HintBarNodeId) ? HintBarHeight : 0f);
+
+    private static unsafe AtkComponentNode* Plate(AtkUnitBase* addon)
+    {
+        var node = addon->GetNodeById(PlateNodeId);
+        return node == null || (int)node->Type < (int)NodeType.Component ? null : (AtkComponentNode*)node;
+    }
 
     private static LineContent? EntryContent(ObjectiveEntry? entry) =>
         entry is null ? null : new LineContent(EntryWords.Describe(entry), IconFor(entry.Action), entry.Action is not null);
@@ -104,9 +116,33 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     private unsafe void Detach(AtkUnitBase* addon)
     {
+        if (plateDownBeforeUs is { } original && Plate(addon) is var plate && plate != null)
+        {
+            plate->Component->CursorNavigationInfo.DownIndex = original;
+        }
+
+        plateDownBeforeUs = null;
         block?.Dispose();
         block = null;
         addon->RootNode->SetHeight((ushort)RootHeight);
+    }
+
+    /// <summary>Hangs our stops under the game's plate in the controller's navigation: pressing
+    /// down on the plate reaches our first pressable line, and up from it returns. The plate's
+    /// original down is kept and restored when we detach. Re-applied every frame, because the
+    /// game rebuilds its own navigation when it refreshes.</summary>
+    private unsafe void LinkControllerNav(AtkUnitBase* addon)
+    {
+        var plate = Plate(addon);
+        if (plate == null || plate->Component == null)
+        {
+            return;
+        }
+
+        ref var nav = ref plate->Component->CursorNavigationInfo;
+        plateDownBeforeUs ??= nav.DownIndex;
+        nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
+        block.LinkNav(nav.Index);
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -118,8 +154,9 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
         try
         {
-            block.Position = new Vector2(0f, JobRowsTop + (JobRowPitch * VisibleJobRows(addon)));
+            block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
+            LinkControllerNav(addon);
             block.SetHeading(heading.Needle, heading.DistanceYalms);
             FitRootToBlock(addon);
         }
