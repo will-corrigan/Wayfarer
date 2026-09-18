@@ -5,10 +5,11 @@ namespace Wayfarer.App;
 /// <summary>Owns the enabled set and the modules' up/down state. Brings the enabled modules up on
 /// <see cref="StartAsync"/> and takes every module that is up down when disposed.
 ///
-/// <para>A module that throws while coming up is logged and left down; a module that throws while
-/// going down is logged and treated as down, because there is nothing else to do with it. Neither
-/// stops the other modules.</para></summary>
-internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, IPluginLog log) : IModuleHost, IAsyncDisposable
+/// <para>Modules come up and go down on the framework thread, because what they do there, claim
+/// focus, subscribe, put nodes on screen, is read by the frame loop. A module that throws while
+/// coming up is logged and left down; one that throws while going down is logged and treated as
+/// down. Neither stops the other modules.</para></summary>
+internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, IFramework framework, IPluginLog log) : IModuleHost, IAsyncDisposable
 {
     private const string ConfigName = "app";
 
@@ -34,12 +35,9 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
             configs.Save(ConfigName, config);
         }
 
-        foreach (var module in modules)
+        foreach (var module in modules.Where(m => config.EnabledModules.Contains(m.Name)))
         {
-            if (config.EnabledModules.Contains(module.Name))
-            {
-                await BringUpAsync(module).ConfigureAwait(false);
-            }
+            await BringUpAsync(module).ConfigureAwait(false);
         }
     }
 
@@ -47,16 +45,12 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
     public async Task SetEnabledAsync(IModule module, bool enabled)
     {
         ArgumentNullException.ThrowIfNull(module);
-        if (enabled)
-        {
-            config.EnabledModules.Add(module.Name);
-        }
-        else
-        {
-            config.EnabledModules.Remove(module.Name);
-        }
 
-        configs.Save(ConfigName, config);
+        var changed = enabled ? config.EnabledModules.Add(module.Name) : config.EnabledModules.Remove(module.Name);
+        if (changed)
+        {
+            configs.Save(ConfigName, config);
+        }
 
         if (enabled && !up.Contains(module))
         {
@@ -71,12 +65,9 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        foreach (var module in modules)
+        foreach (var module in modules.Where(up.Contains).ToList())
         {
-            if (up.Contains(module))
-            {
-                await TakeDownAsync(module).ConfigureAwait(false);
-            }
+            await TakeDownAsync(module).ConfigureAwait(false);
         }
     }
 
@@ -84,7 +75,7 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
     {
         try
         {
-            await module.EnableAsync().ConfigureAwait(false);
+            await framework.RunOnTick(module.EnableAsync).ConfigureAwait(false);
             up.Add(module);
         }
         catch (Exception ex)
@@ -98,7 +89,7 @@ internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore conf
         up.Remove(module);
         try
         {
-            await module.DisableAsync().ConfigureAwait(false);
+            await framework.RunOnTick(module.DisableAsync).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
