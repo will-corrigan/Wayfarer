@@ -17,19 +17,19 @@
   <Import Project="../local.props" Condition="Exists('../local.props')"/>
   <ItemGroup>
     <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj"/>
-    <ProjectReference Include="../Wayfarer.Api/Wayfarer.Api.csproj"/>
     <!-- Vendored as a git submodule (external/KamiToolKit), not NuGet - see
          THIRD_PARTY_NOTICES.md. Its own project settings are intentionally not inherited
          from this repo's Directory.Build.props (see the guard there). -->
     <ProjectReference Include="../external/KamiToolKit/KamiToolKit.csproj"/>
   </ItemGroup>
+  <!-- The routing data the generator wrote (tools/Wayfarer.RoutingGen), shipped beside the DLL. -->
   <ItemGroup>
-    <Content Include="../data/unlocks-by-level.json" Link="unlocks-by-level.json" CopyToOutputDirectory="PreserveNewest"/>
-    <Content Include="../data/hunting-targets.json" Link="hunting-targets.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Content Include="../data/routing-graph.json" Link="routing-graph.json" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
   <!-- CPM is disabled above, so the analyzer references from Directory.Build.props
        need explicit versions here (kept in sync with Directory.Packages.props). -->
   <ItemGroup>
+    <PackageReference Include="Autofac" Version="9.3.2"/>
     <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.556"/>
     <PackageReference Update="Meziantou.Analyzer" Version="3.0.177"/>
   </ItemGroup>
