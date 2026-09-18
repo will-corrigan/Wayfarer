@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6](https://github.com/will-corrigan/Wayfarer/compare/v1.0.5...v1.0.6) (2026-09-18)
+
+
+### Fixed
+
+* **surface:** reach the guidance lines with the pad, and leave the guide clean on unload ([#67](https://github.com/will-corrigan/Wayfarer/issues/67)) ([a186770](https://github.com/will-corrigan/Wayfarer/commit/a1867702cd82d8ff9d3007b71309001f3420e266))
+
 ## [1.0.5](https://github.com/will-corrigan/Wayfarer/compare/v1.0.4...v1.0.5) (2026-09-18)
 
 
