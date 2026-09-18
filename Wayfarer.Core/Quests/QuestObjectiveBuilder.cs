@@ -3,99 +3,66 @@ using Wayfarer.Core.Routing;
 
 namespace Wayfarer.Core.Quests;
 
-/// <summary>Turns what the game says about a quest's current step into the objective the app
-/// guides to. Pure: the game reads are done elsewhere and handed in.
+/// <summary>Turns a quest's current step into the objective the app guides to.
 ///
-/// <para><b>Which lines are still to do.</b> The data lists every to-do line of a step; the game
-/// only says which are finished by taking their markers down. So a line is kept while a live marker
-/// stands at one of its authored locations, and dropped once none does — unless the quest has no
-/// markers at all this frame, in which case the authored locations themselves are the best guess
-/// and every line is kept. A line with no location anywhere is kept as blocked, so its words still
-/// show.</para>
-///
-/// <para><b>Words.</b> A line whose sheet text still has a placeholder the game would fill in at
-/// runtime, usually a live count, takes the marker's own label when there is one, which the game
-/// has already resolved; otherwise the sheet text is used as it is.</para></summary>
+/// <para>The game never says which lines of a step are done; it only takes their markers down. So
+/// a line is kept while a marker stands at one of its authored locations and dropped once none
+/// does, unless the quest has no markers at all, when the authored locations stand in. A line whose
+/// words still hold a runtime placeholder takes its marker's label, which the game has already
+/// filled in.</para></summary>
 public static class QuestObjectiveBuilder
 {
-    /// <summary>How close a live marker has to stand to an authored location to be that
-    /// location's marker. The game places markers exactly on the location row; this is slack for
-    /// float error and for markers the game nudges onto the map, not a search radius.</summary>
+    /// <summary>How close a live marker has to stand to an authored location to be its marker:
+    /// slack for float error and for markers the game nudges, not a search radius.</summary>
     public const float MatchYalms = 5f;
 
+    private const string NoLocation = "no map location for this step";
+
     /// <summary>The objective for one step, or null when nothing in it is left to do.</summary>
-    /// <param name="questName">What the banner calls the quest.</param>
-    /// <param name="sequence">The step the player is on.</param>
-    /// <param name="todos">The quest's whole to-do table.</param>
-    /// <param name="markers">The game's live markers for the quest this frame.</param>
-    public static Objective? Build(
-        string questName,
-        byte sequence,
-        IReadOnlyList<QuestTodo> todos,
-        IReadOnlyList<QuestMarker> markers)
+    public static Objective? Build(string questName, byte sequence, IReadOnlyList<QuestTodo> todos, IReadOnlyList<QuestMarker> markers)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
         ArgumentNullException.ThrowIfNull(markers);
 
-        var entries = new List<ObjectiveEntry>();
-        var anyAuthoredForStep = false;
-        foreach (var todo in todos)
-        {
-            if (todo.Sequence != sequence)
-            {
-                continue;
-            }
+        var step = todos.Where(todo => todo.Sequence == sequence).ToList();
+        var entries = step.Count > 0
+            ? [.. step.Select(todo => Entry(todo, markers)).OfType<ObjectiveEntry>()]
+            : DescribedByMarkers(questName, markers);
 
-            anyAuthoredForStep = true;
-            if (Entry(todo, markers) is { } entry)
-            {
-                entries.Add(entry);
-            }
-        }
-
-        // No authored lines for this step at all: the markers are the only description there is.
-        if (!anyAuthoredForStep && markers.Count > 0)
-        {
-            var label = markers.FirstOrDefault(m => m.Label is { Length: > 0 })?.Label ?? questName;
-            entries.Add(new ObjectiveEntry(label, null, new Destination.Reachable([.. markers.Select(m => m.At)])));
-        }
-
-        return entries.Count == 0 ? null : new Objective(questName, null, entries);
+        return entries.Count > 0 ? new Objective(questName, null, entries) : null;
     }
 
     private static ObjectiveEntry? Entry(QuestTodo todo, IReadOnlyList<QuestMarker> markers)
     {
-        var standing = markers.Where(m => todo.Locations.Any(l => Near(l, m.At))).ToList();
-        if (standing.Count > 0)
-        {
-            return new ObjectiveEntry(
-                Words(todo, standing),
-                null,
-                new Destination.Reachable([.. standing.Select(m => m.At)]));
-        }
+        var standing = markers.Where(marker => todo.Locations.Any(location => Near(location, marker.At))).ToList();
 
-        // The quest has markers, just none at this line's places: the game took this line's down,
-        // which is how it says the line is done.
-        if (markers.Count > 0)
-        {
-            return null;
-        }
+        var lineHasLiveMarker = standing.Count > 0;
+        var questHasAnyLiveMarker = markers.Count > 0;
+        var lineHasAuthoredLocation = todo.Locations.Count > 0;
 
-        return todo.Locations.Count > 0
-            ? new ObjectiveEntry(Words(todo, standing), null, new Destination.Reachable(todo.Locations))
-            : new ObjectiveEntry(Words(todo, standing), null, new Destination.Blocked("no map location for this step"));
+        return (lineHasLiveMarker, questHasAnyLiveMarker, lineHasAuthoredLocation) switch
+        {
+            (true, _, _) => new ObjectiveEntry(Words(todo, standing), null, Reachable(standing)),
+            (false, true, _) => null,
+            (false, false, true) => new ObjectiveEntry(todo.Text, null, new Destination.Reachable(todo.Locations)),
+            (false, false, false) => new ObjectiveEntry(todo.Text, null, new Destination.Blocked(NoLocation)),
+        };
     }
 
-    private static string Words(QuestTodo todo, List<QuestMarker> standing)
-    {
-        if (!todo.HasUnresolvedPlaceholder)
-        {
-            return todo.Text;
-        }
+    private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers) =>
+        markers.Count == 0
+            ? []
+            : [new ObjectiveEntry(FirstLabel(markers) ?? questName, null, Reachable(markers))];
 
-        return standing.FirstOrDefault(m => m.Label is { Length: > 0 })?.Label ?? todo.Text;
-    }
+    private static string Words(QuestTodo todo, IEnumerable<QuestMarker> standing) =>
+        todo.HasUnresolvedPlaceholder ? FirstLabel(standing) ?? todo.Text : todo.Text;
+
+    private static string? FirstLabel(IEnumerable<QuestMarker> markers) =>
+        markers.Select(marker => marker.Label).FirstOrDefault(label => !string.IsNullOrEmpty(label));
+
+    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers) =>
+        new([.. markers.Select(marker => marker.At)]);
 
     private static bool Near(Place authored, Place live) =>
         authored.Territory == live.Territory

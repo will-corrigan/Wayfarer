@@ -8,35 +8,25 @@ using KamiToolKit.Nodes;
 using Lumina.Text.ReadOnly;
 using Wayfarer.Core.Presentation;
 using Wayfarer.Ui;
+using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
-/// <summary>The block Wayfarer draws under the game's Main Scenario Guide: the entry being
-/// guided to, the route line beneath it, and the compass with its distance in the icon column
-/// beside them. Laid out in the addon's own root coordinates.
-///
-/// <para>Two kinds of input at two rates. <see cref="SetWords"/> is called when the guidance
-/// changes and re-lays the text; <see cref="SetHeading"/> is called every frame and only moves
-/// the needle and rewrites the distance.</para>
-///
-/// <para>A route line with a press is a control on a heads-up surface, which is two nodes that
-/// agree about one rectangle: an invisible box the pointer clicks, and a zero-sized component the
-/// game's controller cursor comes to rest on. Both are shown only while the line is pressable,
-/// and both run the one action the surface was given.</para></summary>
+/// <summary>The block under the game's Main Scenario Guide: the entry being guided to, the route
+/// line under it, and the compass with its distance in the icon column. Words are set when the
+/// guidance changes; the needle and distance every frame.</summary>
 internal sealed class GuidanceBlockNode : ResNode
 {
-    private const TextFlags WordFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
+    private const TextFlags WrappingFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
     private const TextFlags SingleLineFlags = TextFlags.Edge | TextFlags.Ellipsis;
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
-
-    /// <summary>What a pressable line's words sit at when nothing is on them. The lift to full is
-    /// what says the line can be pressed.</summary>
     private const float PressableIdleAlpha = 0.8f;
-
-    /// <summary>Where the controller anchor sits inside the line's rectangle: two units in from the
-    /// left at half the height, the same as the toolkit's own navigable rows.</summary>
     private const float NavAnchorInset = 2f;
+
+    private static readonly Vector2 CompassOrigin = new(
+        IconColumnLeft + ((IconColumnWidth - CompassSize) / 2f),
+        RowTextTop + ((WordsLeading - CompassSize) / 2f));
 
     private readonly TextNode entry;
     private readonly TextNode route;
@@ -48,124 +38,74 @@ internal sealed class GuidanceBlockNode : ResNode
 
     public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onRoutePressed)
     {
-        Width = ScenarioTreeMetrics.RootWidth;
-
-        entry = Words(WordFlags, GameColors.Body, ScenarioTreeMetrics.WordsFontSize, ScenarioTreeMetrics.WordsLeading);
-        entry.Position = new Vector2(ScenarioTreeMetrics.WordsLeft, ScenarioTreeMetrics.RowTextTop);
-        entry.Width = ScenarioTreeMetrics.WordsWidth;
-        entry.AttachNode(this);
-
-        route = Words(SingleLineFlags, GameColors.ListText, ScenarioTreeMetrics.RouteFontSize, ScenarioTreeMetrics.RouteLeading);
-        route.Position = new Vector2(ScenarioTreeMetrics.WordsLeft, ScenarioTreeMetrics.RowTextTop + ScenarioTreeMetrics.WordsBlock);
-        route.Size = new Vector2(ScenarioTreeMetrics.WordsWidth, ScenarioTreeMetrics.RouteLeading);
-        route.AttachNode(this);
-
-        // The pointer's half of the press: an invisible collision rectangle over the route's words.
-        // The hover lights the words, not the box.
-        hitBox = new CollisionNode { IsVisible = false, ShowClickableCursor = true };
-        hitBox.AddEvent(AtkEventType.MouseClick, onRoutePressed);
-        hitBox.AddEvent(AtkEventType.MouseOver, () => route.Alpha = 1f);
-        hitBox.AddEvent(AtkEventType.MouseOut, () => route.Alpha = PressableIdleAlpha);
-        hitBox.AttachNode(this);
-
-        // The controller's half: a component the game's cursor can rest on, sized to nothing so it
-        // covers nothing, whose Confirm runs the same action.
-        navAnchor = new NavFocusNode
-        {
-            OnSelected = onRoutePressed,
-            OnHoverStart = () => route.Alpha = 1f,
-            OnHoverEnd = () => route.Alpha = PressableIdleAlpha,
-            Size = Vector2.Zero,
-            IsVisible = false,
-        };
-        navAnchor.CollisionNode.RemoveNodeFlags(NodeFlags.Fill);
-        navAnchor.AttachNode(this);
-
-        // Centred in the icon column and on the first line of words.
-        compass = new CompassNode(textures, log) { IsVisible = false };
-        compass.Position = new Vector2(
-            ScenarioTreeMetrics.IconColumnLeft + ((ScenarioTreeMetrics.IconColumnWidth - ScenarioTreeMetrics.CompassSize) / 2f),
-            ScenarioTreeMetrics.RowTextTop + ((ScenarioTreeMetrics.WordsLeading - ScenarioTreeMetrics.CompassSize) / 2f));
-        compass.AttachNode(this);
-
-        distance = Words(DistanceFlags, GameColors.ListText, ScenarioTreeMetrics.DistanceFontSize, ScenarioTreeMetrics.RouteLeading);
-        distance.TextOutlineColor = GameColors.ListTextEdge;
-        distance.AlignmentType = AlignmentType.Top;
-        distance.Position = new Vector2(
-            ScenarioTreeMetrics.IconColumnLeft + ((ScenarioTreeMetrics.IconColumnWidth - ScenarioTreeMetrics.DistanceWidth) / 2f),
-            compass.Position.Y + ScenarioTreeMetrics.CompassSize);
-        distance.Size = new Vector2(ScenarioTreeMetrics.DistanceWidth, ScenarioTreeMetrics.RouteLeading);
-        distance.AttachNode(this);
+        Width = RootWidth;
+        entry = Attach(EntryWords());
+        route = Attach(RouteLine());
+        hitBox = Attach(HitBox(onRoutePressed));
+        navAnchor = Attach(NavAnchor(onRoutePressed));
+        compass = Attach(new CompassNode(textures, log) { Position = CompassOrigin, IsVisible = false });
+        distance = Attach(Distance());
     }
 
-    /// <summary>Whether the route line can be pressed right now. The surface refreshes the addon's
-    /// collision list when this changes, because the game only dispatches clicks to nodes in it.</summary>
-    public bool RoutePressable { get; private set; }
+    /// <summary>Whether the route line can be pressed. The addon's collision list is rebuilt by the
+    /// surface when this changes.</summary>
+    public bool RoutePressable => hitBox.IsVisible;
 
-    /// <summary>Lays the words out. Null entry words hide the whole block.</summary>
     public void SetWords(string? entryWords, RouteLine? routeLine)
     {
+        IsVisible = entryWords is not null;
         if (entryWords is null)
         {
-            IsVisible = false;
-            RoutePressable = false;
             return;
         }
 
         entry.String = entryWords;
-        var lines = Math.Clamp(MathF.Ceiling(entry.GetTextDrawSize(considerScale: false).Y / ScenarioTreeMetrics.WordsLeading), 1, ScenarioTreeMetrics.MaxEntryLines);
-        entry.Height = lines * ScenarioTreeMetrics.WordsLeading;
+        entry.Height = EntryLines() * WordsLeading;
 
-        // The last line gets the tracker's full block before anything hangs under it.
-        var entryBlock = ((lines - 1) * ScenarioTreeMetrics.WordsLeading) + ScenarioTreeMetrics.WordsBlock;
-        route.Y = ScenarioTreeMetrics.RowTextTop + entryBlock;
-        LayoutRoute(routeLine);
+        var entryBlock = ((EntryLines() - 1) * WordsLeading) + WordsBlock;
+        route.Y = RowTextTop + entryBlock;
+        SetRoute(routeLine);
 
-        Height = ScenarioTreeMetrics.RowTextTop + entryBlock + (route.IsVisible ? ScenarioTreeMetrics.RouteLeading : 0f);
-        IsVisible = true;
+        Height = RowTextTop + entryBlock + (route.IsVisible ? RouteLeading : 0f);
     }
 
-    /// <summary>Turns the needle and rewrites the distance, or hides both when there is nothing to
-    /// point at.</summary>
     public void SetHeading(float? needle, float? yalms)
     {
+        distance.IsVisible = needle is not null && yalms is not null;
         if (needle is not { } radians || yalms is not { } distanceYalms)
         {
             compass.IsVisible = false;
-            distance.IsVisible = false;
             return;
         }
 
-        compass.Show(ScenarioTreeMetrics.CompassSize, radians);
-
-        var words = MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix;
-        if (!string.Equals(words, lastDistance, StringComparison.Ordinal))
-        {
-            lastDistance = words;
-            distance.String = words;
-        }
-
-        distance.IsVisible = true;
+        compass.Show(CompassSize, radians);
+        SetDistance(MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
     }
 
-    /// <summary>The game's own font icon for a route mark.</summary>
-    private static BitmapFontIcon? Icon(RouteGlyph glyph) => glyph switch
+    private static TextNode EntryWords()
     {
-        RouteGlyph.Aetheryte => BitmapFontIcon.Aetheryte,
-        RouteGlyph.Duty => BitmapFontIcon.WaitingForDutyFinder,
-        _ => null,
-    };
+        var words = Words(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading);
+        words.Position = new Vector2(WordsLeft, RowTextTop);
+        words.Width = WordsWidth;
+        return words;
+    }
 
-    private static ReadOnlySeString WithIcon(RouteLine line)
+    private static TextNode RouteLine()
     {
-        if (Icon(line.Glyph) is not { } icon)
-        {
-            return line.Text;
-        }
+        var words = Words(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading);
+        words.Position = new Vector2(WordsLeft, RowTextTop + WordsBlock);
+        words.Size = new Vector2(WordsWidth, RouteLeading);
+        return words;
+    }
 
-        var builder = new SeStringBuilder();
-        builder.AddIcon(icon).AddText(line.Text);
-        return new ReadOnlySeString(builder.Build().Encode());
+    private static TextNode Distance()
+    {
+        var words = Words(DistanceFlags, GameColors.ListText, DistanceFontSize, RouteLeading);
+        words.TextOutlineColor = GameColors.ListTextEdge;
+        words.AlignmentType = AlignmentType.Top;
+        words.Position = new Vector2(IconColumnLeft + ((IconColumnWidth - DistanceWidth) / 2f), CompassOrigin.Y + CompassSize);
+        words.Size = new Vector2(DistanceWidth, RouteLeading);
+        return words;
     }
 
     private static TextNode Words(TextFlags flags, Vector4 color, uint fontSize, float leading) => new()
@@ -179,28 +119,76 @@ internal sealed class GuidanceBlockNode : ResNode
         TextOutlineColor = GameColors.BodyEdge,
     };
 
-    private void LayoutRoute(RouteLine? routeLine)
+    private static BitmapFontIcon? Icon(RouteGlyph glyph) => glyph switch
     {
-        if (routeLine is null)
+        RouteGlyph.Aetheryte => BitmapFontIcon.Aetheryte,
+        RouteGlyph.Duty => BitmapFontIcon.WaitingForDutyFinder,
+        _ => null,
+    };
+
+    private static ReadOnlySeString WithIcon(RouteLine line) =>
+        Icon(line.Glyph) is { } icon
+            ? new ReadOnlySeString(new SeStringBuilder().AddIcon(icon).AddText(line.Text).Build().Encode())
+            : line.Text;
+
+    private T Attach<T>(T node)
+        where T : KamiToolKit.BaseTypes.NodeBase
+    {
+        node.AttachNode(this);
+        return node;
+    }
+
+    private CollisionNode HitBox(Action onPressed)
+    {
+        var box = new CollisionNode { IsVisible = false, ShowClickableCursor = true };
+        box.AddEvent(AtkEventType.MouseClick, onPressed);
+        box.AddEvent(AtkEventType.MouseOver, () => route.Alpha = 1f);
+        box.AddEvent(AtkEventType.MouseOut, () => route.Alpha = PressableIdleAlpha);
+        return box;
+    }
+
+    private NavFocusNode NavAnchor(Action onPressed)
+    {
+        var anchor = new NavFocusNode
         {
-            route.IsVisible = false;
-            hitBox.IsVisible = false;
-            navAnchor.IsVisible = false;
-            RoutePressable = false;
+            OnSelected = onPressed,
+            OnHoverStart = () => route.Alpha = 1f,
+            OnHoverEnd = () => route.Alpha = PressableIdleAlpha,
+            Size = Vector2.Zero,
+            IsVisible = false,
+        };
+        anchor.CollisionNode.RemoveNodeFlags(NodeFlags.Fill);
+        return anchor;
+    }
+
+    private int EntryLines() =>
+        Math.Clamp((int)MathF.Ceiling(entry.GetTextDrawSize(considerScale: false).Y / WordsLeading), 1, MaxEntryLines);
+
+    private void SetRoute(RouteLine? line)
+    {
+        route.IsVisible = line is not null;
+        hitBox.IsVisible = line?.Press is not null;
+        navAnchor.IsVisible = hitBox.IsVisible;
+        if (line is null)
+        {
             return;
         }
 
-        route.String = WithIcon(routeLine);
-        route.IsVisible = true;
-
-        RoutePressable = routeLine.Press is not null;
-        route.Alpha = RoutePressable ? PressableIdleAlpha : 1f;
-
+        route.String = WithIcon(line);
+        route.Alpha = hitBox.IsVisible ? PressableIdleAlpha : 1f;
         hitBox.Position = route.Position;
         hitBox.Size = route.Size;
-        hitBox.IsVisible = RoutePressable;
-
         navAnchor.Position = route.Position + new Vector2(NavAnchorInset, route.Height / 2f);
-        navAnchor.IsVisible = RoutePressable;
+    }
+
+    private void SetDistance(string words)
+    {
+        if (string.Equals(words, lastDistance, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastDistance = words;
+        distance.String = words;
     }
 }

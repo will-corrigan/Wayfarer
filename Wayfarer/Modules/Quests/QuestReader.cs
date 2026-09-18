@@ -12,15 +12,22 @@ using GameMap = FFXIVClientStructs.FFXIV.Client.Game.UI.Map;
 
 namespace Wayfarer.Modules.Quests;
 
-/// <summary>Every read the quests module makes of the game, in one place, so the rest of the
-/// module is pure. Framework thread only: it reads the game's agents and sheets.</summary>
+/// <summary>Every read the quests module makes of the game, so the rest of the module is pure.
+/// Framework thread only.</summary>
 internal sealed unsafe class QuestReader(IDataManager dataManager)
 {
-    /// <summary>Lumina offsets the quest sheet's row ids from the game's own quest ids by this.</summary>
+    /// <summary>Lumina offsets the quest sheet's row ids from the game's quest ids by this.</summary>
     private const uint QuestRowIdOffset = 65536;
 
-    /// <summary>Macros that only style text and never stand in for a value the game fills at
-    /// runtime. A to-do line containing any other macro is one whose sheet text is incomplete.</summary>
+    private const string TodoKeyPrefix = "TEXT_";
+    private const string TodoKeyInfix = "_TODO_";
+    private const string TextSheetFolder = "quest/";
+    private const int TextSheetFolderDigits = 3;
+    private const int UnusedStep = 0;
+    private const int ObjectiveIdQuestBits = 0xFFFF;
+
+    /// <summary>Macros that only style text. Any other macro in a to-do line is a value the game
+    /// fills in at runtime and the sheet alone cannot.</summary>
     private static readonly HashSet<MacroCode> PresentationalMacroCodes =
     [
         MacroCode.NewLine, MacroCode.Wait, MacroCode.Icon, MacroCode.Color, MacroCode.EdgeColor,
@@ -32,25 +39,18 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         MacroCode.SetResetTime, MacroCode.SetTime,
     ];
 
-    private readonly Dictionary<ushort, IReadOnlyList<QuestTodo>> todoCache = [];
-    private readonly Dictionary<ushort, string> nameCache = [];
+    private readonly Dictionary<ushort, IReadOnlyList<QuestTodo>> todosByQuest = [];
+    private readonly Dictionary<ushort, string> namesByQuest = [];
 
-    /// <summary>The step the player is on.</summary>
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
     /// <summary>The game's live markers for this quest, this frame.</summary>
     public static List<QuestMarker> Markers(ushort questId)
     {
         var markers = new List<QuestMarker>();
-        var map = GameMap.Instance();
-        if (map == null)
+        foreach (ref var info in GameMap.Instance()->QuestMarkers)
         {
-            return markers;
-        }
-
-        foreach (ref var info in map->QuestMarkers)
-        {
-            if ((info.ObjectiveId & 0xFFFF) != questId)
+            if ((info.ObjectiveId & ObjectiveIdQuestBits) != questId)
             {
                 continue;
             }
@@ -59,109 +59,72 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
             for (var i = 0; i < (int)info.MarkerData.LongCount; i++)
             {
                 var data = info.MarkerData[i];
-                markers.Add(new QuestMarker(
-                    new Place(data.TerritoryTypeId, data.MapId, data.Position.X, data.Position.Y, data.Position.Z, data.Radius),
-                    label.Length > 0 ? label : null));
+                var at = new Place(data.TerritoryTypeId, data.MapId, data.Position.X, data.Position.Y, data.Position.Z, data.Radius);
+                markers.Add(new QuestMarker(at, label.Length > 0 ? label : null));
             }
         }
 
         return markers;
     }
 
-    /// <summary>The main scenario quest the banner names right now, or null while it shows "???":
-    /// the branch the player has picked on the banner's own dropdown, and only while that quest is
-    /// accepted. Between quests, and before a branch is chosen, this is null.</summary>
+    /// <summary>The main scenario quest the banner names, or null while it shows "???": the branch
+    /// the player picked, and only once that quest is accepted. The agent has no data before login.</summary>
     public ushort? CurrentMainScenarioQuest()
     {
-        var tree = AgentScenarioTree.Instance();
-        if (tree == null || tree->Data == null)
+        var data = AgentScenarioTree.Instance()->Data;
+        if (data == null)
         {
             return null;
         }
 
-        var ids = tree->Data->MainScenarioQuestIds;
-        var path = tree->Data->MSQPathIndex;
-        if (path >= 3 || path >= ids.Length)
-        {
-            return null;
-        }
-
-        var id = ids[path];
-        if (id == 0)
-        {
-            return null;
-        }
-
-        var manager = QuestManager.Instance();
-        return manager != null && manager->IsQuestAccepted(id) ? id : null;
+        var questId = data->MainScenarioQuestIds[data->MSQPathIndex];
+        return questId != 0 && QuestManager.Instance()->IsQuestAccepted(questId) ? questId : null;
     }
 
-    /// <summary>The quest's name, as the banner shows it.</summary>
-    public string Name(ushort questId)
-    {
-        if (!nameCache.TryGetValue(questId, out var name))
-        {
-            name = dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset)?.Name.ExtractText()
-                ?? $"Quest {questId}";
-            nameCache[questId] = name;
-        }
+    public string Name(ushort questId) =>
+        namesByQuest.TryGetValue(questId, out var name) ? name : namesByQuest[questId] = ReadName(questId);
 
-        return name;
-    }
+    /// <summary>The quest's whole to-do table, read once per quest.</summary>
+    public IReadOnlyList<QuestTodo> Todos(ushort questId) =>
+        todosByQuest.TryGetValue(questId, out var todos) ? todos : todosByQuest[questId] = ReadTodos(questId);
 
-    /// <summary>The quest's whole to-do table with its text and locations. Static data, read once
-    /// per quest and kept.</summary>
-    public IReadOnlyList<QuestTodo> Todos(ushort questId)
-    {
-        if (!todoCache.TryGetValue(questId, out var todos))
-        {
-            todos = ReadTodos(questId);
-            todoCache[questId] = todos;
-        }
+    private static bool HasUnresolvedPlaceholder(ReadOnlySeString text) =>
+        text.Any(payload => payload.Type == ReadOnlySePayloadType.Macro && !PresentationalMacroCodes.Contains(payload.MacroCode));
 
-        return todos;
-    }
-
-    private static bool HasUnresolvedPlaceholder(ReadOnlySeString text)
-    {
-        foreach (var payload in text)
-        {
-            if (payload.Type == ReadOnlySePayloadType.Macro && !PresentationalMacroCodes.Contains(payload.MacroCode))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>The to-do text rows, keyed by index. They live in a per-quest sheet whose name is
-    /// derived from the quest's internal name: <c>quest/&lt;first three digits&gt;/&lt;internal name&gt;</c>.
-    /// </summary>
+    /// <summary>The to-do text rows by index. They live in a per-quest sheet, keyed
+    /// <c>TEXT_&lt;INTERNAL NAME&gt;_TODO_&lt;index&gt;</c>.</summary>
     private static Dictionary<int, (string Text, bool HasPlaceholder)> ParseTodoRows(ExcelSheet<RawRow> raw, string internalName)
     {
-        var prefix = $"TEXT_{internalName.ToUpperInvariant()}_TODO_";
-        var byIndex = new Dictionary<int, (string Text, bool HasPlaceholder)>();
+        var prefix = TodoKeyPrefix + internalName.ToUpperInvariant() + TodoKeyInfix;
+        var rows = new Dictionary<int, (string Text, bool HasPlaceholder)>();
         foreach (var row in raw)
         {
             var key = row.ReadStringColumn(0).ExtractText();
-            if (!key.StartsWith(prefix, StringComparison.Ordinal)
-                || !int.TryParse(key.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var index))
+            if (key.StartsWith(prefix, StringComparison.Ordinal)
+                && int.TryParse(key.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var index))
             {
-                continue;
+                var text = row.ReadStringColumn(1);
+                rows[index] = (text.ExtractText(), HasUnresolvedPlaceholder(text));
             }
-
-            var text = row.ReadStringColumn(1);
-            byIndex[index] = (text.ExtractText(), HasUnresolvedPlaceholder(text));
         }
 
-        return byIndex;
+        return rows;
     }
+
+    private static List<Place> Locations(Quest.TodoParamsStruct param) =>
+        [.. param.ToDoLocation
+            .Where(reference => reference.RowId != 0)
+            .Select(reference => reference.ValueNullable)
+            .OfType<Level>()
+            .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
+
+    private Quest? QuestRow(ushort questId) => dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset);
+
+    private string ReadName(ushort questId) => QuestRow(questId)?.Name.ExtractText() ?? $"Quest {questId}";
 
     private List<QuestTodo> ReadTodos(ushort questId)
     {
-        if (dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset) is not { } quest
-            || quest.TodoParams.Count == 0)
+        if (QuestRow(questId) is not { } quest)
         {
             return [];
         }
@@ -173,42 +136,34 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         for (var i = 0; i < quest.TodoParams.Count; i++)
         {
             var param = quest.TodoParams[i];
-            if (param.ToDoCompleteSeq == 0)
+            if (param.ToDoCompleteSeq == UnusedStep)
             {
                 continue;
             }
 
-            var locations = new List<Place>();
-            foreach (var reference in param.ToDoLocation)
-            {
-                if (reference.RowId != 0 && reference.ValueNullable is { } level)
-                {
-                    locations.Add(new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius));
-                }
-            }
-
-            var (text, hasPlaceholder) = rows.TryGetValue(i, out var row) ? row : (string.Empty, false);
-            todos.Add(new QuestTodo(i, param.ToDoCompleteSeq, text, hasPlaceholder, param.ToDoQty, locations));
+            var (text, hasPlaceholder) = rows.GetValueOrDefault(i, (string.Empty, false));
+            todos.Add(new QuestTodo(i, param.ToDoCompleteSeq, text, hasPlaceholder, param.ToDoQty, Locations(param)));
         }
 
         return todos;
     }
 
+    /// <summary>The quest's own text sheet, at <c>quest/&lt;first three digits&gt;/&lt;internal name&gt;</c>,
+    /// or null when there is none under that name.</summary>
     private ExcelSheet<RawRow>? OpenTextSheet(string internalName)
     {
         var number = internalName.Split('_')[^1];
-        if (number.Length < 3)
+        if (number.Length < TextSheetFolderDigits)
         {
             return null;
         }
 
         try
         {
-            return dataManager.Excel.GetSheet<RawRow>(name: $"quest/{number[..3]}/{internalName}");
+            return dataManager.Excel.GetSheet<RawRow>(name: TextSheetFolder + number[..TextSheetFolderDigits] + "/" + internalName);
         }
         catch (Exception)
         {
-            // No text sheet under the usual name: the lines fall back to their markers' labels.
             return null;
         }
     }

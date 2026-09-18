@@ -68,13 +68,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;
 
-    /// <summary>Whether the player has attuned to the aetheryte or shard with this id, from the
-    /// game's own record of it.</summary>
-    private static bool Attuned(uint aetheryteId)
-    {
-        var ui = UIState.Instance();
-        return ui != null && ui->IsAetheryteUnlocked(aetheryteId);
-    }
+    private static bool Attuned(uint aetheryteId) => UIState.Instance()->IsAetheryteUnlocked(aetheryteId);
 
     private void OnUpdate(IFramework tick)
     {

@@ -5,19 +5,13 @@ using KamiToolKit.Controllers;
 using Wayfarer.App;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Presentation;
+using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
-/// <summary>Hangs the guidance block inside the game's own Main Scenario Guide and keeps it
-/// current. The only class that knows the game's addon exists.
-///
-/// <para>The block is a child of the addon's root, so the game decides everything about being on
-/// screen: when the guide hides, fades, moves in HUD layout or changes scale, the block goes with
-/// it. The toolkit's controller builds the block when the addon is set up, and takes it down when
-/// the addon is finalized or the plugin unloads.</para>
-///
-/// <para>Words are re-laid when the guidance changes; the needle and distance are read every frame
-/// from <see cref="IHeading"/>.</para></summary>
+/// <summary>Hangs the guidance block inside the game's Main Scenario Guide and keeps it current.
+/// The block is a child of the addon's root, so the game decides everything about being on screen.
+/// Words are re-laid when the guidance changes; the needle and distance are read every frame.</summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
     private readonly IGuidance guidance;
@@ -28,7 +22,6 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly AddonController controller;
     private GuidanceBlockNode? block;
     private bool wordsChanged = true;
-    private bool routeWasPressable;
     private bool broken;
 
     public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, ITravel travel, ITextureProvider textures, IFramework framework, IPluginLog log)
@@ -41,7 +34,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
         controller = new AddonController
         {
-            AddonName = ScenarioTreeMetrics.AddonName,
+            AddonName = AddonName,
             OnSetup = Attach,
             OnFinalize = Detach,
             OnUpdate = Refresh,
@@ -58,21 +51,8 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         await controller.DisposeAsync().ConfigureAwait(false);
     }
 
-    /// <summary>How many job-quest rows the game is showing, which is how far down our block goes.</summary>
-    private static unsafe int VisibleJobRows(AtkUnitBase* addon)
-    {
-        var rows = 0;
-        foreach (var id in ScenarioTreeMetrics.JobRowNodeIds)
-        {
-            var node = addon->GetNodeById(id);
-            if (node != null && node->IsVisible())
-            {
-                rows++;
-            }
-        }
-
-        return rows;
-    }
+    private static unsafe int VisibleJobRows(AtkUnitBase* addon) =>
+        JobRowNodeIds.Count(id => addon->GetNodeById(id) is var node && node != null && node->IsVisible());
 
     private void OnGuidanceChanged(object? sender, GuidanceChangedEventArgs e) => wordsChanged = true;
 
@@ -95,20 +75,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         block?.Dispose();
         block = null;
-        addon->RootNode->SetHeight((ushort)ScenarioTreeMetrics.RootHeight);
-    }
-
-    /// <summary>Grows the addon's root to cover the block while it shows, so clicks on the route
-    /// line land inside the addon's own bounds, and shrinks it back when the block hides.</summary>
-    private unsafe void FitRootToBlock(AtkUnitBase* addon)
-    {
-        var wanted = block!.IsVisible
-            ? Math.Max(ScenarioTreeMetrics.RootHeight, block.Y + block.Height)
-            : ScenarioTreeMetrics.RootHeight;
-        if (addon->RootNode->Height != (ushort)wanted)
-        {
-            addon->RootNode->SetHeight((ushort)wanted);
-        }
+        addon->RootNode->SetHeight((ushort)RootHeight);
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -120,45 +87,54 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
         try
         {
-            block.Position = new Vector2(0f, ScenarioTreeMetrics.JobRowsTop + (ScenarioTreeMetrics.JobRowPitch * VisibleJobRows(addon)));
-
-            if (wordsChanged)
-            {
-                wordsChanged = false;
-                ApplyWords();
-                if (block.RoutePressable != routeWasPressable)
-                {
-                    // The game only dispatches clicks to nodes in the addon's collision list, which
-                    // it built at setup, before our box existed or changed.
-                    routeWasPressable = block.RoutePressable;
-                    addon->UpdateCollisionNodeList(false);
-                }
-            }
-
+            block.Position = new Vector2(0f, JobRowsTop + (JobRowPitch * VisibleJobRows(addon)));
+            RefreshWords(addon);
             block.SetHeading(heading.Needle, heading.DistanceYalms);
             FitRootToBlock(addon);
         }
         catch (Exception ex)
         {
-            // Once: this runs every frame inside the game's own addon update, and the reason it
-            // threw does not change between frames.
             broken = true;
             block.IsVisible = false;
             log.Error(ex, "Wayfarer: drawing the guidance block failed, so it is hidden for this session.");
         }
     }
 
-    private void ApplyWords()
+    /// <summary>Re-lays the words when the guidance changed. The game only dispatches clicks to
+    /// nodes in the addon's collision list, so it is rebuilt when the route line becomes pressable
+    /// or stops being.</summary>
+    private unsafe void RefreshWords(AtkUnitBase* addon)
     {
+        if (!wordsChanged)
+        {
+            return;
+        }
+
+        wordsChanged = false;
+        var wasPressable = block!.RoutePressable;
         var current = guidance.Current;
-        block!.SetWords(current?.Target?.Text, RouteWords.Compose(current));
+        block.SetWords(current?.Target?.Text, RouteWords.Compose(current));
+        if (block.RoutePressable != wasPressable)
+        {
+            addon->UpdateCollisionNodeList(false);
+        }
     }
 
-    /// <summary>Acts on the route line: read off the guidance at the moment of the press rather
-    /// than captured when the line was drawn, so a press can never act on a stale route.</summary>
+    /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
+    /// while the block shows and restored when it hides.</summary>
+    private unsafe void FitRootToBlock(AtkUnitBase* addon)
+    {
+        var wanted = (ushort)(block!.IsVisible ? Math.Max(RootHeight, block.Y + block.Height) : RootHeight);
+        if (addon->RootNode->Height != wanted)
+        {
+            addon->RootNode->SetHeight(wanted);
+        }
+    }
+
+    /// <summary>Read off the guidance at the moment of the press, never captured when the line was
+    /// drawn, so a press cannot act on a stale route.</summary>
     private void OnRoutePressed()
     {
-        log.Debug("Wayfarer: the route line was pressed.");
         switch (RouteWords.Compose(guidance.Current)?.Press)
         {
             case RoutePress.Teleport teleport:
