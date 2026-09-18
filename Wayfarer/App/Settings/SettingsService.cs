@@ -10,18 +10,22 @@ namespace Wayfarer.App.Settings;
 internal sealed class SettingsService : IAsyncDisposable
 {
     private const string Command = "/wayfarer";
+    private const string DiagnosticsArgument = "nav";
 
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly ICommandManager commands;
     private readonly IFramework framework;
     private readonly SettingsAddon window;
+    private readonly IEnumerable<IDiagnostics> diagnostics;
 
     public SettingsService(
         IDalamudPluginInterface pluginInterface,
         ICommandManager commands,
         IFramework framework,
-        IModuleHost host)
+        IModuleHost host,
+        IEnumerable<IDiagnostics> diagnostics)
     {
+        this.diagnostics = diagnostics;
         this.pluginInterface = pluginInterface;
         this.commands = commands;
         this.framework = framework;
@@ -35,7 +39,7 @@ internal sealed class SettingsService : IAsyncDisposable
 
         pluginInterface.UiBuilder.OpenConfigUi += Open;
         pluginInterface.UiBuilder.OpenMainUi += Open;
-        commands.AddHandler(Command, new CommandInfo((_, _) => Open()) { HelpMessage = "Opens Wayfarer's settings." });
+        commands.AddHandler(Command, new CommandInfo(OnCommand) { HelpMessage = "Opens Wayfarer's settings. /wayfarer nav writes navigation diagnostics to the log." });
     }
 
     /// <summary>Unhooks the doors, then closes the window. The close has to happen on the
@@ -47,6 +51,23 @@ internal sealed class SettingsService : IAsyncDisposable
         pluginInterface.UiBuilder.OpenConfigUi -= Open;
         pluginInterface.UiBuilder.OpenMainUi -= Open;
         await window.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private void OnCommand(string command, string arguments)
+    {
+        if (string.Equals(arguments.Trim(), DiagnosticsArgument, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = framework.RunOnFrameworkThread(() =>
+            {
+                foreach (var source in diagnostics)
+                {
+                    source.Dump();
+                }
+            });
+            return;
+        }
+
+        Open();
     }
 
     private void Open() => _ = framework.RunOnFrameworkThread(window.Toggle);

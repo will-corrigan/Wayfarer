@@ -15,8 +15,13 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// The block is a child of the addon's root, so the game decides everything about being on screen.
 /// Words are re-laid when the guidance changes; the needle and distance are read every frame.
 /// Presses are read off the guidance at the moment of the press, never captured when the line was
-/// drawn, so a press cannot act on a stale route or entry.</summary>
-internal sealed class ScenarioTreeSurface : IAsyncDisposable
+/// drawn, so a press cannot act on a stale route or entry.
+///
+/// <para>The pad reaches the block through the plate: HUD Select lands on the plate as it always
+/// has, a Down press there is heard by our own listener on the plate's node, and the cursor is
+/// moved to our first line. From there the lines move it between themselves and back up to the
+/// plate.</para></summary>
+internal sealed class ScenarioTreeSurface : IAsyncDisposable, IDiagnostics
 {
     private const string SayCommand = "/say ";
 
@@ -25,12 +30,14 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly IActions actions;
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
+    private readonly IFramework framework;
     private readonly AddonController controller;
+    private readonly PlatePadListener plateListener;
     private GuidanceBlockNode? block;
+    private nint addonAddress;
+    private nint plateFocus;
     private bool wordsChanged = true;
     private bool broken;
-    private byte? plateDownBeforeUs;
-    private nint focusBeforeUs;
 
     public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
@@ -39,7 +46,9 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         this.actions = actions;
         this.textures = textures;
         this.log = log;
+        this.framework = framework;
 
+        plateListener = new PlatePadListener(OnPlateDown);
         controller = new AddonController
         {
             AddonName = AddonName,
@@ -57,6 +66,35 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         guidance.OnChanged -= OnGuidanceChanged;
         await controller.DisposeAsync().ConfigureAwait(false);
+        await framework.RunOnFrameworkThread(plateListener.Dispose).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public unsafe void Dump()
+    {
+        var addon = (AtkUnitBase*)addonAddress;
+        if (addon == null || block is null)
+        {
+            log.Information("Wayfarer nav: the Main Scenario Guide is not open, or the block is not attached.");
+            return;
+        }
+
+        var plate = Plate(addon);
+        var input = AtkStage.Instance()->AtkInputManager;
+        log.Information($"Wayfarer nav: addon focus {(nint)addon->FocusNode:X} component focus {(nint)addon->ComponentFocusNode:X} own index {addon->CursorNavigationOwnIndex} flags1A2 {addon->Flags1A2:X2} root {addon->RootNode->Width}x{addon->RootNode->Height}");
+        log.Information($"Wayfarer nav: input focused node {(nint)input->FocusedNode:X} focus list index {input->FocusListIndex}");
+        if (plate != null && plate->Component != null)
+        {
+            var nav = plate->Component->CursorNavigationInfo;
+            log.Information($"Wayfarer nav: plate node {(nint)plate:X} focus node {(nint)plate->Component->GetFocusNode():X} index {nav.Index} up {nav.UpIndex} down {nav.DownIndex} left {nav.LeftIndex} right {nav.RightIndex} mode {nav.NavigationMode} cursor type {nav.CursorType}");
+        }
+
+        log.Information($"Wayfarer nav: our lines {string.Join(", ", block.FocusTargets.Select(t => t.ToString("X", System.Globalization.CultureInfo.InvariantCulture)))} pressable {block.AnyPressable}");
+        for (var i = 0; i < addon->CollisionNodeListCount; i++)
+        {
+            var node = addon->CollisionNodeList[i];
+            log.Information($"Wayfarer nav: collision {i} node {(nint)node:X} id {node->NodeId} flags {node->NodeFlags} at {node->X},{node->Y} {node->Width}x{node->Height}");
+        }
     }
 
     private static unsafe bool NodeShown(AtkUnitBase* addon, uint id) =>
@@ -104,10 +142,17 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         try
         {
-            focusBeforeUs = (nint)addon->FocusNode;
+            addonAddress = (nint)addon;
+            plateFocus = (nint)addon->FocusNode;
             block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
             block.AttachNode(addon);
             wordsChanged = true;
+
+            var plate = Plate(addon);
+            if (plate != null && plate->Component != null)
+            {
+                plateListener.Attach(plate);
+            }
         }
         catch (Exception ex)
         {
@@ -118,45 +163,11 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        if (plateDownBeforeUs is { } original && Plate(addon) is var plate && plate != null)
-        {
-            plate->Component->CursorNavigationInfo.DownIndex = original;
-        }
-
-        foreach (ref var slot in addon->AdditionalFocusableNodes)
-        {
-            slot = null;
-        }
-
-        addon->FocusNode = (AtkResNode*)focusBeforeUs;
-        plateDownBeforeUs = null;
+        plateListener.Detach();
         block?.Dispose();
         block = null;
+        addonAddress = 0;
         addon->RootNode->SetHeight((ushort)RootHeight);
-    }
-
-    /// <summary>Hangs our stops under the game's plate in the controller's navigation: pressing
-    /// down on the plate reaches our first pressable line, and up from it returns. The plate's
-    /// original down is kept and restored when we detach. Re-applied every frame, because the
-    /// game rebuilds its own navigation when it refreshes.</summary>
-    private unsafe void LinkControllerNav(AtkUnitBase* addon)
-    {
-        var plate = Plate(addon);
-        if (plate == null || plate->Component == null)
-        {
-            return;
-        }
-
-        ref var nav = ref plate->Component->CursorNavigationInfo;
-        plateDownBeforeUs ??= nav.DownIndex;
-        nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
-        OfferFocusable(addon);
-
-        // HUD Select lands on the addon's focus node. While a line is pressable that is our first
-        // line, so the pad reaches it without the plate's help; up from it returns to the plate.
-        var targets = block.FocusTargets;
-        addon->FocusNode = targets.Length > 0 ? (AtkResNode*)targets[0] : (AtkResNode*)focusBeforeUs;
-        block.WireFocus(addon, (AtkResNode*)focusBeforeUs);
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -170,7 +181,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
-            LinkControllerNav(addon);
+            block.WireFocus(addon, (AtkResNode*)plateFocus);
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
             FitRootToBlock(addon);
         }
@@ -213,16 +224,13 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         }
     }
 
-    /// <summary>Puts our pressable controls in the addon's two extra focusable slots, which is how
-    /// the toolkit's own dropdowns are reached when they hang outside their window. Cleared when
-    /// nothing is pressable and on detach.</summary>
-    private unsafe void OfferFocusable(AtkUnitBase* addon)
+    /// <summary>The pad pressed Down while the plate had the cursor: move it to our first line.</summary>
+    private unsafe void OnPlateDown()
     {
-        var targets = block!.FocusTargets;
-        var slots = addon->AdditionalFocusableNodes;
-        for (var i = 0; i < slots.Length; i++)
+        var targets = block?.FocusTargets;
+        if (targets is { Length: > 0 } && addonAddress != 0)
         {
-            slots[i] = i < targets.Length ? (AtkResNode*)targets[i] : null;
+            AtkStage.Instance()->AtkInputManager->SetFocus((AtkResNode*)targets[0], (AtkUnitBase*)addonAddress, 0);
         }
     }
 
