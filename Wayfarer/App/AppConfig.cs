@@ -11,6 +11,11 @@ internal sealed class AppConfig
     /// switched on; after that the set is exactly what the player left it as, including empty.</summary>
     public bool Initialised { get; set; }
 
+    /// <summary>Where to post log lines. Defaults to the developer's own receiver; the sender first
+    /// asks the address to name itself and only a Wayfarer receiver answers, so on any other
+    /// network nothing is ever sent. Null switches it off.</summary>
+    public string? RemoteLogUrl { get; set; } = RemoteLogSink.DefaultUrl;
+
     /// <summary>The names of the modules that are on.</summary>
     public HashSet<string> EnabledModules { get; set; } = new(StringComparer.Ordinal);
 }

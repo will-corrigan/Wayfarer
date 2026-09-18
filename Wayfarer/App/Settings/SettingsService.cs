@@ -11,6 +11,7 @@ internal sealed class SettingsService : IAsyncDisposable
 {
     private const string Command = "/wayfarer";
     private const string DiagnosticsArgument = "nav";
+    private const string ToggleArgument = "pad";
 
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly ICommandManager commands;
@@ -39,7 +40,7 @@ internal sealed class SettingsService : IAsyncDisposable
 
         pluginInterface.UiBuilder.OpenConfigUi += Open;
         pluginInterface.UiBuilder.OpenMainUi += Open;
-        commands.AddHandler(Command, new CommandInfo(OnCommand) { HelpMessage = "Opens Wayfarer's settings. /wayfarer nav writes navigation diagnostics to the log." });
+        commands.AddHandler(Command, new CommandInfo(OnCommand) { HelpMessage = "Opens Wayfarer's settings. /wayfarer nav writes navigation diagnostics to the log; /wayfarer pad toggles the pad link investigation." });
     }
 
     /// <summary>Unhooks the doors, then closes the window. The close has to happen on the
@@ -55,7 +56,20 @@ internal sealed class SettingsService : IAsyncDisposable
 
     private void OnCommand(string command, string arguments)
     {
-        if (string.Equals(arguments.Trim(), DiagnosticsArgument, StringComparison.OrdinalIgnoreCase))
+        var argument = arguments.Trim();
+        if (string.Equals(argument, ToggleArgument, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = framework.RunOnFrameworkThread(() =>
+            {
+                foreach (var source in diagnostics)
+                {
+                    source.Toggle(ToggleArgument);
+                }
+            });
+            return;
+        }
+
+        if (string.Equals(argument, DiagnosticsArgument, StringComparison.OrdinalIgnoreCase))
         {
             _ = framework.RunOnFrameworkThread(() =>
             {

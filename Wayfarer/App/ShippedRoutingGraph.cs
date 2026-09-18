@@ -18,7 +18,7 @@ internal static class ShippedRoutingGraph
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            log.Error(ex, $"Wayfarer: {RoutingGraphFile.FileName} could not be read, so routes are walks on the current map only.");
+            log.Error(ex, $"{RoutingGraphFile.FileName} could not be read, so routes are walks on the current map only.");
             return new RouteGraph([], []);
         }
     }

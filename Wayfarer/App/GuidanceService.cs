@@ -83,7 +83,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
             if (!loggedFailure)
             {
                 loggedFailure = true;
-                log.Error(ex, "Wayfarer: computing guidance threw, so guidance is switched off for this session.");
+                log.Error(ex, "computing guidance threw, so guidance is switched off for this session.");
             }
 
             Publish(null);

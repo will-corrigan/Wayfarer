@@ -25,7 +25,7 @@ internal sealed class ConfigStore(IDalamudPluginInterface pluginInterface, IPlug
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
-            log.Warning(ex, $"Wayfarer: {name}.json could not be read, so its defaults are in use until it is next saved.");
+            log.Warning(ex, $"{name}.json could not be read, so its defaults are in use until it is next saved.");
             return new T();
         }
     }

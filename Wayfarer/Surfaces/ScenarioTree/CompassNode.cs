@@ -3,6 +3,7 @@ using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin.Services;
 using KamiToolKit.Nodes;
+using Wayfarer.App;
 using Wayfarer.Core.Ui;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
@@ -104,7 +105,7 @@ internal sealed class CompassNode : ResNode
         }
         catch (Exception ex)
         {
-            log.Error(ex, "Wayfarer: the compass could not be generated, so none is drawn this session.");
+            log.Error(ex, "the compass could not be generated, so none is drawn this session.");
             return TextureState.Failed;
         }
     }

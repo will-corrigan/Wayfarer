@@ -4,6 +4,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
+using Wayfarer.App;
 using Wayfarer.Core.Ui;
 using Wayfarer.Ui;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
@@ -39,11 +40,11 @@ internal sealed class GuidanceBlockNode : ResNode
     {
         Width = RootWidth;
 
-        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed));
+        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed, words => log.Debug(words)));
         entry.Position = new Vector2(WordsLeft, RowTextTop);
         entry.Width = WordsWidth;
 
-        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed));
+        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed, words => log.Debug(words)));
         route.Width = WordsWidth;
 
         compass = Attach(new CompassNode(textures, log) { Position = CompassOrigin, IsVisible = false });
@@ -80,6 +81,14 @@ internal sealed class GuidanceBlockNode : ResNode
     /// <summary>Moves the pad cursor between our lines and the plate ourselves, because the plate's
     /// own input code never consults the index table. The cursor goes round in a loop: plate, step
     /// line, route line, plate; up runs the loop the other way.</summary>
+    /// <summary>Puts our lines into the plate's index chain: our indexes, up to the plate, down to
+    /// the next pressable line or back to the plate.</summary>
+    public void LinkNav(int plateIndex)
+    {
+        entry.SetNav(EntryNavIndex, plateIndex, route.Pressable ? RouteNavIndex : plateIndex);
+        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : plateIndex, plateIndex);
+    }
+
     public unsafe void WireFocus(AtkUnitBase* addon, AtkResNode* plateFocus)
     {
         entry.OnUp = () => Focus(addon, plateFocus);
