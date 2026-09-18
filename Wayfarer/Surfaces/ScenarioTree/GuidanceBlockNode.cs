@@ -61,6 +61,9 @@ internal sealed class GuidanceBlockNode : ResNode
     /// <summary>The first of our stops the cursor can move down to from the plate, or null.</summary>
     public int? FirstStop => entry.Pressable ? EntryNavIndex : route.Pressable ? RouteNavIndex : null;
 
+    /// <summary>The last pressable line's stop, or null when nothing can be pressed.</summary>
+    public int? LastStop => route.Pressable ? RouteNavIndex : entry.Pressable ? EntryNavIndex : null;
+
     public void SetWords(LineContent? entryContent, LineContent? routeContent)
     {
         IsVisible = entryContent is not null;
@@ -86,13 +89,12 @@ internal sealed class GuidanceBlockNode : ResNode
         route.GuestOf(addon, plateFocus);
     }
 
-    /// <summary>Puts our lines into the plate's index chain, which is all the game consults when the
-    /// pad moves the cursor: up from the first pressable line goes to the plate, down from the last
-    /// goes where the plate's own down went before us.</summary>
-    public void LinkNav(int plateIndex, int afterUs)
+    /// <summary>Writes our lines' own cursor records: up from the first pressable line goes to the
+    /// stop above us, down from the last goes to the stop below, and the lines chain to each other.</summary>
+    public void LinkNav(int aboveUs, int belowUs)
     {
-        entry.SetNav(EntryNavIndex, plateIndex, route.Pressable ? RouteNavIndex : afterUs);
-        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : plateIndex, afterUs);
+        entry.SetNav(EntryNavIndex, aboveUs, route.Pressable ? RouteNavIndex : belowUs);
+        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : aboveUs, belowUs);
     }
 
     public void SetHeading(float? needle, float? yalms, float? rise)

@@ -20,8 +20,8 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// drawn, so a press cannot act on a stale route or entry.
 ///
 /// <para>The pad reaches the block through the guide's own index chain: the plate is a stock button
-/// whose layout record chains it to the job rows by index, and our lines are linked in between
-/// while the block is attached.</para></summary>
+/// whose layout record chains it to the job rows by index, and our lines are spliced in after
+/// the last visible row, before the cursor wraps back to the plate.</para></summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
     private const string SayCommand = "/say ";
@@ -32,10 +32,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
     private readonly AddonController controller;
+    private readonly NavSplice splice = new();
     private GuidanceBlockNode? block;
     private nint addonAddress;
     private nint plateFocus;
-    private byte? plateDownBeforeUs;
     private bool wordsChanged = true;
     private bool broken;
 
@@ -78,6 +78,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         var node = addon->GetNodeById(PlateNodeId);
         return node == null ? null : node->GetAsAtkComponentNode();
+    }
+
+    private static unsafe AtkComponentNode* LastVisibleJobRow(AtkUnitBase* addon)
+    {
+        foreach (var id in JobRowNodeIds.Reverse())
+        {
+            if (NodeShown(addon, id) && addon->GetNodeById(id) is var node && node != null && node->GetAsAtkComponentNode() is var row && row != null)
+            {
+                return row;
+            }
+        }
+
+        return null;
     }
 
     private static unsafe void SetRootHeight(AtkUnitBase* addon, ushort height)
@@ -139,7 +152,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     /// as they dispose, so nothing in the guide can reach a freed node afterwards.</summary>
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        RestorePlateLink(addon);
+        splice.Restore();
         block?.Dispose();
         block = null;
         addonAddress = 0;
@@ -157,7 +170,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
-            LinkIntoPlateChain(addon);
+            SpliceIntoChain(addon);
 
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
             FitRootToBlock(addon);
@@ -190,30 +203,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         }
     }
 
-    /// <summary>Points the plate's "down" at our first pressable line and links our lines' records
-    /// back into the chain, so the game's own index navigation walks through us.</summary>
-    private unsafe void LinkIntoPlateChain(AtkUnitBase* addon)
+    /// <summary>Our lines go into the cursor chain after the last visible job row, which is what
+    /// sits between the plate and us on screen. With no row showing, they follow the plate.</summary>
+    private unsafe void SpliceIntoChain(AtkUnitBase* addon)
     {
         var plate = Plate(addon);
         if (plate == null || plate->Component == null)
         {
+            splice.Restore();
             return;
         }
 
-        ref var nav = ref plate->Component->CursorNavigationInfo;
-        plateDownBeforeUs ??= nav.DownIndex;
-        nav.DownIndex = (byte)(block!.FirstStop ?? plateDownBeforeUs.Value);
-        block.LinkNav(nav.Index, plateDownBeforeUs.Value);
-    }
-
-    private unsafe void RestorePlateLink(AtkUnitBase* addon)
-    {
-        if (plateDownBeforeUs is { } original && Plate(addon) is var plate && plate != null && plate->Component != null)
-        {
-            plate->Component->CursorNavigationInfo.DownIndex = original;
-        }
-
-        plateDownBeforeUs = null;
+        var above = LastVisibleJobRow(addon) is var row && row != null && row->Component != null ? row->Component : plate->Component;
+        splice.Splice(plate->Component, above, block!);
     }
 
     /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
