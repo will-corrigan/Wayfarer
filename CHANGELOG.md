@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/will-corrigan/Wayfarer/compare/v1.1.0...v1.2.0) (2026-09-19)
+
+
+### New
+
+* light and press the keyword, a cog beside the banner, and a settable left edge ([#73](https://github.com/will-corrigan/Wayfarer/issues/73)) ([4ba8c8c](https://github.com/will-corrigan/Wayfarer/commit/4ba8c8cfdebe609ff11b153557fc30596a4c8462))
+
 ## [1.1.0](https://github.com/will-corrigan/Wayfarer/compare/v1.0.6...v1.1.0) (2026-09-19)
 
 
