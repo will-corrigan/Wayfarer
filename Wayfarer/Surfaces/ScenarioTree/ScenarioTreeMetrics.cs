@@ -54,6 +54,9 @@ internal static class ScenarioTreeMetrics
     /// <summary>How many lines the entry's words may wrap to before they are cut.</summary>
     public const int MaxEntryLines = 2;
 
+    /// <summary>The route always reads as one line; its words are cut rather than wrapped.</summary>
+    public const int RouteLines = 1;
+
     /// <summary>How many characters wide the distance's box is: four digits and the unit, in a
     /// face whose characters are about two thirds as wide as they are tall.</summary>
     public const float DistanceWidthInCharacters = 3.4f;

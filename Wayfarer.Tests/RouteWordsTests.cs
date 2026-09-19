@@ -21,7 +21,7 @@ public class RouteWordsTests
     {
         var line = RouteWords.Compose(Guide(new Route([new Leg.Teleport(2, "Bentbranch Meadows"), new Leg.Walk(End, 80f)], 200f, End)));
 
-        Assert.Equal(new RouteLine(RouteGlyph.Aetheryte, "Teleport to Bentbranch Meadows", new RoutePress.Teleport(2)), line);
+        Assert.Equal(new RouteLine(RouteGlyph.Aetheryte, "Teleport to Bentbranch Meadows", new RoutePress.Teleport(2), "Teleport to Bentbranch Meadows"), line);
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class RouteWordsTests
         var entry = new ObjectiveEntry("Clear Sastasha.", null, new Destination.InDuty(4));
         var guidance = new PublishedGuidance(Quests, new Objective("It's Probably Pirates", null, [entry]), entry, null);
 
-        Assert.Equal(new RouteLine(RouteGlyph.Duty, RouteWords.DutyWords, new RoutePress.OpenDuty(4)), RouteWords.Compose(guidance));
+        Assert.Equal(new RouteLine(RouteGlyph.Duty, RouteWords.DutyWords, new RoutePress.OpenDuty(4), RouteWords.DutyWords), RouteWords.Compose(guidance));
     }
 
     [Fact]

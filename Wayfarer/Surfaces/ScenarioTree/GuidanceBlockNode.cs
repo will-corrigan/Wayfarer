@@ -16,8 +16,6 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// the whole block re-lays itself when the style changes.</summary>
 internal sealed class GuidanceBlockNode : ResNode
 {
-    private const TextFlags WrappingFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
-    private const TextFlags SingleLineFlags = TextFlags.Edge | TextFlags.Ellipsis;
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
 
@@ -36,8 +34,8 @@ internal sealed class GuidanceBlockNode : ResNode
     {
         Width = RootWidth;
 
-        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, MaxEntryLines, onEntryPressed));
-        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, 1, onRoutePressed));
+        entry = Attach(new PressableLine(GameColors.Body, MaxEntryLines, onEntryPressed));
+        route = Attach(new PressableLine(GameColors.ListText, RouteLines, onRoutePressed));
         compass = Attach(new CompassNode(textures, log) { IsVisible = false });
         distance = Attach(new TextNode
         {

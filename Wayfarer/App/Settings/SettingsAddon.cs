@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
@@ -66,6 +67,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// <summary>What the preview block shows: a step, a route with a press, and a compass reading.</summary>
     private const string SampleEntry = "Speak with Minfilia at the Waking Sands.";
     private const string SampleRoute = "Teleport to Vesper Bay, then Walk to the Waking Sands";
+    private const string SampleRouteKeyword = "Teleport to Vesper Bay";
     private const float SampleNeedle = 0.6f;
     private const float SampleYalms = 143f;
     private const float SampleRise = 2f;
@@ -313,8 +315,8 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
         preview.AttachNode(previewStage);
         preview.SetWords(
-            new LineContent(new ReadOnlySeString(SampleEntry), null, false),
-            new LineContent(new ReadOnlySeString(SampleRoute), null, true));
+            new LineContent(SampleEntry),
+            new LineContent(SampleRoute, SampleRouteKeyword, Glyph: BitmapFontIcon.Aetheryte, Pressable: true));
         preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
         body.AddNode(previewStage);
 
