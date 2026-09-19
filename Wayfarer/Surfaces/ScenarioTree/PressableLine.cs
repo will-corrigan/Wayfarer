@@ -4,8 +4,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
 using Lumina.Text.ReadOnly;
-using Wayfarer.Core.Presentation;
-using Wayfarer.Ui;
+using Wayfarer.Presentation;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
@@ -46,10 +45,10 @@ internal sealed class PressableLine : ResNode
         restingColor = color;
         restingEdge = GameColors.BodyEdge;
 
-        glyph = Attach(Text());
-        plain = [.. Enumerable.Range(0, MaxPlainRuns).Select(_ => Attach(Text()))];
-        icon = Attach(new IconImageNode { IsVisible = false });
-        keyword = Attach(Text());
+        glyph = Text().AttachedTo(this);
+        plain = [.. Enumerable.Range(0, MaxPlainRuns).Select(_ => Text().AttachedTo(this))];
+        icon = new IconImageNode { IsVisible = false }.AttachedTo(this);
+        keyword = Text().AttachedTo(this);
 
         control = new LineControl
         {
@@ -69,10 +68,6 @@ internal sealed class PressableLine : ResNode
     /// cursor can rest on it.</summary>
     public bool Pressable => control.IsVisible;
 
-    /// <summary>The node the game's cursor rests on when this line is focused: the control's
-    /// collision node, which is what the toolkit focuses too.</summary>
-    public unsafe AtkResNode* FocusTarget => (AtkResNode*)control.CollisionNode.Node;
-
     /// <summary>Tells the control which addon it lives in, so its dispose can take back any of the
     /// addon's pointers aimed at it.</summary>
     public unsafe void GuestOf(AtkUnitBase* addon, AtkResNode* fallbackFocus) => control.GuestOf(addon, fallbackFocus);
@@ -85,8 +80,9 @@ internal sealed class PressableLine : ResNode
         control.NavDown = down;
     }
 
-    /// <summary>Sets the type and the column, then re-lays whatever the line is showing.</summary>
-    public void Restyle(uint fontSize, float leading, float left, float width)
+    /// <summary>Sets the type and the width it has to fit, then re-lays whatever the line is
+    /// showing. Where the line sits is the list's to say, not ours.</summary>
+    public void Restyle(uint fontSize, float leading, float width)
     {
         this.fontSize = fontSize;
         this.leading = leading;
@@ -97,7 +93,6 @@ internal sealed class PressableLine : ResNode
             run.Height = leading;
         }
 
-        Position = new Vector2(left, Position.Y);
         Width = width;
         Set(content);
     }
@@ -120,7 +115,7 @@ internal sealed class PressableLine : ResNode
         var mark = ShowGlyph(content.Glyph) + (named ? 0f : iconRoom);
         var keywordRoom = named ? iconRoom : 0f;
         var runs = TextFlow.Lay(content.Words, content.Keyword, Measure, Width - mark, leading, maxLines, keywordRoom);
-        var lead = named || content.IconId is null ? Rect.Empty : new Rect(0f, 0f, iconRoom);
+        var lead = named || content.IconId is null ? Rect.Empty : new Rect(0f, 0f, iconRoom, leading);
 
         var (wordsBox, keywordBox) = Draw(runs, mark, keywordRoom, lead);
         keywordShown = keywordBox.Any;
@@ -131,10 +126,10 @@ internal sealed class PressableLine : ResNode
         // one control either way, so the line stays one stop for the pad's cursor.
         var pressed = keywordShown ? keywordBox : wordsBox;
         control.Position = new Vector2(pressed.Left, pressed.Top);
-        control.Size = new Vector2(pressed.Width, pressed.Height(leading));
+        control.Size = new Vector2(pressed.Width, pressed.Height);
         control.IsVisible = content.Pressable;
 
-        Height = MathF.Max(leading, wordsBox.Height(leading));
+        Height = MathF.Max(leading, wordsBox.Height);
         Light(false);
     }
 
@@ -155,7 +150,7 @@ internal sealed class PressableLine : ResNode
             }
 
             var room = run.Keyword ? keywordRoom : 0f;
-            var box = new Rect(mark + run.Left, run.Top, run.Width);
+            var box = new Rect(mark + run.Left, run.Top, run.Width, leading);
             node.Position = new Vector2(box.Left + room, box.Top);
             node.Width = box.Width - room;
             node.String = run.Text;
@@ -234,13 +229,6 @@ internal sealed class PressableLine : ResNode
 
     private IEnumerable<TextNode> Runs() => plain.Append(keyword).Append(glyph);
 
-    private T Attach<T>(T node)
-        where T : KamiToolKit.BaseTypes.NodeBase
-    {
-        node.AttachNode(this);
-        return node;
-    }
-
     private TextNode Text() => new()
     {
         FontType = FontType.Axis,
@@ -250,32 +238,4 @@ internal sealed class PressableLine : ResNode
         TextOutlineColor = restingEdge,
         IsVisible = false,
     };
-
-    /// <summary>A stretch of the line, and the rectangle every stretch together fits inside. Empty
-    /// until the first stretch is taken in, so an empty line measures nothing rather than a point
-    /// at the origin.</summary>
-    private readonly record struct Rect(float Left, float Top, float Width, bool Any = true)
-    {
-        public static Rect Empty => new(0f, 0f, 0f, false);
-
-        public Rect Union(Rect other)
-        {
-            if (!other.Any)
-            {
-                return this;
-            }
-
-            if (!Any)
-            {
-                return other;
-            }
-
-            var left = MathF.Min(Left, other.Left);
-            var right = MathF.Max(Left + Width, other.Left + other.Width);
-            return this with { Left = left, Top = MathF.Min(Top, other.Top), Width = right - left };
-        }
-
-        /// <summary>How tall the rectangle is: every line it reaches, at the given leading.</summary>
-        public float Height(float leading) => Any ? Top + leading : 0f;
-    }
 }

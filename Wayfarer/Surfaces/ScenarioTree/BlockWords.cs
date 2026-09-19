@@ -1,6 +1,6 @@
 using Dalamud.Game.Text.SeStringHandling;
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Presentation;
+using Wayfarer.Guidance;
+using Wayfarer.Presentation;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
@@ -34,6 +34,7 @@ internal static class BlockWords
     {
         EntryAction.UseItem item => item.IconId,
         EntryAction.Emote emote => emote.IconId,
+        EntryAction.Own own => own.IconId,
         _ => null,
     };
 

@@ -11,7 +11,9 @@
   <!-- The graph's own records come from Wayfarer.Core, so the file the generator writes is
        exactly the file the plugin reads. -->
   <ItemGroup>
-    <ProjectReference Include="../../Wayfarer.Core/Wayfarer.Core.csproj"/>
+    <!-- The routing file format and the graph's own types, compiled in rather than referenced:
+         this tool targets plain net10.0 and the plugin that owns these files targets Windows. -->
+    <Compile Include="../../Wayfarer/Routing/*.cs" LinkBase="Routing"/>
   </ItemGroup>
 
   <!-- Lumina reads the game's Excel sheets straight out of sqpack. Both DLLs ship with

@@ -1,5 +1,5 @@
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Routing;
+using Wayfarer.Guidance;
+using Wayfarer.Routing;
 
 namespace Wayfarer.Tests;
 
@@ -103,7 +103,7 @@ public class GuidanceChangeTests
     {
         var momodi = new ObjectiveEntry("Speak with Momodi.", null, new Destination.Reachable([There]));
         var aetheryte = new ObjectiveEntry("Attune to the aetheryte.", null, new Destination.Reachable([There]));
-        var objective = new Objective("Close to Home", null, [momodi, aetheryte]);
+        var objective = new Objective("Close to Home", [momodi, aetheryte]);
 
         var a = new PublishedGuidance(Quests, objective, momodi, Walk(100f));
         var b = new PublishedGuidance(Quests, objective, aetheryte, Walk(100f));
@@ -115,7 +115,7 @@ public class GuidanceChangeTests
     public void A_different_quest_behind_the_same_headline_is_a_change()
     {
         var a = Guide(Walk(100f));
-        var b = a with { Objective = a.Objective with { Action = new HeadlineAction.OpenQuestJournal(65) } };
+        var b = a with { Objective = a.Objective with { HeadlinePressable = true } };
 
         Assert.False(GuidanceChange.IsSame(a, b));
     }
@@ -125,6 +125,6 @@ public class GuidanceChangeTests
     private static PublishedGuidance Guide(Route route)
     {
         var entry = new ObjectiveEntry("Speak with Momodi.", new Progress(1, 3), new Destination.Reachable([There]));
-        return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", null, [entry]), entry, route);
+        return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", [entry]), entry, route);
     }
 }

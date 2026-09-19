@@ -1,5 +1,4 @@
 <Solution>
-  <Project Path="Wayfarer.Core/Wayfarer.Core.csproj" />
   <Project Path="Wayfarer.Tests/Wayfarer.Tests.csproj" />
   <Project Path="Wayfarer/Wayfarer.csproj" />
 </Solution>

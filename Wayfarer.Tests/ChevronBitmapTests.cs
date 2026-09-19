@@ -1,4 +1,4 @@
-using Wayfarer.Core.Ui;
+using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.Tests;
 

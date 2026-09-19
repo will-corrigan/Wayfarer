@@ -4,10 +4,9 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
-using Wayfarer.App.Guidance;
 using Wayfarer.App.Settings;
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Presentation;
+using Wayfarer.Guidance;
+using Wayfarer.Presentation;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
@@ -39,6 +38,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private GuidanceBlockNode? block;
     private CircleButtonNode? cog;
     private nint plateFocus;
+    private ushort? rootHeightBefore;
     private bool wordsChanged = true;
     private bool restyleWanted;
     private bool broken;
@@ -82,8 +82,6 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private static unsafe float RowsAbove(AtkUnitBase* addon) =>
         (JobRowPitch * JobRowNodeIds.Count(id => GuideNodes.JobRowShown(addon, id))) + (GuideNodes.HintBarShown(addon) ? HintBarHeight : 0f);
 
-    /// <summary>The row our lines follow in the cursor chain: the last job-quest row showing a
-    /// quest, or nothing when the plate is the only stop above us.</summary>
     /// <summary>The node our lines follow in the cursor chain: the last job-quest row showing a
     /// quest, or the plate itself when no row is.</summary>
     private static unsafe uint RowAboveUs(AtkUnitBase* addon)
@@ -116,6 +114,11 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     private unsafe void Attach(AtkUnitBase* addon)
     {
+        // A setup we have already handled can be delivered again, so anything from last time goes
+        // before anything new is made: otherwise the game keeps nodes we no longer hold and can
+        // never be told to free.
+        Detach(addon);
+
         try
         {
             var plate = GuideNodes.Plate(addon);
@@ -155,7 +158,11 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         cog = null;
         block?.Dispose();
         block = null;
-        SetRootHeight(addon, (ushort)RootHeight);
+        if (rootHeightBefore is { } before)
+        {
+            SetRootHeight(addon, before);
+            rootHeightBefore = null;
+        }
     }
 
     private unsafe void Refresh(AtkUnitBase* addon)
@@ -219,12 +226,20 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         }
     }
 
-    /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
-    /// while the block shows and restored when it hides.</summary>
+    /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block while
+    /// the block shows. The height it had before we first grew it is remembered, because the guide
+    /// sizes its own root past the layout file's default once its rows are showing, and detaching
+    /// has to put back what was there rather than what the file says.</summary>
     private unsafe void FitRootToBlock(AtkUnitBase* addon)
     {
-        var wanted = (ushort)Math.Max(RootHeight, block!.Y + block.Height);
-        SetRootHeight(addon, wanted);
+        var root = addon == null ? null : addon->RootNode;
+        if (root == null)
+        {
+            return;
+        }
+
+        rootHeightBefore ??= root->Height;
+        SetRootHeight(addon, (ushort)Math.Max(rootHeightBefore.Value, block!.Y + block.Height));
     }
 
     /// <summary>While guidance is about something other than the quest the guide names, the plate
@@ -235,7 +250,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         // The plate already names whatever the guide itself is about, so it is retitled only when
         // the guidance is about something else, which is exactly when the headline leads somewhere.
         var objective = guidance.Current?.Objective;
-        takeover.Update(addon, objective?.Headline, objective?.Action is not null);
+        takeover.Update(addon, objective?.Headline, objective?.Kind, objective?.HeadlinePressable ?? false);
     }
 
     /// <summary>A press of the plate while it carries our words opens the page about what we are

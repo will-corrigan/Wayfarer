@@ -2,9 +2,9 @@ using Autofac;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Wayfarer.App.Config;
-using Wayfarer.App.Guidance;
 using Wayfarer.App.Modules;
 using Wayfarer.App.Settings;
+using Wayfarer.Guidance;
 using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.App;
@@ -21,8 +21,8 @@ internal sealed class AppRegistrations : Module
         // Auto-activated: the frame loop starts when the container is built, not when something
         // first asks for it, and stops when the container is disposed.
         builder.RegisterType<GuidanceService>().As<IGuidance>().SingleInstance().AutoActivate();
+        builder.RegisterType<ObjectFinder>().As<IObjectFinder>().SingleInstance();
         builder.RegisterType<Heading>().As<IHeading>().SingleInstance();
-        builder.RegisterType<QuestJournal>().SingleInstance();
         builder.RegisterType<Actions>().As<IActions>().SingleInstance();
         builder.RegisterType<ScenarioTreeStyleStore>().SingleInstance();
 

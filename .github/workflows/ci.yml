@@ -25,33 +25,8 @@ jobs:
       # validates the committed files and never regenerates them. Every validator reads only what
       # is in the repository. See data/README.md.
       #
-      # One step per validator, deliberately. Three `node` lines in one `run:` block on a Windows
-      # runner is not three gates: the default shell is pwsh, and a NATIVE command's nonzero exit is
-      # not a terminating error there unless $PSNativeCommandUseErrorActionPreference is set, which
-      # defaults to false. Only the LAST line's exit code reaches the step, so the first two
-      # validators could print "FAILED: N errors" into a green build. One step each cannot go wrong
-      # that way whatever the shell does, and it names which validator failed in the job summary.
-      - name: Validate the catalogue
-        run: node data/validate-unlocks.mjs
-
-      - name: Validate the catalogue's identities
-        run: node data/validate-catalogue-identity.mjs
-
-      - name: Validate the hunting targets
-        run: node data/validate-hunting-targets.mjs
-
-      # The completeness check. The catalogue's EXISTENCE set comes from one wiki guide, so
-      # anything the guide omits this pipeline never learns about — a whole trophy-mount quest was
-      # missing until another plugin's data revealed it. data/coverage.json is the game's own
-      # answer, recorded beside the catalogue at generation time; this step is what stops the two
-      # drifting apart. Its own step rather than a fourth line above, because what it fails on is
-      # a different thing: not "is this file well formed" but "does it still describe the catalogue
-      # sitting next to it".
-      - name: Validate catalogue completeness
-        run: node data/validate-coverage.mjs
-
-      # repo.json is the Dalamud custom-repo manifest, not catalogue data, but the same "one step
-      # per validator" reasoning above applies: this catches a malformed channel configuration
+      # repo.json is the Dalamud custom-repo manifest. Its own step so a failure names itself:
+      # this catches a malformed channel configuration
       # (see release.yml and promote.yml) before it ships, rather than it silently going inert the
       # way it already has once.
       - name: Validate the repo manifest
@@ -85,10 +60,6 @@ jobs:
       # they cannot join the solution's locked-mode restore. Compiling one here is not the same as
       # testing it, but it is the difference between a change being caught here and being caught
       # in the shipped data. Lumina ships with the Dalamud downloaded above.
-      #
-      # tools/Wayfarer.CatalogueGen is not built for now: it depends on the unlock name-matching
-      # code that left Wayfarer.Core with the unlocks feature, and comes back with the unlocks
-      # module.
       - name: Build the routing generator
         run: dotnet build tools/Wayfarer.RoutingGen/Wayfarer.RoutingGen.csproj -c Release
 

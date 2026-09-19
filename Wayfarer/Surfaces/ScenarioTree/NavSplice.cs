@@ -1,6 +1,8 @@
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
 
+using static Wayfarer.GameNodes;
+
 namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>Our lines spliced into the guide's cursor chain where they sit on screen: after the
@@ -18,6 +20,7 @@ internal sealed unsafe class NavSplice
     private byte aboveDownBefore;
     private byte plateUpBefore;
     private int firstStop;
+    private int lastStop;
 
     private bool Applied => aboveNodeId is not null;
 
@@ -35,8 +38,12 @@ internal sealed unsafe class NavSplice
 
         // The cog is always there to be reached, so it is always the last of our stops; the lines
         // come before it when there is anything on them to press.
+        // Both ends are remembered, not just the first. The route line can stop being pressable
+        // while the entry stays, which leaves the first stop unchanged and the last one pointing at
+        // a line the cursor can no longer rest on.
         var first = block.FirstStop ?? GuideStops.Settings;
-        if (Applied && this.aboveNodeId == aboveNodeId && firstStop == first)
+        var last = block.LastStop ?? GuideStops.Settings;
+        if (Applied && this.aboveNodeId == aboveNodeId && firstStop == first && lastStop == last)
         {
             return;
         }
@@ -44,6 +51,7 @@ internal sealed unsafe class NavSplice
         Restore(addon);
         this.aboveNodeId = aboveNodeId;
         firstStop = first;
+        lastStop = last;
 
         ref var aboveNav = ref above->CursorNavigationInfo;
         ref var plateNav = ref plate->CursorNavigationInfo;
@@ -78,7 +86,4 @@ internal sealed unsafe class NavSplice
             plate->CursorNavigationInfo.UpIndex = plateUpBefore;
         }
     }
-
-    private static AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
-        addon == null ? null : addon->GetComponentByNodeId(nodeId);
 }

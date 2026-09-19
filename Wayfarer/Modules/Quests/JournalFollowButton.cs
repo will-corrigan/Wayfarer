@@ -6,7 +6,8 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Nodes;
 using Wayfarer.App;
-using Wayfarer.Core.Quests;
+
+using static Wayfarer.GameNodes;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -74,9 +75,6 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
 
-    private static unsafe AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
-        addon == null ? null : addon->GetComponentByNodeId(nodeId);
-
     /// <summary>The quest the pane is showing, or null when it shows a leve, a quest the player has
     /// already finished, or nothing at all.</summary>
     private static unsafe ushort? QuestOnShow()
@@ -115,6 +113,11 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
 
     private unsafe void Attach(AtkUnitBase* addon)
     {
+        // A setup we have already handled can be delivered again, so anything from last time goes
+        // before anything new is made: otherwise the game keeps nodes we no longer hold and can
+        // never be told to free.
+        Detach(addon);
+
         try
         {
             var row = addon == null ? null : addon->GetNodeById(ButtonRowNodeId);
@@ -143,8 +146,20 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     private unsafe void Detach(AtkUnitBase* addon)
     {
         UnlinkFromCursorChain(addon);
+        HandFocusBack(addon);
         button?.Dispose();
         button = null;
+    }
+
+    /// <summary>Points the journal's focus away from our button. The button can go while the
+    /// journal is still open, by the module being switched off or its setting unticked, and the
+    /// game would otherwise be left holding the pad's cursor on a freed node.</summary>
+    private unsafe void HandFocusBack(AtkUnitBase* addon)
+    {
+        if (button is { } ours)
+        {
+            GameNodes.HandFocusBack(addon, (AtkResNode*)ours.CollisionNode.Node, addon == null ? null : addon->GetNodeById(ButtonRowNodeId));
+        }
     }
 
     /// <summary>Puts our button between the game's two in the cursor's chain, so the pad reaches it
@@ -215,6 +230,7 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         if (quest is null)
         {
             UnlinkFromCursorChain(addon);
+            HandFocusBack(addon);
             return;
         }
 

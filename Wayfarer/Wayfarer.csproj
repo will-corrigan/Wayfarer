@@ -7,16 +7,20 @@
     <Version>1.2.0</Version>
     <Author>Will Corrigan</Author>
     <Name>Wayfarer</Name>
-    <Punchline>A quest arrow that knows the way: teleports, doors and aethernet included — plus an unlock checklist.</Punchline>
-    <Description>Guides you to your quest objective with an on-screen arrow that understands teleports, building entrances and city aethernet routing. Tracks every quest-unlockable feature, mount and dungeon you can pick up right now, and routes you to the quest givers.</Description>
+    <Punchline>Your quest step and the way there, under the game's own Main Scenario Guide.</Punchline>
+    <Description>Adds two lines under the Main Scenario Guide: the step you are on, and how to get to it, with a compass and the distance beside them. The route understands teleports, building entrances and city aethernet, and says so. The words that name what to do are the control: press them to cast the teleport, open the Duty Finder, use the key item, perform the emote, or put the phrase in your chat box. Follow any accepted quest from your journal, not only the main scenario. Mouse and controller both reach everything.</Description>
     <RepoUrl>https://github.com/will-corrigan/Wayfarer</RepoUrl>
-    <Tags>quest;navigation;unlocks;qol</Tags>
+    <Tags>quest;navigation;compass;qol</Tags>
     <IconUrl>https://raw.githubusercontent.com/will-corrigan/Wayfarer/main/images/icon.png</IconUrl>
     <CanUnloadAsync>true</CanUnloadAsync>
   </PropertyGroup>
+  <!-- The tests load the plugin itself, so they see what the plugin keeps to itself. Nothing here
+       is a public API: the only consumer of this assembly is the game. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Wayfarer.Tests"/>
+  </ItemGroup>
   <Import Project="../local.props" Condition="Exists('../local.props')"/>
   <ItemGroup>
-    <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj"/>
     <!-- The native UI toolkit, as the package its author publishes. See THIRD_PARTY_NOTICES.md.
          The version is written here rather than in Directory.Packages.props because the Dalamud SDK
          brings its own versioned packages, which central version management forbids. -->

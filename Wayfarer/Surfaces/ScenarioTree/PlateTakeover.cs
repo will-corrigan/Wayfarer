@@ -15,8 +15,6 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// pointer kept across frames is a pointer that can go stale.</para></summary>
 internal sealed unsafe class PlateTakeover
 {
-    private const string FollowedHeader = "Followed Quest";
-
     private string? gameTitle;
     private string? gameHeader;
     private string? ourTitle;
@@ -29,12 +27,14 @@ internal sealed unsafe class PlateTakeover
     /// it is only ever written into emptiness, so the game is never argued with.</summary>
     /// <param name="addon">The guide.</param>
     /// <param name="headline">What the guidance is about, or null when nothing is guided.</param>
+    /// <param name="kind">What kind of thing it is, for the heading above the plate, or null to
+    /// leave the game's own heading alone.</param>
     /// <param name="ours">Whether the guidance is about something other than the guide's own quest.</param>
-    public void Update(AtkUnitBase* addon, string? headline, bool ours)
+    public void Update(AtkUnitBase* addon, string? headline, string? kind, bool ours)
     {
         if (ours && !string.IsNullOrEmpty(headline))
         {
-            Apply(addon, headline);
+            Apply(addon, headline, kind);
             return;
         }
 
@@ -68,7 +68,7 @@ internal sealed unsafe class PlateTakeover
     }
 
     /// <summary>Retitles the plate to a headline, unless the game's own title already is it.</summary>
-    private void Apply(AtkUnitBase* addon, string headline)
+    private void Apply(AtkUnitBase* addon, string headline, string? kind)
     {
         var title = GuideNodes.PlateTitle(addon);
         var header = GuideNodes.Header(addon);
@@ -94,7 +94,10 @@ internal sealed unsafe class PlateTakeover
 
         ourTitle = headline;
         title->SetText(headline);
-        header->SetText(FollowedHeader);
+        if (!string.IsNullOrEmpty(kind))
+        {
+            header->SetText(kind);
+        }
     }
 
     /// <summary>Keeps the game's own words, unless it has not written any yet.</summary>

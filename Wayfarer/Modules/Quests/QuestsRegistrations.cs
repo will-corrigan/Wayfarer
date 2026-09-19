@@ -1,7 +1,6 @@
 using Autofac;
-using Wayfarer.App;
 using Wayfarer.App.Modules;
-using Wayfarer.Core.Guidance;
+using Wayfarer.Guidance;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -12,6 +11,7 @@ internal sealed class QuestsRegistrations : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
+        builder.RegisterType<QuestJournal>().SingleInstance();
         builder.RegisterType<QuestReader>().SingleInstance();
         builder.RegisterType<QuestFollowing>().SingleInstance();
         builder.RegisterType<JournalFollowButton>().SingleInstance();

@@ -1,5 +1,4 @@
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Quests;
+using Wayfarer.Guidance;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -7,10 +6,14 @@ namespace Wayfarer.Modules.Quests;
 /// while it is accepted, and otherwise the main scenario: whichever quest the banner names, and
 /// nothing while it shows "???". Reads the game each frame, but only rebuilds
 /// the objective when something it depends on changed: the quest, the step, the ToDos' progress
-/// the markers, or the key items the player is carrying. Focus is claimed and released by
+/// or the markers. Focus is claimed and released by
 /// <see cref="QuestsModule"/> as the module goes up and down.</summary>
-internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following) : IObjectiveSource
+internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal) : IObjectiveSource
 {
+    /// <summary>What the guide's own heading says while the plate carries a followed quest rather
+    /// than the main scenario the guide is about.</summary>
+    private const string FollowedHeader = "Followed Quest";
+
     private Signature? last;
     private Objective? cached;
 
@@ -19,6 +22,18 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
 
     /// <inheritdoc/>
     public Objective? Current => Refresh();
+
+    /// <inheritdoc/>
+    /// <remarks>The plate names the followed quest, so pressing it opens that quest's page in the
+    /// journal. Nothing is followed while the main scenario is guiding, and the objective says the
+    /// headline is not pressable, so this is not called then.</remarks>
+    public void PressHeadline()
+    {
+        if (following.Followed is { } followed)
+        {
+            journal.Open(followed);
+        }
+    }
 
     /// <inheritdoc/>
     public void Displaced()
@@ -45,14 +60,9 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         }
 
         var sequence = QuestReader.Sequence(questId);
-        var todos = reader.Todos(questId);
-        var progress = reader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
+        var progress = reader.Progress(questId, sequence);
         var markers = QuestReader.Markers(questId);
-        var carried = reader.KeyItems(questId);
-
-        // What the player is carrying is part of what the objective says, so picking a key item up
-        // rebuilds the objective even when nothing else about the step moved.
-        var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers), Fingerprint(carried));
+        var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers));
         if (signature == last)
         {
             return cached;
@@ -60,10 +70,12 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
 
         last = signature;
 
+        var todos = reader.Todos(questId, sequence, progress);
+
         // The guide names the main scenario quest itself, so only a quest the player chose to follow
         // instead gives the headline anywhere to lead.
-        var headline = following.Followed is { } followed ? new HeadlineAction.OpenQuestJournal(followed) : null;
-        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline, reader.Duty(questId), carried);
+        var headline = following.Followed is not null;
+        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline, reader.Duty(questId), reader.Marks(questId), QuestIds.RowId(questId), headline ? FollowedHeader : null);
     }
 
     /// <summary>The followed quest while it is still accepted; completing or abandoning it hands
@@ -83,5 +95,5 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         return reader.CurrentMainScenarioQuest();
     }
 
-    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers, int Carried);
+    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers);
 }

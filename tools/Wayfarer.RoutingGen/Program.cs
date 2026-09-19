@@ -4,7 +4,7 @@
 // Local, developer-only: CI has no game installation, so it validates the committed file
 // (RoutingGraphFileTests) and never regenerates it.
 using Lumina;
-using Wayfarer.Core.Routing;
+using Wayfarer.Routing;
 using Wayfarer.RoutingGen;
 
 if (args.Length != 2)
