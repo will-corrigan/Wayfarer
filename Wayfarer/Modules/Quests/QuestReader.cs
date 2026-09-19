@@ -42,6 +42,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodo>> todosByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
+    private Dictionary<uint, uint>? dutiesByContent;
 
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
@@ -129,6 +130,28 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
+    /// <summary>The Duty Finder entry for the duty a quest sends the player into, or null when it
+    /// sends them nowhere instanced. A quest names up to three duties and the first the Finder
+    /// knows is the one it is about; the rest are the same fight at other difficulties.</summary>
+    public uint? Duty(ushort questId)
+    {
+        if (QuestRow(questId) is not { } quest)
+        {
+            return null;
+        }
+
+        dutiesByContent ??= ReadDuties();
+        foreach (var content in quest.InstanceContent)
+        {
+            if (content.RowId != 0 && dutiesByContent.TryGetValue(content.RowId, out var duty))
+            {
+                return duty;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
     public string Name(ushort questId) =>
@@ -172,6 +195,21 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
             ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
             : null;
+
+    /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>
+    private Dictionary<uint, uint> ReadDuties()
+    {
+        var duties = new Dictionary<uint, uint>();
+        foreach (var condition in dataManager.GetExcelSheet<ContentFinderCondition>())
+        {
+            if (condition.Content.Is<InstanceContent>() && condition.Content.RowId != 0)
+            {
+                duties.TryAdd(condition.Content.RowId, condition.RowId);
+            }
+        }
+
+        return duties;
+    }
 
     private Dictionary<string, EmoteCommand> ReadEmotes()
     {
