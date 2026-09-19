@@ -31,7 +31,8 @@ internal static class QuestObjectiveBuilder
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
         bool headlinePressable = false,
         uint? duty = null,
-        IReadOnlyList<uint>? marks = null)
+        IReadOnlyList<uint>? marks = null,
+        string? kind = null)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
@@ -43,7 +44,7 @@ internal static class QuestObjectiveBuilder
             ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, marks))]
             : DescribedByMarkers(questName, markers, duty);
 
-        return entries.Count > 0 ? new Objective(questName, entries, headlinePressable) : null;
+        return entries.Count > 0 ? new Objective(questName, entries, headlinePressable, kind) : null;
     }
 
     private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>

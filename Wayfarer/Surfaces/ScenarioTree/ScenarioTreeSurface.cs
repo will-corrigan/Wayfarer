@@ -250,7 +250,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         // The plate already names whatever the guide itself is about, so it is retitled only when
         // the guidance is about something else, which is exactly when the headline leads somewhere.
         var objective = guidance.Current?.Objective;
-        takeover.Update(addon, objective?.Headline, objective?.HeadlinePressable ?? false);
+        takeover.Update(addon, objective?.Headline, objective?.Kind, objective?.HeadlinePressable ?? false);
     }
 
     /// <summary>A press of the plate while it carries our words opens the page about what we are

@@ -10,6 +10,10 @@ namespace Wayfarer.Modules.Quests;
 /// <see cref="QuestsModule"/> as the module goes up and down.</summary>
 internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal) : IObjectiveSource
 {
+    /// <summary>What the guide's own heading says while the plate carries a followed quest rather
+    /// than the main scenario the guide is about.</summary>
+    private const string FollowedHeader = "Followed Quest";
+
     private Signature? last;
     private Objective? cached;
 
@@ -71,7 +75,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         // The guide names the main scenario quest itself, so only a quest the player chose to follow
         // instead gives the headline anywhere to lead.
         var headline = following.Followed is not null;
-        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline, reader.Duty(questId), reader.Marks(questId));
+        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline, reader.Duty(questId), reader.Marks(questId), headline ? FollowedHeader : null);
     }
 
     /// <summary>The followed quest while it is still accepted; completing or abandoning it hands
