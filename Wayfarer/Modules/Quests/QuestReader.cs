@@ -8,6 +8,7 @@ using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
+using Wayfarer.App.Guidance;
 using Wayfarer.Core.Quests;
 using Wayfarer.Core.Routing;
 using GameMap = FFXIVClientStructs.FFXIV.Client.Game.UI.Map;
@@ -161,11 +162,18 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         return null;
     }
 
-    /// <summary>Every key item the quest hands the player, from its own script parameters. The
-    /// handler reports the item a ToDo is about for most quests, but not all: some name it only in
-    /// the ToDo's words, and this is what those are matched against. Read once per quest.</summary>
-    public IReadOnlyList<QuestItem> KeyItems(ushort questId) =>
-        itemsByQuest.TryGetValue(questId, out var items) ? items : itemsByQuest[questId] = ReadKeyItems(questId);
+    /// <summary>The key items of the quest the player is carrying right now, from its own script
+    /// parameters. The handler reports the item a ToDo is about for most quests, but not all: some
+    /// name it only in the ToDo's words, and this is what those are matched against.
+    ///
+    /// <para>Carrying is what tells the step that fetches an item apart from the step that uses it.
+    /// Both may name it, and only one of them can be acted on. The quest's own list is read once;
+    /// what the player is carrying is asked every time, because it changes as they play.</para></summary>
+    public IReadOnlyList<QuestItem> KeyItems(ushort questId)
+    {
+        var carried = itemsByQuest.TryGetValue(questId, out var items) ? items : itemsByQuest[questId] = ReadKeyItems(questId);
+        return carried.Count == 0 ? carried : [.. carried.Where(item => PlayerState.Holds(item.Id))];
+    }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
