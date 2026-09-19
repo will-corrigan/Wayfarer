@@ -2,56 +2,63 @@ using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
-using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
 using Lumina.Text.ReadOnly;
 using Wayfarer.App.Modules;
-using Wayfarer.Core.Presentation;
 using Wayfarer.Surfaces.ScenarioTree;
-using Wayfarer.Ui;
 
 namespace Wayfarer.App.Settings;
 
-/// <summary>The settings window, laid out like the game's journal: pages listed down the left,
-/// the chosen page on the right under a ruled title. The Guide Block page shows the block itself,
-/// drawn by the same node the game draws, re-laid live as its sliders move. The Modules page
-/// switches modules and knows them only through <see cref="IModuleHost"/>, so a new module
-/// appears by being registered and nothing else.
+/// <summary>The settings window, laid out like the game's own journal: pages listed down the left,
+/// the chosen page on the right under a ruled title. The Guide Block page draws the block itself,
+/// with the same node the game draws, re-laid live as the sliders move. The Modules page switches
+/// modules and knows them only through <see cref="IModuleHost"/>, so a new module appears here by
+/// being registered and nothing else.
+///
+/// <para>Both panes scroll and clip: every page is built inside a scrolling list that is exactly
+/// the pane's size, and each block of words is sized to the words it drew, so nothing a page holds
+/// can spill past the window's frame however long it turns out to be.</para>
 ///
 /// <para>Everything is built on open and freed on close, because the game frees the addon's node
 /// tree when it closes; a page is rebuilt whenever it is chosen.</para></summary>
 internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore styles, ITextureProvider textures, IPluginLog log) : NativeAddon
 {
-    private const float WindowWidth = 660f;
-    private const float WindowHeight = 500f;
-    private const float PagesWidth = 180f;
+    private const float WindowWidth = 680f;
+    private const float WindowHeight = 520f;
+
+    /// <summary>How the window's content is divided across: the pages list, then a gutter, then
+    /// the page. Shares rather than widths, so the panes hold together at any window size.</summary>
+    private const float PagesShare = 0.26f;
     private const float Gutter = 16f;
+
+    /// <summary>How a settings row is divided across: its label, then its control.</summary>
+    private const float RowLabelShare = 0.38f;
+
+    /// <summary>Room kept clear at a scrolling list's right edge for its scroll bar.</summary>
+    private const float ScrollBarWidth = 16f;
+
+    // Heights are the game's own: its list buttons are 28 tall, its checkboxes 24, its radio
+    // buttons 24, and its slider track 20, whatever width they are given.
     private const float PageButtonHeight = 28f;
-    private const float TitleHeight = 32f;
-    private const float BlurbHeight = 40f;
-    private const float RowHeight = 30f;
-    private const float RowLabelWidth = 150f;
-    private const float SliderWidth = 200f;
+    private const float TitleHeight = 28f;
+    private const float RowHeight = 28f;
     private const float SliderHeight = 20f;
-    private const float FramePadding = 14f;
-    private const float SectionGap = 12f;
-    private const float ButtonWidth = 160f;
+    private const float RadioButtonHeight = 24f;
     private const float CheckboxHeight = 24f;
-    private const float DescriptionHeight = 20f;
-    private const uint BlurbFontSize = 12;
-    private const uint HeadingFontSize = 14;
+
+    private const float FramePadding = 12f;
+    private const float SectionGap = 10f;
 
     /// <summary>What the preview block shows: a step, a route with a press, and a compass reading.</summary>
-    private const string SampleEntry = "Speak with Minfilia.";
-    private const string SampleRoute = "Teleport to Mor Dhona, then Walk to the Rising Stones";
+    private const string SampleEntry = "Speak with Minfilia at the Waking Sands.";
+    private const string SampleRoute = "Teleport to Vesper Bay, then Walk to the Waking Sands";
     private const float SampleNeedle = 0.6f;
     private const float SampleYalms = 143f;
     private const float SampleRise = 2f;
 
     private readonly Dictionary<Page, ListButtonNode> pageButtons = [];
+    private ScrollingNode<VerticalListNode>? pane;
     private VerticalListNode? pages;
-    private VerticalListNode? body;
-    private ResNode? pane;
     private ResNode? previewStage;
     private GuidanceBlockNode? preview;
     private NineGridNode? previewFrame;
@@ -61,6 +68,21 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         GuideBlock,
         Modules,
     }
+
+    /// <summary>The pages list down the left.</summary>
+    private float PagesWidth => ContentSize.X * PagesShare;
+
+    /// <summary>The pane the chosen page is built in, gutter aside.</summary>
+    private float PaneWidth => ContentSize.X - PagesWidth - Gutter;
+
+    /// <summary>The width a page's own nodes may take: the pane, less its scroll bar.</summary>
+    private float PageWidth => PaneWidth - ScrollBarWidth;
+
+    /// <summary>A settings row's label, and the control beside it.</summary>
+    private float RowLabelWidth => PageWidth * RowLabelShare;
+
+    /// <inheritdoc cref="RowLabelWidth"/>
+    private float ControlWidth => PageWidth - RowLabelWidth;
 
     /// <inheritdoc/>
     protected override unsafe void OnSetup(AtkUnitBase* addon, Span<AtkValue> atkValueSpan)
@@ -72,11 +94,13 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
             Position = ContentStartPosition,
             Size = new Vector2(PagesWidth, ContentSize.Y),
             FitWidth = true,
+            ClipListContents = true,
             ItemSpacing = 2f,
         };
         pages.AttachNode(this);
         AddPageButton(Page.GuideBlock, "Guide Block");
         AddPageButton(Page.Modules, "Modules");
+        pages.RecalculateLayout();
 
         Show(Page.GuideBlock);
     }
@@ -84,46 +108,11 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// <inheritdoc/>
     protected override unsafe void OnFinalize(AtkUnitBase* addon)
     {
-        pane?.Dispose();
-        pane = null;
-        preview = null;
-        previewFrame = null;
-        previewStage = null;
+        ForgetPage();
         pages?.Dispose();
         pages = null;
         pageButtons.Clear();
     }
-
-    private static HorizontalListNode Row(string label, NodeBase control)
-    {
-        var row = new HorizontalListNode { Height = RowHeight, FitHeight = true };
-        row.AddNode(new LabelTextNode { String = label, Size = new Vector2(RowLabelWidth, RowHeight) });
-        row.AddNode(control);
-        return row;
-    }
-
-    private static SliderNode Slider(int min, int max, int value, Action<int> onChanged) => new()
-    {
-        Size = new Vector2(SliderWidth, SliderHeight),
-        Min = min,
-        Max = max,
-        Step = 1,
-        Value = value,
-        OnValueChanged = onChanged,
-    };
-
-    private static TextNode Blurb(string words, Vector2 size) => new()
-    {
-        Size = size,
-        FontType = FontType.Axis,
-        FontSize = BlurbFontSize,
-        LineSpacing = (uint)(BlurbHeight / 2f),
-        AlignmentType = AlignmentType.TopLeft,
-        TextFlags = TextFlags.WordWrap | TextFlags.MultiLine,
-        TextColor = GameColors.ListText,
-        TextOutlineColor = GameColors.ListTextEdge,
-        String = words,
-    };
 
     private static string PlacementLabel(CompassPlacement placement) => placement switch
     {
@@ -131,6 +120,32 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         CompassPlacement.Left => "Left of the words",
         _ => "Hidden",
     };
+
+    private SliderNode Slider(int min, int max, int value, Action<int> onChanged) => new()
+    {
+        Size = new Vector2(ControlWidth, SliderHeight),
+        Min = min,
+        Max = max,
+        Step = 1,
+        Value = value,
+        OnValueChanged = onChanged,
+    };
+
+    /// <summary>A labelled row: the label at its share of the page, the control beside it.</summary>
+    private HorizontalListNode Row(string label, NodeBase control, float height = RowHeight)
+    {
+        var row = new HorizontalListNode { Height = height };
+        row.AddNode(new LabelTextNode { String = label, Size = new Vector2(RowLabelWidth, height) });
+        row.AddNode(control);
+        return row;
+    }
+
+    private Paragraph Words(string words)
+    {
+        var paragraph = new Paragraph();
+        paragraph.Set(words, PageWidth);
+        return paragraph;
+    }
 
     private void AddPageButton(Page page, string label)
     {
@@ -144,6 +159,15 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         pages!.AddNode(button);
     }
 
+    private void ForgetPage()
+    {
+        pane?.Dispose();
+        pane = null;
+        preview = null;
+        previewFrame = null;
+        previewStage = null;
+    }
+
     /// <summary>Rebuilds the right-hand pane for a page and marks its button as the chosen one.</summary>
     private void Show(Page page)
     {
@@ -152,34 +176,30 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
             button.Selected = kind == page;
         }
 
-        pane?.Dispose();
-        preview = null;
-        previewFrame = null;
-        previewStage = null;
+        ForgetPage();
 
-        var left = ContentStartPosition.X + PagesWidth + Gutter;
-        pane = new ResNode
+        pane = new ScrollingNode<VerticalListNode>
         {
-            Position = new Vector2(left, ContentStartPosition.Y),
-            Size = new Vector2(ContentSize.X - PagesWidth - Gutter, ContentSize.Y),
+            Position = new Vector2(ContentStartPosition.X + PagesWidth + Gutter, ContentStartPosition.Y),
+            Size = new Vector2(PaneWidth, ContentSize.Y),
+            AutoHideScrollBar = true,
+            ContentNode =
+            {
+                FitContents = true,
+                ItemSpacing = SectionGap,
+            },
         };
         pane.AttachNode(this);
 
         var (title, blurb) = page switch
         {
-            Page.GuideBlock => ("Guide Block", "How Wayfarer's lines look under the Main Scenario Guide. The preview is the real thing, so what you set is what you get."),
+            Page.GuideBlock => ("Guide Block", "How Wayfarer's lines look under the Main Scenario Guide. The preview below is the real thing, drawn by the same node the game draws, so what you set is what you get."),
             _ => ("Modules", "What Wayfarer follows. Each module is switched on its own and remembers your choice."),
         };
 
-        body = new VerticalListNode
-        {
-            Size = pane.Size,
-            FitWidth = true,
-            ItemSpacing = SectionGap,
-        };
-        body.AttachNode(pane);
-        body.AddNode(new UnderlinedTextNode { String = title, Size = new Vector2(pane.Width, TitleHeight) });
-        body.AddNode(Blurb(blurb, new Vector2(pane.Width, BlurbHeight)));
+        var body = pane.ContentNode;
+        body.AddNode(new UnderlinedTextNode { String = title, Size = new Vector2(PageWidth, TitleHeight) });
+        body.AddNode(Words(blurb));
 
         switch (page)
         {
@@ -191,24 +211,22 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
                 break;
         }
 
-        body.RecalculateLayout();
+        Refit();
     }
 
     /// <summary>The preview block in a frame, then one row per style value, then a reset.</summary>
     private void BuildGuideBlockPage(VerticalListNode body)
     {
-        var frame = new ResNode { Height = 0f };
-        previewStage = frame;
+        previewStage = new ResNode();
         previewFrame = new BorderNineGridNode();
-        previewFrame.AttachNode(frame);
+        previewFrame.AttachNode(previewStage);
         preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
-        preview.AttachNode(frame);
+        preview.AttachNode(previewStage);
         preview.SetWords(
             new LineContent(new ReadOnlySeString(SampleEntry), null, false),
             new LineContent(new ReadOnlySeString(SampleRoute), null, true));
         preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
-        body.AddNode(frame);
-        RefitPreview();
+        body.AddNode(previewStage);
 
         var style = styles.Current;
         body.AddNode(Row("Entry text size", Slider((int)ScenarioTreeStyle.SmallestFont, (int)ScenarioTreeStyle.LargestFont, (int)style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size))));
@@ -216,19 +234,19 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         body.AddNode(Row("Line spacing", Slider((int)ScenarioTreeStyle.SmallestLineGap, (int)ScenarioTreeStyle.LargestLineGap, (int)style.LineGap, gap => Change(s => s.LineGap = gap))));
         body.AddNode(Row("Compass size", Slider((int)ScenarioTreeStyle.SmallestCompass, (int)ScenarioTreeStyle.LargestCompass, (int)style.CompassSize, size => Change(s => s.CompassSize = size))));
 
-        var placement = new RadioButtonGroupNode { Width = SliderWidth };
-        foreach (var option in Enum.GetValues<CompassPlacement>())
+        var placements = Enum.GetValues<CompassPlacement>();
+        var placement = new RadioButtonGroupNode { Size = new Vector2(ControlWidth, RadioButtonHeight * placements.Length) };
+        foreach (var option in placements)
         {
             placement.AddButton(PlacementLabel(option), () => Change(s => s.Compass = option));
         }
 
         placement.SelectedOption = PlacementLabel(style.Compass);
-        placement.Height = RowHeight * Enum.GetValues<CompassPlacement>().Length;
-        body.AddNode(Row("Compass", placement));
+        body.AddNode(Row("Compass", placement, placement.Height));
 
         body.AddNode(new TextButtonNode
         {
-            Size = new Vector2(ButtonWidth, PageButtonHeight),
+            Size = new Vector2(ControlWidth, PageButtonHeight),
             String = "Reset to defaults",
             OnClick = () =>
             {
@@ -245,14 +263,14 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         {
             var toggle = new CheckboxNode
             {
-                Height = CheckboxHeight,
+                Size = new Vector2(PageWidth, CheckboxHeight),
                 String = module.Name,
                 IsChecked = host.IsEnabled(module),
                 TextTooltip = module.Description,
             };
             toggle.OnClick = enabled => _ = host.SetEnabledAsync(module, enabled);
             body.AddNode(toggle);
-            body.AddNode(Blurb(module.Description, new Vector2(body.Width, DescriptionHeight)));
+            body.AddNode(Words(module.Description));
         }
     }
 
@@ -263,20 +281,20 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         edit(next);
         styles.Apply(next);
         preview?.Restyle(styles.Current);
-        RefitPreview();
+        Refit();
     }
 
-    /// <summary>Sizes the frame to the block it holds, which changes height with the style.</summary>
-    private void RefitPreview()
+    /// <summary>Sizes the preview's frame to the block it holds, which changes height with the
+    /// style, then re-lays the page and its scroll bar around it.</summary>
+    private void Refit()
     {
-        if (preview is null || previewFrame is null || previewStage is not { } frame)
+        if (preview is not null && previewFrame is not null && previewStage is not null)
         {
-            return;
+            previewStage.Size = new Vector2(preview.Width + (2f * FramePadding), preview.Height + (2f * FramePadding));
+            previewFrame.Size = previewStage.Size;
         }
 
-        frame.Height = preview.Height + (2f * FramePadding);
-        frame.Width = preview.Width + (2f * FramePadding);
-        previewFrame.Size = frame.Size;
-        body?.RecalculateLayout();
+        pane?.ContentNode.RecalculateLayout();
+        pane?.RecalculateSizes();
     }
 }
