@@ -5,8 +5,7 @@ incorporates the following third-party works, retained here per their license te
 
 ## KamiToolKit
 
-Vendored as a git submodule at `external/KamiToolKit` and referenced directly from the
-`Wayfarer` project — used to build native game-styled addon windows (controller-navigable,
+Referenced from the `Wayfarer` project as the package its author publishes on NuGet — used to build native game-styled addon windows (controller-navigable,
 matching the game's own UI chrome) as an alternative to the plugin's ImGui windows.
 
 - Source: <https://github.com/MidoriKami/KamiToolKit>

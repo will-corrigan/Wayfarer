@@ -8,7 +8,8 @@ namespace Wayfarer.Core.Guidance;
 /// or null when there is nothing to count at that level.</param>
 /// <param name="Entries">The lines the game's own tracker would show for it, in order. A step with
 /// one target is one entry; a step whose parts can be done in any order is several.</param>
-public sealed record Objective(string Headline, Progress? Progress, IReadOnlyList<ObjectiveEntry> Entries)
+/// <param name="Action">Where the headline leads when pressed, or null when it leads nowhere.</param>
+public sealed record Objective(string Headline, Progress? Progress, IReadOnlyList<ObjectiveEntry> Entries, HeadlineAction? Action = null)
 {
     /// <summary>The entry the app routes to: the first, in the order the module listed them, that
     /// has somewhere to go. The list reads top down the way the game wrote it, so the player is

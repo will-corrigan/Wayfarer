@@ -9,6 +9,9 @@ namespace Wayfarer.App.Guidance;
 /// the current map, and nothing else is affected.</summary>
 internal static class ShippedRoutingGraph
 {
+    /// <summary>Reads the routing data shipped beside the plugin's own file. An empty graph is the
+    /// answer if the file is missing or will not parse, which guides without routing rather than
+    /// failing to load at all.</summary>
     public static RouteGraph Load(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
         var path = Path.Combine(pluginInterface.AssemblyLocation.DirectoryName ?? string.Empty, RoutingGraphFile.FileName);

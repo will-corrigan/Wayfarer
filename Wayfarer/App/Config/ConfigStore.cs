@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
@@ -7,7 +8,7 @@ namespace Wayfarer.App.Config;
 /// <summary>The config folder Dalamud gives the plugin, one indented JSON file per name.</summary>
 internal sealed class ConfigStore(IDalamudPluginInterface pluginInterface, IPluginLog log) : IConfigStore
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
 
     /// <inheritdoc/>
     public T Load<T>(string name)

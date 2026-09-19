@@ -15,12 +15,6 @@ namespace Wayfarer.Core.Ui;
 /// unrotated, so a needle angle of zero is straight ahead.</para></summary>
 public static class CompassBitmap
 {
-    /// <summary>Each texture is square and this is its side, in pixels.</summary>
-    public const int Size = 96;
-
-    /// <summary>Bytes per image: RGBA, straight alpha.</summary>
-    public const int ByteCount = Size * Size * 4;
-
     /// <summary>The ring itself, in dial units.</summary>
     public const float RingRadius = 0.804f;
 
@@ -59,20 +53,11 @@ public static class CompassBitmap
     private const float StrokeHalfWidth = 0.03f;
 
     private const float OutlineWidth = 2.2f;
-    private const float EdgeSoftness = 1.1f;
 
     /// <summary>Where between the two golds the ring, the needle's front and the needle's back sit.</summary>
     private const float RingBlend = 0.7f;
     private const float ForeBlend = 0.5f;
     private const float AftShade = 0.15f;
-
-    /// <summary>The game's warm HUD gold, bright at the tip and saturated at the tail.</summary>
-    private static readonly Vector3 GoldTip = Rgb(255, 242, 194);
-    private static readonly Vector3 GoldTail = Rgb(214, 148, 40);
-
-    /// <summary>The near-black every glyph is outlined in, which is what keeps gold readable
-    /// against bright terrain.</summary>
-    private static readonly Vector3 OutlineColor = new(0.07f, 0.055f, 0.03f);
 
     /// <summary>The dark the hub is filled with: a hole in the needle, not an edge around it.</summary>
     private static readonly Vector3 HubColor = new(0.078f, 0.086f, 0.122f);
@@ -90,87 +75,26 @@ public static class CompassBitmap
     /// row-major from the top-left.</summary>
     public static byte[] RenderRing()
     {
-        var gold = Vector3.Lerp(GoldTip, GoldTail, RingBlend);
-        var pixels = new byte[ByteCount];
-        const float Half = Size / 2f;
-        const float PerUnit = Half / RingUnit;
-
-        for (var y = 0; y < Size; y++)
-        {
-            for (var x = 0; x < Size; x++)
-            {
-                var point = new Vector2(((x + 0.5f) / Half) - 1f, ((y + 0.5f) / Half) - 1f) * RingUnit;
-                var distance = RingDistance(point) * PerUnit;
-
-                var silhouette = Coverage(distance - OutlineWidth);
-                if (silhouette <= 0f)
-                {
-                    continue;
-                }
-
-                var fill = Coverage(distance);
-                Write(pixels, x, y, Vector3.Lerp(OutlineColor, gold, fill), silhouette);
-            }
-        }
-
-        return pixels;
+        var gold = Vector3.Lerp(GlyphCanvas.GoldTip, GlyphCanvas.GoldTail, RingBlend);
+        return GlyphCanvas.Render(RingUnit, OutlineWidth, RingDistance, (_, _) => gold);
     }
 
     /// <summary>The needle alone, pointing straight up, centred on its own hub.</summary>
     public static byte[] RenderNeedle()
     {
-        var fore = Vector3.Lerp(GoldTip, GoldTail, ForeBlend);
-        var aft = Vector3.Lerp(GoldTail, OutlineColor, AftShade);
-        var pixels = new byte[ByteCount];
-        const float Half = Size / 2f;
-        const float PerUnit = Half / NeedleUnit;
-
-        for (var y = 0; y < Size; y++)
-        {
-            for (var x = 0; x < Size; x++)
-            {
-                var point = new Vector2(((x + 0.5f) / Half) - 1f, ((y + 0.5f) / Half) - 1f) * NeedleUnit;
-                var distance = SignedDistance(point) * PerUnit;
-
-                var silhouette = Coverage(distance - OutlineWidth);
-                if (silhouette <= 0f)
-                {
-                    continue;
-                }
-
-                var fill = Coverage(distance);
-                var half = Coverage(point.Y * PerUnit);
-                var hub = Coverage((point.Length() - HubRadius) * PerUnit);
-                var body = Vector3.Lerp(Vector3.Lerp(aft, fore, half), HubColor, hub);
-                Write(pixels, x, y, Vector3.Lerp(OutlineColor, body, fill), silhouette);
-            }
-        }
-
-        return pixels;
+        var fore = Vector3.Lerp(GlyphCanvas.GoldTip, GlyphCanvas.GoldTail, ForeBlend);
+        var aft = Vector3.Lerp(GlyphCanvas.GoldTail, GlyphCanvas.OutlineColor, AftShade);
+        return GlyphCanvas.Render(NeedleUnit, OutlineWidth, SignedDistance, (point, perUnit) => NeedleBody(point, perUnit, fore, aft));
     }
 
-    /// <summary>The alpha of the pixel at (<paramref name="x"/>, <paramref name="y"/>) in an image
-    /// these methods rendered.</summary>
-    public static byte AlphaAt(byte[] pixels, int x, int y)
+    /// <summary>The needle's own colours at a point: lighter ahead of the shoulders than behind
+    /// them, and the dark hub punched through the middle.</summary>
+    private static Vector3 NeedleBody(Vector2 point, float perUnit, Vector3 fore, Vector3 aft)
     {
-        ArgumentNullException.ThrowIfNull(pixels);
-        return pixels[(((y * Size) + x) * 4) + 3];
+        var half = GlyphCanvas.Coverage(point.Y * perUnit);
+        var hub = GlyphCanvas.Coverage((point.Length() - HubRadius) * perUnit);
+        return Vector3.Lerp(Vector3.Lerp(aft, fore, half), HubColor, hub);
     }
-
-    private static Vector3 Rgb(byte r, byte g, byte b) => new(r / 255f, g / 255f, b / 255f);
-
-    private static void Write(byte[] pixels, int x, int y, Vector3 color, float alpha)
-    {
-        var offset = ((y * Size) + x) * 4;
-        pixels[offset] = Channel(color.X);
-        pixels[offset + 1] = Channel(color.Y);
-        pixels[offset + 2] = Channel(color.Z);
-        pixels[offset + 3] = Channel(alpha);
-    }
-
-    private static byte Channel(float value) => (byte)Math.Clamp(value * 255f, 0f, 255f);
-
-    private static float Coverage(float distance) => Math.Clamp(0.5f - (distance / EdgeSoftness), 0f, 1f);
 
     private static float RingDistance(Vector2 point)
     {
@@ -191,7 +115,7 @@ public static class CompassBitmap
                 _ => new Vector2(-1f, 0f),
             };
 
-            distance = Math.Min(distance, SegmentDistance(point, direction * TickInner, direction * TickOuter));
+            distance = Math.Min(distance, GlyphCanvas.SegmentDistance(point, direction * TickInner, direction * TickOuter));
         }
 
         return distance;
@@ -206,7 +130,7 @@ public static class CompassBitmap
         {
             var a = Needle[i];
             var b = Needle[(i + 1) % Needle.Length];
-            distance = Math.Min(distance, SegmentDistance(point, a, b));
+            distance = Math.Min(distance, GlyphCanvas.SegmentDistance(point, a, b));
 
             if ((a.Y > point.Y) != (b.Y > point.Y)
                 && point.X < (((b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y)) + a.X))
@@ -216,13 +140,5 @@ public static class CompassBitmap
         }
 
         return inside ? -distance : distance;
-    }
-
-    private static float SegmentDistance(Vector2 point, Vector2 a, Vector2 b)
-    {
-        var edge = b - a;
-        var lengthSquared = edge.LengthSquared();
-        var t = lengthSquared <= 0f ? 0f : Math.Clamp(Vector2.Dot(point - a, edge) / lengthSquared, 0f, 1f);
-        return (point - a - (edge * t)).Length();
     }
 }

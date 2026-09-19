@@ -5,45 +5,47 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// <summary>Our lines spliced into the guide's cursor chain where they sit on screen: after the
 /// last visible job row and before the cursor wraps back to the plate. Two of the game's own
 /// records are rewritten for that, the row's "down" and the plate's "up", and both are put back
-/// the moment the lines have nothing to press or the block goes.
+/// the moment the block's stops change or the block goes.
 ///
-/// <para>Only addresses are kept between frames; they are dereferenced only while the guide is
-/// alive, which is the only time <see cref="Splice"/> and <see cref="Restore"/> are called.</para></summary>
+/// <para>Nothing but node ids and the two bytes taken from them is kept between frames. The nodes
+/// themselves are found again every time, because the addon owns them and may have freed them
+/// since: putting a record back through a pointer kept from an earlier frame is how a plugin
+/// writes into memory the game has moved on from.</para></summary>
 internal sealed unsafe class NavSplice
 {
-    private nint above;
-    private nint plate;
+    private uint? aboveNodeId;
     private byte aboveDownBefore;
     private byte plateUpBefore;
-    private int? firstStop;
-    private int? lastStop;
+    private int firstStop;
+    private int lastStop;
 
-    private bool Applied => above != 0;
+    private bool Applied => aboveNodeId is not null;
 
-    /// <summary>Links the block in after <paramref name="aboveUs"/>, or takes the links out when
-    /// the block has nothing to press. Re-links only when something changed.</summary>
-    public void Splice(AtkComponentBase* plateComponent, AtkComponentBase* aboveUs, GuidanceBlockNode block)
+    /// <summary>Links the block in after the node with <paramref name="aboveNodeId"/>, which is the
+    /// last row showing above us. Re-links only when the stops or the row have changed.</summary>
+    public void Splice(AtkUnitBase* addon, uint aboveNodeId, GuidanceBlockNode block)
     {
-        if (plateComponent == null || aboveUs == null || block.FirstStop is not { } first || block.LastStop is not { } last)
+        var plate = Component(addon, ScenarioTreeMetrics.PlateNodeId);
+        var above = Component(addon, aboveNodeId);
+        if (plate == null || above == null)
         {
-            Restore();
+            Restore(addon);
             return;
         }
 
-        var unchanged = Applied && above == (nint)aboveUs && plate == (nint)plateComponent && firstStop == first && lastStop == last;
-        if (unchanged)
+        var (first, last) = (block.FirstStop, GuidanceBlockNode.LastStop);
+        if (Applied && this.aboveNodeId == aboveNodeId && firstStop == first && lastStop == last)
         {
             return;
         }
 
-        Restore();
-        above = (nint)aboveUs;
-        plate = (nint)plateComponent;
+        Restore(addon);
+        this.aboveNodeId = aboveNodeId;
         firstStop = first;
         lastStop = last;
 
-        ref var aboveNav = ref aboveUs->CursorNavigationInfo;
-        ref var plateNav = ref plateComponent->CursorNavigationInfo;
+        ref var aboveNav = ref above->CursorNavigationInfo;
+        ref var plateNav = ref plate->CursorNavigationInfo;
         aboveDownBefore = aboveNav.DownIndex;
         plateUpBefore = plateNav.UpIndex;
         aboveNav.DownIndex = (byte)first;
@@ -51,19 +53,28 @@ internal sealed unsafe class NavSplice
         block.LinkNav(aboveNav.Index, plateNav.Index);
     }
 
-    /// <summary>Puts the game's two records back as they were.</summary>
-    public void Restore()
+    /// <summary>Puts the game's two records back as they were, looking both nodes up again.</summary>
+    public void Restore(AtkUnitBase* addon)
     {
-        if (!Applied)
+        if (this.aboveNodeId is not { } nodeId)
         {
             return;
         }
 
-        ((AtkComponentBase*)above)->CursorNavigationInfo.DownIndex = aboveDownBefore;
-        ((AtkComponentBase*)plate)->CursorNavigationInfo.UpIndex = plateUpBefore;
-        above = 0;
-        plate = 0;
-        firstStop = null;
-        lastStop = null;
+        this.aboveNodeId = null;
+        var above = Component(addon, nodeId);
+        if (above != null)
+        {
+            above->CursorNavigationInfo.DownIndex = aboveDownBefore;
+        }
+
+        var plate = Component(addon, ScenarioTreeMetrics.PlateNodeId);
+        if (plate != null)
+        {
+            plate->CursorNavigationInfo.UpIndex = plateUpBefore;
+        }
     }
+
+    private static AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
+        addon == null ? null : addon->GetComponentByNodeId(nodeId);
 }

@@ -3,6 +3,7 @@ using Wayfarer.Core.Presentation;
 
 namespace Wayfarer.Tests;
 
+/// <summary>The words a surface prints for one entry, and how its count is written.</summary>
 public class EntryWordsTests
 {
     [Fact]

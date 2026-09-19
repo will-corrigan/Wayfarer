@@ -79,9 +79,6 @@ public sealed class RouteGraph
         }
     }
 
-    /// <summary>How many fixed points and door sides the graph holds.</summary>
-    public int NodeCount => edges.Length;
-
     /// <summary>The cheapest route from <paramref name="from"/> to any of <paramref name="targets"/>,
     /// or null when none can be reached at all.</summary>
     /// <param name="from">Where the player stands.</param>

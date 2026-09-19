@@ -68,8 +68,6 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;
 
-    private static bool Attuned(uint aetheryteId) => UIState.Instance()->IsAetheryteUnlocked(aetheryteId);
-
     private void OnUpdate(IFramework tick)
     {
         try
@@ -99,7 +97,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
         var target = objective.FirstReachable();
         var route = target?.Where is Destination.Reachable reachable && Standing() is { } from
-            ? graph.FindRoute(from, reachable.Places, Attuned)
+            ? graph.FindRoute(from, reachable.Places, PlayerState.IsAttuned)
             : null;
         return new PublishedGuidance(source, objective, target, route);
     }

@@ -15,25 +15,23 @@ internal sealed class PressableLine : ResNode
     private const float PressableIdleAlpha = 0.8f;
     private const float IconGap = 4f;
 
-    private readonly float leading;
     private readonly int maxLines;
     private readonly IconImageNode icon;
     private readonly TextNode words;
     private readonly LineControl control;
+    private float leading;
+    private LineContent? content;
 
-    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed)
+    public unsafe PressableLine(TextFlags flags, Vector4 color, int maxLines, Action onPressed)
     {
-        this.leading = leading;
         this.maxLines = maxLines;
 
-        icon = new IconImageNode { Size = new Vector2(leading, leading), IsVisible = false };
+        icon = new IconImageNode { IsVisible = false };
         icon.AttachNode(this);
 
         words = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = fontSize,
-            LineSpacing = (uint)leading,
             AlignmentType = AlignmentType.TopLeft,
             TextFlags = flags,
             TextColor = color,
@@ -44,17 +42,19 @@ internal sealed class PressableLine : ResNode
         control = new LineControl
         {
             OnSelected = onPressed,
-            OnHoverStart = () => words.Alpha = 1f,
-            OnHoverEnd = () => words.Alpha = PressableIdleAlpha,
+            OnHoverStart = () => Light(true),
+            OnHoverEnd = () => Light(false),
             IsVisible = false,
         };
         control.CollisionNode.ShowClickableCursor = true;
         control.CollisionNode.AddEvent(AtkEventType.MouseClick, onPressed);
-        control.CollisionNode.AddEvent(AtkEventType.MouseOver, () => words.Alpha = 1f);
-        control.CollisionNode.AddEvent(AtkEventType.MouseOut, () => words.Alpha = PressableIdleAlpha);
+        control.CollisionNode.AddEvent(AtkEventType.MouseOver, () => Light(true));
+        control.CollisionNode.AddEvent(AtkEventType.MouseOut, () => Light(false));
         control.AttachNode(this);
     }
 
+    /// <summary>Whether this line is a control: it has an action, so it takes a click and the pad's
+    /// cursor can rest on it.</summary>
     public bool Pressable => control.IsVisible;
 
     /// <summary>The node the game's cursor rests on when this line is focused: the control's
@@ -73,9 +73,22 @@ internal sealed class PressableLine : ResNode
         control.NavDown = down;
     }
 
+    /// <summary>Sets the type and the column, then re-lays whatever the line is showing.</summary>
+    public void Restyle(uint fontSize, float leading, float left, float width)
+    {
+        this.leading = leading;
+        words.FontSize = fontSize;
+        words.LineSpacing = (uint)leading;
+        icon.Size = new Vector2(leading, leading);
+        Position = new Vector2(left, Position.Y);
+        Width = width;
+        Set(content);
+    }
+
     /// <summary>Shows the content and sizes the line to its words. Null hides the line.</summary>
     public void Set(LineContent? content)
     {
+        this.content = content;
         IsVisible = content is not null;
         if (content is null)
         {
@@ -90,12 +103,23 @@ internal sealed class PressableLine : ResNode
         words.Width = Width - wordsLeft;
         words.String = content.Words;
         words.Height = Lines() * leading;
-        words.Alpha = content.Pressable ? PressableIdleAlpha : 1f;
         Height = words.Height;
 
-        control.Position = words.Position;
-        control.Size = words.Size;
+        // The whole line takes the press, icon included: the icon is what the line is about, and
+        // reaching past it to the words to use an item reads as a control that is half wired up.
+        control.Position = Vector2.Zero;
+        control.Size = new Vector2(wordsLeft + words.Width, words.Height);
         control.IsVisible = content.Pressable;
+        Light(false);
+    }
+
+    /// <summary>Lights the line, or lets it settle back: bright while the pointer is on it or it
+    /// cannot be pressed at all, and a little dim while it is a control waiting to be used.</summary>
+    private void Light(bool lit)
+    {
+        var alpha = lit || !control.IsVisible ? 1f : PressableIdleAlpha;
+        words.Alpha = alpha;
+        icon.Alpha = alpha;
     }
 
     private int Lines() =>

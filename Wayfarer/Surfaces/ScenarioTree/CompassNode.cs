@@ -26,9 +26,9 @@ internal sealed class CompassNode : ResNode
 
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
-    private readonly ImGuiImageNode ring = Glyph(CompassBitmap.Size);
-    private readonly ImGuiImageNode needle = Glyph(CompassBitmap.Size);
-    private readonly ImGuiImageNode mark = Glyph(ChevronBitmap.Size);
+    private readonly ImGuiImageNode ring = Glyph(GlyphCanvas.Size);
+    private readonly ImGuiImageNode needle = Glyph(GlyphCanvas.Size);
+    private readonly ImGuiImageNode mark = Glyph(GlyphCanvas.Size);
     private TextureState state = TextureState.NotLoaded;
 
     public CompassNode(ITextureProvider textures, IPluginLog log)
@@ -98,9 +98,9 @@ internal sealed class CompassNode : ResNode
     {
         try
         {
-            ring.LoadTexture(Upload(CompassBitmap.RenderRing(), CompassBitmap.Size, RingTextureName));
-            needle.LoadTexture(Upload(CompassBitmap.RenderNeedle(), CompassBitmap.Size, NeedleTextureName));
-            mark.LoadTexture(Upload(ChevronBitmap.Render(), ChevronBitmap.Size, ChevronTextureName));
+            ring.LoadTexture(Upload(CompassBitmap.RenderRing(), GlyphCanvas.Size, RingTextureName));
+            needle.LoadTexture(Upload(CompassBitmap.RenderNeedle(), GlyphCanvas.Size, NeedleTextureName));
+            mark.LoadTexture(Upload(ChevronBitmap.Render(), GlyphCanvas.Size, ChevronTextureName));
             return TextureState.Loaded;
         }
         catch (Exception ex)

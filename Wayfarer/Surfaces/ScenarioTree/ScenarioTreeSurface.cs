@@ -1,12 +1,9 @@
-using System.Globalization;
 using System.Numerics;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
-using Lumina.Text.ReadOnly;
-using Wayfarer.App;
 using Wayfarer.App.Guidance;
+using Wayfarer.App.Settings;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Presentation;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
@@ -24,28 +21,34 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// the last visible row, before the cursor wraps back to the plate.</para></summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
-    private const string SayCommand = "/say ";
-
     private readonly IGuidance guidance;
     private readonly IHeading heading;
-    private readonly IActions actions;
+    private readonly GuidancePresses presses;
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
+    private readonly ScenarioTreeStyleStore styles;
+    private readonly ISettingsWindow settings;
     private readonly AddonController controller;
     private readonly NavSplice splice = new();
+    private readonly PlateTakeover takeover = new();
+    private readonly PlatePress platePress;
     private GuidanceBlockNode? block;
-    private nint addonAddress;
     private nint plateFocus;
     private bool wordsChanged = true;
+    private bool restyleWanted;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ScenarioTreeStyleStore styles, ISettingsWindow settings, IAddonLifecycle lifecycle, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
-        this.actions = actions;
+        presses = new GuidancePresses(guidance, actions);
+        this.styles = styles;
+        this.settings = settings;
         this.textures = textures;
         this.log = log;
+        platePress = new PlatePress(lifecycle);
+        platePress.Watch(OnPlatePressed);
 
         controller = new AddonController
         {
@@ -56,6 +59,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         };
 
         guidance.OnChanged += OnGuidanceChanged;
+        styles.OnChanged += OnStyleChanged;
         _ = framework.RunOnFrameworkThread(controller.Enable);
     }
 
@@ -63,34 +67,31 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         guidance.OnChanged -= OnGuidanceChanged;
+        styles.OnChanged -= OnStyleChanged;
+        platePress.Dispose();
         await controller.DisposeAsync().ConfigureAwait(false);
     }
 
-    private static unsafe bool NodeShown(AtkUnitBase* addon, uint id) =>
-        addon->GetNodeById(id) is var node && node != null && node->IsVisible();
-
-    /// <summary>How far down the game's own rows push our block: one pitch per job-quest row, and
-    /// the controller hint strip while the guide has focus.</summary>
+    /// <summary>How far down the game's own rows push our block: one pitch per job-quest row with
+    /// words in it, and the controller hint strip while the guide has focus.</summary>
     private static unsafe float RowsAbove(AtkUnitBase* addon) =>
-        (JobRowPitch * JobRowNodeIds.Count(id => NodeShown(addon, id))) + (NodeShown(addon, HintBarNodeId) ? HintBarHeight : 0f);
+        (JobRowPitch * JobRowNodeIds.Count(id => GuideNodes.JobRowShown(addon, id))) + (GuideNodes.HintBarShown(addon) ? HintBarHeight : 0f);
 
-    private static unsafe AtkComponentNode* Plate(AtkUnitBase* addon)
-    {
-        var node = addon->GetNodeById(PlateNodeId);
-        return node == null ? null : node->GetAsAtkComponentNode();
-    }
-
-    private static unsafe AtkComponentNode* LastVisibleJobRow(AtkUnitBase* addon)
+    /// <summary>The row our lines follow in the cursor chain: the last job-quest row showing a
+    /// quest, or nothing when the plate is the only stop above us.</summary>
+    /// <summary>The node our lines follow in the cursor chain: the last job-quest row showing a
+    /// quest, or the plate itself when no row is.</summary>
+    private static unsafe uint RowAboveUs(AtkUnitBase* addon)
     {
         foreach (var id in JobRowNodeIds.Reverse())
         {
-            if (NodeShown(addon, id) && addon->GetNodeById(id) is var node && node != null && node->GetAsAtkComponentNode() is var row && row != null)
+            if (GuideNodes.JobRowShown(addon, id))
             {
-                return row;
+                return id;
             }
         }
 
-        return null;
+        return PlateNodeId;
     }
 
     private static unsafe void SetRootHeight(AtkUnitBase* addon, ushort height)
@@ -102,41 +103,20 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         }
     }
 
-    private static LineContent? EntryContent(ObjectiveEntry? entry) =>
-        entry is null ? null : new LineContent(EntryWords.Describe(entry), IconFor(entry.Action), entry.Action is not null);
-
-    private static uint? IconFor(EntryAction? action) => action switch
-    {
-        EntryAction.UseItem item => item.IconId,
-        EntryAction.Emote emote => emote.IconId,
-        _ => null,
-    };
-
-    private static LineContent? RouteContent(RouteLine? line) =>
-        line is null ? null : new LineContent(WithGlyph(line), null, line.Press is not null);
-
-    private static ReadOnlySeString WithGlyph(RouteLine line) =>
-        Glyph(line.Glyph) is { } icon
-            ? new ReadOnlySeString(new SeStringBuilder().AddIcon(icon).AddText(line.Text).Build().Encode())
-            : line.Text;
-
-    private static BitmapFontIcon? Glyph(RouteGlyph glyph) => glyph switch
-    {
-        RouteGlyph.Aetheryte => BitmapFontIcon.Aetheryte,
-        RouteGlyph.Duty => BitmapFontIcon.WaitingForDutyFinder,
-        _ => null,
-    };
-
     private void OnGuidanceChanged(object? sender, GuidanceChangedEventArgs e) => wordsChanged = true;
+
+    /// <summary>The settings window may raise this off the framework thread; the block is re-laid
+    /// on the next update, which is on it.</summary>
+    private void OnStyleChanged(object? sender, EventArgs e) => restyleWanted = true;
 
     private unsafe void Attach(AtkUnitBase* addon)
     {
         try
         {
-            addonAddress = (nint)addon;
-            var plate = Plate(addon);
+            var plate = GuideNodes.Plate(addon);
             plateFocus = plate == null || plate->Component == null ? 0 : (nint)plate->Component->GetFocusNode();
-            block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
+            block = new GuidanceBlockNode(textures, log, presses.Entry, presses.Route, settings.Toggle);
+            block.Restyle(styles.Current);
             block.AttachNode(addon);
             block.GuestOf(addon, (AtkResNode*)plateFocus);
             wordsChanged = true;
@@ -152,10 +132,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     /// as they dispose, so nothing in the guide can reach a freed node afterwards.</summary>
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        splice.Restore();
+        splice.Restore(addon);
+        takeover.Release(addon);
         block?.Dispose();
         block = null;
-        addonAddress = 0;
         SetRootHeight(addon, (ushort)RootHeight);
     }
 
@@ -170,9 +150,16 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
+            if (restyleWanted)
+            {
+                restyleWanted = false;
+                block.Restyle(styles.Current);
+            }
+
             SpliceIntoChain(addon);
 
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
+            RetitlePlate(addon);
             FitRootToBlock(addon);
         }
         catch (Exception ex)
@@ -196,7 +183,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         wordsChanged = false;
         var wasPressable = block!.AnyPressable;
         var current = guidance.Current;
-        block.SetWords(EntryContent(current?.Target), RouteContent(RouteWords.Compose(current)));
+        block.SetWords(BlockWords.Entry(current?.Target), BlockWords.Route(RouteWords.Compose(current)));
         if (block.AnyPressable != wasPressable)
         {
             addon->UpdateCollisionNodeList(false);
@@ -205,57 +192,38 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     /// <summary>Our lines go into the cursor chain after the last visible job row, which is what
     /// sits between the plate and us on screen. With no row showing, they follow the plate.</summary>
-    private unsafe void SpliceIntoChain(AtkUnitBase* addon)
-    {
-        var plate = Plate(addon);
-        if (plate == null || plate->Component == null)
-        {
-            splice.Restore();
-            return;
-        }
-
-        var above = LastVisibleJobRow(addon) is var row && row != null && row->Component != null ? row->Component : plate->Component;
-        splice.Splice(plate->Component, above, block!);
-    }
+    private unsafe void SpliceIntoChain(AtkUnitBase* addon) => splice.Splice(addon, RowAboveUs(addon), block!);
 
     /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
     /// while the block shows and restored when it hides.</summary>
     private unsafe void FitRootToBlock(AtkUnitBase* addon)
     {
-        var wanted = (ushort)(block!.IsVisible ? Math.Max(RootHeight, block.Y + block.Height) : RootHeight);
+        var wanted = (ushort)Math.Max(RootHeight, block!.Y + block.Height);
         SetRootHeight(addon, wanted);
     }
 
-    private void OnEntryPressed()
+    /// <summary>While guidance is about something other than the quest the guide names, the plate
+    /// carries that name instead; the game's own words come back when it is the guide's own quest
+    /// again, which <see cref="PlateTakeover"/> decides by comparing them.</summary>
+    private unsafe void RetitlePlate(AtkUnitBase* addon)
     {
-        switch (guidance.Current?.Target?.Action)
-        {
-            case EntryAction.UseItem item:
-                actions.UseItem(item.ItemId);
-                break;
-            case EntryAction.Emote emote:
-                actions.Emote(emote.EmoteId);
-                break;
-            case EntryAction.Say say:
-                actions.FillChat(SayCommand + say.Phrase);
-                break;
-            default:
-                break;
-        }
+        // The plate already names whatever the guide itself is about, so it is retitled only when
+        // the guidance is about something else, which is exactly when the headline leads somewhere.
+        var objective = guidance.Current?.Objective;
+        takeover.Update(addon, objective?.Headline, objective?.Action is not null);
     }
 
-    private void OnRoutePressed()
+    /// <summary>A press of the plate while it carries our words opens the page about what we are
+    /// guiding to. The game's own page is not opened at all, because the press never reaches it.
+    /// While the plate carries the game's own words the press is left alone.</summary>
+    private bool OnPlatePressed()
     {
-        switch (RouteWords.Compose(guidance.Current)?.Press)
+        if (!takeover.Active)
         {
-            case RoutePress.Teleport teleport:
-                actions.TeleportTo(teleport.AetheryteId);
-                break;
-            case RoutePress.OpenDuty duty:
-                actions.OpenDutyFinder(duty.DutyId);
-                break;
-            default:
-                break;
+            return false;
         }
+
+        presses.Headline();
+        return true;
     }
 }

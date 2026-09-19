@@ -111,22 +111,20 @@ public class GuidanceChangeTests
         Assert.False(GuidanceChange.IsSame(a, b));
     }
 
+    [Fact]
+    public void A_different_quest_behind_the_same_headline_is_a_change()
+    {
+        var a = Guide(Walk(100f));
+        var b = a with { Objective = a.Objective with { Action = new HeadlineAction.OpenQuestJournal(65) } };
+
+        Assert.False(GuidanceChange.IsSame(a, b));
+    }
+
     private static Route Walk(float yalms) => new([new Leg.Walk(There, yalms)], yalms, There);
 
     private static PublishedGuidance Guide(Route route)
     {
         var entry = new ObjectiveEntry("Speak with Momodi.", new Progress(1, 3), new Destination.Reachable([There]));
         return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", null, [entry]), entry, route);
-    }
-
-    private sealed class FakeSource(string name) : IObjectiveSource
-    {
-        public string Name => name;
-
-        public Objective? Current => null;
-
-        public void Displaced()
-        {
-        }
     }
 }

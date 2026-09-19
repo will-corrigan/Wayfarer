@@ -10,6 +10,9 @@ public class QuestObjectiveBuilderTests
 {
     private const uint Gridania = 132;
 
+    /// <summary>The Limitless Blue (Extreme), as the Duty Finder numbers it.</summary>
+    private const uint Bismarck = 60u;
+
     private static readonly Place Aetheryte = new(Gridania, 2, 32.9f, 2.7f, 30f);
     private static readonly Place Lancers = new(133, 3, 147.1f, 15.5f, -268f);
     private static readonly Place Markets = new(133, 3, 172.4f, 15.5f, -89.9f);
@@ -135,5 +138,37 @@ public class QuestObjectiveBuilderTests
 
         Assert.Null(QuestObjectiveBuilder.Build("Close to Home", 1, CloseToHome, allDone, []));
         Assert.Null(QuestObjectiveBuilder.Build("Unwritten", 7, CloseToHome, [], []));
+    }
+
+    [Fact]
+    public void A_step_with_nowhere_to_go_is_inside_the_quests_duty()
+    {
+        QuestTodo[] confront = [new(0, 1, "Confront Bismarck in the Limitless Blue (Extreme).", false, 1, [])];
+
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: Bismarck);
+
+        var entry = Assert.Single(objective!.Entries);
+        Assert.Equal(Bismarck, Assert.IsType<Destination.InDuty>(entry.Where).DutyId);
+    }
+
+    [Fact]
+    public void A_step_with_nowhere_to_go_and_no_duty_says_so()
+    {
+        QuestTodo[] nowhere = [new(0, 1, "Wait.", false, 1, [])];
+
+        var objective = QuestObjectiveBuilder.Build("Waiting", 1, nowhere, [], []);
+
+        var entry = Assert.Single(objective!.Entries);
+        Assert.IsType<Destination.Blocked>(entry.Where);
+    }
+
+    [Fact]
+    public void A_quest_the_sheet_says_nothing_about_is_its_duty()
+    {
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 7, CloseToHome, [], [], duty: Bismarck);
+
+        var entry = Assert.Single(objective!.Entries);
+        Assert.Equal("The Diabolical Bismarck", entry.Text);
+        Assert.Equal(Bismarck, Assert.IsType<Destination.InDuty>(entry.Where).DutyId);
     }
 }

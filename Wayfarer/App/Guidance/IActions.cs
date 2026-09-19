@@ -20,4 +20,7 @@ internal interface IActions
 
     /// <summary>Writes text into the chat box without sending it.</summary>
     void FillChat(string text);
+
+    /// <summary>Opens the quest journal at a quest.</summary>
+    void OpenQuestJournal(ushort questId);
 }

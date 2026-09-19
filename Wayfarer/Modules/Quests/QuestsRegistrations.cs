@@ -13,6 +13,8 @@ internal sealed class QuestsRegistrations : Module
     protected override void Load(ContainerBuilder builder)
     {
         builder.RegisterType<QuestReader>().SingleInstance();
+        builder.RegisterType<QuestFollowing>().SingleInstance();
+        builder.RegisterType<JournalFollowButton>().SingleInstance();
         builder.RegisterType<QuestObjectives>().As<IObjectiveSource>().AsSelf().SingleInstance();
         builder.RegisterType<QuestsModule>().As<IModule>().SingleInstance();
     }
