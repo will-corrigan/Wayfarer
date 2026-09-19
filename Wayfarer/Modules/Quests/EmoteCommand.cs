@@ -4,4 +4,4 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="Id">The emote's id.</param>
 /// <param name="Command">The command, with its slash.</param>
 /// <param name="IconId">The emote's icon.</param>
-public sealed record EmoteCommand(ushort Id, string Command, uint IconId);
+internal sealed record EmoteCommand(ushort Id, string Command, uint IconId);

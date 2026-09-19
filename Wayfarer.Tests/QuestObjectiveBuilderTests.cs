@@ -19,10 +19,10 @@ public class QuestObjectiveBuilderTests
 
     private static readonly QuestTodo[] CloseToHome =
     [
-        new(0, 1, "Attune yourself to the aetheryte found inside the city.", false, 1, [Aetheryte]),
-        new(1, 1, "Visit the Lancers' Guild.", false, 1, [Lancers]),
-        new(2, 1, "Listen to Parsemontret's explanation of the markets.", false, 1, [Markets]),
-        new(3, 255, "Report to Miounne at the Carline Canopy.", false, 1, [new Place(Gridania, 2, 23.8f, -8f, 115.9f)]),
+        new(0, 1, "Attune yourself to the aetheryte found inside the city.", 1, [Aetheryte]),
+        new(1, 1, "Visit the Lancers' Guild.", 1, [Lancers]),
+        new(2, 1, "Listen to Parsemontret's explanation of the markets.", 1, [Markets]),
+        new(3, 255, "Report to Miounne at the Carline Canopy.", 1, [new Place(Gridania, 2, 23.8f, -8f, 115.9f)]),
     ];
 
     private static readonly QuestMarker[] AllThreeMarkers = [new(Aetheryte, null), new(Lancers, null), new(Markets, null)];
@@ -71,7 +71,7 @@ public class QuestObjectiveBuilderTests
     [Fact]
     public void A_kill_count_shows_have_over_needed()
     {
-        var todos = new QuestTodo[] { new(2, 3, "Slay opo-opos.", false, 8, [Lancers]) };
+        var todos = new QuestTodo[] { new(2, 3, "Slay opo-opos.", 8, [Lancers]) };
         var progress = new QuestTodoProgress[] { new(2, Done: false, 3, 8) };
 
         var objective = QuestObjectiveBuilder.Build("A Matter of Perspective", 3, todos, progress, []);
@@ -82,7 +82,7 @@ public class QuestObjectiveBuilderTests
     [Fact]
     public void A_count_the_game_has_not_reported_yet_starts_at_zero_of_the_data_quantity()
     {
-        var todos = new QuestTodo[] { new(2, 3, "Slay opo-opos.", false, 8, [Lancers]) };
+        var todos = new QuestTodo[] { new(2, 3, "Slay opo-opos.", 8, [Lancers]) };
 
         var objective = QuestObjectiveBuilder.Build("A Matter of Perspective", 3, todos, [], []);
 
@@ -98,20 +98,20 @@ public class QuestObjectiveBuilderTests
     }
 
     [Fact]
-    public void A_placeholder_todo_takes_the_markers_resolved_label()
+    public void A_markers_label_never_replaces_a_todos_own_words()
     {
-        var todos = new QuestTodo[] { new(0, 1, "Slay  karakul.", true, 3, [Lancers]) };
-        var markers = new QuestMarker[] { new(Lancers, "Slay 2/3 karakul.") };
+        var todos = new QuestTodo[] { new(0, 1, "Slay 2 of 3 karakul.", 3, [Lancers]) };
+        var markers = new QuestMarker[] { new(Lancers, "Central Shroud") };
 
         var objective = QuestObjectiveBuilder.Build("Way of the Lancer", 1, todos, [], markers);
 
-        Assert.Equal("Slay 2/3 karakul.", objective!.Entries[0].Text);
+        Assert.Equal("Slay 2 of 3 karakul.", objective!.Entries[0].Text);
     }
 
     [Fact]
     public void A_todo_with_no_position_anywhere_is_blocked_so_its_words_still_show()
     {
-        var todos = new QuestTodo[] { new(0, 1, "Wait for nightfall.", false, 1, []) };
+        var todos = new QuestTodo[] { new(0, 1, "Wait for nightfall.", 1, []) };
 
         var objective = QuestObjectiveBuilder.Build("A Vigil", 1, todos, [], []);
 
@@ -143,7 +143,7 @@ public class QuestObjectiveBuilderTests
     [Fact]
     public void A_step_with_nowhere_to_go_is_inside_the_quests_duty()
     {
-        QuestTodo[] confront = [new(0, 1, "Confront Bismarck in the Limitless Blue (Extreme).", false, 1, [])];
+        QuestTodo[] confront = [new(0, 1, "Confront Bismarck in the Limitless Blue (Extreme).", 1, [])];
 
         var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: Bismarck);
 
@@ -154,7 +154,7 @@ public class QuestObjectiveBuilderTests
     [Fact]
     public void A_step_with_nowhere_to_go_and_no_duty_says_so()
     {
-        QuestTodo[] nowhere = [new(0, 1, "Wait.", false, 1, [])];
+        QuestTodo[] nowhere = [new(0, 1, "Wait.", 1, [])];
 
         var objective = QuestObjectiveBuilder.Build("Waiting", 1, nowhere, [], []);
 

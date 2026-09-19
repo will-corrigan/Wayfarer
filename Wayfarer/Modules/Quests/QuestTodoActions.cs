@@ -7,7 +7,7 @@ namespace Wayfarer.Modules.Quests;
 /// item the quest's handler reports, the key item its words name, or the ToDo's own words. An
 /// emote ToDo names its command in the text, "Greet Aunillie with a /bow."; a say ToDo always
 /// reads "With the chat mode in Say, enter “Well met!” to ...".</summary>
-public static partial class QuestTodoActions
+internal static partial class QuestTodoActions
 {
     private const int MatchTimeoutMilliseconds = 100;
     private const string PhraseGroup = "phrase";

@@ -5,14 +5,13 @@ namespace Wayfarer.Modules.Quests;
 
 /// <summary>Turns a quest's current step into the objective the app guides to: every ToDo of the
 /// step the game has not ticked, with its count when it has one, placed at its quest markers when
-/// the game is showing them and at its positions from the data otherwise. A ToDo whose words hold
-/// a runtime placeholder takes its marker's label, which the game has already filled in. A ToDo
-/// that has the player use an item, emote or say something carries that as its action.
+/// the game is showing them and at its positions from the data otherwise. A ToDo that has the
+/// player use an item, emote or say something carries that as its action.
 ///
 /// <para>A step with nowhere on a map to go is inside a duty when the quest has one, which is the
 /// only other place a quest can send the player. There is nothing to walk to there, so the
 /// guidance is to queue for it.</para></summary>
-public static class QuestObjectiveBuilder
+internal static class QuestObjectiveBuilder
 {
     /// <summary>How close a quest marker has to be to a ToDo's position to count as its marker:
     /// slack for float error and for markers the game nudges, not a search radius.</summary>
@@ -64,7 +63,7 @@ public static class QuestObjectiveBuilder
             : Nowhere(duty);
 
         var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
-        var words = Words(todo, markersAtThisTodo);
+        var words = todo.Text;
         return new ObjectiveEntry(words, Count(todo, reported), where, QuestTodoActions.From(words, reported?.Item, emotes, questItems));
     }
 
@@ -87,9 +86,6 @@ public static class QuestObjectiveBuilder
         markers.Count > 0 ? [new ObjectiveEntry(FirstLabel(markers) ?? questName, null, Reachable(markers))]
             : duty is { } dutyId ? [new ObjectiveEntry(questName, null, new Destination.InDuty(dutyId))]
             : [];
-
-    private static string Words(QuestTodo todo, IEnumerable<QuestMarker> markersAtThisTodo) =>
-        todo.HasUnresolvedPlaceholder ? FirstLabel(markersAtThisTodo) ?? todo.Text : todo.Text;
 
     private static string? FirstLabel(IEnumerable<QuestMarker> markers) =>
         markers.Select(marker => marker.Label).FirstOrDefault(label => !string.IsNullOrEmpty(label));

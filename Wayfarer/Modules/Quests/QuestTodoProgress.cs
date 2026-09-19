@@ -8,4 +8,4 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="Have">How many of its thing the player has so far.</param>
 /// <param name="Needed">How many it wants. One for a plain "speak with" ToDo.</param>
 /// <param name="Item">The key item the ToDo has the player use, or null.</param>
-public sealed record QuestTodoProgress(int Index, bool Done, int Have, int Needed, QuestItem? Item = null);
+internal sealed record QuestTodoProgress(int Index, bool Done, int Have, int Needed, QuestItem? Item = null);

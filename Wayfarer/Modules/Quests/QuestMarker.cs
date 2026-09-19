@@ -7,4 +7,4 @@ namespace Wayfarer.Modules.Quests;
 /// is the only signal the data gives that a to-do line is done.</summary>
 /// <param name="At">Where the marker stands, with the search radius when the step is an area.</param>
 /// <param name="Label">The marker's own words, or null when it has none.</param>
-public sealed record QuestMarker(Place At, string? Label);
+internal sealed record QuestMarker(Place At, string? Label);

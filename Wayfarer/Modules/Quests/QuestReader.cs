@@ -1,12 +1,12 @@
 using System.Globalization;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
-using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
 using Wayfarer.Guidance;
 using Wayfarer.Routing;
@@ -16,7 +16,7 @@ namespace Wayfarer.Modules.Quests;
 
 /// <summary>Every read the quests module makes of the game, so the rest of the module is pure.
 /// Framework thread only.</summary>
-internal sealed unsafe class QuestReader(IDataManager dataManager)
+internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEvaluator evaluator)
 {
     /// <summary>Every to-do line in a quest's own text sheet is keyed with this in front of it.</summary>
     private const string TodoKeyPrefix = "TEXT_";
@@ -25,30 +25,14 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     /// difficulty of the same fight, and the first the Duty Finder knows is the one it is about.</summary>
     private const string DutyParameter = "INSTANCEDUNGEON";
 
-    /// <summary>The script parameter a quest names a key item in, one per item it hands out.</summary>
-    private const string ItemParameter = "ITEM";
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
 
-    /// <summary>Macros that only style text. Any other macro in a to-do line is a value the game
-    /// fills in at runtime and the sheet alone cannot.</summary>
-    private static readonly HashSet<MacroCode> PresentationalMacroCodes =
-    [
-        MacroCode.NewLine, MacroCode.Wait, MacroCode.Icon, MacroCode.Color, MacroCode.EdgeColor,
-        MacroCode.ShadowColor, MacroCode.SoftHyphen, MacroCode.Key, MacroCode.Scale, MacroCode.Bold,
-        MacroCode.Italic, MacroCode.Edge, MacroCode.Shadow, MacroCode.NonBreakingSpace, MacroCode.Icon2,
-        MacroCode.Hyphen, MacroCode.Link, MacroCode.Caps, MacroCode.Head, MacroCode.Split,
-        MacroCode.HeadAll, MacroCode.Fixed, MacroCode.Lower, MacroCode.LowerHead, MacroCode.ColorType,
-        MacroCode.EdgeColorType, MacroCode.Ruby, MacroCode.Sound, MacroCode.LevelPos,
-        MacroCode.SetResetTime, MacroCode.SetTime,
-    ];
-
-    private readonly Dictionary<ushort, IReadOnlyList<QuestTodo>> todosByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
-    private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, uint>? dutiesByContent;
 
@@ -89,35 +73,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         }
 
         return markers;
-    }
-
-    /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
-    /// event handler. Empty when the handler is not loaded or there is no player.</summary>
-    public List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
-    {
-        var events = EventFramework.Instance();
-        var control = Control.Instance();
-        if (events == null || control == null)
-        {
-            return [];
-        }
-
-        var handler = (QuestEventHandler*)events->GetEventHandlerById(QuestIds.RowId(questId));
-        var player = control->LocalPlayer;
-        if (handler == null || player == null)
-        {
-            return [];
-        }
-
-        var progress = new List<QuestTodoProgress>();
-        foreach (var index in todoIndexes)
-        {
-            uint have, needed, itemId;
-            handler->GetTodoArgs(player, (byte)index, &have, &needed, &itemId);
-            progress.Add(new QuestTodoProgress(index, handler->IsTodoChecked(player, (byte)index), (int)have, (int)needed, KeyItem(itemId)));
-        }
-
-        return progress;
     }
 
     /// <summary>The main scenario quest the banner names, or null while it shows "???": the branch
@@ -161,52 +116,51 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         return null;
     }
 
-    /// <summary>The key items of the quest the player is carrying right now, from its own script
-    /// parameters. The handler reports the item a ToDo is about for most quests, but not all: some
-    /// name it only in the ToDo's words, and this is what those are matched against.
-    ///
-    /// <para>Carrying is what tells the step that fetches an item apart from the step that uses it.
-    /// Both may name it, and only one of them can be acted on. The quest's own list is read once;
-    /// what the player is carrying is asked every time, because it changes as they play.</para></summary>
-    public IReadOnlyList<QuestItem> KeyItems(ushort questId)
-    {
-        var carried = itemsByQuest.TryGetValue(questId, out var items) ? items : itemsByQuest[questId] = ReadKeyItems(questId);
-        return carried.Count == 0 ? carried : [.. carried.Where(item => PlayerState.Holds(item.Id))];
-    }
-
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
     public string Name(ushort questId) =>
         namesByQuest.TryGetValue(questId, out var name) ? name : namesByQuest[questId] = ReadName(questId);
 
-    /// <summary>The key item with this id, or null when the id is not one. Handed to
-    /// <see cref="TrackedQuests"/> so it can name the item the game reports against a line.</summary>
-    public QuestItem? KeyItem(uint itemId) =>
-        QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
-            ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
-            : null;
+    /// <summary>One step of the quest as it stands: the lines that complete it with their words
+    /// finished, and what the quest's own running script says about each. The script supplies both
+    /// the counts a line's words may ask for and the counts the surface prints, so the words and
+    /// the numbers are always the same numbers.</summary>
+    public QuestStep Step(ushort questId, byte sequence)
+    {
+        var templates = Templates(questId).Where(todo => todo.Sequence == sequence).ToList();
+        var progress = Progress(questId, templates.Select(todo => todo.Index));
+        var todos = new List<QuestTodo>(templates.Count);
+        foreach (var template in templates)
+        {
+            var reported = progress.Find(entry => entry.Index == template.Index);
+            todos.Add(new QuestTodo(
+                template.Index,
+                template.Sequence,
+                Words(template.Words, reported?.Have ?? 0, reported?.Needed ?? template.Needed),
+                template.Needed,
+                template.Positions));
+        }
 
-    /// <summary>The quest's whole to-do table, read once per quest.</summary>
-    public IReadOnlyList<QuestTodo> Todos(ushort questId) =>
-        todosByQuest.TryGetValue(questId, out var todos) ? todos : todosByQuest[questId] = ReadTodos(questId);
+        return new QuestStep(todos, progress);
+    }
 
-    private static bool HasUnresolvedPlaceholder(ReadOnlySeString text) =>
-        text.Any(payload => payload.Type == ReadOnlySePayloadType.Macro && !PresentationalMacroCodes.Contains(payload.MacroCode));
+    /// <summary>The quest's whole to-do table as authored, read once per quest.</summary>
+    public IReadOnlyList<QuestTodoTemplate> Templates(ushort questId) =>
+        templatesByQuest.TryGetValue(questId, out var todos) ? todos : templatesByQuest[questId] = ReadTemplates(questId);
 
     /// <summary>The to-do text rows by index. They live in a per-quest sheet, keyed
     /// <c>TEXT_&lt;INTERNAL NAME&gt;_TODO_&lt;index&gt;</c>.</summary>
-    private static Dictionary<int, (string Text, bool HasPlaceholder)> ParseTodoRows(ExcelSheet<RawRow> raw, string internalName)
+    private static Dictionary<int, ReadOnlySeString> ParseTodoRows(ExcelSheet<RawRow> raw, string internalName)
     {
         var prefix = TodoKeyPrefix + internalName.ToUpperInvariant() + TodoKeyInfix;
-        var rows = new Dictionary<int, (string Text, bool HasPlaceholder)>();
+        var rows = new Dictionary<int, ReadOnlySeString>();
         foreach (var row in raw)
         {
             var key = row.ReadStringColumn(0).ExtractText();
             if (key.StartsWith(prefix, StringComparison.Ordinal)
                 && int.TryParse(key.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var index))
             {
-                var text = row.ReadStringColumn(1);
-                rows[index] = (text.ExtractText(), HasUnresolvedPlaceholder(text));
+                rows[index] = row.ReadStringColumn(1);
             }
         }
 
@@ -220,25 +174,55 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
             .OfType<Level>()
             .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
 
-    private List<QuestItem> ReadKeyItems(ushort questId)
+    /// <summary>The to-do text rows by index. They live in a per-quest sheet, keyed
+    /// <c>TEXT_&lt;INTERNAL NAME&gt;_TODO_&lt;index&gt;</c>.</summary>
+
+    /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
+    /// event handler. Empty when the handler is not loaded or there is no player.</summary>
+    private List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
     {
-        if (QuestRow(questId) is not { } quest)
+        var events = EventFramework.Instance();
+        var control = Control.Instance();
+        if (events == null || control == null)
         {
             return [];
         }
 
-        var items = new List<QuestItem>();
-        foreach (var parameter in quest.QuestParams)
+        var handler = (QuestEventHandler*)events->GetEventHandlerById(QuestIds.RowId(questId));
+        var player = control->LocalPlayer;
+        if (handler == null || player == null)
         {
-            if (parameter.ScriptInstruction.ExtractText().StartsWith(ItemParameter, StringComparison.Ordinal)
-                && KeyItem(parameter.ScriptArg) is { } item)
-            {
-                items.Add(item);
-            }
+            return [];
         }
 
-        return items;
+        var progress = new List<QuestTodoProgress>();
+        foreach (var index in todoIndexes)
+        {
+            uint have, needed, itemId;
+            handler->GetTodoArgs(player, (byte)index, &have, &needed, &itemId);
+            progress.Add(new QuestTodoProgress(index, handler->IsTodoChecked(player, (byte)index), (int)have, (int)needed, KeyItem(itemId)));
+        }
+
+        return progress;
     }
+
+    /// <summary>The key item with this id, or null when the id is not one.</summary>
+    private QuestItem? KeyItem(uint itemId) =>
+        QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
+            ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
+            : null;
+
+    /// <summary>A line's words as the player would read them. The sheet authors them with macros
+    /// standing for whatever the game knows and the sheet cannot: a count the quest is keeping, an
+    /// object's name, a whole branch of wording chosen by how far along the player is. Dalamud's
+    /// evaluator resolves them, and the quest's own two counts are what a branch is chosen by.
+    ///
+    /// <para>The counts go in as the first two local parameters because that is what the macros
+    /// name them: the first is <c>lnum1</c>, the second <c>lnum2</c>. Leaving them out is silent
+    /// rather than loud, because an unresolved branch survives evaluation and is then dropped when
+    /// the words are flattened, leaving a hole in the sentence.</para></summary>
+    private string Words(ReadOnlySeString words, int have, int needed) =>
+        evaluator.Evaluate(words, [have, needed]).ExtractText().StripSoftHyphen();
 
     /// <summary>The Duty Finder entry that runs a piece of instanced content, or null when the
     /// Finder does not queue for it.</summary>
@@ -287,7 +271,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
     private string ReadName(ushort questId) => QuestRow(questId)?.Name.ExtractText() ?? $"Quest {questId}";
 
-    private List<QuestTodo> ReadTodos(ushort questId)
+    private List<QuestTodoTemplate> ReadTemplates(ushort questId)
     {
         if (QuestRow(questId) is not { } quest)
         {
@@ -297,7 +281,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         var internalName = quest.Id.ExtractText();
         var rows = OpenTextSheet(internalName) is { } raw ? ParseTodoRows(raw, internalName) : [];
 
-        var todos = new List<QuestTodo>();
+        var todos = new List<QuestTodoTemplate>();
         for (var i = 0; i < quest.TodoParams.Count; i++)
         {
             var param = quest.TodoParams[i];
@@ -306,8 +290,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
                 continue;
             }
 
-            var (text, hasPlaceholder) = rows.GetValueOrDefault(i, (string.Empty, false));
-            todos.Add(new QuestTodo(i, param.ToDoCompleteSeq, text, hasPlaceholder, param.ToDoQty, Positions(param)));
+            todos.Add(new QuestTodoTemplate(i, param.ToDoCompleteSeq, rows.GetValueOrDefault(i), param.ToDoQty, Positions(param)));
         }
 
         return todos;

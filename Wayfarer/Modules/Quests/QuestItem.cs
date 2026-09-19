@@ -4,7 +4,7 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="Id">The item's id.</param>
 /// <param name="Name">The item's name.</param>
 /// <param name="IconId">The item's icon.</param>
-public sealed record QuestItem(uint Id, string Name, uint IconId)
+internal sealed record QuestItem(uint Id, string Name, uint IconId)
 {
     /// <summary>Key items live in their own id range above the ordinary ones, and the game uses
     /// them through a different action kind. A ToDo's item below the range is a turn-in, not a use.</summary>

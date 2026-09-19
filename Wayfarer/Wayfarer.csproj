@@ -14,6 +14,11 @@
     <IconUrl>https://raw.githubusercontent.com/will-corrigan/Wayfarer/main/images/icon.png</IconUrl>
     <CanUnloadAsync>true</CanUnloadAsync>
   </PropertyGroup>
+  <!-- The tests load the plugin itself, so they see what the plugin keeps to itself. Nothing here
+       is a public API: the only consumer of this assembly is the game. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Wayfarer.Tests"/>
+  </ItemGroup>
   <Import Project="../local.props" Condition="Exists('../local.props')"/>
   <ItemGroup>
     <!-- The native UI toolkit, as the package its author publishes. See THIRD_PARTY_NOTICES.md.
