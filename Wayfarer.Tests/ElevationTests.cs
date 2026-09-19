@@ -1,4 +1,5 @@
-using Wayfarer.Ui;
+using Wayfarer.Guidance;
+using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.Tests;
 

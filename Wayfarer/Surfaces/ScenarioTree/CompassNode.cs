@@ -4,7 +4,8 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin.Services;
 using KamiToolKit.Nodes;
 using Wayfarer.App;
-using Wayfarer.Ui;
+
+using Wayfarer.Guidance;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 

@@ -1,7 +1,7 @@
 using System.Numerics;
 using KamiToolKit.Classes;
 
-namespace Wayfarer.Ui;
+namespace Wayfarer;
 
 /// <summary>The game's own themed UI colours, read from the <c>UIColor</c> sheet so everything
 /// Wayfarer draws follows the player's interface theme. The fallbacks are the Dark theme's values

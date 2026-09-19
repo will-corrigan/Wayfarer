@@ -2,7 +2,6 @@ using System.Numerics;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
-using Wayfarer.Ui;
 
 namespace Wayfarer.App.Settings;
 

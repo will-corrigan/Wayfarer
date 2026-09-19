@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Wayfarer.Ui;
+namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>The square texture every mark Wayfarer generates is drawn on, and the one way of
 /// drawing on it. A mark is described by its shape, as a distance from the nearest edge of it, and

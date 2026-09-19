@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Wayfarer.Ui;
+namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>Draws the compass as pixels: a ring that never moves and a needle that turns inside
 /// it. Two textures, because only one of them rotates.

@@ -1,4 +1,4 @@
-namespace Wayfarer.Ui;
+namespace Wayfarer.Guidance;
 
 /// <summary>When the compass may claim the target is above or below the player. The ground under
 /// a running player moves by a yalm or two on its own, so this is a decision with a threshold and

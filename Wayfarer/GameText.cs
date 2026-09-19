@@ -1,4 +1,4 @@
-namespace Wayfarer.Ui;
+namespace Wayfarer;
 
 /// <summary>How the game sets type, in the one place everything Wayfarer draws asks.</summary>
 internal static class GameText

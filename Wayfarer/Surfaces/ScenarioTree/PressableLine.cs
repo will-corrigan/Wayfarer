@@ -5,7 +5,6 @@ using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
 using Lumina.Text.ReadOnly;
 using Wayfarer.Presentation;
-using Wayfarer.Ui;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 

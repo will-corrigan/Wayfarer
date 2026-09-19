@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Wayfarer.Ui;
+namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>The above/below mark beside the compass: two stacked chevrons, pointing up. Drawn
 /// pointing up so "above" needs no rotation and "below" is half a turn. Drawn on

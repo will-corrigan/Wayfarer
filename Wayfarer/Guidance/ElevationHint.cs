@@ -1,4 +1,4 @@
-namespace Wayfarer.Ui;
+namespace Wayfarer.Guidance;
 
 /// <summary>Whether the target is on the player's level, above them, or below them. Decided by
 /// <see cref="Elevation.Classify"/>, which owns the threshold.</summary>

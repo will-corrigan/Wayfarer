@@ -1,5 +1,3 @@
-using Wayfarer.Ui;
-
 namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>How the block is drawn, as the player set it: the type sizes, the space between the
