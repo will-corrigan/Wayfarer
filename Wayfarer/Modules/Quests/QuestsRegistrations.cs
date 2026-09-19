@@ -1,5 +1,4 @@
 using Autofac;
-using Wayfarer.App;
 using Wayfarer.App.Modules;
 using Wayfarer.Guidance;
 

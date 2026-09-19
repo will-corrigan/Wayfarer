@@ -8,7 +8,7 @@ namespace Wayfarer.Modules.Quests;
 /// the objective when something it depends on changed: the quest, the step, the ToDos' progress
 /// the markers, or the key items the player is carrying. Focus is claimed and released by
 /// <see cref="QuestsModule"/> as the module goes up and down.</summary>
-internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following) : IObjectiveSource
+internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal) : IObjectiveSource
 {
     private Signature? last;
     private Objective? cached;
@@ -18,6 +18,18 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
 
     /// <inheritdoc/>
     public Objective? Current => Refresh();
+
+    /// <inheritdoc/>
+    /// <remarks>The plate names the followed quest, so pressing it opens that quest's page in the
+    /// journal. Nothing is followed while the main scenario is guiding, and the objective says the
+    /// headline is not pressable, so this is not called then.</remarks>
+    public void PressHeadline()
+    {
+        if (following.Followed is { } followed)
+        {
+            journal.Open(followed);
+        }
+    }
 
     /// <inheritdoc/>
     public void Displaced()
@@ -46,10 +58,12 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         var sequence = QuestReader.Sequence(questId);
 
         // The game's own to-do list wins when it has the quest: its lines are finished, with the
-        // counts and names filled in that the sheet leaves as macros. The sheet answers for
-        // anything the game is not tracking.
-        var todos = TrackedQuests.Todos(questId) ?? reader.Todos(questId);
-        var progress = reader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
+        // counts and names filled in that the sheet leaves as macros, and its words and check marks
+        // come off the same line. The sheet and the event handler answer for anything not tracked.
+        var live = TrackedQuests.Step(questId, reader.KeyItem);
+        var todos = live?.Todos ?? reader.Todos(questId);
+        var progress = live?.Progress
+            ?? reader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
         var markers = QuestReader.Markers(questId);
         var carried = reader.KeyItems(questId);
 

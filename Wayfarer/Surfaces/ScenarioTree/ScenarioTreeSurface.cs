@@ -81,8 +81,6 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private static unsafe float RowsAbove(AtkUnitBase* addon) =>
         (JobRowPitch * JobRowNodeIds.Count(id => GuideNodes.JobRowShown(addon, id))) + (GuideNodes.HintBarShown(addon) ? HintBarHeight : 0f);
 
-    /// <summary>The row our lines follow in the cursor chain: the last job-quest row showing a
-    /// quest, or nothing when the plate is the only stop above us.</summary>
     /// <summary>The node our lines follow in the cursor chain: the last job-quest row showing a
     /// quest, or the plate itself when no row is.</summary>
     private static unsafe uint RowAboveUs(AtkUnitBase* addon)

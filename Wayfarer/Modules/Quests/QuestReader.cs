@@ -179,6 +179,13 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     public string Name(ushort questId) =>
         namesByQuest.TryGetValue(questId, out var name) ? name : namesByQuest[questId] = ReadName(questId);
 
+    /// <summary>The key item with this id, or null when the id is not one. Handed to
+    /// <see cref="TrackedQuests"/> so it can name the item the game reports against a line.</summary>
+    public QuestItem? KeyItem(uint itemId) =>
+        QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
+            ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
+            : null;
+
     /// <summary>The quest's whole to-do table, read once per quest.</summary>
     public IReadOnlyList<QuestTodo> Todos(ushort questId) =>
         todosByQuest.TryGetValue(questId, out var todos) ? todos : todosByQuest[questId] = ReadTodos(questId);
@@ -232,11 +239,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
         return items;
     }
-
-    private QuestItem? KeyItem(uint itemId) =>
-        QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
-            ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
-            : null;
 
     /// <summary>The Duty Finder entry that runs a piece of instanced content, or null when the
     /// Finder does not queue for it.</summary>
