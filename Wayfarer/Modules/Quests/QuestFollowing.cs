@@ -11,11 +11,23 @@ internal sealed class QuestFollowing(IConfigStore configs)
 
     private readonly QuestsConfig config = configs.Load<QuestsConfig>(ConfigName);
 
-    /// <summary>Raised after the followed quest changed, on whatever thread changed it.</summary>
-    public event EventHandler? OnChanged;
-
     /// <summary>The followed quest's id, or null while the main scenario is followed.</summary>
     public ushort? Followed => config.FollowedQuestId;
+
+    /// <summary>Whether Wayfarer puts its own button in the quest journal. Switching it off leaves
+    /// whatever is already followed followed; there is just no longer a way to change it there.</summary>
+    public bool FromJournal
+    {
+        get => config.FollowFromJournal;
+        set
+        {
+            if (config.FollowFromJournal != value)
+            {
+                config.FollowFromJournal = value;
+                configs.Save(ConfigName, config);
+            }
+        }
+    }
 
     /// <summary>Whether a quest is the followed one.</summary>
     public bool IsFollowing(ushort questId) => config.FollowedQuestId == questId;
@@ -35,6 +47,5 @@ internal sealed class QuestFollowing(IConfigStore configs)
 
         config.FollowedQuestId = questId;
         configs.Save(ConfigName, config);
-        OnChanged?.Invoke(this, EventArgs.Empty);
     }
 }

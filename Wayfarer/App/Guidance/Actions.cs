@@ -13,7 +13,7 @@ namespace Wayfarer.App.Guidance;
 ///
 /// <para>Every one of the game's singletons is asked for fresh and checked before it is used: none
 /// of them exist before the player is in the world, and a press can arrive at any moment.</para></summary>
-internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, IPluginLog log) : IActions
+internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, QuestJournal journal, IPluginLog log) : IActions
 {
     /// <summary>The sub-index is for aetherytes with several destinations, such as housing; every
     /// aetheryte on a route is a plain one.</summary>
@@ -107,14 +107,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
     }
 
     /// <inheritdoc/>
-    public void OpenQuestJournal(ushort questId)
-    {
-        var journal = AgentQuestJournal.Instance();
-        if (!Missing(journal, "quest journal"))
-        {
-            journal->OpenForQuest(QuestIds.RowId(questId), QuestIds.OrdinaryQuest);
-        }
-    }
+    public void OpenQuestJournal(ushort questId) => journal.Open(questId);
 
     /// <summary>Whether one of the game's own singletons is not there, which it is not until the
     /// player is in the world. Says so in the log, because a press that quietly did nothing is

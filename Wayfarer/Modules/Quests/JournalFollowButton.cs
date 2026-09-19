@@ -40,6 +40,9 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     /// <summary>Narrower than this and the words would not fit, so nothing is shown at all.</summary>
     private const float NarrowestButton = 60f;
 
+    /// <summary>Our stop in the journal's cursor chain, well clear of the game's own.</summary>
+    private const int FollowNavIndex = 120;
+
     private const string FollowLabel = "Follow";
     private const string UnfollowLabel = "Unfollow";
     private const string FollowTooltip = "Guide to this quest with Wayfarer, instead of the main scenario.";
@@ -51,6 +54,9 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     private TextButtonNode? button;
     private ushort? shownQuest;
     private bool shownAsFollowed;
+    private bool linked;
+    private byte mapRightBefore;
+    private byte abandonLeftBefore;
 
     /// <summary>Starts watching the journal. Safe to call off the framework thread.</summary>
     public void Start() => _ = framework.RunOnFrameworkThread(Enable);
@@ -68,6 +74,9 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
 
+    private static unsafe AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
+        addon == null ? null : addon->GetComponentByNodeId(nodeId);
+
     /// <summary>The quest the pane is showing, or null when it shows a leve, a quest the player has
     /// already finished, or nothing at all.</summary>
     private static unsafe ushort? QuestOnShow()
@@ -80,8 +89,8 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     /// not enough of it. In the row's own coordinates, which ours shares by hanging off it.</summary>
     private static unsafe (float Left, float Width)? SpaceBetweenTheGamesButtons(AtkUnitBase* addon)
     {
-        var map = addon->GetNodeById(MapNodeId);
-        var abandon = addon->GetNodeById(AbandonNodeId);
+        var map = addon == null ? null : addon->GetNodeById(MapNodeId);
+        var abandon = addon == null ? null : addon->GetNodeById(AbandonNodeId);
         if (map == null || abandon == null)
         {
             return null;
@@ -108,7 +117,7 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     {
         try
         {
-            var row = addon->GetNodeById(ButtonRowNodeId);
+            var row = addon == null ? null : addon->GetNodeById(ButtonRowNodeId);
             if (row == null)
             {
                 log.Warning("the quest journal has no row of buttons to put the follow button in, so a quest cannot be followed from it this session.");
@@ -133,8 +142,54 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
 
     private unsafe void Detach(AtkUnitBase* addon)
     {
+        UnlinkFromCursorChain(addon);
         button?.Dispose();
         button = null;
+    }
+
+    /// <summary>Puts our button between the game's two in the cursor's chain, so the pad reaches it
+    /// by moving across the row the way it reaches the others.</summary>
+    private unsafe void LinkIntoCursorChain(AtkUnitBase* addon)
+    {
+        var map = Component(addon, MapNodeId);
+        var abandon = Component(addon, AbandonNodeId);
+        if (button is null || map == null || abandon == null || linked)
+        {
+            return;
+        }
+
+        linked = true;
+        mapRightBefore = map->CursorNavigationInfo.RightIndex;
+        abandonLeftBefore = abandon->CursorNavigationInfo.LeftIndex;
+
+        map->CursorNavigationInfo.RightIndex = FollowNavIndex;
+        abandon->CursorNavigationInfo.LeftIndex = FollowNavIndex;
+        button.NavIndex = FollowNavIndex;
+        button.NavLeft = map->CursorNavigationInfo.Index;
+        button.NavRight = abandon->CursorNavigationInfo.Index;
+        button.NavUp = mapRightBefore;
+        button.NavDown = abandonLeftBefore;
+    }
+
+    /// <summary>Puts the game's own two records back as they were, finding both again rather than
+    /// through pointers kept from an earlier frame: the pane owns them and may have freed them.</summary>
+    private unsafe void UnlinkFromCursorChain(AtkUnitBase* addon)
+    {
+        if (!linked)
+        {
+            return;
+        }
+
+        linked = false;
+        if (Component(addon, MapNodeId) is var map && map != null)
+        {
+            map->CursorNavigationInfo.RightIndex = mapRightBefore;
+        }
+
+        if (Component(addon, AbandonNodeId) is var abandon && abandon != null)
+        {
+            abandon->CursorNavigationInfo.LeftIndex = abandonLeftBefore;
+        }
     }
 
     /// <summary>Shows the button for a quest that can be followed, with the label and tooltip saying
@@ -159,6 +214,7 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         button.IsVisible = quest is not null;
         if (quest is null)
         {
+            UnlinkFromCursorChain(addon);
             return;
         }
 
@@ -166,6 +222,7 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         button.Size = new Vector2(space.Value.Width, ButtonHeight);
         button.String = followed ? UnfollowLabel : FollowLabel;
         button.TextTooltip = followed ? UnfollowTooltip : FollowTooltip;
+        LinkIntoCursorChain(addon);
     }
 
     private void Toggle()

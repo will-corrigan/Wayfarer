@@ -8,4 +8,7 @@ internal sealed class QuestsConfig
 
     /// <summary>The quest the player chose to follow instead of the main scenario, or null.</summary>
     public ushort? FollowedQuestId { get; set; }
+
+    /// <summary>Whether Wayfarer puts its own button in the quest journal.</summary>
+    public bool FollowFromJournal { get; set; } = true;
 }

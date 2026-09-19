@@ -6,33 +6,36 @@ using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
-/// <summary>Watches the guide for a press of its headline plate and says so. Dalamud's own
-/// listener is used rather than an event registered on the plate itself: a listener of ours on a
-/// game node makes the addon route its input through us, which once cost the game its HUD Select.
-/// This only reads what the addon already received.
+/// <summary>Watches the guide for a press of its headline plate and offers it to whoever is
+/// listening. When the press is taken, the game's own handling of it is skipped through Dalamud's
+/// own <see cref="AddonArgs.PreventOriginal"/>, so the game never opens the page it would have
+/// opened and there is nothing to undo afterwards.
 ///
-/// <para>The press is watched after the game has handled it, so the game's own page opens first
-/// and whoever is listening can then open the page they meant.</para></summary>
+/// <para>Dalamud's listener on the addon is used rather than an event registered on the plate
+/// itself: a listener of ours on a game node makes the addon route its input through us, which
+/// once cost the game its HUD Select. This only reads what the addon was already sent, and skips
+/// the original for the one press it recognises.</para></summary>
 internal sealed class PlatePress(IAddonLifecycle lifecycle) : IDisposable
 {
-    private Action? onPressed;
+    private Func<bool>? onPressed;
 
-    /// <summary>Starts watching, calling <paramref name="handler"/> on each press of the plate.</summary>
-    public void Watch(Action handler)
+    /// <summary>Starts watching. <paramref name="handler"/> is asked on each press of the plate and
+    /// says whether it took it, in which case the game does not see the press at all.</summary>
+    public void Watch(Func<bool> handler)
     {
         onPressed = handler;
-        lifecycle.RegisterListener(AddonEvent.PostReceiveEvent, AddonName, OnReceiveEvent);
+        lifecycle.RegisterListener(AddonEvent.PreReceiveEvent, AddonName, OnReceiveEvent);
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        lifecycle.UnregisterListener(AddonEvent.PostReceiveEvent, AddonName, OnReceiveEvent);
+        lifecycle.UnregisterListener(AddonEvent.PreReceiveEvent, AddonName, OnReceiveEvent);
         onPressed = null;
     }
 
-    /// <summary>Whether an event's target is the guide's headline plate: the plate's component, its
-    /// node, or the collision node the plate is focused and clicked through.</summary>
+    /// <summary>Whether an event's target is the guide's headline plate: the plate's node, its
+    /// component, or the collision node the plate is focused and clicked through.</summary>
     private static unsafe bool TargetsPlate(AtkUnitBase* addon, AtkEventTarget* target)
     {
         var plate = GuideNodes.Plate(addon);
@@ -59,10 +62,11 @@ internal sealed class PlatePress(IAddonLifecycle lifecycle) : IDisposable
             return;
         }
 
+        var addon = (AtkUnitBase*)args.Addon.Address;
         var atkEvent = (AtkEvent*)received.AtkEvent;
-        if (atkEvent != null && TargetsPlate((AtkUnitBase*)args.Addon.Address, atkEvent->Target))
+        if (addon != null && atkEvent != null && TargetsPlate(addon, atkEvent->Target) && onPressed())
         {
-            onPressed();
+            received.PreventOriginal();
         }
     }
 }

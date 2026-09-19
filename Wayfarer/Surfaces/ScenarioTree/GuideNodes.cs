@@ -21,7 +21,7 @@ internal static unsafe class GuideNodes
     /// <summary>The words above the plate: what kind of quest it is about.</summary>
     public static AtkTextNode* Header(AtkUnitBase* addon)
     {
-        var node = addon->GetNodeById(HeaderTextNodeId);
+        var node = addon == null ? null : addon->GetNodeById(HeaderTextNodeId);
         return node == null ? null : node->GetAsAtkTextNode();
     }
 
@@ -41,15 +41,16 @@ internal static unsafe class GuideNodes
     /// <summary>Whether a node of the guide exists and is being drawn.</summary>
     private static bool Shown(AtkUnitBase* addon, uint nodeId)
     {
-        var node = addon->GetNodeById(nodeId);
+        var node = addon == null ? null : addon->GetNodeById(nodeId);
         return node != null && node->IsVisible();
     }
 
-    private static AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) => addon->GetComponentByNodeId(nodeId);
+    private static AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
+        addon == null ? null : addon->GetComponentByNodeId(nodeId);
 
     private static AtkComponentNode* ComponentNode(AtkUnitBase* addon, uint nodeId)
     {
-        var node = addon->GetNodeById(nodeId);
+        var node = addon == null ? null : addon->GetNodeById(nodeId);
         return node == null ? null : node->GetAsAtkComponentNode();
     }
 

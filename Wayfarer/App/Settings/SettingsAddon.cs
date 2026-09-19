@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
+using KamiToolKit.BaseTypes.ComponentNode;
 using KamiToolKit.Nodes;
 using Lumina.Text.ReadOnly;
 using Wayfarer.App.Modules;
@@ -43,11 +44,20 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float TitleHeight = 28f;
     private const float RowHeight = 28f;
     private const float SliderHeight = 20f;
-    private const float RadioButtonHeight = 24f;
     private const float CheckboxHeight = 24f;
 
     private const float FramePadding = 12f;
     private const float SectionGap = 10f;
+
+    /// <summary>How far a module's own settings are stepped in from the module itself.</summary>
+    private const float SettingIndent = 24f;
+
+    /// <summary>Where the cursor's stops begin: the pages down the left, then the page's own
+    /// controls well clear of them.</summary>
+    private const int FirstPageStop = 1;
+
+    /// <inheritdoc cref="FirstPageStop"/>
+    private const int FirstControlStop = 20;
 
     /// <summary>The inset that keeps a framed panel's contents off its own border.</summary>
     private const float PanelPadding = 8f;
@@ -63,6 +73,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private static readonly Vector4 PanelColor = new(0f, 0f, 0f, 0.35f);
 
     private readonly Dictionary<Page, ListButtonNode> pageButtons = [];
+    private readonly List<ComponentNode> controls = [];
     private ScrollingNode<VerticalListNode>? pane;
     private ListBoxNode? pages;
     private ResNode? previewStage;
@@ -130,12 +141,69 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         _ => "Modules",
     };
 
+    /// <summary>The next place round for the compass, so one button can offer all of them.</summary>
+    private static CompassPlacement Next(CompassPlacement placement) =>
+        (CompassPlacement)(((int)placement + 1) % Enum.GetValues<CompassPlacement>().Length);
+
     private static string PlacementLabel(CompassPlacement placement) => placement switch
     {
         CompassPlacement.Right => "Right of the words",
         CompassPlacement.Left => "Left of the words",
         _ => "Hidden",
     };
+
+    /// <summary>Steps a node in from the left, to show it belongs to the one above it.</summary>
+    private static T Indented<T>(T node)
+        where T : NodeBase
+    {
+        node.Position = new Vector2(SettingIndent, node.Position.Y);
+        return node;
+    }
+
+    /// <summary>A game checkbox over something that is on or off.</summary>
+    private static CheckboxNode Switch(string name, string description, float width, Func<bool> read, Action<bool> write) => new()
+    {
+        Size = new Vector2(width, CheckboxHeight),
+        String = name,
+        IsChecked = read(),
+        TextTooltip = description,
+        OnClick = write,
+    };
+
+    /// <summary>Marks a control as one the cursor stops on, in the order they are added.</summary>
+    private T Control<T>(T node)
+        where T : ComponentNode
+    {
+        controls.Add(node);
+        return node;
+    }
+
+    /// <summary>Chains the cursor through the pages and then through the page's own controls: down
+    /// and up within each column, right from a page into its controls, left from a control back to
+    /// the page it belongs to.</summary>
+    private void ChainForTheCursor(Page page)
+    {
+        var buttons = pageButtons.Values.ToList();
+        var here = FirstPageStop + pageButtons.Keys.ToList().IndexOf(page);
+        var firstControl = controls.Count > 0 ? FirstControlStop : here;
+        for (var i = 0; i < buttons.Count; i++)
+        {
+            buttons[i].NavIndex = FirstPageStop + i;
+            buttons[i].NavUp = FirstPageStop + ((i + buttons.Count - 1) % buttons.Count);
+            buttons[i].NavDown = FirstPageStop + ((i + 1) % buttons.Count);
+            buttons[i].NavRight = firstControl;
+            buttons[i].NavLeft = FirstPageStop + i;
+        }
+
+        for (var i = 0; i < controls.Count; i++)
+        {
+            controls[i].NavIndex = FirstControlStop + i;
+            controls[i].NavUp = FirstControlStop + ((i + controls.Count - 1) % controls.Count);
+            controls[i].NavDown = FirstControlStop + ((i + 1) % controls.Count);
+            controls[i].NavLeft = here;
+            controls[i].NavRight = FirstControlStop + i;
+        }
+    }
 
     /// <summary>A slider over a whole-number range. The range is set through the game's own
     /// component rather than by writing its data, which is what actually moves the end stops.</summary>
@@ -157,10 +225,10 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         return row;
     }
 
-    private Paragraph Words(string words)
+    private Paragraph Words(string words, float? width = null)
     {
         var paragraph = new Paragraph();
-        paragraph.Set(words, PageWidth);
+        paragraph.Set(words, width ?? PageWidth);
         return paragraph;
     }
 
@@ -194,6 +262,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         }
 
         ForgetPage();
+        controls.Clear();
 
         pane = new ScrollingNode<VerticalListNode>
         {
@@ -228,6 +297,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
                 break;
         }
 
+        ChainForTheCursor(page);
         Refit();
     }
 
@@ -246,48 +316,45 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         body.AddNode(previewStage);
 
         var style = styles.Current;
-        body.AddNode(Row("Entry text size", Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size))));
-        body.AddNode(Row("Route text size", Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size))));
-        body.AddNode(Row("Line spacing", Slider(ScenarioTreeStyle.SmallestLineGap, ScenarioTreeStyle.LargestLineGap, style.LineGap, gap => Change(s => s.LineGap = gap))));
-        body.AddNode(Row("Compass size", Slider(ScenarioTreeStyle.SmallestCompass, ScenarioTreeStyle.LargestCompass, style.CompassSize, size => Change(s => s.CompassSize = size))));
+        body.AddNode(Row("Entry text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size)))));
+        body.AddNode(Row("Route text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size)))));
+        body.AddNode(Row("Line spacing", Control(Slider(ScenarioTreeStyle.SmallestLineGap, ScenarioTreeStyle.LargestLineGap, style.LineGap, gap => Change(s => s.LineGap = gap)))));
+        body.AddNode(Row("Compass size", Control(Slider(ScenarioTreeStyle.SmallestCompass, ScenarioTreeStyle.LargestCompass, style.CompassSize, size => Change(s => s.CompassSize = size)))));
 
-        var placements = Enum.GetValues<CompassPlacement>();
-        var placement = new RadioButtonGroupNode { Size = new Vector2(ControlWidth, RadioButtonHeight * placements.Length) };
-        foreach (var option in placements)
+        var placement = new TextButtonNode
         {
-            placement.AddButton(PlacementLabel(option), () => Change(s => s.Compass = option));
-        }
+            Size = new Vector2(ControlWidth, RowHeight),
+            String = PlacementLabel(style.Compass),
+        };
+        placement.OnClick = () => Change(s => s.Compass = Next(s.Compass));
+        body.AddNode(Row("Compass", Control(placement)));
 
-        placement.SelectedOption = PlacementLabel(style.Compass);
-        body.AddNode(Row("Compass", placement, placement.Height));
-
-        body.AddNode(new TextButtonNode
+        var reset = new TextButtonNode
         {
             Size = new Vector2(ControlWidth, PageButtonHeight),
             String = "Reset to defaults",
-            OnClick = () =>
-            {
-                styles.Reset();
-                Show(Page.GuideBlock);
-            },
-        });
+        };
+        reset.OnClick = () =>
+        {
+            styles.Reset();
+            Show(Page.GuideBlock);
+        };
+        body.AddNode(Row(string.Empty, Control(reset)));
     }
 
-    /// <summary>One game checkbox per module, its description under it.</summary>
+    /// <summary>One game checkbox per module with its description under it, and under that whatever
+    /// the module itself lets the player switch.</summary>
     private void BuildModulesPage(VerticalListNode body)
     {
         foreach (var module in host.Modules)
         {
-            var toggle = new CheckboxNode
-            {
-                Size = new Vector2(PageWidth, CheckboxHeight),
-                String = module.Name,
-                IsChecked = host.IsEnabled(module),
-                TextTooltip = module.Description,
-            };
-            toggle.OnClick = enabled => _ = host.SetEnabledAsync(module, enabled);
-            body.AddNode(toggle);
+            body.AddNode(Control(Switch(module.Name, module.Description, PageWidth, () => host.IsEnabled(module), on => _ = host.SetEnabledAsync(module, on))));
             body.AddNode(Words(module.Description));
+            foreach (var setting in module.Settings)
+            {
+                body.AddNode(Indented(Control(Switch(setting.Name, setting.Description, PageWidth - SettingIndent, setting.Read, setting.Write))));
+                body.AddNode(Indented(Words(setting.Description, PageWidth - SettingIndent)));
+            }
         }
     }
 

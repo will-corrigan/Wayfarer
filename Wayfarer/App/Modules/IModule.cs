@@ -17,6 +17,10 @@ internal interface IModule
     /// <summary>One line under the name in the settings window saying what the module does.</summary>
     string Description { get; }
 
+    /// <summary>What the player can switch about the module itself, shown under its own switch.
+    /// A module with nothing to configure says nothing.</summary>
+    IReadOnlyList<ModuleSetting> Settings => [];
+
     /// <summary>Brings the module up. Called once when the plugin loads if the module is on, and
     /// again each time the player switches it on.</summary>
     Task EnableAsync();

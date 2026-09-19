@@ -79,17 +79,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     /// <summary>The row our lines follow in the cursor chain: the last job-quest row showing a
     /// quest, or nothing when the plate is the only stop above us.</summary>
-    private static unsafe AtkComponentNode* LastVisibleJobRow(AtkUnitBase* addon)
+    /// <summary>The node our lines follow in the cursor chain: the last job-quest row showing a
+    /// quest, or the plate itself when no row is.</summary>
+    private static unsafe uint RowAboveUs(AtkUnitBase* addon)
     {
         foreach (var id in JobRowNodeIds.Reverse())
         {
-            if (GuideNodes.JobRowShown(addon, id) && GuideNodes.JobRow(addon, id) is var row && row != null)
+            if (GuideNodes.JobRowShown(addon, id))
             {
-                return row;
+                return id;
             }
         }
 
-        return null;
+        return PlateNodeId;
     }
 
     private static unsafe void SetRootHeight(AtkUnitBase* addon, ushort height)
@@ -130,7 +132,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     /// as they dispose, so nothing in the guide can reach a freed node afterwards.</summary>
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        splice.Restore();
+        splice.Restore(addon);
         takeover.Release(addon);
         block?.Dispose();
         block = null;
@@ -190,18 +192,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     /// <summary>Our lines go into the cursor chain after the last visible job row, which is what
     /// sits between the plate and us on screen. With no row showing, they follow the plate.</summary>
-    private unsafe void SpliceIntoChain(AtkUnitBase* addon)
-    {
-        var plate = GuideNodes.Plate(addon);
-        if (plate == null || plate->Component == null)
-        {
-            splice.Restore();
-            return;
-        }
-
-        var above = LastVisibleJobRow(addon) is var row && row != null && row->Component != null ? row->Component : plate->Component;
-        splice.Splice(plate->Component, above, block!);
-    }
+    private unsafe void SpliceIntoChain(AtkUnitBase* addon) => splice.Splice(addon, RowAboveUs(addon), block!);
 
     /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
     /// while the block shows and restored when it hides.</summary>
@@ -223,12 +214,16 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     }
 
     /// <summary>A press of the plate while it carries our words opens the page about what we are
-    /// guiding to, rather than leaving the game's own page in front of the player.</summary>
-    private void OnPlatePressed()
+    /// guiding to. The game's own page is not opened at all, because the press never reaches it.
+    /// While the plate carries the game's own words the press is left alone.</summary>
+    private bool OnPlatePressed()
     {
-        if (takeover.Active)
+        if (!takeover.Active)
         {
-            presses.Headline();
+            return false;
         }
+
+        presses.Headline();
+        return true;
     }
 }
