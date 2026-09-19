@@ -9,7 +9,7 @@ internal interface IObjectFinder
     /// <summary>Where the nearest wanted thing is standing inside an area, or null when none of
     /// them is there. Only an area has an answer: a place with no room in it is already the thing.</summary>
     /// <param name="area">The circle being searched, with its radius.</param>
-    /// <param name="marks">Ids the module listed as what to look for, or null.</param>
+    /// <param name="marks">Ids the caller listed as what to look for, or null.</param>
     /// <param name="owner">The game event whose own objects count, or null.</param>
     Place? Inside(Place area, IReadOnlyList<uint>? marks, uint? owner);
 }

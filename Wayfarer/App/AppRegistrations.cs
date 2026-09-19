@@ -21,7 +21,7 @@ internal sealed class AppRegistrations : Module
         // Auto-activated: the frame loop starts when the container is built, not when something
         // first asks for it, and stops when the container is disposed.
         builder.RegisterType<GuidanceService>().As<IGuidance>().SingleInstance().AutoActivate();
-        builder.RegisterType<QuestObjectFinder>().As<IObjectFinder>().SingleInstance();
+        builder.RegisterType<ObjectFinder>().As<IObjectFinder>().SingleInstance();
         builder.RegisterType<Heading>().As<IHeading>().SingleInstance();
         builder.RegisterType<Actions>().As<IActions>().SingleInstance();
         builder.RegisterType<ScenarioTreeStyleStore>().SingleInstance();

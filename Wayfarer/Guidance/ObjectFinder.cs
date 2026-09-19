@@ -5,19 +5,19 @@ using GameObjectStruct = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
 
 namespace Wayfarer.Guidance;
 
-/// <summary>Finds the thing a step is about in the world, when the step sends the player to an
-/// area rather than a point. The data behind those areas says where to search and never what for,
-/// so the answer can only come from what is actually standing there.
+/// <summary>Finds a thing in the world inside an area, when a step sends the player to a circle
+/// rather than a point. The data behind those circles says where to search and never what for, so
+/// the answer can only come from what is actually standing there.
 ///
 /// <para>An object counts when the game itself stamped it as belonging to the event being guided,
-/// which it does to everything it spawns for one, or failing that when its id is one the module
+/// which it does to everything it spawns for one, or failing that when its id is one the caller
 /// listed. It also has to be something the player could act on right now, which is the game's own
 /// question and not ours: an object can be present and inert until its step comes round.</para>
 ///
 /// <para>Whether it is inside the circle is judged on the ground only. Heights in the routing data
 /// are flat, so counting the drop would push an object on a ledge out of a circle it is plainly
 /// standing in.</para></summary>
-internal sealed unsafe class QuestObjectFinder(IObjectTable objects) : IObjectFinder
+internal sealed unsafe class ObjectFinder(IObjectTable objects) : IObjectFinder
 {
     /// <inheritdoc/>
     public Place? Inside(Place area, IReadOnlyList<uint>? marks, uint? owner)
