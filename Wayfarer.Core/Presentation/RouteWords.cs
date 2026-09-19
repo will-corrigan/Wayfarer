@@ -33,7 +33,7 @@ public static class RouteWords
 
         if (target.Where is Destination.InDuty duty)
         {
-            return new RouteLine(RouteGlyph.Duty, DutyWords, new RoutePress.OpenDuty(duty.DutyId));
+            return new RouteLine(RouteGlyph.Duty, DutyWords, new RoutePress.OpenDuty(duty.DutyId), DutyWords);
         }
 
         if (guidance.Route is not { } route)
@@ -47,7 +47,7 @@ public static class RouteWords
         }
 
         return route.Legs[0] is Leg.Teleport teleport
-            ? new RouteLine(RouteGlyph.Aetheryte, words, new RoutePress.Teleport(teleport.AetheryteId))
+            ? new RouteLine(RouteGlyph.Aetheryte, words, new RoutePress.Teleport(teleport.AetheryteId), TeleportPhrase + teleport.AetheryteName)
             : new RouteLine(RouteGlyph.None, words, null);
     }
 

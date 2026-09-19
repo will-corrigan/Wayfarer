@@ -21,6 +21,12 @@ internal sealed class ScenarioTreeStyle
     public const float LargestLineGap = 24f;
 
     /// <inheritdoc cref="SmallestFont"/>
+    public const float SmallestInset = 0f;
+
+    /// <inheritdoc cref="SmallestFont"/>
+    public const float LargestInset = 120f;
+
+    /// <inheritdoc cref="SmallestFont"/>
     public const float SmallestCompass = 18f;
 
     /// <inheritdoc cref="SmallestFont"/>
@@ -38,6 +44,12 @@ internal sealed class ScenarioTreeStyle
     /// <summary>Space between the entry's last line and the route line, in pixels.</summary>
     public float LineGap { get; set; } = 3f;
 
+    /// <summary>How far in from the guide's left edge the block starts. The default is the middle
+    /// of the plate's meteor, whose art runs from 13 across 44. The other edges worth lining up
+    /// with are the meteor's own left at 13, the job-quest rows' icons at 44, and their words
+    /// at 72.</summary>
+    public float ContentLeft { get; set; } = ScenarioTreeMetrics.MeteorCentre;
+
     /// <summary>The compass's side, in pixels.</summary>
     public float CompassSize { get; set; } = 36f;
 
@@ -51,6 +63,7 @@ internal sealed class ScenarioTreeStyle
         EntryFontSize = Math.Clamp(EntryFontSize, SmallestFont, LargestFont),
         RouteFontSize = Math.Clamp(RouteFontSize, SmallestFont, LargestFont),
         LineGap = Math.Clamp(LineGap, SmallestLineGap, LargestLineGap),
+        ContentLeft = Math.Clamp(ContentLeft, SmallestInset, LargestInset),
         CompassSize = Math.Clamp(CompassSize, SmallestCompass, LargestCompass),
         Compass = Enum.IsDefined(Compass) ? Compass : CompassPlacement.Right,
     };

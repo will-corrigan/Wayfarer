@@ -27,8 +27,16 @@ internal static class ScenarioTreeMetrics
     /// <summary>Where a row's words sit inside the row. The job rows put theirs 11 down.</summary>
     public const float RowTextTop = 11f;
 
-    /// <summary>The content's left edge: where the plate draws its own icon.</summary>
-    public const float ContentLeft = 13f;
+    /// <summary>The meteor emblem at the guide's left: its art starts 13 in and is 44 across, so
+    /// its middle is 35 in. Type set to that middle reads as hanging off the emblem rather than
+    /// as a second column starting beside it.</summary>
+    public const float MeteorLeft = 13f;
+
+    /// <inheritdoc cref="MeteorLeft"/>
+    public const float MeteorSide = 44f;
+
+    /// <inheritdoc cref="MeteorLeft"/>
+    public const float MeteorCentre = MeteorLeft + (MeteorSide / 2f);
 
     /// <summary>Room left at the right edge so the words never touch the plate's border.</summary>
     public const float RightInset = 12f;
@@ -36,8 +44,18 @@ internal static class ScenarioTreeMetrics
     /// <summary>Air between the compass column and the words.</summary>
     public const float CompassColumnGap = 6f;
 
+    /// <summary>The settings cog, beside the guide's own heading: the strip of heading runs to 288
+    /// of the root's 340, so the cog sits in what is left of that row.</summary>
+    public const float SettingsCogSide = 20f;
+
+    /// <inheritdoc cref="SettingsCogSide"/>
+    public const float SettingsCogTop = 3f;
+
     /// <summary>How many lines the entry's words may wrap to before they are cut.</summary>
     public const int MaxEntryLines = 2;
+
+    /// <summary>The route always reads as one line; its words are cut rather than wrapped.</summary>
+    public const int RouteLines = 1;
 
     /// <summary>How many characters wide the distance's box is: four digits and the unit, in a
     /// face whose characters are about two thirds as wide as they are tall.</summary>

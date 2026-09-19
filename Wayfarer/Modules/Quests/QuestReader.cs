@@ -8,6 +8,7 @@ using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
+using Wayfarer.App.Guidance;
 using Wayfarer.Core.Quests;
 using Wayfarer.Core.Routing;
 using GameMap = FFXIVClientStructs.FFXIV.Client.Game.UI.Map;
@@ -24,6 +25,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     /// <summary>The script parameter a quest names its duty in. A quest may name several, one per
     /// difficulty of the same fight, and the first the Duty Finder knows is the one it is about.</summary>
     private const string DutyParameter = "INSTANCEDUNGEON";
+
+    /// <summary>The script parameter a quest names a key item in, one per item it hands out.</summary>
+    private const string ItemParameter = "ITEM";
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -45,6 +49,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodo>> todosByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, uint>? dutiesByContent;
 
@@ -157,6 +162,19 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         return null;
     }
 
+    /// <summary>The key items of the quest the player is carrying right now, from its own script
+    /// parameters. The handler reports the item a ToDo is about for most quests, but not all: some
+    /// name it only in the ToDo's words, and this is what those are matched against.
+    ///
+    /// <para>Carrying is what tells the step that fetches an item apart from the step that uses it.
+    /// Both may name it, and only one of them can be acted on. The quest's own list is read once;
+    /// what the player is carrying is asked every time, because it changes as they play.</para></summary>
+    public IReadOnlyList<QuestItem> KeyItems(ushort questId)
+    {
+        var carried = itemsByQuest.TryGetValue(questId, out var items) ? items : itemsByQuest[questId] = ReadKeyItems(questId);
+        return carried.Count == 0 ? carried : [.. carried.Where(item => PlayerState.Holds(item.Id))];
+    }
+
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
     public string Name(ushort questId) =>
@@ -195,6 +213,26 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
             .Select(reference => reference.ValueNullable)
             .OfType<Level>()
             .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
+
+    private List<QuestItem> ReadKeyItems(ushort questId)
+    {
+        if (QuestRow(questId) is not { } quest)
+        {
+            return [];
+        }
+
+        var items = new List<QuestItem>();
+        foreach (var parameter in quest.QuestParams)
+        {
+            if (parameter.ScriptInstruction.ExtractText().StartsWith(ItemParameter, StringComparison.Ordinal)
+                && KeyItem(parameter.ScriptArg) is { } item)
+            {
+                items.Add(item);
+            }
+        }
+
+        return items;
+    }
 
     private QuestItem? KeyItem(uint itemId) =>
         QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item

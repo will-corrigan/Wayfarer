@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
@@ -45,6 +46,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float RowHeight = 28f;
     private const float SliderHeight = 20f;
     private const float CheckboxHeight = 24f;
+    private const float DropDownHeight = 24f;
 
     private const float FramePadding = 12f;
     private const float SectionGap = 10f;
@@ -65,6 +67,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// <summary>What the preview block shows: a step, a route with a press, and a compass reading.</summary>
     private const string SampleEntry = "Speak with Minfilia at the Waking Sands.";
     private const string SampleRoute = "Teleport to Vesper Bay, then Walk to the Waking Sands";
+    private const string SampleRouteKeyword = "Teleport to Vesper Bay";
     private const float SampleNeedle = 0.6f;
     private const float SampleYalms = 143f;
     private const float SampleRise = 2f;
@@ -79,6 +82,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private ResNode? previewStage;
     private GuidanceBlockNode? preview;
     private NineGridNode? previewFrame;
+    private DropDownNode<CompassPlacement>? placement;
 
     private enum Page
     {
@@ -141,10 +145,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         _ => "Modules",
     };
 
-    /// <summary>The next place round for the compass, so one button can offer all of them.</summary>
-    private static CompassPlacement Next(CompassPlacement placement) =>
-        (CompassPlacement)(((int)placement + 1) % Enum.GetValues<CompassPlacement>().Length);
-
+    /// <summary>What each place for the compass is called, in the dropdown and on its list.</summary>
     private static string PlacementLabel(CompassPlacement placement) => placement switch
     {
         CompassPlacement.Right => "Right of the words",
@@ -246,6 +247,10 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
 
     private void ForgetPage()
     {
+        // An open list is re-parented to the addon's own root while it shows, so it has to be shut
+        // before the page holding it is freed, rather than left behind on an owner that is gone.
+        placement?.Collapse(playSoundEffect: false);
+        placement = null;
         pane?.Dispose();
         pane = null;
         preview = null;
@@ -307,11 +312,11 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         previewStage = new ResNode();
         previewFrame = new BorderNineGridNode();
         previewFrame.AttachNode(previewStage);
-        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
+        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
         preview.AttachNode(previewStage);
         preview.SetWords(
-            new LineContent(new ReadOnlySeString(SampleEntry), null, false),
-            new LineContent(new ReadOnlySeString(SampleRoute), null, true));
+            new LineContent(SampleEntry),
+            new LineContent(SampleRoute, SampleRouteKeyword, Glyph: BitmapFontIcon.Aetheryte, Pressable: true));
         preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
         body.AddNode(previewStage);
 
@@ -319,14 +324,19 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         body.AddNode(Row("Entry text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size)))));
         body.AddNode(Row("Route text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size)))));
         body.AddNode(Row("Line spacing", Control(Slider(ScenarioTreeStyle.SmallestLineGap, ScenarioTreeStyle.LargestLineGap, style.LineGap, gap => Change(s => s.LineGap = gap)))));
+        body.AddNode(Row("Text left edge", Control(Slider(ScenarioTreeStyle.SmallestInset, ScenarioTreeStyle.LargestInset, style.ContentLeft, left => Change(s => s.ContentLeft = left)))));
         body.AddNode(Row("Compass size", Control(Slider(ScenarioTreeStyle.SmallestCompass, ScenarioTreeStyle.LargestCompass, style.CompassSize, size => Change(s => s.CompassSize = size)))));
 
-        var placement = new TextButtonNode
+        var places = Enum.GetValues<CompassPlacement>();
+        placement = new DropDownNode<CompassPlacement>
         {
-            Size = new Vector2(ControlWidth, RowHeight),
-            String = PlacementLabel(style.Compass),
+            Size = new Vector2(ControlWidth, DropDownHeight),
+            MaxListOptions = places.Length,
+            Options = [.. places],
+            GetLabelFunction = place => new ReadOnlySeString(PlacementLabel(place)),
+            SelectedOption = style.Compass,
+            OnOptionSelected = place => Change(s => s.Compass = place),
         };
-        placement.OnClick = () => Change(s => s.Compass = Next(s.Compass));
         body.AddNode(Row("Compass", Control(placement)));
 
         var reset = new TextButtonNode

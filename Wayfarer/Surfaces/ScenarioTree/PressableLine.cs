@@ -1,43 +1,55 @@
 using System.Numerics;
+using Dalamud.Game.Text.SeStringHandling;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
+using Lumina.Text.ReadOnly;
+using Wayfarer.Core.Presentation;
 using Wayfarer.Ui;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
-/// <summary>One line of the block: an optional game icon, the words beside it, and, while the
-/// line is pressable, one control the size of the words that the pointer clicks and the
-/// controller cursor rests on. Both run the one action the line was given. The words dim a
-/// little while pressable and light on hover, which is what says the line can be pressed.</summary>
+/// <summary>One line of the block. The sentence is laid out stretch by stretch around its keyword,
+/// the words that name what a press does, so the keyword alone carries the icon, the game's link
+/// colour and the control: the pointer clicks those words and the pad's cursor rests on them,
+/// while the rest of the sentence reads as ordinary words.
+///
+/// <para>A line whose sentence does not name its keyword is a control end to end, which is the
+/// same rule with nothing to narrow it down to.</para></summary>
 internal sealed class PressableLine : ResNode
 {
-    private const float PressableIdleAlpha = 0.8f;
+    /// <summary>Air between the keyword's icon and the keyword.</summary>
     private const float IconGap = 4f;
 
+    /// <summary>How many stretches of ordinary words one line can need: either side of the keyword
+    /// on each line it may wrap to, and headroom.</summary>
+    private const int MaxPlainRuns = 6;
+
+    private const TextFlags RunFlags = TextFlags.Edge;
+
     private readonly int maxLines;
+    private readonly Vector4 restingColor;
+    private readonly Vector4 restingEdge;
+    private readonly TextNode[] plain;
+    private readonly TextNode keyword;
+    private readonly TextNode glyph;
     private readonly IconImageNode icon;
-    private readonly TextNode words;
     private readonly LineControl control;
+    private float fontSize = ScenarioTreeStyle.SmallestFont;
     private float leading;
+    private bool keywordShown;
     private LineContent? content;
 
-    public unsafe PressableLine(TextFlags flags, Vector4 color, int maxLines, Action onPressed)
+    public unsafe PressableLine(Vector4 color, int maxLines, Action onPressed)
     {
         this.maxLines = maxLines;
+        restingColor = color;
+        restingEdge = GameColors.BodyEdge;
 
-        icon = new IconImageNode { IsVisible = false };
-        icon.AttachNode(this);
-
-        words = new TextNode
-        {
-            FontType = FontType.Axis,
-            AlignmentType = AlignmentType.TopLeft,
-            TextFlags = flags,
-            TextColor = color,
-            TextOutlineColor = GameColors.BodyEdge,
-        };
-        words.AttachNode(this);
+        glyph = Attach(Text());
+        plain = [.. Enumerable.Range(0, MaxPlainRuns).Select(_ => Attach(Text()))];
+        icon = Attach(new IconImageNode { IsVisible = false });
+        keyword = Attach(Text());
 
         control = new LineControl
         {
@@ -76,16 +88,21 @@ internal sealed class PressableLine : ResNode
     /// <summary>Sets the type and the column, then re-lays whatever the line is showing.</summary>
     public void Restyle(uint fontSize, float leading, float left, float width)
     {
+        this.fontSize = fontSize;
         this.leading = leading;
-        words.FontSize = fontSize;
-        words.LineSpacing = (uint)leading;
-        icon.Size = new Vector2(leading, leading);
+        foreach (var run in Runs())
+        {
+            run.FontSize = fontSize;
+            run.LineSpacing = (uint)leading;
+            run.Height = leading;
+        }
+
         Position = new Vector2(left, Position.Y);
         Width = width;
         Set(content);
     }
 
-    /// <summary>Shows the content and sizes the line to its words. Null hides the line.</summary>
+    /// <summary>Shows the content and sizes the line to the words it drew. Null hides the line.</summary>
     public void Set(LineContent? content)
     {
         this.content = content;
@@ -95,33 +112,170 @@ internal sealed class PressableLine : ResNode
             return;
         }
 
-        icon.IsVisible = content.IconId is not null;
-        icon.IconId = content.IconId ?? 0;
-        var wordsLeft = icon.IsVisible ? leading + IconGap : 0f;
+        // The icon belongs in front of the words it is about. When the sentence says them, room is
+        // kept inside the line for it; when it does not, the whole line is the control and the icon
+        // goes in front of the line instead.
+        var named = TextFlow.Names(content.Words, content.Keyword);
+        var iconRoom = content.IconId is null ? 0f : fontSize + IconGap;
+        var mark = ShowGlyph(content.Glyph) + (named ? 0f : iconRoom);
+        var keywordRoom = named ? iconRoom : 0f;
+        var runs = TextFlow.Lay(content.Words, content.Keyword, Measure, Width - mark, leading, maxLines, keywordRoom);
+        var lead = named || content.IconId is null ? Rect.Empty : new Rect(0f, 0f, iconRoom);
 
-        words.Position = new Vector2(wordsLeft, 0f);
-        words.Width = Width - wordsLeft;
-        words.String = content.Words;
-        words.Height = Lines() * leading;
-        Height = words.Height;
+        var (wordsBox, keywordBox) = Draw(runs, mark, keywordRoom, lead);
+        keywordShown = keywordBox.Any;
+        keyword.IsVisible = keywordShown;
+        ShowIcon(content.IconId, keywordShown ? keywordBox.Left : 0f, keywordShown ? keywordBox.Top : 0f);
 
-        // The whole line takes the press, icon included: the icon is what the line is about, and
-        // reaching past it to the words to use an item reads as a control that is half wired up.
-        control.Position = Vector2.Zero;
-        control.Size = new Vector2(wordsLeft + words.Width, words.Height);
+        // The control is the keyword when the sentence names it, and every word when it does not:
+        // one control either way, so the line stays one stop for the pad's cursor.
+        var pressed = keywordShown ? keywordBox : wordsBox;
+        control.Position = new Vector2(pressed.Left, pressed.Top);
+        control.Size = new Vector2(pressed.Width, pressed.Height(leading));
         control.IsVisible = content.Pressable;
+
+        Height = MathF.Max(leading, wordsBox.Height(leading));
         Light(false);
     }
 
-    /// <summary>Lights the line, or lets it settle back: bright while the pointer is on it or it
-    /// cannot be pressed at all, and a little dim while it is a control waiting to be used.</summary>
-    private void Light(bool lit)
+    /// <summary>Draws every stretch the flow placed, and reports what they all fit inside and where
+    /// the keyword landed. Stretches past the ones this line keeps nodes for are dropped, which the
+    /// flow's own line limit means cannot happen for any sentence the block shows.</summary>
+    private (Rect Words, Rect Keyword) Draw(IReadOnlyList<LineRun> runs, float mark, float keywordRoom, Rect lead)
     {
-        var alpha = lit || !control.IsVisible ? 1f : PressableIdleAlpha;
-        words.Alpha = alpha;
-        icon.Alpha = alpha;
+        var words = lead;
+        var keywordBox = Rect.Empty;
+        var drawn = 0;
+        foreach (var run in runs)
+        {
+            var node = run.Keyword ? keyword : drawn < plain.Length ? plain[drawn++] : null;
+            if (node is null)
+            {
+                continue;
+            }
+
+            var room = run.Keyword ? keywordRoom : 0f;
+            var box = new Rect(mark + run.Left, run.Top, run.Width);
+            node.Position = new Vector2(box.Left + room, box.Top);
+            node.Width = box.Width - room;
+            node.String = run.Text;
+            node.IsVisible = true;
+            words = words.Union(box);
+            if (run.Keyword)
+            {
+                keywordBox = box;
+            }
+        }
+
+        for (var i = drawn; i < plain.Length; i++)
+        {
+            plain[i].IsVisible = false;
+        }
+
+        return (words, keywordBox);
     }
 
-    private int Lines() =>
-        Math.Clamp((int)MathF.Ceiling(words.GetTextDrawSize(considerScale: false).Y / leading), 1, maxLines);
+    /// <summary>Lights the line: the keyword alone when the sentence names it, every word when it
+    /// does not, and nothing at all when the line cannot be pressed. Lit words are white, settled
+    /// ones the colour the game gives a link.</summary>
+    private void Light(bool lit)
+    {
+        var live = control.IsVisible ? lit ? GameColors.Body : GameColors.Link : restingColor;
+        var liveEdge = control.IsVisible ? GameColors.LinkEdge : restingEdge;
+
+        keyword.TextColor = live;
+        keyword.TextOutlineColor = liveEdge;
+
+        var ordinary = keywordShown ? restingColor : live;
+        var ordinaryEdge = keywordShown ? restingEdge : liveEdge;
+        foreach (var run in plain)
+        {
+            run.TextColor = ordinary;
+            run.TextOutlineColor = ordinaryEdge;
+        }
+
+        glyph.TextColor = ordinary;
+        glyph.TextOutlineColor = ordinaryEdge;
+    }
+
+    /// <summary>Draws the game's own mark in front of the line and reports how much room it took,
+    /// which is what the words are then laid out inside.</summary>
+    private float ShowGlyph(BitmapFontIcon? mark)
+    {
+        glyph.IsVisible = mark is not null;
+        if (mark is not { } icon)
+        {
+            return 0f;
+        }
+
+        var words = new ReadOnlySeString(new SeStringBuilder().AddIcon(icon).Build().Encode());
+        glyph.String = words;
+        glyph.Position = Vector2.Zero;
+        glyph.Width = glyph.GetTextDrawSize(words, considerScale: false).X;
+        return glyph.Width;
+    }
+
+    /// <summary>Puts the icon in the room kept for it, level with the type: in front of the keyword
+    /// when the sentence names it, and in front of the line when it does not.</summary>
+    private void ShowIcon(uint? iconId, float left, float top)
+    {
+        icon.IsVisible = iconId is not null;
+        if (iconId is not { } id)
+        {
+            return;
+        }
+
+        icon.IconId = id;
+        icon.Size = new Vector2(fontSize, fontSize);
+        icon.Position = new Vector2(left, top + ((leading - fontSize) / 2f));
+    }
+
+    private float Measure(string words) => plain[0].GetTextDrawSize(new ReadOnlySeString(words), considerScale: false).X;
+
+    private IEnumerable<TextNode> Runs() => plain.Append(keyword).Append(glyph);
+
+    private T Attach<T>(T node)
+        where T : KamiToolKit.BaseTypes.NodeBase
+    {
+        node.AttachNode(this);
+        return node;
+    }
+
+    private TextNode Text() => new()
+    {
+        FontType = FontType.Axis,
+        AlignmentType = AlignmentType.TopLeft,
+        TextFlags = RunFlags,
+        TextColor = restingColor,
+        TextOutlineColor = restingEdge,
+        IsVisible = false,
+    };
+
+    /// <summary>A stretch of the line, and the rectangle every stretch together fits inside. Empty
+    /// until the first stretch is taken in, so an empty line measures nothing rather than a point
+    /// at the origin.</summary>
+    private readonly record struct Rect(float Left, float Top, float Width, bool Any = true)
+    {
+        public static Rect Empty => new(0f, 0f, 0f, false);
+
+        public Rect Union(Rect other)
+        {
+            if (!other.Any)
+            {
+                return this;
+            }
+
+            if (!Any)
+            {
+                return other;
+            }
+
+            var left = MathF.Min(Left, other.Left);
+            var right = MathF.Max(Left + Width, other.Left + other.Width);
+            return this with { Left = left, Top = MathF.Min(Top, other.Top), Width = right - left };
+        }
+
+        /// <summary>How tall the rectangle is: every line it reaches, at the given leading.</summary>
+        public float Height(float leading) => Any ? Top + leading : 0f;
+    }
 }

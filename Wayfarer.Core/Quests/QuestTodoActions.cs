@@ -4,9 +4,9 @@ using Wayfarer.Core.Guidance;
 namespace Wayfarer.Core.Quests;
 
 /// <summary>What a ToDo has the player do, read from the only places the game says it: the key
-/// item the quest's handler reports, or the ToDo's own words. An emote ToDo names its command in
-/// the text, "Greet Aunillie with a /bow."; a say ToDo always reads "With the chat mode in Say,
-/// enter “Well met!” to ...".</summary>
+/// item the quest's handler reports, the key item its words name, or the ToDo's own words. An
+/// emote ToDo names its command in the text, "Greet Aunillie with a /bow."; a say ToDo always
+/// reads "With the chat mode in Say, enter “Well met!” to ...".</summary>
 public static partial class QuestTodoActions
 {
     private const int MatchTimeoutMilliseconds = 100;
@@ -14,15 +14,20 @@ public static partial class QuestTodoActions
 
     /// <summary>What a ToDo has the player do besides be somewhere, or nothing when it only asks
     /// them to be there. Read from the only places the game says it: the key item the ToDo carries,
-    /// and the words themselves, which name an emote or quote a phrase when they need one.</summary>
-    public static EntryAction? From(string todoText, QuestItem? item, IReadOnlyDictionary<string, EmoteCommand> emotes)
+    /// one of the quest's own key items its words name, and the words themselves, which name an
+    /// emote or quote a phrase when they need one.</summary>
+    public static EntryAction? From(
+        string todoText,
+        QuestItem? item,
+        IReadOnlyDictionary<string, EmoteCommand> emotes,
+        IReadOnlyList<QuestItem>? questItems = null)
     {
         ArgumentNullException.ThrowIfNull(todoText);
         ArgumentNullException.ThrowIfNull(emotes);
 
-        if (item is not null)
+        if ((item ?? Named(todoText, questItems)) is { } used)
         {
-            return new EntryAction.UseItem(item.Id, item.Name, item.IconId);
+            return new EntryAction.UseItem(used.Id, used.Name, used.IconId);
         }
 
         if (SayPhrase().Match(todoText) is { Success: true } say)
@@ -37,6 +42,16 @@ public static partial class QuestTodoActions
 
         return null;
     }
+
+    /// <summary>The quest's own key item the ToDo names, when the handler reported none. Some
+    /// quests hand the player an item and then only name it in the words: "Use a smoke bomb on the
+    /// beehive." The longest name wins, so a quest holding both a sack and a buzzing sack matches
+    /// the one the words actually say.</summary>
+    private static QuestItem? Named(string todoText, IReadOnlyList<QuestItem>? questItems) =>
+        questItems is null ? null : questItems
+            .Where(item => item.Name.Length > 0 && todoText.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(item => item.Name.Length)
+            .FirstOrDefault();
 
     [GeneratedRegex("enter “(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
     private static partial Regex SayPhrase();

@@ -1,4 +1,5 @@
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using KamiToolKit.Nodes;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
@@ -17,13 +18,12 @@ internal sealed unsafe class NavSplice
     private byte aboveDownBefore;
     private byte plateUpBefore;
     private int firstStop;
-    private int lastStop;
 
     private bool Applied => aboveNodeId is not null;
 
     /// <summary>Links the block in after the node with <paramref name="aboveNodeId"/>, which is the
     /// last row showing above us. Re-links only when the stops or the row have changed.</summary>
-    public void Splice(AtkUnitBase* addon, uint aboveNodeId, GuidanceBlockNode block)
+    public void Splice(AtkUnitBase* addon, uint aboveNodeId, GuidanceBlockNode block, CircleButtonNode cog)
     {
         var plate = Component(addon, ScenarioTreeMetrics.PlateNodeId);
         var above = Component(addon, aboveNodeId);
@@ -33,8 +33,10 @@ internal sealed unsafe class NavSplice
             return;
         }
 
-        var (first, last) = (block.FirstStop, GuidanceBlockNode.LastStop);
-        if (Applied && this.aboveNodeId == aboveNodeId && firstStop == first && lastStop == last)
+        // The cog is always there to be reached, so it is always the last of our stops; the lines
+        // come before it when there is anything on them to press.
+        var first = block.FirstStop ?? GuideStops.Settings;
+        if (Applied && this.aboveNodeId == aboveNodeId && firstStop == first)
         {
             return;
         }
@@ -42,15 +44,17 @@ internal sealed unsafe class NavSplice
         Restore(addon);
         this.aboveNodeId = aboveNodeId;
         firstStop = first;
-        lastStop = last;
 
         ref var aboveNav = ref above->CursorNavigationInfo;
         ref var plateNav = ref plate->CursorNavigationInfo;
         aboveDownBefore = aboveNav.DownIndex;
         plateUpBefore = plateNav.UpIndex;
         aboveNav.DownIndex = (byte)first;
-        plateNav.UpIndex = (byte)last;
-        block.LinkNav(aboveNav.Index, plateNav.Index);
+        plateNav.UpIndex = GuideStops.Settings;
+        block.LinkNav(aboveNav.Index, GuideStops.Settings);
+        cog.NavIndex = GuideStops.Settings;
+        cog.NavUp = block.LastStop ?? aboveNav.Index;
+        cog.NavDown = plateNav.Index;
     }
 
     /// <summary>Puts the game's two records back as they were, looking both nodes up again.</summary>
