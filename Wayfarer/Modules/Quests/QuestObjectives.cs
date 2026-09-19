@@ -44,7 +44,11 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         }
 
         var sequence = QuestReader.Sequence(questId);
-        var todos = reader.Todos(questId);
+
+        // The game's own to-do list wins when it has the quest: its lines are finished, with the
+        // counts and names filled in that the sheet leaves as macros. The sheet answers for
+        // anything the game is not tracking.
+        var todos = TrackedQuests.Todos(questId) ?? reader.Todos(questId);
         var progress = reader.Progress(questId, todos.Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
         var markers = QuestReader.Markers(questId);
         var carried = reader.KeyItems(questId);
