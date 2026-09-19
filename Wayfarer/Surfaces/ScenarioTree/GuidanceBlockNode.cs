@@ -29,6 +29,8 @@ internal sealed class GuidanceBlockNode : ResNode
     private readonly TextNode distance;
     private readonly CompassNode compass;
     private ScenarioTreeStyle style = new();
+    private float distanceLeading = GameText.LeadingFor(ScenarioTreeStyle.SmallestFont);
+    private (float? Needle, float? Yalms, float? Rise) heading;
     private string lastDistance = string.Empty;
     private ElevationHint elevation = ElevationHint.Level;
     private bool compassShown;
@@ -44,12 +46,10 @@ internal sealed class GuidanceBlockNode : ResNode
         distance = Attach(new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = DistanceFontSize,
             AlignmentType = AlignmentType.Top,
             TextFlags = DistanceFlags,
             TextColor = GameColors.ListText,
             TextOutlineColor = GameColors.ListTextEdge,
-            Size = new Vector2(DistanceWidth, DistanceLeading),
         });
 
         Restyle(style);
@@ -75,6 +75,7 @@ internal sealed class GuidanceBlockNode : ResNode
         entry.Restyle(style.EntryFontSize, GameText.LeadingFor(style.EntryFontSize), left, width);
         route.Restyle(style.RouteFontSize, GameText.LeadingFor(style.RouteFontSize), left, width);
         PlaceCompass();
+        DrawHeading();
         Relayout();
     }
 
@@ -115,6 +116,24 @@ internal sealed class GuidanceBlockNode : ResNode
     /// mark does not flicker on a slope.</summary>
     public void SetHeading(float? needle, float? yalms, float? rise)
     {
+        heading = (needle, yalms, rise);
+        DrawHeading();
+    }
+
+    /// <summary>The words' left edge and width for a style: the whole content width, less the
+    /// compass column when the compass is drawn.</summary>
+    private static (float Left, float Width) WordsColumn(ScenarioTreeStyle style)
+    {
+        var column = style.Compass == CompassPlacement.Hidden ? 0f : style.CompassSize + CompassColumnGap;
+        var left = style.Compass == CompassPlacement.Left ? ContentLeft + column : ContentLeft;
+        return (left, RootWidth - RightInset - ContentLeft - column);
+    }
+
+    /// <summary>Draws the heading last given, at whatever size and place the style puts it. Called
+    /// again after a restyle, or the compass would move without resizing.</summary>
+    private void DrawHeading()
+    {
+        var (needle, yalms, rise) = heading;
         var drawn = style.Compass != CompassPlacement.Hidden && needle is { } && yalms is { };
         if (drawn != compassShown)
         {
@@ -135,15 +154,6 @@ internal sealed class GuidanceBlockNode : ResNode
         SetDistance(MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
     }
 
-    /// <summary>The words' left edge and width for a style: the whole content width, less the
-    /// compass column when the compass is drawn.</summary>
-    private static (float Left, float Width) WordsColumn(ScenarioTreeStyle style)
-    {
-        var column = style.Compass == CompassPlacement.Hidden ? 0f : style.CompassSize + CompassColumnGap;
-        var left = style.Compass == CompassPlacement.Left ? ContentLeft + column : ContentLeft;
-        return (left, RootWidth - RightInset - ContentLeft - column);
-    }
-
     private T Attach<T>(T node)
         where T : KamiToolKit.BaseTypes.NodeBase
     {
@@ -158,7 +168,15 @@ internal sealed class GuidanceBlockNode : ResNode
         var left = style.Compass == CompassPlacement.Left ? ContentLeft : RootWidth - RightInset - style.CompassSize;
         var top = RowTextTop + ((GameText.LeadingFor(style.EntryFontSize) - style.CompassSize) / 2f);
         compass.Position = new Vector2(left, MathF.Max(0f, top));
-        distance.Position = new Vector2(left + ((style.CompassSize - DistanceWidth) / 2f), compass.Position.Y + style.CompassSize);
+
+        // The distance reads at the route's size, in a box wide enough for four digits and the
+        // unit, which at a small compass is wider than the compass itself.
+        distanceLeading = GameText.LeadingFor(style.RouteFontSize);
+        var width = MathF.Max(style.CompassSize, style.RouteFontSize * DistanceWidthInCharacters);
+        distance.FontSize = style.RouteFontSize;
+        distance.LineSpacing = (uint)distanceLeading;
+        distance.Size = new Vector2(width, distanceLeading);
+        distance.Position = new Vector2(left + ((style.CompassSize - width) / 2f), compass.Position.Y + style.CompassSize);
     }
 
     /// <summary>Stacks the route under the entry with the style's gap, and sizes the block to
@@ -168,7 +186,7 @@ internal sealed class GuidanceBlockNode : ResNode
         var entryBottom = RowTextTop + entry.Height;
         route.Position = new Vector2(route.Position.X, entryBottom + style.LineGap);
         var wordsBottom = route.IsVisible ? route.Position.Y + route.Height : entryBottom;
-        var compassBottom = compassShown ? distance.Position.Y + DistanceLeading : 0f;
+        var compassBottom = compassShown ? distance.Position.Y + distanceLeading : 0f;
         Height = MathF.Max(wordsBottom, compassBottom);
     }
 

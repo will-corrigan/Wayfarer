@@ -20,13 +20,13 @@ public static class QuestObjectiveBuilder
 
     /// <summary>The objective for one step, or null when nothing in it is left to do.</summary>
     public static Objective? Build(
-        ushort questId,
         string questName,
         byte sequence,
         IReadOnlyList<QuestTodo> todos,
         IReadOnlyList<QuestTodoProgress> progress,
         IReadOnlyList<QuestMarker> markers,
-        IReadOnlyDictionary<string, EmoteCommand>? emotes = null)
+        IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
+        HeadlineAction? headline = null)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
@@ -38,7 +38,7 @@ public static class QuestObjectiveBuilder
             ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes))]
             : DescribedByMarkers(questName, markers);
 
-        return entries.Count > 0 ? new Objective(questName, null, entries, new HeadlineAction.OpenQuestJournal(questId)) : null;
+        return entries.Count > 0 ? new Objective(questName, null, entries, headline) : null;
     }
 
     private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>

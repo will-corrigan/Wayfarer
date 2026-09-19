@@ -213,14 +213,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     /// again, which <see cref="PlateTakeover"/> decides by comparing them.</summary>
     private unsafe void RetitlePlate(AtkUnitBase* addon)
     {
-        if (guidance.Current?.Objective is { } objective)
-        {
-            takeover.Apply(addon, objective.Headline);
-        }
-        else
-        {
-            takeover.Release(addon);
-        }
+        // The plate already names whatever the guide itself is about, so it is retitled only when
+        // the guidance is about something else, which is exactly when the headline leads somewhere.
+        var objective = guidance.Current?.Objective;
+        takeover.Update(addon, objective?.Headline, objective?.Action is not null);
     }
 
     /// <summary>A press of the plate while it carries our words opens the page about what we are

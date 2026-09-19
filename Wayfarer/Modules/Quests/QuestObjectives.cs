@@ -56,7 +56,11 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         }
 
         last = signature;
-        return cached = QuestObjectiveBuilder.Build(questId, reader.Name(questId), sequence, todos, progress, markers, reader.Emotes());
+
+        // The guide names the main scenario quest itself, so only a quest the player chose to follow
+        // instead gives the headline anywhere to lead.
+        var headline = following.Followed is { } followed ? new HeadlineAction.OpenQuestJournal(followed) : null;
+        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline);
     }
 
     /// <summary>The followed quest while it is still accepted; completing or abandoning it hands

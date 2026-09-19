@@ -39,15 +39,9 @@ internal static class ScenarioTreeMetrics
     /// <summary>How many lines the entry's words may wrap to before they are cut.</summary>
     public const int MaxEntryLines = 2;
 
-    /// <summary>The distance under the compass, smaller than the words.</summary>
-    public const uint DistanceFontSize = 10;
-
-    /// <inheritdoc cref="DistanceFontSize"/>
-    public const float DistanceLeading = 14f;
-
-    /// <summary>The distance's box, centred on the compass and wide enough that four digits and
-    /// the unit fit without being cut.</summary>
-    public const float DistanceWidth = 44f;
+    /// <summary>How many characters wide the distance's box is: four digits and the unit, in a
+    /// face whose characters are about two thirds as wide as they are tall.</summary>
+    public const float DistanceWidthInCharacters = 3.4f;
 
     /// <summary>The plate's title, text node 6 inside component node 13, and the "Current Main
     /// Scenario Quest" header above it, text node 11 of the addon.</summary>

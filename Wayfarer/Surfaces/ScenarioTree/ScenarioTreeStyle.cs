@@ -1,3 +1,5 @@
+using Wayfarer.Core.Ui;
+
 namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>How the block is drawn, as the player set it: the type sizes, the space between the
@@ -5,12 +7,24 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// ceiling, applied by <see cref="Clamped"/>, so a hand-edited file cannot draw nonsense.</summary>
 internal sealed class ScenarioTreeStyle
 {
+    /// <summary>What each value may be set between. The compass stops at the size of the art it is
+    /// drawn from, past which it only blurs.</summary>
     public const uint SmallestFont = 10;
-    public const uint LargestFont = 24;
+
+    /// <inheritdoc cref="SmallestFont"/>
+    public const uint LargestFont = 28;
+
+    /// <inheritdoc cref="SmallestFont"/>
     public const float SmallestLineGap = 0f;
+
+    /// <inheritdoc cref="SmallestFont"/>
     public const float LargestLineGap = 24f;
+
+    /// <inheritdoc cref="SmallestFont"/>
     public const float SmallestCompass = 18f;
-    public const float LargestCompass = 48f;
+
+    /// <inheritdoc cref="SmallestFont"/>
+    public const float LargestCompass = GlyphCanvas.Size;
 
     /// <summary>Bumped when the shape changes, so an old file can be recognised and migrated.</summary>
     public int Version { get; set; } = 1;
@@ -25,7 +39,7 @@ internal sealed class ScenarioTreeStyle
     public float LineGap { get; set; } = 10f;
 
     /// <summary>The compass's side, in pixels.</summary>
-    public float CompassSize { get; set; } = 26f;
+    public float CompassSize { get; set; } = 36f;
 
     /// <summary>Where the compass sits.</summary>
     public CompassPlacement Compass { get; set; } = CompassPlacement.Right;

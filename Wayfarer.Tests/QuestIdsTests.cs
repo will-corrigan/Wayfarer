@@ -18,20 +18,24 @@ public class QuestIdsTests
     [Fact]
     public void ARowIdReadsBackAsTheQuestItCameFrom()
     {
-        Assert.Equal(CloseToHome, QuestIds.FromRowId(QuestIds.RowId(CloseToHome)));
+        Assert.Equal(CloseToHome, QuestIds.FromAnyId(QuestIds.RowId(CloseToHome)));
     }
 
-    [Theory]
-    [InlineData(0u)]
-    [InlineData(65535u)]
-    public void ANumberBelowTheOffsetIsNoQuest(uint rowId)
+    [Fact]
+    public void TheQuestsOwnIdReadsBackAsItself()
     {
-        Assert.Null(QuestIds.FromRowId(rowId));
+        Assert.Equal(CloseToHome, QuestIds.FromAnyId(CloseToHome));
+    }
+
+    [Fact]
+    public void ZeroIsNoQuest()
+    {
+        Assert.Null(QuestIds.FromAnyId(0));
     }
 
     [Fact]
     public void ANumberPastTheLastQuestIsNoQuest()
     {
-        Assert.Null(QuestIds.FromRowId(QuestIds.RowId(ushort.MaxValue) + 1));
+        Assert.Null(QuestIds.FromAnyId(QuestIds.RowId(ushort.MaxValue) + 1));
     }
 }

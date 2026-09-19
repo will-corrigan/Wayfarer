@@ -15,8 +15,13 @@ public static class QuestIds
     /// <summary>The Quest sheet row, event handler id, or journal quest id for a quest.</summary>
     public static uint RowId(ushort questId) => questId + SheetRowOffset;
 
-    /// <summary>The quest manager's id for a sheet row or journal quest id, or null when the number
-    /// is not a quest's.</summary>
-    public static ushort? FromRowId(uint rowId) =>
-        rowId >= SheetRowOffset && rowId - SheetRowOffset <= ushort.MaxValue ? (ushort)(rowId - SheetRowOffset) : null;
+    /// <summary>The quest manager's id for a number written in either numbering. The two cannot be
+    /// confused: the manager's ids fit in a ushort and the sheet's rows begin just past the end of
+    /// one, so the number itself says which it is. Zero is no quest either way.</summary>
+    public static ushort? FromAnyId(uint id) => id switch
+    {
+        0 => null,
+        <= ushort.MaxValue => (ushort)id,
+        _ => id - SheetRowOffset <= ushort.MaxValue ? (ushort)(id - SheetRowOffset) : null,
+    };
 }

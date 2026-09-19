@@ -49,6 +49,9 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float FramePadding = 12f;
     private const float SectionGap = 10f;
 
+    /// <summary>The inset that keeps a framed panel's contents off its own border.</summary>
+    private const float PanelPadding = 8f;
+
     /// <summary>What the preview block shows: a step, a route with a press, and a compass reading.</summary>
     private const string SampleEntry = "Speak with Minfilia at the Waking Sands.";
     private const string SampleRoute = "Teleport to Vesper Bay, then Walk to the Waking Sands";
@@ -56,9 +59,12 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float SampleYalms = 143f;
     private const float SampleRise = 2f;
 
+    /// <summary>The dark the game fills its own framed panels with.</summary>
+    private static readonly Vector4 PanelColor = new(0f, 0f, 0f, 0.35f);
+
     private readonly Dictionary<Page, ListButtonNode> pageButtons = [];
     private ScrollingNode<VerticalListNode>? pane;
-    private VerticalListNode? pages;
+    private ListBoxNode? pages;
     private ResNode? previewStage;
     private GuidanceBlockNode? preview;
     private NineGridNode? previewFrame;
@@ -89,13 +95,16 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     {
         SetWindowSize(new Vector2(WindowWidth, WindowHeight));
 
-        pages = new VerticalListNode
+        pages = new ListBoxNode
         {
             Position = ContentStartPosition,
             Size = new Vector2(PagesWidth, ContentSize.Y),
-            FitWidth = true,
             ClipListContents = true,
+            ShowBorder = true,
+            ShowBackground = true,
+            BackgroundColor = PanelColor,
             ItemSpacing = 2f,
+            FirstItemSpacing = PanelPadding,
         };
         pages.AttachNode(this);
         AddPageButton(Page.GuideBlock);
@@ -128,13 +137,14 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         _ => "Hidden",
     };
 
-    private SliderNode Slider(int min, int max, int value, Action<int> onChanged) => new()
+    /// <summary>A slider over a whole-number range. The range is set through the game's own
+    /// component rather than by writing its data, which is what actually moves the end stops.</summary>
+    private SliderNode Slider(float min, float max, float value, Action<int> onChanged) => new()
     {
         Size = new Vector2(ControlWidth, SliderHeight),
-        Min = min,
-        Max = max,
+        Range = (int)min..(int)max,
         Step = 1,
-        Value = value,
+        Value = (int)value,
         OnValueChanged = onChanged,
     };
 
@@ -158,7 +168,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     {
         var button = new ListButtonNode
         {
-            Height = PageButtonHeight,
+            Size = new Vector2(PagesWidth - (2f * PanelPadding), PageButtonHeight),
             String = PageTitle(page),
             OnClick = () => Show(page),
         };
@@ -236,10 +246,10 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         body.AddNode(previewStage);
 
         var style = styles.Current;
-        body.AddNode(Row("Entry text size", Slider((int)ScenarioTreeStyle.SmallestFont, (int)ScenarioTreeStyle.LargestFont, (int)style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size))));
-        body.AddNode(Row("Route text size", Slider((int)ScenarioTreeStyle.SmallestFont, (int)ScenarioTreeStyle.LargestFont, (int)style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size))));
-        body.AddNode(Row("Line spacing", Slider((int)ScenarioTreeStyle.SmallestLineGap, (int)ScenarioTreeStyle.LargestLineGap, (int)style.LineGap, gap => Change(s => s.LineGap = gap))));
-        body.AddNode(Row("Compass size", Slider((int)ScenarioTreeStyle.SmallestCompass, (int)ScenarioTreeStyle.LargestCompass, (int)style.CompassSize, size => Change(s => s.CompassSize = size))));
+        body.AddNode(Row("Entry text size", Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size))));
+        body.AddNode(Row("Route text size", Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size))));
+        body.AddNode(Row("Line spacing", Slider(ScenarioTreeStyle.SmallestLineGap, ScenarioTreeStyle.LargestLineGap, style.LineGap, gap => Change(s => s.LineGap = gap))));
+        body.AddNode(Row("Compass size", Slider(ScenarioTreeStyle.SmallestCompass, ScenarioTreeStyle.LargestCompass, style.CompassSize, size => Change(s => s.CompassSize = size))));
 
         var placements = Enum.GetValues<CompassPlacement>();
         var placement = new RadioButtonGroupNode { Size = new Vector2(ControlWidth, RadioButtonHeight * placements.Length) };
