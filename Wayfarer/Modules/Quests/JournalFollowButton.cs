@@ -7,44 +7,42 @@ using KamiToolKit.Controllers;
 using KamiToolKit.Nodes;
 using Wayfarer.App;
 using Wayfarer.Core.Quests;
+using Wayfarer.Ui;
 
 namespace Wayfarer.Modules.Quests;
 
-/// <summary>A button in the quest journal's own row of buttons that follows the quest on show, or
-/// stops following it. The row has three slots and the game fills the outer two with Map and
-/// Abandon, so ours takes the empty middle one, and only while it really is empty.
+/// <summary>Wayfarer's own mark in the corner of the quest journal's detail pane, which follows the
+/// quest on show or stops following it. It sits opposite the level badge, the same size and the
+/// same inset from its own edge, so the head of the page reads as the game laid it out.
 ///
-/// <para>The button hangs off the row itself rather than off the window, so it sits where the row
-/// sits whatever the game does with it. It lives only while the quests module is up: the controller
-/// is enabled and disabled with the module, and the button is made when the pane opens and freed
-/// when it closes, the way every node added to a game window is.</para></summary>
-internal sealed class JournalFollowButton(QuestFollowing following, IFramework framework, IPluginLog log) : IAsyncDisposable
+/// <para>It lives only while the quests module is up: the controller is enabled and disabled with
+/// the module, and the mark is made when the pane opens and freed when it closes, the way every
+/// node added to a game window is.</para></summary>
+internal sealed class JournalFollowButton(QuestFollowing following, ITextureProvider textures, IFramework framework, IPluginLog log) : IAsyncDisposable
 {
-    /// <summary>The row of wide buttons at the foot of the pane, node 49: three slots of 120 by 28
-    /// at x=12, 132 and 252 within it. Map takes the first, Abandon the last.</summary>
-    private const uint ButtonRowNodeId = 49;
+    /// <summary>The level badge at the head of the pane, node 8: 40 square, inset 24 from the left.
+    /// Our mark is its opposite number, the same size and inset from the right of the pane's 496.</summary>
+    private const float MarkSide = 40f;
 
-    /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const uint MiddleSlotNodeId = 51;
+    /// <inheritdoc cref="MarkSide"/>
+    private const float PaneWidth = 496f;
 
-    /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const float ButtonWidth = 120f;
+    /// <inheritdoc cref="MarkSide"/>
+    private const float HeadInset = 24f;
 
-    /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const float ButtonHeight = 28f;
+    /// <inheritdoc cref="MarkSide"/>
+    private const float HeadTop = 62f;
 
-    /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const float MiddleSlotLeft = 132f;
-
-    private const string FollowLabel = "Follow";
-    private const string UnfollowLabel = "Unfollow";
-    private const string FollowTooltip = "Guide to this quest with Wayfarer, instead of the main scenario.";
-    private const string UnfollowTooltip = "Go back to guiding to the main scenario.";
+    private const string FollowTooltip = "Follow this quest with Wayfarer, instead of the main scenario.";
+    private const string UnfollowTooltip = "Stop following this quest, and go back to the main scenario.";
 
     private static readonly string AddonName = GameAddon.NameOf<AddonJournalDetail>();
 
+    /// <inheritdoc cref="MarkSide"/>
+    private static readonly Vector2 MarkPosition = new(PaneWidth - HeadInset - MarkSide, HeadTop);
+
     private AddonController? controller;
-    private TextButtonNode? button;
+    private WayfarerMark? mark;
     private ushort? shownQuest;
     private bool shownAsFollowed;
 
@@ -72,13 +70,6 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         return agent == null || agent->SelectedQuestType != QuestIds.OrdinaryQuest ? null : QuestIds.FromAnyId(agent->SelectedQuestId);
     }
 
-    /// <summary>Whether the middle slot of the button row is the game's to use right now.</summary>
-    private static unsafe bool MiddleSlotIsFree(AtkUnitBase* addon)
-    {
-        var slot = addon->GetNodeById(MiddleSlotNodeId);
-        return slot == null || !slot->IsVisible();
-    }
-
     private unsafe void Enable()
     {
         controller ??= new AddonController
@@ -95,46 +86,33 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     {
         try
         {
-            var row = addon->GetNodeById(ButtonRowNodeId);
-            if (row == null)
-            {
-                log.Warning("the quest journal has no row of buttons to put the follow button in, so a quest cannot be followed from it this session.");
-                return;
-            }
-
-            button = new TextButtonNode
-            {
-                Position = new Vector2(MiddleSlotLeft, 0f),
-                Size = new Vector2(ButtonWidth, ButtonHeight),
-                OnClick = Toggle,
-                IsVisible = false,
-            };
-            button.AttachNode(row);
+            mark = new WayfarerMark(textures, log, Toggle) { Position = MarkPosition, IsVisible = false };
+            mark.AttachNode(addon);
             shownQuest = null;
         }
         catch (Exception ex)
         {
-            button = null;
-            log.Error(ex, "the follow button could not be added to the quest journal, so a quest cannot be followed from it this session.");
+            mark = null;
+            log.Error(ex, "Wayfarer's mark could not be added to the quest journal, so a quest cannot be followed from it this session.");
         }
     }
 
     private unsafe void Detach(AtkUnitBase* addon)
     {
-        button?.Dispose();
-        button = null;
+        mark?.Dispose();
+        mark = null;
     }
 
     /// <summary>Shows the button for a quest that can be followed, with the label and tooltip saying
     /// what a press will do. Nothing is written while neither has changed.</summary>
     private unsafe void Refresh(AtkUnitBase* addon)
     {
-        if (button is null)
+        if (mark is null)
         {
             return;
         }
 
-        var quest = MiddleSlotIsFree(addon) ? QuestOnShow() : null;
+        var quest = QuestOnShow();
         var followed = quest is { } id && following.IsFollowing(id);
         if (quest == shownQuest && followed == shownAsFollowed)
         {
@@ -143,14 +121,15 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
 
         shownQuest = quest;
         shownAsFollowed = followed;
-        button.IsVisible = quest is not null;
         if (quest is null)
         {
+            mark.IsVisible = false;
             return;
         }
 
-        button.String = followed ? UnfollowLabel : FollowLabel;
-        button.TextTooltip = followed ? UnfollowTooltip : FollowTooltip;
+        mark.Show(MarkSide);
+        mark.Lit = followed;
+        mark.Tooltip = followed ? UnfollowTooltip : FollowTooltip;
     }
 
     private void Toggle()
