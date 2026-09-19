@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/will-corrigan/Wayfarer/compare/v1.2.0...v1.3.0) (2026-09-19)
+
+
+### New
+
+* read the quest data properly, and let the game's own nodes lay the block out ([#75](https://github.com/will-corrigan/Wayfarer/issues/75)) ([eb9617f](https://github.com/will-corrigan/Wayfarer/commit/eb9617f2444ed5d6ffbf2f3b4dbd053dcef93782))
+
 ## [1.2.0](https://github.com/will-corrigan/Wayfarer/compare/v1.1.0...v1.2.0) (2026-09-19)
 
 
