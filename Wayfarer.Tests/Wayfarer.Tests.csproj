@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj" />
+    <ProjectReference Include="../Wayfarer/Wayfarer.csproj" />
   </ItemGroup>
 
   <!-- The shipped routing data, so its validator can read it. -->

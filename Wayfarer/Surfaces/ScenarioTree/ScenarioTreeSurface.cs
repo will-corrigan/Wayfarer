@@ -4,10 +4,9 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
-using Wayfarer.App.Guidance;
 using Wayfarer.App.Settings;
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Presentation;
+using Wayfarer.Guidance;
+using Wayfarer.Presentation;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
 namespace Wayfarer.Surfaces.ScenarioTree;

@@ -1,6 +1,6 @@
-using Lumina;
 using Lumina.Excel.Sheets;
-using Wayfarer.Core.Routing;
+using Lumina;
+using Wayfarer.Routing;
 
 namespace Wayfarer.RoutingGen;
 

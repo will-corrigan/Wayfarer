@@ -1,0 +1,10 @@
+using Wayfarer.Routing;
+
+namespace Wayfarer.Modules.Quests;
+
+/// <summary>One of the game's live map markers for a quest: where it is, and the label the game
+/// draws beside it when it draws one. The game removes a marker as its objective completes, which
+/// is the only signal the data gives that a to-do line is done.</summary>
+/// <param name="At">Where the marker stands, with the search radius when the step is an area.</param>
+/// <param name="Label">The marker's own words, or null when it has none.</param>
+public sealed record QuestMarker(Place At, string? Label);

@@ -4,7 +4,6 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
-using Wayfarer.Core.Ui;
 using Wayfarer.Ui;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 

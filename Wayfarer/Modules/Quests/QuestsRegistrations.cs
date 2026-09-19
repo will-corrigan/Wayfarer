@@ -1,7 +1,7 @@
 using Autofac;
 using Wayfarer.App;
 using Wayfarer.App.Modules;
-using Wayfarer.Core.Guidance;
+using Wayfarer.Guidance;
 
 namespace Wayfarer.Modules.Quests;
 

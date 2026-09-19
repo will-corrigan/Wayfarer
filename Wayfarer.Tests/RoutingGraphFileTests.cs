@@ -1,4 +1,4 @@
-using Wayfarer.Core.Routing;
+using Wayfarer.Routing;
 
 namespace Wayfarer.Tests;
 

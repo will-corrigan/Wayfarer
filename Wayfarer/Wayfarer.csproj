@@ -16,7 +16,6 @@
   </PropertyGroup>
   <Import Project="../local.props" Condition="Exists('../local.props')"/>
   <ItemGroup>
-    <ProjectReference Include="../Wayfarer.Core/Wayfarer.Core.csproj"/>
     <!-- The native UI toolkit, as the package its author publishes. See THIRD_PARTY_NOTICES.md.
          The version is written here rather than in Directory.Packages.props because the Dalamud SDK
          brings its own versioned packages, which central version management forbids. -->

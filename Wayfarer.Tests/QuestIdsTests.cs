@@ -1,4 +1,4 @@
-using Wayfarer.Core.Quests;
+using Wayfarer.Modules.Quests;
 
 namespace Wayfarer.Tests;
 

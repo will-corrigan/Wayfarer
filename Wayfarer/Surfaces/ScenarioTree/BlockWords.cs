@@ -1,6 +1,6 @@
 using Dalamud.Game.Text.SeStringHandling;
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Presentation;
+using Wayfarer.Guidance;
+using Wayfarer.Presentation;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 

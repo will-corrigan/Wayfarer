@@ -1,4 +1,4 @@
-using Wayfarer.Core.Ui;
+using Wayfarer.Ui;
 
 namespace Wayfarer.Tests;
 

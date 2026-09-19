@@ -1,4 +1,4 @@
-using Wayfarer.Core.Presentation;
+using Wayfarer.Presentation;
 
 namespace Wayfarer.Tests;
 

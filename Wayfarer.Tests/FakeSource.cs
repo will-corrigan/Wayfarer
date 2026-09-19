@@ -1,4 +1,4 @@
-using Wayfarer.Core.Guidance;
+using Wayfarer.Guidance;
 
 namespace Wayfarer.Tests;
 

@@ -1,5 +1,5 @@
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Routing;
+using Wayfarer.Guidance;
+using Wayfarer.Routing;
 
 namespace Wayfarer.Tests;
 

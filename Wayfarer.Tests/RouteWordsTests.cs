@@ -1,6 +1,6 @@
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Presentation;
-using Wayfarer.Core.Routing;
+using Wayfarer.Guidance;
+using Wayfarer.Presentation;
+using Wayfarer.Routing;
 
 namespace Wayfarer.Tests;
 

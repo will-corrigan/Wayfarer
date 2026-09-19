@@ -1,5 +1,5 @@
-using Wayfarer.Core.Guidance;
-using Wayfarer.Core.Quests;
+using Wayfarer.Guidance;
+using Wayfarer.Modules.Quests;
 
 namespace Wayfarer.Tests;
 

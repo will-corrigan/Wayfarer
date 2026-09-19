@@ -6,7 +6,6 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Nodes;
 using Wayfarer.App;
-using Wayfarer.Core.Quests;
 
 namespace Wayfarer.Modules.Quests;
 
