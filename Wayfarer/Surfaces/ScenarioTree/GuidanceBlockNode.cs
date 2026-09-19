@@ -12,8 +12,9 @@ using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>The block under the game's Main Scenario Guide: the entry being guided to, the route
-/// line under it, and the compass with its distance in the icon column. Either line can be a
-/// control. Words are set when the guidance changes; the needle and distance every frame.</summary>
+/// line under it, and the compass with its distance in a column at either edge. Either line can be
+/// a control. Words are set when the guidance changes, the needle and distance every frame, and
+/// the whole block re-lays itself when the style changes.</summary>
 internal sealed class GuidanceBlockNode : ResNode
 {
     private const TextFlags WrappingFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
@@ -25,30 +26,35 @@ internal sealed class GuidanceBlockNode : ResNode
     private const int EntryNavIndex = 100;
     private const int RouteNavIndex = 101;
 
-    private static readonly Vector2 CompassOrigin = new(
-        IconColumnLeft + ((IconColumnWidth - CompassSize) / 2f),
-        RowTextTop + ((WordsLeading - CompassSize) / 2f));
-
     private readonly PressableLine entry;
     private readonly PressableLine route;
     private readonly TextNode distance;
     private readonly CompassNode compass;
+    private ScenarioTreeStyle style = new();
     private string lastDistance = string.Empty;
     private ElevationHint elevation = ElevationHint.Level;
+    private bool compassShown;
 
     public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed)
     {
         Width = RootWidth;
 
-        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, WordsFontSize, WordsLeading, MaxEntryLines, onEntryPressed));
-        entry.Position = new Vector2(WordsLeft, RowTextTop);
-        entry.Width = WordsWidth;
+        entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, MaxEntryLines, onEntryPressed));
+        entry.Position = new Vector2(ContentLeft, RowTextTop);
+        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, 1, onRoutePressed));
+        compass = Attach(new CompassNode(textures, log) { IsVisible = false });
+        distance = Attach(new TextNode
+        {
+            FontType = FontType.Axis,
+            FontSize = DistanceFontSize,
+            AlignmentType = AlignmentType.Top,
+            TextFlags = DistanceFlags,
+            TextColor = GameColors.ListText,
+            TextOutlineColor = GameColors.ListTextEdge,
+            Size = new Vector2(DistanceWidth, DistanceLeading),
+        });
 
-        route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, RouteFontSize, RouteLeading, 1, onRoutePressed));
-        route.Width = WordsWidth;
-
-        compass = Attach(new CompassNode(textures, log) { Position = CompassOrigin, IsVisible = false });
-        distance = Attach(Distance());
+        Restyle(style);
     }
 
     /// <summary>Whether any line can be pressed. The addon's collision list is rebuilt by the
@@ -64,6 +70,19 @@ internal sealed class GuidanceBlockNode : ResNode
     /// <summary>The last pressable line's stop, or null when nothing can be pressed.</summary>
     public int? LastStop => route.Pressable ? RouteNavIndex : entry.Pressable ? EntryNavIndex : null;
 
+    /// <summary>Applies a style: type sizes, the columns, and the compass, then re-lays the words.</summary>
+    public void Restyle(ScenarioTreeStyle style)
+    {
+        ArgumentNullException.ThrowIfNull(style);
+        this.style = style;
+
+        var (left, width) = WordsColumn(style);
+        entry.Restyle(style.EntryFontSize, ScenarioTreeStyle.LeadingFor(style.EntryFontSize), left, width);
+        route.Restyle(style.RouteFontSize, ScenarioTreeStyle.LeadingFor(style.RouteFontSize), left, width);
+        PlaceCompass();
+        Relayout();
+    }
+
     public void SetWords(LineContent? entryContent, LineContent? routeContent)
     {
         IsVisible = entryContent is not null;
@@ -73,12 +92,8 @@ internal sealed class GuidanceBlockNode : ResNode
         }
 
         entry.Set(entryContent);
-        var entryBlock = entry.Height - WordsLeading + WordsBlock;
-
-        route.Position = new Vector2(WordsLeft, RowTextTop + entryBlock);
         route.Set(routeContent);
-
-        Height = RowTextTop + entryBlock + (route.IsVisible ? route.Height : 0f);
+        Relayout();
     }
 
     /// <summary>Tells both lines which addon they live in and where its focus falls back to when
@@ -99,8 +114,15 @@ internal sealed class GuidanceBlockNode : ResNode
 
     public void SetHeading(float? needle, float? yalms, float? rise)
     {
-        distance.IsVisible = needle is not null && yalms is not null;
-        if (needle is not { } radians || yalms is not { } distanceYalms)
+        var drawn = style.Compass != CompassPlacement.Hidden && needle is { } && yalms is { };
+        if (drawn != compassShown)
+        {
+            compassShown = drawn;
+            Relayout();
+        }
+
+        distance.IsVisible = drawn;
+        if (!drawn || needle is not { } radians || yalms is not { } distanceYalms)
         {
             compass.IsVisible = false;
             elevation = ElevationHint.Level;
@@ -108,28 +130,45 @@ internal sealed class GuidanceBlockNode : ResNode
         }
 
         elevation = Elevation.Classify(rise, elevation);
-        compass.Show(CompassSize, radians, elevation);
+        compass.Show(style.CompassSize, radians, elevation);
         SetDistance(MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
     }
 
-    private static TextNode Distance() => new()
+    /// <summary>The words' left edge and width for a style: the whole content width, less the
+    /// compass column when the compass is drawn.</summary>
+    private static (float Left, float Width) WordsColumn(ScenarioTreeStyle style)
     {
-        FontType = FontType.Axis,
-        FontSize = DistanceFontSize,
-        LineSpacing = (uint)RouteLeading,
-        AlignmentType = AlignmentType.Top,
-        TextFlags = DistanceFlags,
-        TextColor = GameColors.ListText,
-        TextOutlineColor = GameColors.ListTextEdge,
-        Position = new Vector2(IconColumnLeft + ((IconColumnWidth - DistanceWidth) / 2f), CompassOrigin.Y + CompassSize),
-        Size = new Vector2(DistanceWidth, RouteLeading),
-    };
+        var column = style.Compass == CompassPlacement.Hidden ? 0f : style.CompassSize + CompassColumnGap;
+        var left = style.Compass == CompassPlacement.Left ? ContentLeft + column : ContentLeft;
+        return (left, RootWidth - RightInset - ContentLeft - column);
+    }
 
     private T Attach<T>(T node)
         where T : KamiToolKit.BaseTypes.NodeBase
     {
         node.AttachNode(this);
         return node;
+    }
+
+    /// <summary>The compass sits in its column level with the entry's first line, its distance
+    /// right under it.</summary>
+    private void PlaceCompass()
+    {
+        var left = style.Compass == CompassPlacement.Left ? ContentLeft : RootWidth - RightInset - style.CompassSize;
+        var top = RowTextTop + ((ScenarioTreeStyle.LeadingFor(style.EntryFontSize) - style.CompassSize) / 2f);
+        compass.Position = new Vector2(left, MathF.Max(0f, top));
+        distance.Position = new Vector2(left + ((style.CompassSize - DistanceWidth) / 2f), compass.Position.Y + style.CompassSize);
+    }
+
+    /// <summary>Stacks the route under the entry with the style's gap, and sizes the block to
+    /// whichever is taller: the words or the compass column.</summary>
+    private void Relayout()
+    {
+        var entryBottom = RowTextTop + entry.Height;
+        route.Position = new Vector2(route.Position.X, entryBottom + style.LineGap);
+        var wordsBottom = route.IsVisible ? route.Position.Y + route.Height : entryBottom;
+        var compassBottom = compassShown ? distance.Position.Y + DistanceLeading : 0f;
+        Height = MathF.Max(wordsBottom, compassBottom);
     }
 
     private void SetDistance(string words)

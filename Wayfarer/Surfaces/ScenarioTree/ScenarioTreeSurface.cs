@@ -31,19 +31,22 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly IActions actions;
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
+    private readonly ScenarioTreeStyleStore styles;
     private readonly AddonController controller;
     private readonly NavSplice splice = new();
     private GuidanceBlockNode? block;
     private nint addonAddress;
     private nint plateFocus;
     private bool wordsChanged = true;
+    private bool restyleWanted;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ScenarioTreeStyleStore styles, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
         this.actions = actions;
+        this.styles = styles;
         this.textures = textures;
         this.log = log;
 
@@ -56,6 +59,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         };
 
         guidance.OnChanged += OnGuidanceChanged;
+        styles.OnChanged += OnStyleChanged;
         _ = framework.RunOnFrameworkThread(controller.Enable);
     }
 
@@ -63,16 +67,29 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         guidance.OnChanged -= OnGuidanceChanged;
+        styles.OnChanged -= OnStyleChanged;
         await controller.DisposeAsync().ConfigureAwait(false);
     }
 
     private static unsafe bool NodeShown(AtkUnitBase* addon, uint id) =>
         addon->GetNodeById(id) is var node && node != null && node->IsVisible();
 
-    /// <summary>How far down the game's own rows push our block: one pitch per job-quest row, and
-    /// the controller hint strip while the guide has focus.</summary>
+    /// <summary>Whether a game component has words in its text node. A row can stay flagged visible
+    /// with nothing in it, and a blank row kept in the block's way is a blank gap on screen.</summary>
+    private static unsafe bool HasWords(AtkUnitBase* addon, uint componentNodeId, uint textNodeId) =>
+        addon->GetComponentByNodeId(componentNodeId) is var component && component != null
+        && component->GetTextNodeById(textNodeId) is var text && text != null && text->NodeText.Length > 0;
+
+    private static unsafe bool JobRowShown(AtkUnitBase* addon, uint rowId) =>
+        NodeShown(addon, rowId) && HasWords(addon, rowId, JobRowTextNodeId);
+
+    private static unsafe bool HintBarShown(AtkUnitBase* addon) =>
+        NodeShown(addon, HintBarNodeId) && HasWords(addon, HintBarComponentNodeId, HintBarTextNodeId);
+
+    /// <summary>How far down the game's own rows push our block: one pitch per job-quest row with
+    /// words in it, and the controller hint strip while the guide has focus.</summary>
     private static unsafe float RowsAbove(AtkUnitBase* addon) =>
-        (JobRowPitch * JobRowNodeIds.Count(id => NodeShown(addon, id))) + (NodeShown(addon, HintBarNodeId) ? HintBarHeight : 0f);
+        (JobRowPitch * JobRowNodeIds.Count(id => JobRowShown(addon, id))) + (HintBarShown(addon) ? HintBarHeight : 0f);
 
     private static unsafe AtkComponentNode* Plate(AtkUnitBase* addon)
     {
@@ -84,7 +101,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         foreach (var id in JobRowNodeIds.Reverse())
         {
-            if (NodeShown(addon, id) && addon->GetNodeById(id) is var node && node != null && node->GetAsAtkComponentNode() is var row && row != null)
+            if (JobRowShown(addon, id) && addon->GetNodeById(id) is var node && node != null && node->GetAsAtkComponentNode() is var row && row != null)
             {
                 return row;
             }
@@ -129,6 +146,10 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     private void OnGuidanceChanged(object? sender, GuidanceChangedEventArgs e) => wordsChanged = true;
 
+    /// <summary>The settings window may raise this off the framework thread; the block is re-laid
+    /// on the next update, which is on it.</summary>
+    private void OnStyleChanged(object? sender, EventArgs e) => restyleWanted = true;
+
     private unsafe void Attach(AtkUnitBase* addon)
     {
         try
@@ -137,6 +158,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             var plate = Plate(addon);
             plateFocus = plate == null || plate->Component == null ? 0 : (nint)plate->Component->GetFocusNode();
             block = new GuidanceBlockNode(textures, log, OnEntryPressed, OnRoutePressed) { IsVisible = false };
+            block.Restyle(styles.Current);
             block.AttachNode(addon);
             block.GuestOf(addon, (AtkResNode*)plateFocus);
             wordsChanged = true;
@@ -170,6 +192,12 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             block.Position = new Vector2(0f, JobRowsTop + RowsAbove(addon));
             RefreshWords(addon);
+            if (restyleWanted)
+            {
+                restyleWanted = false;
+                block.Restyle(styles.Current);
+            }
+
             SpliceIntoChain(addon);
 
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);

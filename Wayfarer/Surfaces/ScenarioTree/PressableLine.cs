@@ -15,25 +15,23 @@ internal sealed class PressableLine : ResNode
     private const float PressableIdleAlpha = 0.8f;
     private const float IconGap = 4f;
 
-    private readonly float leading;
     private readonly int maxLines;
     private readonly IconImageNode icon;
     private readonly TextNode words;
     private readonly LineControl control;
+    private float leading;
+    private LineContent? content;
 
-    public unsafe PressableLine(TextFlags flags, Vector4 color, uint fontSize, float leading, int maxLines, Action onPressed)
+    public unsafe PressableLine(TextFlags flags, Vector4 color, int maxLines, Action onPressed)
     {
-        this.leading = leading;
         this.maxLines = maxLines;
 
-        icon = new IconImageNode { Size = new Vector2(leading, leading), IsVisible = false };
+        icon = new IconImageNode { IsVisible = false };
         icon.AttachNode(this);
 
         words = new TextNode
         {
             FontType = FontType.Axis,
-            FontSize = fontSize,
-            LineSpacing = (uint)leading,
             AlignmentType = AlignmentType.TopLeft,
             TextFlags = flags,
             TextColor = color,
@@ -73,9 +71,22 @@ internal sealed class PressableLine : ResNode
         control.NavDown = down;
     }
 
+    /// <summary>Sets the type and the column, then re-lays whatever the line is showing.</summary>
+    public void Restyle(uint fontSize, float leading, float left, float width)
+    {
+        this.leading = leading;
+        words.FontSize = fontSize;
+        words.LineSpacing = (uint)leading;
+        icon.Size = new Vector2(leading, leading);
+        Position = new Vector2(left, Position.Y);
+        Width = width;
+        Set(content);
+    }
+
     /// <summary>Shows the content and sizes the line to its words. Null hides the line.</summary>
     public void Set(LineContent? content)
     {
+        this.content = content;
         IsVisible = content is not null;
         if (content is null)
         {
