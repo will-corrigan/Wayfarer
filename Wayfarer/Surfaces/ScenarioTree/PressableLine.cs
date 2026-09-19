@@ -8,23 +8,30 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>One line of the block: an optional game icon, the words beside it, and, while the
 /// line is pressable, one control the size of the words that the pointer clicks and the
-/// controller cursor rests on. Both run the one action the line was given. The words dim a
-/// little while pressable and light on hover, which is what says the line can be pressed.</summary>
+/// controller cursor rests on. Both run the one action the line was given.
+///
+/// <para>A pressable line is printed in the colour the game gives a link, the same pale blue a
+/// map or item link takes in the chat log, and turns white under the pointer. That is what says
+/// the words can be pressed, and it says it whether or not the line has an icon.</para></summary>
 internal sealed class PressableLine : ResNode
 {
-    private const float PressableIdleAlpha = 0.8f;
     private const float IconGap = 4f;
 
     private readonly int maxLines;
+    private readonly Vector4 restingColor;
+    private readonly Vector4 restingEdge;
     private readonly IconImageNode icon;
     private readonly TextNode words;
     private readonly LineControl control;
+    private float fontSize = ScenarioTreeStyle.SmallestFont;
     private float leading;
     private LineContent? content;
 
     public unsafe PressableLine(TextFlags flags, Vector4 color, int maxLines, Action onPressed)
     {
         this.maxLines = maxLines;
+        restingColor = color;
+        restingEdge = GameColors.BodyEdge;
 
         icon = new IconImageNode { IsVisible = false };
         icon.AttachNode(this);
@@ -34,8 +41,8 @@ internal sealed class PressableLine : ResNode
             FontType = FontType.Axis,
             AlignmentType = AlignmentType.TopLeft,
             TextFlags = flags,
-            TextColor = color,
-            TextOutlineColor = GameColors.BodyEdge,
+            TextColor = restingColor,
+            TextOutlineColor = restingEdge,
         };
         words.AttachNode(this);
 
@@ -76,10 +83,10 @@ internal sealed class PressableLine : ResNode
     /// <summary>Sets the type and the column, then re-lays whatever the line is showing.</summary>
     public void Restyle(uint fontSize, float leading, float left, float width)
     {
+        this.fontSize = fontSize;
         this.leading = leading;
         words.FontSize = fontSize;
         words.LineSpacing = (uint)leading;
-        icon.Size = new Vector2(leading, leading);
         Position = new Vector2(left, Position.Y);
         Width = width;
         Set(content);
@@ -97,7 +104,13 @@ internal sealed class PressableLine : ResNode
 
         icon.IsVisible = content.IconId is not null;
         icon.IconId = content.IconId ?? 0;
-        var wordsLeft = icon.IsVisible ? leading + IconGap : 0f;
+
+        // The icon is drawn at the height of the type rather than of the whole line, and sits in
+        // the air the game leaves around the words, so it reads as a mark beside them rather than
+        // as art crowding the line above and below.
+        icon.Size = new Vector2(fontSize, fontSize);
+        icon.Position = new Vector2(0f, (leading - fontSize) / 2f);
+        var wordsLeft = icon.IsVisible ? fontSize + IconGap : 0f;
 
         words.Position = new Vector2(wordsLeft, 0f);
         words.Width = Width - wordsLeft;
@@ -113,13 +126,12 @@ internal sealed class PressableLine : ResNode
         Light(false);
     }
 
-    /// <summary>Lights the line, or lets it settle back: bright while the pointer is on it or it
-    /// cannot be pressed at all, and a little dim while it is a control waiting to be used.</summary>
+    /// <summary>Colours the line for what it is: its own colour while nothing can be done with it,
+    /// the game's link colour while it is a control, and white under the pointer.</summary>
     private void Light(bool lit)
     {
-        var alpha = lit || !control.IsVisible ? 1f : PressableIdleAlpha;
-        words.Alpha = alpha;
-        icon.Alpha = alpha;
+        words.TextColor = control.IsVisible ? lit ? GameColors.Body : GameColors.Link : restingColor;
+        words.TextOutlineColor = control.IsVisible ? GameColors.LinkEdge : restingEdge;
     }
 
     private int Lines() =>

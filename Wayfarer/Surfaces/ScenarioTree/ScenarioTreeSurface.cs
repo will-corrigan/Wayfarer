@@ -2,6 +2,8 @@ using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
+using KamiToolKit.Enums;
+using KamiToolKit.Nodes;
 using Wayfarer.App.Guidance;
 using Wayfarer.App.Settings;
 using Wayfarer.Core.Guidance;
@@ -21,6 +23,8 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// the last visible row, before the cursor wraps back to the plate.</para></summary>
 internal sealed class ScenarioTreeSurface : IAsyncDisposable
 {
+    private const string SettingsTooltip = "Wayfarer settings";
+
     private readonly IGuidance guidance;
     private readonly IHeading heading;
     private readonly GuidancePresses presses;
@@ -33,6 +37,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly PlateTakeover takeover = new();
     private readonly PlatePress platePress;
     private GuidanceBlockNode? block;
+    private CircleButtonNode? cog;
     private nint plateFocus;
     private bool wordsChanged = true;
     private bool restyleWanted;
@@ -115,14 +120,26 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             var plate = GuideNodes.Plate(addon);
             plateFocus = plate == null || plate->Component == null ? 0 : (nint)plate->Component->GetFocusNode();
-            block = new GuidanceBlockNode(textures, log, presses.Entry, presses.Route, settings.Toggle);
+            block = new GuidanceBlockNode(textures, log, presses.Entry, presses.Route);
             block.Restyle(styles.Current);
             block.AttachNode(addon);
+            cog = new CircleButtonNode
+            {
+                Icon = CircleButtonIcon.GearCog,
+                Position = new Vector2(RootWidth - RightInset - SettingsCogSide, SettingsCogTop),
+                Size = new Vector2(SettingsCogSide, SettingsCogSide),
+                OnClick = settings.Toggle,
+                TextTooltip = SettingsTooltip,
+            };
+            cog.AttachNode(addon);
             block.GuestOf(addon, (AtkResNode*)plateFocus);
             wordsChanged = true;
         }
         catch (Exception ex)
         {
+            cog?.Dispose();
+            cog = null;
+            block?.Dispose();
             block = null;
             log.Error(ex, "the guidance block could not be added to the Main Scenario Guide, so nothing is drawn this session.");
         }
@@ -134,6 +151,8 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         splice.Restore(addon);
         takeover.Release(addon);
+        cog?.Dispose();
+        cog = null;
         block?.Dispose();
         block = null;
         SetRootHeight(addon, (ushort)RootHeight);
@@ -192,7 +211,13 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
     /// <summary>Our lines go into the cursor chain after the last visible job row, which is what
     /// sits between the plate and us on screen. With no row showing, they follow the plate.</summary>
-    private unsafe void SpliceIntoChain(AtkUnitBase* addon) => splice.Splice(addon, RowAboveUs(addon), block!);
+    private unsafe void SpliceIntoChain(AtkUnitBase* addon)
+    {
+        if (cog is not null)
+        {
+            splice.Splice(addon, RowAboveUs(addon), block!, cog);
+        }
+    }
 
     /// <summary>The game hit-tests clicks against the root, so it is grown to cover the block
     /// while the block shows and restored when it hides.</summary>

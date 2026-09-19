@@ -16,33 +16,15 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// the whole block re-lays itself when the style changes.</summary>
 internal sealed class GuidanceBlockNode : ResNode
 {
-    /// <summary>The last of our stops, which the cursor moves down from to whatever follows us: the
-    /// settings cog, which is always there to be reached.</summary>
-    public const int LastStop = SettingsNavIndex;
-
     private const TextFlags WrappingFlags = TextFlags.Edge | TextFlags.WordWrap | TextFlags.MultiLine;
     private const TextFlags SingleLineFlags = TextFlags.Edge | TextFlags.Ellipsis;
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
 
-    /// <summary>The settings cog in the block's own corner, and the air kept above it.</summary>
-    private const float SettingsSide = 20f;
-
-    /// <inheritdoc cref="SettingsSide"/>
-    private const float SettingsGap = 2f;
-
-    private const string SettingsTooltip = "Wayfarer settings";
-
-    /// <summary>Our stops in the addon's controller navigation, well clear of the game's own.</summary>
-    private const int EntryNavIndex = 100;
-    private const int RouteNavIndex = 101;
-    private const int SettingsNavIndex = 102;
-
     private readonly PressableLine entry;
     private readonly PressableLine route;
     private readonly TextNode distance;
     private readonly CompassNode compass;
-    private readonly CircleButtonNode settings;
     private ScenarioTreeStyle style = new();
     private float distanceLeading = GameText.LeadingFor(ScenarioTreeStyle.SmallestFont);
     private (float? Needle, float? Yalms, float? Rise) heading;
@@ -50,12 +32,11 @@ internal sealed class GuidanceBlockNode : ResNode
     private ElevationHint elevation = ElevationHint.Level;
     private bool compassShown;
 
-    public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed, Action onSettingsPressed)
+    public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed)
     {
         Width = RootWidth;
 
         entry = Attach(new PressableLine(WrappingFlags, GameColors.Body, MaxEntryLines, onEntryPressed));
-        entry.Position = new Vector2(ContentLeft, RowTextTop);
         route = Attach(new PressableLine(SingleLineFlags, GameColors.ListText, 1, onRoutePressed));
         compass = Attach(new CompassNode(textures, log) { IsVisible = false });
         distance = Attach(new TextNode
@@ -66,13 +47,6 @@ internal sealed class GuidanceBlockNode : ResNode
             TextColor = GameColors.ListText,
             TextOutlineColor = GameColors.ListTextEdge,
         });
-        settings = Attach(new CircleButtonNode
-        {
-            Icon = CircleButtonIcon.GearCog,
-            Size = new Vector2(SettingsSide, SettingsSide),
-            OnClick = onSettingsPressed,
-            TextTooltip = SettingsTooltip,
-        });
 
         Restyle(style);
     }
@@ -81,9 +55,11 @@ internal sealed class GuidanceBlockNode : ResNode
     /// surface when this changes.</summary>
     public bool AnyPressable => entry.Pressable || route.Pressable;
 
-    /// <summary>The first of our stops the cursor moves down to from the row above. There is always
-    /// one, because the settings cog is always there to be reached.</summary>
-    public int FirstStop => entry.Pressable ? EntryNavIndex : route.Pressable ? RouteNavIndex : SettingsNavIndex;
+    /// <summary>The first of our lines the cursor moves down to, or null when neither can be pressed.</summary>
+    public int? FirstStop => entry.Pressable ? GuideStops.Entry : route.Pressable ? GuideStops.Route : null;
+
+    /// <summary>The last of our lines, or null when neither can be pressed.</summary>
+    public int? LastStop => route.Pressable ? GuideStops.Route : entry.Pressable ? GuideStops.Entry : null;
 
     /// <summary>Applies a style: type sizes, the columns, and the compass, then re-lays the words.</summary>
     public void Restyle(ScenarioTreeStyle style)
@@ -98,9 +74,7 @@ internal sealed class GuidanceBlockNode : ResNode
     }
 
     /// <summary>Shows a guidance: the step on the first line, the way there on the second, and
-    /// neither when there is no step. The block itself stays, because the settings cog in its
-    /// corner is the way into Wayfarer's own window and has to be reachable whatever is being
-    /// guided to. Called only when the guidance changed.</summary>
+    /// neither when there is no step. Called only when the guidance changed.</summary>
     public void SetWords(LineContent? entryContent, LineContent? routeContent)
     {
         entry.Set(entryContent);
@@ -120,11 +94,8 @@ internal sealed class GuidanceBlockNode : ResNode
     /// stop above us, down from the last goes to the stop below, and the lines chain to each other.</summary>
     public void LinkNav(int aboveUs, int belowUs)
     {
-        entry.SetNav(EntryNavIndex, aboveUs, route.Pressable ? RouteNavIndex : SettingsNavIndex);
-        route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : aboveUs, SettingsNavIndex);
-        settings.NavIndex = SettingsNavIndex;
-        settings.NavUp = route.Pressable ? RouteNavIndex : entry.Pressable ? EntryNavIndex : aboveUs;
-        settings.NavDown = belowUs;
+        entry.SetNav(GuideStops.Entry, aboveUs, route.Pressable ? GuideStops.Route : belowUs);
+        route.SetNav(GuideStops.Route, entry.Pressable ? GuideStops.Entry : aboveUs, belowUs);
     }
 
     /// <summary>Points the needle and writes the distance, every frame the player moves or turns.
@@ -143,8 +114,8 @@ internal sealed class GuidanceBlockNode : ResNode
     private (float Left, float Width) WordsColumn()
     {
         var column = compassShown ? style.CompassSize + CompassColumnGap : 0f;
-        var left = style.Compass == CompassPlacement.Left ? ContentLeft + column : ContentLeft;
-        return (left, RootWidth - RightInset - ContentLeft - column);
+        var left = style.Compass == CompassPlacement.Left ? style.ContentLeft + column : style.ContentLeft;
+        return (left, RootWidth - RightInset - style.ContentLeft - column);
     }
 
     /// <summary>Puts the lines in the column the compass has left them.</summary>
@@ -192,7 +163,7 @@ internal sealed class GuidanceBlockNode : ResNode
     /// right under it.</summary>
     private void PlaceCompass()
     {
-        var left = style.Compass == CompassPlacement.Left ? ContentLeft : RootWidth - RightInset - style.CompassSize;
+        var left = style.Compass == CompassPlacement.Left ? style.ContentLeft : RootWidth - RightInset - style.CompassSize;
         var top = RowTextTop + ((GameText.LeadingFor(style.EntryFontSize) - style.CompassSize) / 2f);
         compass.Position = new Vector2(left, MathF.Max(0f, top));
 
@@ -210,12 +181,12 @@ internal sealed class GuidanceBlockNode : ResNode
     /// whichever is taller: the words or the compass column.</summary>
     private void Relayout()
     {
+        entry.Position = new Vector2(entry.Position.X, RowTextTop);
         var entryBottom = entry.IsVisible ? RowTextTop + entry.Height : RowTextTop;
         route.Position = new Vector2(route.Position.X, entryBottom + style.LineGap);
         var wordsBottom = route.IsVisible ? route.Position.Y + route.Height : entryBottom;
         var compassBottom = compassShown ? distance.Position.Y + distanceLeading : 0f;
-        Height = MathF.Max(wordsBottom, compassBottom) + SettingsSide + SettingsGap;
-        settings.Position = new Vector2(RootWidth - RightInset - SettingsSide, Height - SettingsSide);
+        Height = MathF.Max(wordsBottom, compassBottom);
     }
 
     private void SetDistance(string words)

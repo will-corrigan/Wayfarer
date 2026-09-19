@@ -27,14 +27,18 @@ internal static class ScenarioTreeMetrics
     /// <summary>Where a row's words sit inside the row. The job rows put theirs 11 down.</summary>
     public const float RowTextTop = 11f;
 
-    /// <summary>The content's left edge: where the plate draws its own icon.</summary>
-    public const float ContentLeft = 13f;
-
     /// <summary>Room left at the right edge so the words never touch the plate's border.</summary>
     public const float RightInset = 12f;
 
     /// <summary>Air between the compass column and the words.</summary>
     public const float CompassColumnGap = 6f;
+
+    /// <summary>The settings cog, beside the guide's own heading: the strip of heading runs to 288
+    /// of the root's 340, so the cog sits in what is left of that row.</summary>
+    public const float SettingsCogSide = 20f;
+
+    /// <inheritdoc cref="SettingsCogSide"/>
+    public const float SettingsCogTop = 3f;
 
     /// <summary>How many lines the entry's words may wrap to before they are cut.</summary>
     public const int MaxEntryLines = 2;
