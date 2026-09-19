@@ -24,6 +24,12 @@ internal sealed class GuidanceBlockNode : ResNode
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
 
+    /// <summary>What the distance says once there is none left. A step that sends the player to an
+    /// area is measured to the edge of it, so nought is reached the moment they step inside and
+    /// stays there while they cross it. "0y" reads as a measurement that has stopped working;
+    /// a word reads as an answer.</summary>
+    private const string Arrived = "Here";
+
     private readonly HorizontalListNode columns;
     private readonly VerticalListNode words;
     private readonly VerticalListNode compassColumn;
@@ -190,7 +196,8 @@ internal sealed class GuidanceBlockNode : ResNode
 
         elevation = Elevation.Classify(rise, elevation);
         compass.Show(style.CompassSize, radians, elevation);
-        SetDistance(MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
+        var remaining = MathF.Round(distanceYalms);
+        SetDistance(remaining <= 0f ? Arrived : remaining.ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
     }
 
     /// <summary>Lets the lists place everything, and takes the block's height from what they made.</summary>
