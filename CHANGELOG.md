@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/will-corrigan/Wayfarer/compare/v1.0.6...v1.1.0) (2026-09-19)
+
+
+### New
+
+* follow any quest, duty guidance, a settings window, and a pad that reaches all of it ([#71](https://github.com/will-corrigan/Wayfarer/issues/71)) ([2bda39d](https://github.com/will-corrigan/Wayfarer/commit/2bda39de690075505aff21e79e31f6367f3d3929))
+
 ## [1.0.6](https://github.com/will-corrigan/Wayfarer/compare/v1.0.5...v1.0.6) (2026-09-18)
 
 

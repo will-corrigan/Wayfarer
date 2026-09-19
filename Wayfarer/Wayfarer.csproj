@@ -4,7 +4,7 @@
          DotNet.ReproducibleBuilds); Central Package Management would otherwise
          require a matching PackageVersion entry for those. -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-    <Version>1.0.6</Version>
+    <Version>1.1.0</Version>
     <Author>Will Corrigan</Author>
     <Name>Wayfarer</Name>
     <Punchline>A quest arrow that knows the way: teleports, doors and aethernet included — plus an unlock checklist.</Punchline>
@@ -20,7 +20,7 @@
     <!-- The native UI toolkit, as the package its author publishes. See THIRD_PARTY_NOTICES.md.
          The version is written here rather than in Directory.Packages.props because the Dalamud SDK
          brings its own versioned packages, which central version management forbids. -->
-    <PackageReference Include="KamiToolKit" Version="2.2.45" />
+    <PackageReference Include="KamiToolKit" Version="2.2.45"/>
   </ItemGroup>
   <!-- The routing data the generator wrote (tools/Wayfarer.RoutingGen), shipped beside the DLL. -->
   <ItemGroup>
