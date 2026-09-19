@@ -56,7 +56,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         }
 
         var sequence = QuestReader.Sequence(questId);
-        var (todos, progress) = reader.Step(questId, sequence);
+        var progress = reader.Progress(questId, sequence);
         var markers = QuestReader.Markers(questId);
         var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers));
         if (signature == last)
@@ -65,6 +65,8 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         }
 
         last = signature;
+
+        var todos = reader.Todos(questId, sequence, progress);
 
         // The guide names the main scenario quest itself, so only a quest the player chose to follow
         // instead gives the headline anywhere to lead.

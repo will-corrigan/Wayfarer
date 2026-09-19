@@ -121,18 +121,24 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     public string Name(ushort questId) =>
         namesByQuest.TryGetValue(questId, out var name) ? name : namesByQuest[questId] = ReadName(questId);
 
-    /// <summary>One step of the quest as it stands: the lines that complete it with their words
-    /// finished, and what the quest's own running script says about each. The script supplies both
-    /// the counts a line's words may ask for and the counts the surface prints, so the words and
-    /// the numbers are always the same numbers.</summary>
-    public QuestStep Step(ushort questId, byte sequence)
+    /// <summary>What the quest's own running script says about each line of a step: whether it is
+    /// ticked, how far along it is, and the key item it is about. Cheap enough to ask every frame,
+    /// which is what tells the module whether anything moved.</summary>
+    public List<QuestTodoProgress> Progress(ushort questId, byte sequence) =>
+        Progress(questId, Templates(questId).Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
+
+    /// <summary>The step's lines with their words finished, built from the progress just read.
+    /// Finishing the words means resolving macros and allocating strings, so this is asked only
+    /// when something about the step has actually moved rather than every frame.</summary>
+    public List<QuestTodo> Todos(ushort questId, byte sequence, IReadOnlyList<QuestTodoProgress> progress)
     {
-        var templates = Templates(questId).Where(todo => todo.Sequence == sequence).ToList();
-        var progress = Progress(questId, templates.Select(todo => todo.Index));
-        var todos = new List<QuestTodo>(templates.Count);
+        ArgumentNullException.ThrowIfNull(progress);
+
+        var templates = Templates(questId).Where(todo => todo.Sequence == sequence);
+        var todos = new List<QuestTodo>();
         foreach (var template in templates)
         {
-            var reported = progress.Find(entry => entry.Index == template.Index);
+            var reported = progress.FirstOrDefault(entry => entry.Index == template.Index);
             todos.Add(new QuestTodo(
                 template.Index,
                 template.Sequence,
@@ -141,7 +147,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
                 template.Positions));
         }
 
-        return new QuestStep(todos, progress);
+        return todos;
     }
 
     /// <summary>The quest's whole to-do table as authored, read once per quest.</summary>
