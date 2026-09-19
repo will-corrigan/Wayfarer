@@ -115,7 +115,7 @@ internal sealed class PressableLine : ResNode
         var mark = ShowGlyph(content.Glyph) + (named ? 0f : iconRoom);
         var keywordRoom = named ? iconRoom : 0f;
         var runs = TextFlow.Lay(content.Words, content.Keyword, Measure, Width - mark, leading, maxLines, keywordRoom);
-        var lead = named || content.IconId is null ? Rect.Empty : new Rect(0f, 0f, iconRoom);
+        var lead = named || content.IconId is null ? Rect.Empty : new Rect(0f, 0f, iconRoom, leading);
 
         var (wordsBox, keywordBox) = Draw(runs, mark, keywordRoom, lead);
         keywordShown = keywordBox.Any;
@@ -126,10 +126,10 @@ internal sealed class PressableLine : ResNode
         // one control either way, so the line stays one stop for the pad's cursor.
         var pressed = keywordShown ? keywordBox : wordsBox;
         control.Position = new Vector2(pressed.Left, pressed.Top);
-        control.Size = new Vector2(pressed.Width, pressed.Height(leading));
+        control.Size = new Vector2(pressed.Width, pressed.Height);
         control.IsVisible = content.Pressable;
 
-        Height = MathF.Max(leading, wordsBox.Height(leading));
+        Height = MathF.Max(leading, wordsBox.Height);
         Light(false);
     }
 
@@ -150,7 +150,7 @@ internal sealed class PressableLine : ResNode
             }
 
             var room = run.Keyword ? keywordRoom : 0f;
-            var box = new Rect(mark + run.Left, run.Top, run.Width);
+            var box = new Rect(mark + run.Left, run.Top, run.Width, leading);
             node.Position = new Vector2(box.Left + room, box.Top);
             node.Width = box.Width - room;
             node.String = run.Text;
@@ -238,32 +238,4 @@ internal sealed class PressableLine : ResNode
         TextOutlineColor = restingEdge,
         IsVisible = false,
     };
-
-    /// <summary>A stretch of the line, and the rectangle every stretch together fits inside. Empty
-    /// until the first stretch is taken in, so an empty line measures nothing rather than a point
-    /// at the origin.</summary>
-    private readonly record struct Rect(float Left, float Top, float Width, bool Any = true)
-    {
-        public static Rect Empty => new(0f, 0f, 0f, false);
-
-        public Rect Union(Rect other)
-        {
-            if (!other.Any)
-            {
-                return this;
-            }
-
-            if (!Any)
-            {
-                return other;
-            }
-
-            var left = MathF.Min(Left, other.Left);
-            var right = MathF.Max(Left + Width, other.Left + other.Width);
-            return this with { Left = left, Top = MathF.Min(Top, other.Top), Width = right - left };
-        }
-
-        /// <summary>How tall the rectangle is: every line it reaches, at the given leading.</summary>
-        public float Height(float leading) => Any ? Top + leading : 0f;
-    }
 }
