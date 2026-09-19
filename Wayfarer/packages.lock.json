@@ -20,6 +20,12 @@
         "resolved": "1.2.39",
         "contentHash": "fcFN01tDTIQqDuTwr1jUQK/geofiwjG5DycJQOnC72i1SsLAk1ELe+apBOuZ11UMQG8YKFZG1FgvjZPbqHyatg=="
       },
+      "KamiToolKit": {
+        "type": "Direct",
+        "requested": "[2.2.45, )",
+        "resolved": "2.2.45",
+        "contentHash": "C0JOr2uCHt4NUKIgwKghmpTxWCGJWYfJsFMODJSxmbe1fmpJMWKwC+QRVAioUqprBuj6DnsKoNbwp5jM9M9qlw=="
+      },
       "Meziantou.Analyzer": {
         "type": "Direct",
         "requested": "[3.0.177, )",
@@ -39,9 +45,6 @@
         "type": "Transitive",
         "resolved": "1.2.0.556",
         "contentHash": "zvn9Mqs/ox/83cpYPignI8hJEM2A93s2HkHs8HYMOAQW0PkampyoErAiIyKxgTLqbbad29HX/shv/6LGSjPJNQ=="
-      },
-      "kamitoolkit": {
-        "type": "Project"
       },
       "wayfarer.core": {
         "type": "Project"
