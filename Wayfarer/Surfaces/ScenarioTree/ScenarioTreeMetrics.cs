@@ -27,6 +27,17 @@ internal static class ScenarioTreeMetrics
     /// <summary>Where a row's words sit inside the row. The job rows put theirs 11 down.</summary>
     public const float RowTextTop = 11f;
 
+    /// <summary>The meteor emblem at the guide's left: its art starts 13 in and is 44 across, so
+    /// its middle is 35 in. Type set to that middle reads as hanging off the emblem rather than
+    /// as a second column starting beside it.</summary>
+    public const float MeteorLeft = 13f;
+
+    /// <inheritdoc cref="MeteorLeft"/>
+    public const float MeteorSide = 44f;
+
+    /// <inheritdoc cref="MeteorLeft"/>
+    public const float MeteorCentre = MeteorLeft + (MeteorSide / 2f);
+
     /// <summary>Room left at the right edge so the words never touch the plate's border.</summary>
     public const float RightInset = 12f;
 
