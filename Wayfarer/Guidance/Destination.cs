@@ -24,7 +24,14 @@ public abstract record Destination
     /// <param name="Marks">Things that are what the player is looking for, by the id the game gives
     /// them in the world. Only consulted inside a place with a radius, where the data says where to
     /// search but not what for, and only while one of them is actually spawned there.</param>
-    public sealed record Reachable(IReadOnlyList<Place> Places, IReadOnlyList<uint>? Marks = null) : Destination;
+    /// <param name="Owner">The game event these things belong to, if the module knows it. The game
+    /// stamps every object it spawns for an event with that event's id, so this recognises the right
+    /// object without anyone having listed it, including the ones the data forgot. Marks stay as the
+    /// answer for anything the game has not stamped.</param>
+    public sealed record Reachable(
+        IReadOnlyList<Place> Places,
+        IReadOnlyList<uint>? Marks = null,
+        uint? Owner = null) : Destination;
 
     /// <summary>Inside instanced content. Nothing to walk to; the only guidance is to queue.</summary>
     public sealed record InDuty(uint DutyId) : Destination;

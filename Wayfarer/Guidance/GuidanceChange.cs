@@ -58,7 +58,7 @@ public static class GuidanceChange
     private static bool SameDestination(Destination a, Destination b) => (a, b) switch
     {
         (Destination.Reachable x, Destination.Reachable y) =>
-            x.Places.SequenceEqual(y.Places) && (x.Marks ?? []).SequenceEqual(y.Marks ?? []),
+            x.Places.SequenceEqual(y.Places) && (x.Marks ?? []).SequenceEqual(y.Marks ?? []) && x.Owner == y.Owner,
         (Destination.InDuty x, Destination.InDuty y) => x.DutyId == y.DutyId,
         (Destination.Blocked x, Destination.Blocked y) => string.Equals(x.Reason, y.Reason, StringComparison.Ordinal),
         _ => false,

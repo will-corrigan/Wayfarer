@@ -264,7 +264,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             return [];
         }
 
-        var marks = new List<uint>();
+        var marks = new HashSet<uint>();
         foreach (var parameter in quest.QuestParams)
         {
             if (parameter.ScriptInstruction.ExtractText().StartsWith(ObjectParameter, StringComparison.Ordinal)
@@ -274,7 +274,18 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             }
         }
 
-        return marks;
+        // The objects themselves say which event owns them, and a handful of them are owned by a
+        // quest that never listed them among its parameters. Both halves together is the whole set.
+        var owner = QuestIds.RowId(questId);
+        foreach (var thing in dataManager.GetExcelSheet<EObj>())
+        {
+            if (thing.Data.RowId == owner)
+            {
+                marks.Add(thing.RowId);
+            }
+        }
+
+        return [.. marks];
     }
 
     private Dictionary<uint, uint> ReadDuties()
