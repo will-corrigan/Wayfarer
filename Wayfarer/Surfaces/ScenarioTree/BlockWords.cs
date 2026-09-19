@@ -34,6 +34,7 @@ internal static class BlockWords
     {
         EntryAction.UseItem item => item.IconId,
         EntryAction.Emote emote => emote.IconId,
+        EntryAction.Own own => own.IconId,
         _ => null,
     };
 

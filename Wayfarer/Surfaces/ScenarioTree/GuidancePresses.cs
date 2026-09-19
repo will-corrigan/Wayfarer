@@ -5,7 +5,10 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>What a press on the block does. Each press reads the guidance at the moment it happens
 /// rather than anything captured when the line was drawn, so a press can never act on a route or a
-/// step that has since moved on. A press with nothing behind it does nothing at all.</summary>
+/// step that has since moved on. A press with nothing behind it does nothing at all.
+///
+/// <para>Every line takes either kind: an action naming something the app performs for any module,
+/// or one the module performs itself. The surface does not know which it got.</para></summary>
 internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
 {
     /// <summary>What the game's own say command looks like in the chat box.</summary>
@@ -26,6 +29,9 @@ internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
             case EntryAction.Say say:
                 actions.FillChat(SayCommand + say.Phrase);
                 break;
+            case EntryAction.Own:
+                guidance.Current?.Source.PressEntry();
+                break;
             default:
                 break;
         }
@@ -41,6 +47,9 @@ internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
                 break;
             case RoutePress.OpenDuty duty:
                 actions.OpenDutyFinder(duty.DutyId);
+                break;
+            case RoutePress.Own:
+                guidance.Current?.Source.PressRoute();
                 break;
             default:
                 break;

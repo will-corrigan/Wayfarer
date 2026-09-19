@@ -30,7 +30,8 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
         bool headlinePressable = false,
-        uint? duty = null)
+        uint? duty = null,
+        IReadOnlyList<uint>? marks = null)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
@@ -39,7 +40,7 @@ internal static class QuestObjectiveBuilder
 
         var step = todos.Where(todo => todo.Sequence == sequence).ToList();
         var entries = step.Count > 0
-            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty))]
+            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, marks))]
             : DescribedByMarkers(questName, markers, duty);
 
         return entries.Count > 0 ? new Objective(questName, entries, headlinePressable) : null;
@@ -53,11 +54,12 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestTodoProgress> progress,
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand> emotes,
-        uint? duty)
+        uint? duty,
+        IReadOnlyList<uint>? marks)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
-        Destination where = markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo)
-            : todo.Positions.Count > 0 ? new Destination.Reachable(todo.Positions)
+        Destination where = markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo, marks)
+            : todo.Positions.Count > 0 ? new Destination.Reachable(todo.Positions, marks)
             : Nowhere(duty);
 
         var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
@@ -88,8 +90,8 @@ internal static class QuestObjectiveBuilder
     private static string? FirstLabel(IEnumerable<QuestMarker> markers) =>
         markers.Select(marker => marker.Label).FirstOrDefault(label => !string.IsNullOrEmpty(label));
 
-    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers) =>
-        new([.. markers.Select(marker => marker.At)]);
+    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers, IReadOnlyList<uint>? marks = null) =>
+        new([.. markers.Select(marker => marker.At)], marks);
 
     private static bool Near(Place position, Place marker) =>
         position.Territory == marker.Territory

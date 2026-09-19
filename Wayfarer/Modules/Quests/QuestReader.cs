@@ -25,6 +25,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// difficulty of the same fight, and the first the Duty Finder knows is the one it is about.</summary>
     private const string DutyParameter = "INSTANCEDUNGEON";
 
+    /// <summary>The script parameter a quest names an object of the world in, one per object it is
+    /// about. A search area names nowhere to look and nothing to look for, but the quest that owns
+    /// it names its own objects, and one of them spawning inside the circle is the thing.</summary>
+    private const string ObjectParameter = "EOBJECT";
+
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -33,6 +38,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<uint>> marksByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, uint>? dutiesByContent;
 
@@ -97,6 +103,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         var questId = paths[data->MSQPathIndex];
         return questId != 0 && IsAccepted(questId) ? questId : null;
     }
+
+    /// <summary>The objects of the world this quest is about, by the id the game gives them. Read
+    /// once per quest; which of them is spawned is asked of the world, not of the sheet.</summary>
+    public IReadOnlyList<uint> Marks(ushort questId) =>
+        marksByQuest.TryGetValue(questId, out var marks) ? marks : marksByQuest[questId] = ReadMarks(questId);
 
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
@@ -246,6 +257,26 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         contentId != 0 && dutiesByContent is { } duties && duties.TryGetValue(contentId, out var duty) ? duty : null;
 
     /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>
+    private List<uint> ReadMarks(ushort questId)
+    {
+        if (QuestRow(questId) is not { } quest)
+        {
+            return [];
+        }
+
+        var marks = new List<uint>();
+        foreach (var parameter in quest.QuestParams)
+        {
+            if (parameter.ScriptInstruction.ExtractText().StartsWith(ObjectParameter, StringComparison.Ordinal)
+                && parameter.ScriptArg != 0)
+            {
+                marks.Add(parameter.ScriptArg);
+            }
+        }
+
+        return marks;
+    }
+
     private Dictionary<uint, uint> ReadDuties()
     {
         var duties = new Dictionary<uint, uint>();
