@@ -2,6 +2,7 @@ using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Wayfarer.App.Modules;
+using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.App.Settings;
 
@@ -17,13 +18,13 @@ internal sealed class SettingsService : IAsyncDisposable
     private readonly IFramework framework;
     private readonly SettingsAddon window;
 
-    public SettingsService(IDalamudPluginInterface pluginInterface, ICommandManager commands, IFramework framework, IModuleHost host)
+    public SettingsService(IDalamudPluginInterface pluginInterface, ICommandManager commands, IFramework framework, IModuleHost host, ScenarioTreeStyleStore styles, ITextureProvider textures, IPluginLog log)
     {
         this.pluginInterface = pluginInterface;
         this.commands = commands;
         this.framework = framework;
 
-        window = new SettingsAddon(host)
+        window = new SettingsAddon(host, styles, textures, log)
         {
             InternalName = "WayfarerSettings",
             Title = "Wayfarer",
