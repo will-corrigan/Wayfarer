@@ -42,14 +42,14 @@ internal sealed class PressableLine : ResNode
         control = new LineControl
         {
             OnSelected = onPressed,
-            OnHoverStart = () => words.Alpha = 1f,
-            OnHoverEnd = () => words.Alpha = PressableIdleAlpha,
+            OnHoverStart = () => Light(true),
+            OnHoverEnd = () => Light(false),
             IsVisible = false,
         };
         control.CollisionNode.ShowClickableCursor = true;
         control.CollisionNode.AddEvent(AtkEventType.MouseClick, onPressed);
-        control.CollisionNode.AddEvent(AtkEventType.MouseOver, () => words.Alpha = 1f);
-        control.CollisionNode.AddEvent(AtkEventType.MouseOut, () => words.Alpha = PressableIdleAlpha);
+        control.CollisionNode.AddEvent(AtkEventType.MouseOver, () => Light(true));
+        control.CollisionNode.AddEvent(AtkEventType.MouseOut, () => Light(false));
         control.AttachNode(this);
     }
 
@@ -103,12 +103,23 @@ internal sealed class PressableLine : ResNode
         words.Width = Width - wordsLeft;
         words.String = content.Words;
         words.Height = Lines() * leading;
-        words.Alpha = content.Pressable ? PressableIdleAlpha : 1f;
         Height = words.Height;
 
-        control.Position = words.Position;
-        control.Size = words.Size;
+        // The whole line takes the press, icon included: the icon is what the line is about, and
+        // reaching past it to the words to use an item reads as a control that is half wired up.
+        control.Position = Vector2.Zero;
+        control.Size = new Vector2(wordsLeft + words.Width, words.Height);
         control.IsVisible = content.Pressable;
+        Light(false);
+    }
+
+    /// <summary>Lights the line, or lets it settle back: bright while the pointer is on it or it
+    /// cannot be pressed at all, and a little dim while it is a control waiting to be used.</summary>
+    private void Light(bool lit)
+    {
+        var alpha = lit || !control.IsVisible ? 1f : PressableIdleAlpha;
+        words.Alpha = alpha;
+        icon.Alpha = alpha;
     }
 
     private int Lines() =>
