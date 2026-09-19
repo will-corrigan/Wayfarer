@@ -80,8 +80,9 @@ internal sealed class PressableLine : ResNode
         control.NavDown = down;
     }
 
-    /// <summary>Sets the type and the column, then re-lays whatever the line is showing.</summary>
-    public void Restyle(uint fontSize, float leading, float left, float width)
+    /// <summary>Sets the type and the width it has to fit, then re-lays whatever the line is
+    /// showing. Where the line sits is the list's to say, not ours.</summary>
+    public void Restyle(uint fontSize, float leading, float width)
     {
         this.fontSize = fontSize;
         this.leading = leading;
@@ -92,7 +93,6 @@ internal sealed class PressableLine : ResNode
             run.Height = leading;
         }
 
-        Position = new Vector2(left, Position.Y);
         Width = width;
         Set(content);
     }
