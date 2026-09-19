@@ -34,6 +34,8 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly ScenarioTreeStyleStore styles;
     private readonly AddonController controller;
     private readonly NavSplice splice = new();
+    private readonly PlateTakeover takeover = new();
+    private readonly PlatePress platePress;
     private GuidanceBlockNode? block;
     private nint addonAddress;
     private nint plateFocus;
@@ -41,7 +43,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private bool restyleWanted;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ScenarioTreeStyleStore styles, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ScenarioTreeStyleStore styles, IAddonLifecycle lifecycle, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
@@ -49,6 +51,8 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         this.styles = styles;
         this.textures = textures;
         this.log = log;
+        platePress = new PlatePress(lifecycle);
+        platePress.Watch(OnPlatePressed);
 
         controller = new AddonController
         {
@@ -68,6 +72,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         guidance.OnChanged -= OnGuidanceChanged;
         styles.OnChanged -= OnStyleChanged;
+        platePress.Dispose();
         await controller.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -175,6 +180,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private unsafe void Detach(AtkUnitBase* addon)
     {
         splice.Restore();
+        takeover.Release(addon);
         block?.Dispose();
         block = null;
         addonAddress = 0;
@@ -201,6 +207,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             SpliceIntoChain(addon);
 
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
+            RetitlePlate(addon);
             FitRootToBlock(addon);
         }
         catch (Exception ex)
@@ -252,6 +259,40 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     {
         var wanted = (ushort)(block!.IsVisible ? Math.Max(RootHeight, block.Y + block.Height) : RootHeight);
         SetRootHeight(addon, wanted);
+    }
+
+    /// <summary>While guidance is about something other than the quest the guide names, the plate
+    /// carries that name instead; the game's own words come back when it is the guide's own quest
+    /// again, which <see cref="PlateTakeover"/> decides by comparing them.</summary>
+    private unsafe void RetitlePlate(AtkUnitBase* addon)
+    {
+        if (guidance.Current?.Objective is { } objective)
+        {
+            takeover.Apply(addon, objective.Headline);
+        }
+        else
+        {
+            takeover.Release(addon);
+        }
+    }
+
+    /// <summary>A press of the plate while it carries our words opens the page about what we are
+    /// guiding to, rather than leaving the game's own page in front of the player.</summary>
+    private void OnPlatePressed()
+    {
+        if (!takeover.Active)
+        {
+            return;
+        }
+
+        switch (guidance.Current?.Objective.Action)
+        {
+            case HeadlineAction.OpenQuestJournal journal:
+                actions.OpenQuestJournal(journal.QuestId);
+                break;
+            default:
+                break;
+        }
     }
 
     private void OnEntryPressed()

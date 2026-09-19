@@ -19,8 +19,6 @@ namespace Wayfarer.Modules.Quests;
 internal sealed unsafe class QuestReader(IDataManager dataManager)
 {
     /// <summary>Lumina offsets the quest sheet's row ids from the game's quest ids by this.</summary>
-    private const uint QuestRowIdOffset = 65536;
-
     private const string TodoKeyPrefix = "TEXT_";
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
@@ -50,6 +48,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
+    /// <summary>Whether the player has the quest accepted and not yet complete.</summary>
+    public static bool IsAccepted(ushort questId) => QuestManager.Instance()->IsQuestAccepted(questId);
+
     /// <summary>The game's live markers for this quest, this frame.</summary>
     public static List<QuestMarker> Markers(ushort questId)
     {
@@ -77,7 +78,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     /// event handler. Empty when the handler is not loaded or there is no player.</summary>
     public List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
     {
-        var handler = (QuestEventHandler*)EventFramework.Instance()->GetEventHandlerById(questId + QuestRowIdOffset);
+        var handler = (QuestEventHandler*)EventFramework.Instance()->GetEventHandlerById(QuestIds.RowId(questId));
         var player = Control.Instance()->LocalPlayer;
         if (handler == null || player == null)
         {
@@ -177,7 +178,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         return emotes;
     }
 
-    private Quest? QuestRow(ushort questId) => dataManager.GetExcelSheet<Quest>().GetRowOrDefault(questId + QuestRowIdOffset);
+    private Quest? QuestRow(ushort questId) => dataManager.GetExcelSheet<Quest>().GetRowOrDefault(QuestIds.RowId(questId));
 
     private string ReadName(ushort questId) => QuestRow(questId)?.Name.ExtractText() ?? $"Quest {questId}";
 

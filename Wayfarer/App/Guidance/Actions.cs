@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Wayfarer.Core.Quests;
 
 namespace Wayfarer.App.Guidance;
 
@@ -18,6 +19,9 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
     private const uint FirstEventItemId = 2_000_000;
 
     private const string ChatLogAddon = "ChatLog";
+
+    /// <summary>The journal agent's type for an ordinary quest, as against a leve.</summary>
+    private const uint JournalQuestType = 1;
 
     /// <inheritdoc/>
     public void TeleportTo(uint aetheryteId)
@@ -79,4 +83,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
 
         chat->TextInput->SetText(text);
     }
+
+    /// <inheritdoc/>
+    public void OpenQuestJournal(ushort questId) => AgentQuestJournal.Instance()->OpenForQuest(QuestIds.RowId(questId), JournalQuestType);
 }

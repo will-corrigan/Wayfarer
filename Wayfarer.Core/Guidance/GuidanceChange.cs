@@ -37,6 +37,7 @@ public static class GuidanceChange
     private static bool SameObjective(Objective a, Objective b)
     {
         if (!string.Equals(a.Headline, b.Headline, StringComparison.Ordinal)
+            || a.Action != b.Action
             || a.Progress != b.Progress
             || a.Entries.Count != b.Entries.Count)
         {

@@ -3,12 +3,13 @@ using Wayfarer.Core.Quests;
 
 namespace Wayfarer.Modules.Quests;
 
-/// <summary>The quests module's guidance half. Follows the main scenario: whichever quest the
-/// banner names, and nothing while it shows "???". Reads the game each frame, but only rebuilds
+/// <summary>The quests module's guidance half. Follows the quest the player chose in the journal
+/// while it is accepted, and otherwise the main scenario: whichever quest the banner names, and
+/// nothing while it shows "???". Reads the game each frame, but only rebuilds
 /// the objective when something it depends on changed: the quest, the step, the ToDos' progress
 /// or the markers. Focus is claimed and released by <see cref="QuestsModule"/> as the module
 /// goes up and down.</summary>
-internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
+internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following) : IObjectiveSource
 {
     private Signature? last;
     private Objective? cached;
@@ -37,7 +38,7 @@ internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
 
     private Objective? Refresh()
     {
-        if (reader.CurrentMainScenarioQuest() is not { } questId)
+        if (QuestToFollow() is not { } questId)
         {
             last = null;
             return cached = null;
@@ -55,7 +56,24 @@ internal sealed class QuestObjectives(QuestReader reader) : IObjectiveSource
         }
 
         last = signature;
-        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes());
+        return cached = QuestObjectiveBuilder.Build(questId, reader.Name(questId), sequence, todos, progress, markers, reader.Emotes());
+    }
+
+    /// <summary>The followed quest while it is still accepted; completing or abandoning it hands
+    /// guidance back to the main scenario and forgets the choice.</summary>
+    private ushort? QuestToFollow()
+    {
+        if (following.Followed is { } followed)
+        {
+            if (QuestReader.IsAccepted(followed))
+            {
+                return followed;
+            }
+
+            following.Unfollow();
+        }
+
+        return reader.CurrentMainScenarioQuest();
     }
 
     private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers);
