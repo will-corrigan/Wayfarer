@@ -19,13 +19,12 @@ internal static partial class QuestTodoActions
     public static EntryAction? From(
         string todoText,
         QuestItem? item,
-        IReadOnlyDictionary<string, EmoteCommand> emotes,
-        IReadOnlyList<QuestItem>? questItems = null)
+        IReadOnlyDictionary<string, EmoteCommand> emotes)
     {
         ArgumentNullException.ThrowIfNull(todoText);
         ArgumentNullException.ThrowIfNull(emotes);
 
-        if ((item ?? Named(todoText, questItems)) is { } used)
+        if (item is { } used)
         {
             return new EntryAction.UseItem(used.Id, used.Name, used.IconId, KeyItem: true);
         }
@@ -42,16 +41,6 @@ internal static partial class QuestTodoActions
 
         return null;
     }
-
-    /// <summary>The quest's own key item the ToDo names, when the handler reported none. Some
-    /// quests hand the player an item and then only name it in the words: "Use a smoke bomb on the
-    /// beehive." The longest name wins, so a quest holding both a sack and a buzzing sack matches
-    /// the one the words actually say.</summary>
-    private static QuestItem? Named(string todoText, IReadOnlyList<QuestItem>? questItems) =>
-        questItems is null ? null : questItems
-            .Where(item => item.Name.Length > 0 && todoText.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(item => item.Name.Length)
-            .FirstOrDefault();
 
     [GeneratedRegex("enter “(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
     private static partial Regex SayPhrase();

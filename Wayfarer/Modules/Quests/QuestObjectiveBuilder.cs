@@ -30,8 +30,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
         bool headlinePressable = false,
-        uint? duty = null,
-        IReadOnlyList<QuestItem>? questItems = null)
+        uint? duty = null)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
@@ -40,7 +39,7 @@ internal static class QuestObjectiveBuilder
 
         var step = todos.Where(todo => todo.Sequence == sequence).ToList();
         var entries = step.Count > 0
-            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, questItems))]
+            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty))]
             : DescribedByMarkers(questName, markers, duty);
 
         return entries.Count > 0 ? new Objective(questName, entries, headlinePressable) : null;
@@ -54,8 +53,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestTodoProgress> progress,
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand> emotes,
-        uint? duty,
-        IReadOnlyList<QuestItem>? questItems)
+        uint? duty)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
         Destination where = markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo)
@@ -64,7 +62,7 @@ internal static class QuestObjectiveBuilder
 
         var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
         var words = todo.Text;
-        return new ObjectiveEntry(words, Count(todo, reported), where, QuestTodoActions.From(words, reported?.Item, emotes, questItems));
+        return new ObjectiveEntry(words, Count(todo, reported), where, QuestTodoActions.From(words, reported?.Item, emotes));
     }
 
     /// <summary>The count for a ToDo that wants more than one of something; null otherwise. The

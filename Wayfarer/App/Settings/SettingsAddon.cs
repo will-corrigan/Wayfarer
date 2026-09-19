@@ -83,6 +83,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private GuidanceBlockNode? preview;
     private NineGridNode? previewFrame;
     private DropDownNode<CompassPlacement>? placement;
+    private Page? wanted;
 
     private enum Page
     {
@@ -130,8 +131,22 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     }
 
     /// <inheritdoc/>
+    /// <remarks>Choosing a page frees the page that was showing, and the control that was pressed
+    /// is part of it. The game is still inside that control's own event when the press runs, so
+    /// the choice is remembered here and acted on next frame, when nothing is holding it.</remarks>
+    protected override unsafe void OnUpdate(AtkUnitBase* addon)
+    {
+        if (wanted is { } page)
+        {
+            wanted = null;
+            Show(page);
+        }
+    }
+
+    /// <inheritdoc/>
     protected override unsafe void OnFinalize(AtkUnitBase* addon)
     {
+        wanted = null;
         ForgetPage();
         pages?.Dispose();
         pages = null;
@@ -239,7 +254,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         {
             Size = new Vector2(PagesWidth - (2f * PanelPadding), PageButtonHeight),
             String = PageTitle(page),
-            OnClick = () => Show(page),
+            OnClick = () => wanted = page,
         };
         pageButtons[page] = button;
         pages!.AddNode(button);
@@ -347,7 +362,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         reset.OnClick = () =>
         {
             styles.Reset();
-            Show(Page.GuideBlock);
+            wanted = Page.GuideBlock;
         };
         body.AddNode(Row(string.Empty, Control(reset)));
     }

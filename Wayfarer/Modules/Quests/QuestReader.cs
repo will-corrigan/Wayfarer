@@ -86,7 +86,15 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             return null;
         }
 
-        var questId = data->MainScenarioQuestIds[data->MSQPathIndex];
+        // The branch index comes from the game and nothing promises it is inside the four the
+        // guide holds, so it is checked rather than trusted.
+        var paths = data->MainScenarioQuestIds;
+        if (data->MSQPathIndex >= paths.Length)
+        {
+            return null;
+        }
+
+        var questId = paths[data->MSQPathIndex];
         return questId != 0 && IsAccepted(questId) ? questId : null;
     }
 
@@ -142,7 +150,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             todos.Add(new QuestTodo(
                 template.Index,
                 template.Sequence,
-                Words(template.Words, reported?.Have ?? 0, reported?.Needed ?? template.Needed),
+                Words(template.Words, reported?.Have ?? 0, Needed(reported, template)),
                 template.Needed,
                 template.Positions));
         }
@@ -153,6 +161,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>The quest's whole to-do table as authored, read once per quest.</summary>
     public IReadOnlyList<QuestTodoTemplate> Templates(ushort questId) =>
         templatesByQuest.TryGetValue(questId, out var todos) ? todos : templatesByQuest[questId] = ReadTemplates(questId);
+
+    /// <summary>How many of the thing a line wants. The script's own figure wins when it reports
+    /// one, and it does report zero, which is the same rule the surface counts by.</summary>
+    private static int Needed(QuestTodoProgress? reported, QuestTodoTemplate template) =>
+        reported?.Needed > 0 ? reported.Needed : template.Needed;
 
     /// <summary>The to-do text rows by index. They live in a per-quest sheet, keyed
     /// <c>TEXT_&lt;INTERNAL NAME&gt;_TODO_&lt;index&gt;</c>.</summary>
@@ -179,9 +192,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             .Select(reference => reference.ValueNullable)
             .OfType<Level>()
             .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
-
-    /// <summary>The to-do text rows by index. They live in a per-quest sheet, keyed
-    /// <c>TEXT_&lt;INTERNAL NAME&gt;_TODO_&lt;index&gt;</c>.</summary>
 
     /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
     /// event handler. Empty when the handler is not loaded or there is no player.</summary>

@@ -51,37 +51,7 @@ internal sealed unsafe class LineControl : NavFocusNode
         base.Dispose(isNativeDestructor);
     }
 
-    /// <summary>Points the addon's focus at the fallback wherever it is aimed at this control, and
-    /// moves the live cursor there too if it is resting on us.</summary>
-    private void HandBackFocus()
-    {
-        var addon = (AtkUnitBase*)host;
-        if (addon == null || focusNode == 0)
-        {
-            return;
-        }
-
-        var fallback = (AtkResNode*)fallbackFocus;
-        if ((nint)addon->FocusNode == focusNode)
-        {
-            addon->FocusNode = fallback;
-        }
-
-        if ((nint)addon->ComponentFocusNode == focusNode)
-        {
-            addon->ComponentFocusNode = null;
-        }
-
-        if ((nint)addon->CursorTarget == focusNode)
-        {
-            addon->CursorTarget = null;
-        }
-
-        var stage = AtkStage.Instance();
-        var input = stage == null ? null : stage->AtkInputManager;
-        if (input != null && (nint)input->FocusedNode == focusNode && fallback != null)
-        {
-            input->SetFocus(fallback, addon, 0);
-        }
-    }
+    /// <summary>Points the addon's focus at the fallback wherever it is aimed at this control.</summary>
+    private void HandBackFocus() =>
+        GameNodes.HandFocusBack((AtkUnitBase*)host, (AtkResNode*)focusNode, (AtkResNode*)fallbackFocus);
 }

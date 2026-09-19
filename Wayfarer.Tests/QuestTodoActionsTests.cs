@@ -21,42 +21,6 @@ public class QuestTodoActionsTests
     }
 
     [Fact]
-    public void A_key_item_the_words_name_is_used_when_the_handler_reports_none()
-    {
-        var carried = new[]
-        {
-            new QuestItem(2002547, "Smoke Bomb", 26015),
-            new QuestItem(2002548, "Large Burlap Sack", 26110),
-        };
-
-        var action = QuestTodoActions.From("Use a smoke bomb on the beehive.", null, Emotes, carried);
-
-        Assert.Equal(new EntryAction.UseItem(2002547, "Smoke Bomb", 26015, KeyItem: true), action);
-    }
-
-    [Fact]
-    public void The_longest_named_key_item_wins()
-    {
-        var carried = new[]
-        {
-            new QuestItem(2002548, "Burlap Sack", 26110),
-            new QuestItem(2002549, "Buzzing Burlap Sack", 25919),
-        };
-
-        var action = QuestTodoActions.From("Deliver the buzzing burlap sack to Rhalgr.", null, Emotes, carried);
-
-        Assert.Equal(new EntryAction.UseItem(2002549, "Buzzing Burlap Sack", 25919, KeyItem: true), action);
-    }
-
-    [Fact]
-    public void A_key_item_the_words_never_name_is_left_alone()
-    {
-        var carried = new[] { new QuestItem(2002547, "Smoke Bomb", 26015) };
-
-        Assert.Null(QuestTodoActions.From("Speak with Momodi.", null, Emotes, carried));
-    }
-
-    [Fact]
     public void A_say_todo_carries_the_exact_phrase()
     {
         var action = QuestTodoActions.From("With the chat mode in Say, enter “Well met!” to greet Botulf.", null, Emotes);

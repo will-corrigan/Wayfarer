@@ -1,4 +1,3 @@
-using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
 namespace Wayfarer.Guidance;
@@ -14,16 +13,5 @@ internal static unsafe class PlayerState
     {
         var state = UIState.Instance();
         return state != null && state->IsAetheryteUnlocked(aetheryteId);
-    }
-
-    /// <summary>Whether the player is carrying a key item. Key items have their own bag, and a
-    /// quest hands them out as the player gets to the step that needs them, so this is what tells
-    /// a step that fetches one apart from the step that uses it. Not carrying it is the answer
-    /// while the game has no inventory yet.</summary>
-    public static bool Holds(uint keyItemId)
-    {
-        var inventory = InventoryManager.Instance();
-        return inventory != null
-            && inventory->GetItemCountInContainer(keyItemId, InventoryType.KeyItems, isHq: false, minCollectability: 0) > 0;
     }
 }

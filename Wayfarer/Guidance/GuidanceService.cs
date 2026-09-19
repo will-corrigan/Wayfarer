@@ -10,12 +10,21 @@ namespace Wayfarer.Guidance;
 /// frame loop; modules are read by this one and surfaces are told by it.</summary>
 internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 {
+    /// <summary>How far the player has to move before the way there is worked out again. Short
+    /// enough that a different aetheryte or door cannot quietly become the nearer one, long enough
+    /// that walking does not start a search every frame.</summary>
+    private const float RouteRethinkYalms = 10f;
+
     private readonly IFramework framework;
     private readonly IClientState clientState;
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
     private readonly IPluginLog log;
-    private bool loggedFailure;
+
+    private bool broken;
+    private ObjectiveEntry? routedTo;
+    private Place? routedFrom;
+    private Route? route;
 
     public GuidanceService(
         IFramework framework,
@@ -67,22 +76,33 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;
 
+    /// <summary>Whether the player has stayed put enough that the last search still answers: the
+    /// same zone, and not far enough from where they were standing for a different aetheryte or
+    /// door to have become the nearer one.</summary>
+    private static bool Settled(Place last, Place now)
+    {
+        var (dx, dy, dz) = (last.X - now.X, last.Y - now.Y, last.Z - now.Z);
+        return last.Territory == now.Territory
+            && (dx * dx) + (dy * dy) + (dz * dz) < RouteRethinkYalms * RouteRethinkYalms;
+    }
+
     private void OnUpdate(IFramework tick)
     {
+        if (broken)
+        {
+            return;
+        }
+
         try
         {
             Publish(Compute());
         }
         catch (Exception ex)
         {
-            // Once: this runs every frame, and the reason it would throw does not change between
-            // frames. Guidance stops rather than logging sixty lines a second.
-            if (!loggedFailure)
-            {
-                loggedFailure = true;
-                log.Error(ex, "computing guidance threw, so guidance is switched off for this session.");
-            }
-
+            // The reason this threw will not have changed by the next frame, so guidance stops
+            // rather than throwing sixty times a second behind a log line nobody sees again.
+            broken = true;
+            log.Error(ex, "computing guidance threw, so guidance is switched off for this session.");
             Publish(null);
         }
     }
@@ -95,10 +115,30 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         }
 
         var target = objective.FirstReachable();
-        var route = target?.Where is Destination.Reachable reachable && Standing() is { } from
-            ? graph.FindRoute(from, reachable.Places, PlayerState.IsAttuned)
-            : null;
-        return new PublishedGuidance(source, objective, target, route);
+        return new PublishedGuidance(source, objective, target, RouteTo(target));
+    }
+
+    /// <summary>The way to the target, searched again only when the target changed or the player
+    /// has moved far enough for the answer to differ. A search runs the whole graph and allocates
+    /// as it goes, so running one every frame spends a tenth of the frame to be told the same
+    /// thing sixty times.</summary>
+    private Route? RouteTo(ObjectiveEntry? target)
+    {
+        if (target?.Where is not Destination.Reachable reachable || Standing() is not { } from)
+        {
+            routedTo = null;
+            routedFrom = null;
+            return route = null;
+        }
+
+        if (ReferenceEquals(target, routedTo) && routedFrom is { } last && Settled(last, from))
+        {
+            return route;
+        }
+
+        routedTo = target;
+        routedFrom = from;
+        return route = graph.FindRoute(from, reachable.Places, PlayerState.IsAttuned);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>

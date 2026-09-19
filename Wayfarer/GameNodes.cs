@@ -1,3 +1,4 @@
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace Wayfarer;
@@ -39,6 +40,43 @@ internal static unsafe class GameNodes
     {
         var node = addon == null ? null : addon->GetNodeById(nodeId);
         return node != null && node->IsVisible();
+    }
+
+    /// <summary>Points a window's focus away from a node that is about to be freed, and moves the
+    /// live cursor off it too. The game keeps raw pointers to whatever the pad is resting on, in
+    /// the window and in the input manager, and follows them on the next input: a node freed while
+    /// any of them names it is a crash waiting for the player to press a direction.</summary>
+    /// <param name="addon">The window the node lives in.</param>
+    /// <param name="node">The node being freed.</param>
+    /// <param name="fallback">Where the focus should land instead, or null to leave it nowhere.</param>
+    public static void HandFocusBack(AtkUnitBase* addon, AtkResNode* node, AtkResNode* fallback)
+    {
+        if (addon == null || node == null)
+        {
+            return;
+        }
+
+        if (addon->FocusNode == node)
+        {
+            addon->FocusNode = fallback;
+        }
+
+        if ((AtkResNode*)addon->ComponentFocusNode == node)
+        {
+            addon->ComponentFocusNode = null;
+        }
+
+        if (addon->CursorTarget == node)
+        {
+            addon->CursorTarget = null;
+        }
+
+        var stage = AtkStage.Instance();
+        var input = stage == null ? null : stage->AtkInputManager;
+        if (input != null && input->FocusedNode == node && fallback != null)
+        {
+            input->SetFocus(fallback, addon, 0);
+        }
     }
 
     /// <summary>Whether a component has anything written in one of its text nodes. A part of a
