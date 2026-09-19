@@ -131,8 +131,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
     /// <summary>The Duty Finder entry for the duty a quest sends the player into, or null when it
-    /// sends them nowhere instanced. A quest names up to three duties and the first the Finder
-    /// knows is the one it is about; the rest are the same fight at other difficulties.</summary>
+    /// sends them nowhere instanced. A quest names its duties two ways: the ones it is about, of
+    /// which it may list three because a fight comes at several difficulties, and the one it
+    /// unlocks, which for a quest that asks the player to clear a trial is that same trial.</summary>
     public uint? Duty(ushort questId)
     {
         if (QuestRow(questId) is not { } quest)
@@ -143,13 +144,13 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         dutiesByContent ??= ReadDuties();
         foreach (var content in quest.InstanceContent)
         {
-            if (content.RowId != 0 && dutiesByContent.TryGetValue(content.RowId, out var duty))
+            if (Finder(content.RowId) is { } listed)
             {
-                return duty;
+                return listed;
             }
         }
 
-        return null;
+        return Finder(quest.InstanceContentUnlock.RowId);
     }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
@@ -195,6 +196,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
             ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
             : null;
+
+    /// <summary>The Duty Finder entry that runs a piece of instanced content, or null when the
+    /// Finder does not queue for it.</summary>
+    private uint? Finder(uint contentId) =>
+        contentId != 0 && dutiesByContent is { } duties && duties.TryGetValue(contentId, out var duty) ? duty : null;
 
     /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>
     private Dictionary<uint, uint> ReadDuties()

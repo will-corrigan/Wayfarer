@@ -20,21 +20,25 @@ namespace Wayfarer.Modules.Quests;
 /// when it closes, the way every node added to a game window is.</para></summary>
 internal sealed class JournalFollowButton(QuestFollowing following, IFramework framework, IPluginLog log) : IAsyncDisposable
 {
-    /// <summary>The row of wide buttons at the foot of the pane, node 49: three slots of 120 by 28
-    /// at x=12, 132 and 252 within it. Map takes the first, Abandon the last.</summary>
+    /// <summary>The row of wide buttons at the foot of the pane, node 49, and the two the game
+    /// puts in it: Map at one end and Abandon at the other. Ours goes in the space between them,
+    /// measured rather than assumed, so it never crowds either.</summary>
     private const uint ButtonRowNodeId = 49;
 
     /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const uint MiddleSlotNodeId = 51;
+    private const uint MapNodeId = 50;
 
     /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const float ButtonWidth = 120f;
+    private const uint AbandonNodeId = 52;
 
     /// <inheritdoc cref="ButtonRowNodeId"/>
     private const float ButtonHeight = 28f;
 
-    /// <inheritdoc cref="ButtonRowNodeId"/>
-    private const float MiddleSlotLeft = 132f;
+    /// <summary>Air left either side of our button, so the three read as a row rather than a block.</summary>
+    private const float Margin = 10f;
+
+    /// <summary>Narrower than this and the words would not fit, so nothing is shown at all.</summary>
+    private const float NarrowestButton = 60f;
 
     private const string FollowLabel = "Follow";
     private const string UnfollowLabel = "Unfollow";
@@ -72,11 +76,20 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         return agent == null || agent->SelectedQuestType != QuestIds.OrdinaryQuest ? null : QuestIds.FromAnyId(agent->SelectedQuestId);
     }
 
-    /// <summary>Whether the middle slot of the button row is the game's to use right now.</summary>
-    private static unsafe bool MiddleSlotIsFree(AtkUnitBase* addon)
+    /// <summary>The space the game has left between its own two buttons, or nothing when there is
+    /// not enough of it. In the row's own coordinates, which ours shares by hanging off it.</summary>
+    private static unsafe (float Left, float Width)? SpaceBetweenTheGamesButtons(AtkUnitBase* addon)
     {
-        var slot = addon->GetNodeById(MiddleSlotNodeId);
-        return slot == null || !slot->IsVisible();
+        var map = addon->GetNodeById(MapNodeId);
+        var abandon = addon->GetNodeById(AbandonNodeId);
+        if (map == null || abandon == null)
+        {
+            return null;
+        }
+
+        var left = map->X + map->Width + Margin;
+        var width = abandon->X - Margin - left;
+        return width >= NarrowestButton ? (left, width) : null;
     }
 
     private unsafe void Enable()
@@ -104,8 +117,7 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
 
             button = new TextButtonNode
             {
-                Position = new Vector2(MiddleSlotLeft, 0f),
-                Size = new Vector2(ButtonWidth, ButtonHeight),
+                Height = ButtonHeight,
                 OnClick = Toggle,
                 IsVisible = false,
             };
@@ -134,7 +146,8 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
             return;
         }
 
-        var quest = MiddleSlotIsFree(addon) ? QuestOnShow() : null;
+        var space = SpaceBetweenTheGamesButtons(addon);
+        var quest = space is null ? null : QuestOnShow();
         var followed = quest is { } id && following.IsFollowing(id);
         if (quest == shownQuest && followed == shownAsFollowed)
         {
@@ -149,6 +162,8 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
             return;
         }
 
+        button.Position = new Vector2(space!.Value.Left, 0f);
+        button.Size = new Vector2(space.Value.Width, ButtonHeight);
         button.String = followed ? UnfollowLabel : FollowLabel;
         button.TextTooltip = followed ? UnfollowTooltip : FollowTooltip;
     }
