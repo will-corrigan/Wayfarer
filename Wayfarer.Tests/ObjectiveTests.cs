@@ -14,7 +14,7 @@ public class ObjectiveTests
         var aetheryte = new ObjectiveEntry("Attune.", null, new Destination.Reachable([new Place(1, 1, 900f, 0f, 0f)]));
         var guild = new ObjectiveEntry("Visit the guild.", null, new Destination.Reachable([There]));
 
-        var objective = new Objective("Close to Home", null, [aetheryte, guild]);
+        var objective = new Objective("Close to Home", [aetheryte, guild]);
 
         Assert.Same(aetheryte, objective.FirstReachable());
     }
@@ -25,7 +25,7 @@ public class ObjectiveTests
         var wait = new ObjectiveEntry("Wait for nightfall.", null, new Destination.Blocked("no map location for this step"));
         var guild = new ObjectiveEntry("Visit the guild.", null, new Destination.Reachable([There]));
 
-        var objective = new Objective("A Vigil", null, [wait, guild]);
+        var objective = new Objective("A Vigil", [wait, guild]);
 
         Assert.Same(guild, objective.FirstReachable());
     }
@@ -35,6 +35,6 @@ public class ObjectiveTests
     {
         var duty = new ObjectiveEntry("Complete the duty.", null, new Destination.InDuty(7));
 
-        Assert.Null(new Objective("Trial", null, [duty]).FirstReachable());
+        Assert.Null(new Objective("Trial", [duty]).FirstReachable());
     }
 }

@@ -4,8 +4,8 @@
 [![Latest release](https://img.shields.io/github/v/release/will-corrigan/Wayfarer)](https://github.com/will-corrigan/Wayfarer/releases/latest)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-A quest arrow that knows the way: teleports, doors and aethernet included — plus an unlock checklist
-and a hunting-log mode, in one window that a mouse and a controller drive equally well.
+Your quest step and the way there, written under the game's own Main Scenario Guide in its own
+fonts and colours, and reachable with a mouse or a controller.
 
 ## Install
 
@@ -19,91 +19,59 @@ and a hunting-log mode, in one window that a mouse and a controller drive equall
 
 ## What it does
 
-Wayfarer is a [Dalamud](https://github.com/goatcorp/Dalamud) plugin for FINAL FANTASY XIV. It is
-built around three loops.
+Wayfarer is a [Dalamud](https://github.com/goatcorp/Dalamud) plugin for FINAL FANTASY XIV. It adds
+two lines under the game's Main Scenario Guide: the step you are on, and how to get to it. Beside
+them sits a compass needle and the distance in yalms.
 
-### Follow the main scenario
+### The route
 
-Follow a quest as normal and Wayfarer puts a readout on screen, drawn with the game's own fonts,
-colours and direction chevron so it reads as part of the interface rather than as an overlay bolted
-on top. It does not merely aim at map coordinates — it plans the trip:
+It does not simply aim at map coordinates. It plans the trip and says so in the second line:
 
-- **Teleports.** When flying to an aetheryte beats the run, the readout says which one, and
-  clicking that line casts the teleport. It is the only server-affecting action the plugin ever
-  takes on your behalf; everything else it does is read-only or client-side UI navigation.
-- **Building entrances.** Objectives inside instanced housing, inns or other interior maps are
-  routed through the correct entrance rather than pointed at through a wall.
-- **City aethernet.** Inside the big cities the arrow uses aethernet shards for the same kind of
-  detour it uses aetherytes for out in the field.
-- **Duty Finder.** When the objective is inside a dungeon, trial or raid you can already queue for,
-  the Duty Finder is one click or one menu entry away.
+- **Teleports.** When flying to an aetheryte beats the run, the line names it, and pressing it casts
+  the teleport. That is the only server-affecting action the plugin ever takes for you.
+- **Building entrances.** An objective inside an inn, a housing ward or any other interior map is
+  routed through the right door rather than pointed at through a wall.
+- **City aethernet.** Inside the big cities the route uses aethernet shards for the same kind of
+  detour it uses aetherytes for in the field.
+- **Duty Finder.** When the step is inside a dungeon, trial or raid you can queue for, the line
+  opens the Duty Finder at it.
 
-The readout sits under the game's own quest tracker by default and follows it wherever you move it,
-including the way the tracker mirrors itself on the left half of the screen. Corner presets, text
-size, arrow size and arrow colour are all in Settings.
+### Pressing the words
 
-### Pick things up on the way
+The words that name what to do are printed in the colour the game gives a link, with the thing's own
+icon in front of them. Those words are the control:
 
-A running list of every feature, mount, dungeon and system you can unlock at your current level and
-quest progress — hunting logs, chocobo, jobs, dungeons, glamour plates — cross-referenced against
-your actual quest log, so it shows only what is realistically available now.
+- A key item the step wants is used.
+- An emote the step wants is performed.
+- A phrase the step wants said goes into your chat box, ready for you to send.
+- A teleport is cast, or the Duty Finder opens.
 
-It is designed to be noticed without opening anything:
+A controller reaches all of it. The pad's cursor stops on the words themselves, not on the whole
+line, so what is highlighted is what a press will do.
 
-- The game's own quest marker appears over the heads of quest givers you can pick up from.
-- The entry in the server info bar carries an exclamation marker whenever this zone has something
-  available, and keeps carrying it while a route or a hunt is running.
-- The readout names the nearest few, with live distances, when nothing else is engaged.
+### Following a quest
 
-Open the window for the detail: filter by zone, level range or type, chip filters for category and
-priority, and **Route me**, which chains the arrow through every available pickup currently shown,
-nearest first, so you can clear a run of unlock quests back to back. Locked entries say why —
-level, quest, duty clear, Grand Company rank, beast tribe reputation, a mount, or already done.
+By default Wayfarer follows the main scenario, the same quest the guide's own plate names. A button
+in your quest journal follows any other accepted quest instead: the plate then carries that quest's
+name, and pressing it opens the journal at it.
 
-### Go hunting
+### Settings
 
-Switch into hunting mode and Wayfarer walks you through the current rank's hunting log one mob at a
-time, advancing itself on your kill count, with exactly the same guidance as the main scenario gets:
-the same arrow, the same teleport advice, the same aethernet legs, and the game's map marker on the
-current target. Start it from the window's Hunting Log tab or from the game's own right-click menu;
-Stop is beside it wherever it appears.
+A cog sits at the guide's top right, beside the plate. The settings window is the game's own, laid
+out like the journal, and holds the entry and route text sizes, the line spacing, the block's left
+edge, the compass size and where the compass sits. A live preview of the real block sits above them.
+`/wayfarer` opens the same window.
 
-## The window
+## A note on the compass
 
-There is one Wayfarer window, native rather than plugin-drawn, with four tabs — **Checklist**,
-**Hunting Log**, **Quests** and **Settings**. It works the same with a mouse or a controller: the
-game's own cursor navigation is wired through it, so a d-pad reaches every control, and the button
-hints along the bottom render as Ⓐ/Ⓑ or ✕/○ to match your pad setting.
-
-The **Quests** tab is where you choose which accepted quest the arrow follows, and where guidance
-gets the buttons an on-screen readout cannot carry: Teleport, Duty Finder and Stop.
-
-Nothing requires typing. The window opens from the server info bar entry, from the plugin installer,
-from the settings cog, and from the game's right-click menu. `/wayfarer` and its shortcuts
-(`hunt`, `checklist`, `quests`, `settings`, `stop`) are conveniences, not the way in.
-
-## Mouse and controller
-
-Both are first class. The readout is clickable for a mouse — the teleport line is one click — and
-click-through for a controller, where a focusable surface floating over the world would trap the
-cursor; there the same actions live on the game's own context menu and on the window's tabs. Which
-one you get follows whichever device you used last, and can be pinned in Settings.
-
-## A note on the arrow
-
-The arrow points in a straight line to its next waypoint — it does not path around terrain, walls or
-collision geometry. In open zones and along the routes above (aetherytes, entrances, aethernet)
-that's almost always the right answer; you may still need to eyeball your way around an obstacle
-here and there.
+The needle points in a straight line at the next waypoint. It does not path around terrain, walls or
+collision geometry. In open zones and along the routes above that is almost always the right answer,
+but you may still need to eyeball your way around an obstacle.
 
 ## Data
 
-Unlock data (levels, quest names, prerequisites) is compiled from the
-[Gamer Escape](https://ffxiv.gamerescape.com/wiki/Guide:Progression_and_Level_Locked_Content) community
-wiki. Thanks to the Gamer Escape contributors for maintaining it.
-
-Hunting log target coordinates are curated from [Hunty](https://github.com/Infiziert90/Hunty) by
-Infi (MIT). Thanks to Infi for maintaining that data.
+Routing data (aetherytes, aethernet shards and building entrances) is generated from the game's own
+files by the generator in `tools/Wayfarer.RoutingGen`.
 
 ## Third-party
 
@@ -124,8 +92,12 @@ dotnet build -c Release
 
 ### Testing
 
+The tests target the plugin's own framework, so build them and run the assembly. `dotnet test`
+reports no tests on a non-Windows host and is not the way in.
+
 ```bash
-dotnet test
+dotnet build Wayfarer.Tests/Wayfarer.Tests.csproj
+dotnet ./Wayfarer.Tests/bin/Debug/net10.0-windows/Wayfarer.Tests.dll
 ```
 
 ### Contributing

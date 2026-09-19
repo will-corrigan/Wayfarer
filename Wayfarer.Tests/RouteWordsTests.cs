@@ -62,7 +62,7 @@ public class RouteWordsTests
     public void A_duty_target_opens_the_duty_finder()
     {
         var entry = new ObjectiveEntry("Clear Sastasha.", null, new Destination.InDuty(4));
-        var guidance = new PublishedGuidance(Quests, new Objective("It's Probably Pirates", null, [entry]), entry, null);
+        var guidance = new PublishedGuidance(Quests, new Objective("It's Probably Pirates", [entry]), entry, null);
 
         Assert.Equal(new RouteLine(RouteGlyph.Duty, RouteWords.DutyWords, new RoutePress.OpenDuty(4), RouteWords.DutyWords), RouteWords.Compose(guidance));
     }
@@ -76,6 +76,6 @@ public class RouteWordsTests
     private static PublishedGuidance Guide(Route? route)
     {
         var entry = new ObjectiveEntry("Speak with Momodi.", null, new Destination.Reachable([End]));
-        return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", null, [entry]), entry, route);
+        return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", [entry]), entry, route);
     }
 }

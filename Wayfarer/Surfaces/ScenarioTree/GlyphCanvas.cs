@@ -94,7 +94,7 @@ public static class GlyphCanvas
     }
 
     /// <summary>A colour written the way the game's own art is: three bytes.</summary>
-    public static Vector3 Rgb(byte r, byte g, byte b) => new(r / 255f, g / 255f, b / 255f);
+    private static Vector3 Rgb(byte r, byte g, byte b) => new(r / 255f, g / 255f, b / 255f);
 
     private static void Write(byte[] pixels, int x, int y, Vector3 color, float alpha)
     {

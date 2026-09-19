@@ -45,10 +45,10 @@ internal sealed class PressableLine : ResNode
         restingColor = color;
         restingEdge = GameColors.BodyEdge;
 
-        glyph = Attach(Text());
-        plain = [.. Enumerable.Range(0, MaxPlainRuns).Select(_ => Attach(Text()))];
-        icon = Attach(new IconImageNode { IsVisible = false });
-        keyword = Attach(Text());
+        glyph = Text().AttachedTo(this);
+        plain = [.. Enumerable.Range(0, MaxPlainRuns).Select(_ => Text().AttachedTo(this))];
+        icon = new IconImageNode { IsVisible = false }.AttachedTo(this);
+        keyword = Text().AttachedTo(this);
 
         control = new LineControl
         {
@@ -67,10 +67,6 @@ internal sealed class PressableLine : ResNode
     /// <summary>Whether this line is a control: it has an action, so it takes a click and the pad's
     /// cursor can rest on it.</summary>
     public bool Pressable => control.IsVisible;
-
-    /// <summary>The node the game's cursor rests on when this line is focused: the control's
-    /// collision node, which is what the toolkit focuses too.</summary>
-    public unsafe AtkResNode* FocusTarget => (AtkResNode*)control.CollisionNode.Node;
 
     /// <summary>Tells the control which addon it lives in, so its dispose can take back any of the
     /// addon's pointers aimed at it.</summary>
@@ -232,13 +228,6 @@ internal sealed class PressableLine : ResNode
     private float Measure(string words) => plain[0].GetTextDrawSize(new ReadOnlySeString(words), considerScale: false).X;
 
     private IEnumerable<TextNode> Runs() => plain.Append(keyword).Append(glyph);
-
-    private T Attach<T>(T node)
-        where T : KamiToolKit.BaseTypes.NodeBase
-    {
-        node.AttachNode(this);
-        return node;
-    }
 
     private TextNode Text() => new()
     {

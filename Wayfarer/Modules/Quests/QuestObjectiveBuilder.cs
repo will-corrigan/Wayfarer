@@ -16,7 +16,7 @@ public static class QuestObjectiveBuilder
 {
     /// <summary>How close a quest marker has to be to a ToDo's position to count as its marker:
     /// slack for float error and for markers the game nudges, not a search radius.</summary>
-    public const float MatchYalms = 5f;
+    private const float MatchYalms = 5f;
 
     private const string NoLocation = "no map location for this step";
 
@@ -44,7 +44,7 @@ public static class QuestObjectiveBuilder
             ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, questItems))]
             : DescribedByMarkers(questName, markers, duty);
 
-        return entries.Count > 0 ? new Objective(questName, null, entries, headlinePressable) : null;
+        return entries.Count > 0 ? new Objective(questName, entries, headlinePressable) : null;
     }
 
     private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>

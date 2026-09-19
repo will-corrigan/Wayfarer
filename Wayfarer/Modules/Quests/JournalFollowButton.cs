@@ -7,6 +7,8 @@ using KamiToolKit.Controllers;
 using KamiToolKit.Nodes;
 using Wayfarer.App;
 
+using static Wayfarer.GameNodes;
+
 namespace Wayfarer.Modules.Quests;
 
 /// <summary>A button in the quest journal's own row of buttons that follows the quest on show, or
@@ -72,9 +74,6 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
-
-    private static unsafe AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
-        addon == null ? null : addon->GetComponentByNodeId(nodeId);
 
     /// <summary>The quest the pane is showing, or null when it shows a leve, a quest the player has
     /// already finished, or nothing at all.</summary>

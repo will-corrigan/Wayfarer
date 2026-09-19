@@ -33,17 +33,17 @@ internal sealed class GuidanceBlockNode : ResNode
     {
         Width = RootWidth;
 
-        entry = Attach(new PressableLine(GameColors.Body, MaxEntryLines, onEntryPressed));
-        route = Attach(new PressableLine(GameColors.ListText, RouteLines, onRoutePressed));
-        compass = Attach(new CompassNode(textures, log) { IsVisible = false });
-        distance = Attach(new TextNode
+        entry = new PressableLine(GameColors.Body, MaxEntryLines, onEntryPressed).AttachedTo(this);
+        route = new PressableLine(GameColors.ListText, RouteLines, onRoutePressed).AttachedTo(this);
+        compass = new CompassNode(textures, log) { IsVisible = false }.AttachedTo(this);
+        distance = new TextNode
         {
             FontType = FontType.Axis,
             AlignmentType = AlignmentType.Top,
             TextFlags = DistanceFlags,
             TextColor = GameColors.ListText,
             TextOutlineColor = GameColors.ListTextEdge,
-        });
+        }.AttachedTo(this);
 
         Restyle(style);
     }
@@ -147,13 +147,6 @@ internal sealed class GuidanceBlockNode : ResNode
         elevation = Elevation.Classify(rise, elevation);
         compass.Show(style.CompassSize, radians, elevation);
         SetDistance(MathF.Round(distanceYalms).ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
-    }
-
-    private T Attach<T>(T node)
-        where T : KamiToolKit.BaseTypes.NodeBase
-    {
-        node.AttachNode(this);
-        return node;
     }
 
     /// <summary>The compass sits in its column level with the entry's first line, its distance

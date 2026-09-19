@@ -1,6 +1,8 @@
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
 
+using static Wayfarer.GameNodes;
+
 namespace Wayfarer.Surfaces.ScenarioTree;
 
 /// <summary>Our lines spliced into the guide's cursor chain where they sit on screen: after the
@@ -78,7 +80,4 @@ internal sealed unsafe class NavSplice
             plate->CursorNavigationInfo.UpIndex = plateUpBefore;
         }
     }
-
-    private static AtkComponentBase* Component(AtkUnitBase* addon, uint nodeId) =>
-        addon == null ? null : addon->GetComponentByNodeId(nodeId);
 }
