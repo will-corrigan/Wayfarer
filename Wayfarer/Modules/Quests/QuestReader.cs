@@ -18,16 +18,13 @@ namespace Wayfarer.Modules.Quests;
 /// Framework thread only.</summary>
 internal sealed unsafe class QuestReader(IDataManager dataManager)
 {
-    /// <summary>Lumina offsets the quest sheet's row ids from the game's quest ids by this.</summary>
+    /// <summary>Every to-do line in a quest's own text sheet is keyed with this in front of it.</summary>
     private const string TodoKeyPrefix = "TEXT_";
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
-
-    /// <summary>Key items live in their own id range; a ToDo's item below it is a turn-in, not a use.</summary>
-    private const uint FirstEventItemId = 2_000_000;
 
     /// <summary>Macros that only style text. Any other macro in a to-do line is a value the game
     /// fills in at runtime and the sheet alone cannot.</summary>
@@ -48,14 +45,25 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
-    /// <summary>Whether the player has the quest accepted and not yet complete.</summary>
-    public static bool IsAccepted(ushort questId) => QuestManager.Instance()->IsQuestAccepted(questId);
+    /// <summary>Whether the player has the quest accepted and not yet complete. No quest is accepted
+    /// while the game has no quest manager, which is the case until the player is in the world.</summary>
+    public static bool IsAccepted(ushort questId)
+    {
+        var quests = QuestManager.Instance();
+        return quests != null && quests->IsQuestAccepted(questId);
+    }
 
     /// <summary>The game's live markers for this quest, this frame.</summary>
     public static List<QuestMarker> Markers(ushort questId)
     {
         var markers = new List<QuestMarker>();
-        foreach (ref var info in GameMap.Instance()->QuestMarkers)
+        var map = GameMap.Instance();
+        if (map == null)
+        {
+            return markers;
+        }
+
+        foreach (ref var info in map->QuestMarkers)
         {
             if ((info.ObjectiveId & ObjectiveIdQuestBits) != questId)
             {
@@ -78,8 +86,15 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     /// event handler. Empty when the handler is not loaded or there is no player.</summary>
     public List<QuestTodoProgress> Progress(ushort questId, IEnumerable<int> todoIndexes)
     {
-        var handler = (QuestEventHandler*)EventFramework.Instance()->GetEventHandlerById(QuestIds.RowId(questId));
-        var player = Control.Instance()->LocalPlayer;
+        var events = EventFramework.Instance();
+        var control = Control.Instance();
+        if (events == null || control == null)
+        {
+            return [];
+        }
+
+        var handler = (QuestEventHandler*)events->GetEventHandlerById(QuestIds.RowId(questId));
+        var player = control->LocalPlayer;
         if (handler == null || player == null)
         {
             return [];
@@ -100,19 +115,22 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     /// the player picked, and only once that quest is accepted. The agent has no data before login.</summary>
     public ushort? CurrentMainScenarioQuest()
     {
-        var data = AgentScenarioTree.Instance()->Data;
+        var agent = AgentScenarioTree.Instance();
+        var data = agent == null ? null : agent->Data;
         if (data == null)
         {
             return null;
         }
 
         var questId = data->MainScenarioQuestIds[data->MSQPathIndex];
-        return questId != 0 && QuestManager.Instance()->IsQuestAccepted(questId) ? questId : null;
+        return questId != 0 && IsAccepted(questId) ? questId : null;
     }
 
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
+    /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
+    /// such quest.</summary>
     public string Name(ushort questId) =>
         namesByQuest.TryGetValue(questId, out var name) ? name : namesByQuest[questId] = ReadName(questId);
 
@@ -151,7 +169,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
             .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
 
     private QuestItem? KeyItem(uint itemId) =>
-        itemId >= FirstEventItemId && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
+        QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
             ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
             : null;
 

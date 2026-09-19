@@ -35,15 +35,15 @@ internal sealed class PlatePress(IAddonLifecycle lifecycle) : IDisposable
     /// node, or the collision node the plate is focused and clicked through.</summary>
     private static unsafe bool TargetsPlate(AtkUnitBase* addon, AtkEventTarget* target)
     {
-        var plate = addon->GetComponentByNodeId(PlateNodeId);
-        if (plate == null || target == null)
+        var plate = GuideNodes.Plate(addon);
+        if (plate == null || plate->Component == null || target == null)
         {
             return false;
         }
 
         return target == (AtkEventTarget*)plate
-            || target == (AtkEventTarget*)plate->OwnerNode
-            || target == (AtkEventTarget*)plate->GetFocusNode();
+            || target == (AtkEventTarget*)plate->Component
+            || target == (AtkEventTarget*)plate->Component->GetFocusNode();
     }
 
     private unsafe void OnReceiveEvent(AddonEvent type, AddonArgs args)

@@ -12,9 +12,6 @@ internal sealed class ScenarioTreeStyle
     public const float SmallestCompass = 18f;
     public const float LargestCompass = 48f;
 
-    /// <summary>Type is drawn with two pixels of air above and below a font size, the game's own habit.</summary>
-    private const float LeadingAboveFont = 2f;
-
     /// <summary>Bumped when the shape changes, so an old file can be recognised and migrated.</summary>
     public int Version { get; set; } = 1;
 
@@ -32,9 +29,6 @@ internal sealed class ScenarioTreeStyle
 
     /// <summary>Where the compass sits.</summary>
     public CompassPlacement Compass { get; set; } = CompassPlacement.Right;
-
-    /// <summary>The line height for a font size.</summary>
-    public static float LeadingFor(uint fontSize) => fontSize + (2f * LeadingAboveFont);
 
     /// <summary>A copy with every value inside its bounds.</summary>
     public ScenarioTreeStyle Clamped() => new()

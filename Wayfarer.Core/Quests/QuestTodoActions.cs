@@ -12,6 +12,9 @@ public static partial class QuestTodoActions
     private const int MatchTimeoutMilliseconds = 100;
     private const string PhraseGroup = "phrase";
 
+    /// <summary>What a ToDo has the player do besides be somewhere, or nothing when it only asks
+    /// them to be there. Read from the only places the game says it: the key item the ToDo carries,
+    /// and the words themselves, which name an emote or quote a phrase when they need one.</summary>
     public static EntryAction? From(string todoText, QuestItem? item, IReadOnlyDictionary<string, EmoteCommand> emotes)
     {
         ArgumentNullException.ThrowIfNull(todoText);

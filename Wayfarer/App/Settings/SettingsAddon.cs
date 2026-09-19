@@ -98,8 +98,8 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
             ItemSpacing = 2f,
         };
         pages.AttachNode(this);
-        AddPageButton(Page.GuideBlock, "Guide Block");
-        AddPageButton(Page.Modules, "Modules");
+        AddPageButton(Page.GuideBlock);
+        AddPageButton(Page.Modules);
         pages.RecalculateLayout();
 
         Show(Page.GuideBlock);
@@ -113,6 +113,13 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         pages = null;
         pageButtons.Clear();
     }
+
+    /// <summary>What a page is called in its button and in its own title.</summary>
+    private static string PageTitle(Page page) => page switch
+    {
+        Page.GuideBlock => "Guide Block",
+        _ => "Modules",
+    };
 
     private static string PlacementLabel(CompassPlacement placement) => placement switch
     {
@@ -147,12 +154,12 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         return paragraph;
     }
 
-    private void AddPageButton(Page page, string label)
+    private void AddPageButton(Page page)
     {
         var button = new ListButtonNode
         {
             Height = PageButtonHeight,
-            String = label,
+            String = PageTitle(page),
             OnClick = () => Show(page),
         };
         pageButtons[page] = button;
@@ -191,14 +198,14 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         };
         pane.AttachNode(this);
 
-        var (title, blurb) = page switch
+        var blurb = page switch
         {
-            Page.GuideBlock => ("Guide Block", "How Wayfarer's lines look under the Main Scenario Guide. The preview below is the real thing, drawn by the same node the game draws, so what you set is what you get."),
-            _ => ("Modules", "What Wayfarer follows. Each module is switched on its own and remembers your choice."),
+            Page.GuideBlock => "How Wayfarer's lines look under the Main Scenario Guide. The preview below is the real thing, drawn by the same node the game draws, so what you set is what you get.",
+            _ => "What Wayfarer follows. Each module is switched on its own and remembers your choice.",
         };
 
         var body = pane.ContentNode;
-        body.AddNode(new UnderlinedTextNode { String = title, Size = new Vector2(PageWidth, TitleHeight) });
+        body.AddNode(new UnderlinedTextNode { String = PageTitle(page), Size = new Vector2(PageWidth, TitleHeight) });
         body.AddNode(Words(blurb));
 
         switch (page)

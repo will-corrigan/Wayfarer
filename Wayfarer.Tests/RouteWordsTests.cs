@@ -78,15 +78,4 @@ public class RouteWordsTests
         var entry = new ObjectiveEntry("Speak with Momodi.", null, new Destination.Reachable([End]));
         return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", null, [entry]), entry, route);
     }
-
-    private sealed class FakeSource : IObjectiveSource
-    {
-        public string Name => "Quests";
-
-        public Objective? Current => null;
-
-        public void Displaced()
-        {
-        }
-    }
 }

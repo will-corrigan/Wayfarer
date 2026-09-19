@@ -11,42 +11,30 @@ namespace Wayfarer.Core.Guidance;
 public static class GuidanceChange
 {
     /// <summary>True when nothing a surface lays out from has changed.</summary>
-    public static bool IsSame(PublishedGuidance? a, PublishedGuidance? b)
+    public static bool IsSame(PublishedGuidance? a, PublishedGuidance? b) =>
+        Both(a, b, (x, y) =>
+            ReferenceEquals(x.Source, y.Source)
+            && SameObjective(x.Objective, y.Objective)
+            && Both(x.Target, y.Target, SameEntry)
+            && SameRoute(x.Route, y.Route));
+
+    /// <summary>Two things that may each be missing are the same when neither is there, or when
+    /// both are and <paramref name="same"/> says so.</summary>
+    private static bool Both<T>(T? a, T? b, Func<T, T, bool> same)
+        where T : class =>
+        a is null || b is null ? a is null && b is null : same(a, b);
+
+    /// <summary>Two lists are the same when they hold the same things in the same order.</summary>
+    private static bool Each<T>(IReadOnlyList<T> a, IReadOnlyList<T> b, Func<T, T, bool> same)
     {
-        if (a is null || b is null)
-        {
-            return a is null && b is null;
-        }
-
-        return ReferenceEquals(a.Source, b.Source)
-            && SameObjective(a.Objective, b.Objective)
-            && SameTarget(a.Target, b.Target)
-            && SameRoute(a.Route, b.Route);
-    }
-
-    private static bool SameTarget(ObjectiveEntry? a, ObjectiveEntry? b)
-    {
-        if (a is null || b is null)
-        {
-            return a is null && b is null;
-        }
-
-        return SameEntry(a, b);
-    }
-
-    private static bool SameObjective(Objective a, Objective b)
-    {
-        if (!string.Equals(a.Headline, b.Headline, StringComparison.Ordinal)
-            || a.Action != b.Action
-            || a.Progress != b.Progress
-            || a.Entries.Count != b.Entries.Count)
+        if (a.Count != b.Count)
         {
             return false;
         }
 
-        for (var i = 0; i < a.Entries.Count; i++)
+        for (var i = 0; i < a.Count; i++)
         {
-            if (!SameEntry(a.Entries[i], b.Entries[i]))
+            if (!same(a[i], b[i]))
             {
                 return false;
             }
@@ -54,6 +42,12 @@ public static class GuidanceChange
 
         return true;
     }
+
+    private static bool SameObjective(Objective a, Objective b) =>
+        string.Equals(a.Headline, b.Headline, StringComparison.Ordinal)
+        && a.Action == b.Action
+        && a.Progress == b.Progress
+        && Each(a.Entries, b.Entries, SameEntry);
 
     private static bool SameEntry(ObjectiveEntry a, ObjectiveEntry b) =>
         string.Equals(a.Text, b.Text, StringComparison.Ordinal)
@@ -69,28 +63,8 @@ public static class GuidanceChange
         _ => false,
     };
 
-    private static bool SameRoute(Route? a, Route? b)
-    {
-        if (a is null || b is null)
-        {
-            return a is null && b is null;
-        }
-
-        if (a.End != b.End || a.Legs.Count != b.Legs.Count)
-        {
-            return false;
-        }
-
-        for (var i = 0; i < a.Legs.Count; i++)
-        {
-            if (!SameLeg(a.Legs[i], b.Legs[i]))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    private static bool SameRoute(Route? a, Route? b) =>
+        Both(a, b, (x, y) => x.End == y.End && Each(x.Legs, y.Legs, SameLeg));
 
     private static bool SameLeg(Leg a, Leg b) => (a, b) switch
     {

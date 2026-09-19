@@ -6,18 +6,18 @@ namespace Wayfarer.Tests;
 /// the centre of its own image, and the ring is a ring.</summary>
 public class CompassBitmapTests
 {
-    private const int Centre = CompassBitmap.Size / 2;
+    private const int Centre = GlyphCanvas.Size / 2;
 
     [Fact]
     public void The_needle_is_ink_from_its_hub_to_the_top_and_clear_at_the_sides()
     {
         var needle = CompassBitmap.RenderNeedle();
 
-        Assert.Equal(CompassBitmap.ByteCount, needle.Length);
-        Assert.True(CompassBitmap.AlphaAt(needle, Centre, Centre) > 0, "the hub is drawn");
-        Assert.True(CompassBitmap.AlphaAt(needle, Centre, 6) > 0, "the point reaches near the top edge");
-        Assert.Equal(0, CompassBitmap.AlphaAt(needle, 2, Centre));
-        Assert.Equal(0, CompassBitmap.AlphaAt(needle, CompassBitmap.Size - 3, Centre));
+        Assert.Equal(GlyphCanvas.ByteCount, needle.Length);
+        Assert.True(GlyphCanvas.AlphaAt(needle, Centre, Centre) > 0, "the hub is drawn");
+        Assert.True(GlyphCanvas.AlphaAt(needle, Centre, 6) > 0, "the point reaches near the top edge");
+        Assert.Equal(0, GlyphCanvas.AlphaAt(needle, 2, Centre));
+        Assert.Equal(0, GlyphCanvas.AlphaAt(needle, GlyphCanvas.Size - 3, Centre));
     }
 
     [Fact]
@@ -26,8 +26,8 @@ public class CompassBitmapTests
         var ring = CompassBitmap.RenderRing();
         var onCircle = (int)(Centre + (CompassBitmap.RingRadius / (CompassBitmap.TickOuter / CompassBitmap.GlyphMargin) * Centre));
 
-        Assert.Equal(0, CompassBitmap.AlphaAt(ring, Centre, Centre));
-        Assert.True(CompassBitmap.AlphaAt(ring, onCircle, Centre) > 0, "the circle is drawn");
-        Assert.Equal(0, CompassBitmap.AlphaAt(ring, 0, 0));
+        Assert.Equal(0, GlyphCanvas.AlphaAt(ring, Centre, Centre));
+        Assert.True(GlyphCanvas.AlphaAt(ring, onCircle, Centre) > 0, "the circle is drawn");
+        Assert.Equal(0, GlyphCanvas.AlphaAt(ring, 0, 0));
     }
 }

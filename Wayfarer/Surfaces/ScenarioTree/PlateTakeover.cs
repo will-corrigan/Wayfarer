@@ -1,5 +1,4 @@
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
@@ -25,8 +24,8 @@ internal sealed unsafe class PlateTakeover
     /// <summary>Retitles the plate to a headline, unless the game's own title already is it.</summary>
     public void Apply(AtkUnitBase* addon, string headline)
     {
-        var title = PlateTitle(addon);
-        var header = Header(addon);
+        var title = GuideNodes.PlateTitle(addon);
+        var header = GuideNodes.Header(addon);
         if (title == null || header == null)
         {
             return;
@@ -60,8 +59,8 @@ internal sealed unsafe class PlateTakeover
         }
 
         ourTitle = null;
-        var title = PlateTitle(addon);
-        var header = Header(addon);
+        var title = GuideNodes.PlateTitle(addon);
+        var header = GuideNodes.Header(addon);
         if (title != null && gameTitle is not null)
         {
             title->SetText(gameTitle);
@@ -72,13 +71,4 @@ internal sealed unsafe class PlateTakeover
             header->SetText(gameHeader);
         }
     }
-
-    private static AtkTextNode* PlateTitle(AtkUnitBase* addon)
-    {
-        var plate = addon->GetComponentByNodeId(PlateNodeId);
-        return plate == null ? null : plate->GetTextNodeById(PlateTitleTextNodeId);
-    }
-
-    private static AtkTextNode* Header(AtkUnitBase* addon) =>
-        addon->GetNodeById(HeaderTextNodeId) is var node && node != null ? node->GetAsAtkTextNode() : null;
 }

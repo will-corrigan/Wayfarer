@@ -15,7 +15,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
     private Objective? cached;
 
     /// <inheritdoc/>
-    public string Name => "Quests";
+    public string Name => QuestsModule.ModuleName;
 
     /// <inheritdoc/>
     public Objective? Current => Refresh();

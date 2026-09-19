@@ -18,7 +18,14 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects) :
     /// <inheritdoc/>
     public float? RiseYalms => Offset() is var (_, dy, _) ? dy : null;
 
-    private static float CameraYaw() => CameraManager.Instance()->Camera->DirH;
+    /// <summary>Which way the camera faces, which is what the needle turns against. Zero while
+    /// there is no camera, which points the needle due north rather than nowhere.</summary>
+    private static float CameraYaw()
+    {
+        var cameras = CameraManager.Instance();
+        var camera = cameras == null ? null : cameras->Camera;
+        return camera == null ? 0f : camera->DirH;
+    }
 
     private (float Dx, float Dy, float Dz)? Offset()
     {

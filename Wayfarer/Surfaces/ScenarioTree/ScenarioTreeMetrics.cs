@@ -7,7 +7,8 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// inset. What the player can change about it lives in <see cref="ScenarioTreeStyle"/>.</summary>
 internal static class ScenarioTreeMetrics
 {
-    /// <summary>The addon's internal name.</summary>
+    /// <summary>The window's own name. Written out because the game's mapping has no struct for
+    /// this one, so there is nothing to take it from.</summary>
     public const string AddonName = "ScenarioTree";
 
     /// <summary>The root node's width and height. The game hit-tests clicks against the root, so the

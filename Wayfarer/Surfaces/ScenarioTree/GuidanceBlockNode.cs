@@ -2,9 +2,7 @@ using System.Globalization;
 using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using KamiToolKit.Classes;
 using KamiToolKit.Nodes;
-using Wayfarer.App;
 using Wayfarer.Core.Ui;
 using Wayfarer.Ui;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
@@ -61,9 +59,6 @@ internal sealed class GuidanceBlockNode : ResNode
     /// surface when this changes.</summary>
     public bool AnyPressable => entry.Pressable || route.Pressable;
 
-    /// <summary>The nodes the pad cursor can rest on in the block, pressable or not.</summary>
-    public unsafe nint[] FocusTargets => [(nint)entry.FocusTarget, (nint)route.FocusTarget];
-
     /// <summary>The first of our stops the cursor can move down to from the plate, or null.</summary>
     public int? FirstStop => entry.Pressable ? EntryNavIndex : route.Pressable ? RouteNavIndex : null;
 
@@ -77,12 +72,14 @@ internal sealed class GuidanceBlockNode : ResNode
         this.style = style;
 
         var (left, width) = WordsColumn(style);
-        entry.Restyle(style.EntryFontSize, ScenarioTreeStyle.LeadingFor(style.EntryFontSize), left, width);
-        route.Restyle(style.RouteFontSize, ScenarioTreeStyle.LeadingFor(style.RouteFontSize), left, width);
+        entry.Restyle(style.EntryFontSize, GameText.LeadingFor(style.EntryFontSize), left, width);
+        route.Restyle(style.RouteFontSize, GameText.LeadingFor(style.RouteFontSize), left, width);
         PlaceCompass();
         Relayout();
     }
 
+    /// <summary>Shows a guidance: the step on the first line, the way there on the second, and
+    /// nothing at all when there is no step. Called only when the guidance changed.</summary>
     public void SetWords(LineContent? entryContent, LineContent? routeContent)
     {
         IsVisible = entryContent is not null;
@@ -112,6 +109,10 @@ internal sealed class GuidanceBlockNode : ResNode
         route.SetNav(RouteNavIndex, entry.Pressable ? EntryNavIndex : aboveUs, belowUs);
     }
 
+    /// <summary>Points the needle and writes the distance, every frame the player moves or turns.
+    /// Whether the target counts as above or below the player is settled by
+    /// <see cref="Elevation.Classify"/>, which holds its last answer through small changes so the
+    /// mark does not flicker on a slope.</summary>
     public void SetHeading(float? needle, float? yalms, float? rise)
     {
         var drawn = style.Compass != CompassPlacement.Hidden && needle is { } && yalms is { };
@@ -155,7 +156,7 @@ internal sealed class GuidanceBlockNode : ResNode
     private void PlaceCompass()
     {
         var left = style.Compass == CompassPlacement.Left ? ContentLeft : RootWidth - RightInset - style.CompassSize;
-        var top = RowTextTop + ((ScenarioTreeStyle.LeadingFor(style.EntryFontSize) - style.CompassSize) / 2f);
+        var top = RowTextTop + ((GameText.LeadingFor(style.EntryFontSize) - style.CompassSize) / 2f);
         compass.Position = new Vector2(left, MathF.Max(0f, top));
         distance.Position = new Vector2(left + ((style.CompassSize - DistanceWidth) / 2f), compass.Position.Y + style.CompassSize);
     }

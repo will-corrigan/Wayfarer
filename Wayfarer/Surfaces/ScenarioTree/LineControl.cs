@@ -77,8 +77,9 @@ internal sealed unsafe class LineControl : NavFocusNode
             addon->CursorTarget = null;
         }
 
-        var input = AtkStage.Instance()->AtkInputManager;
-        if ((nint)input->FocusedNode == focusNode && fallback != null)
+        var stage = AtkStage.Instance();
+        var input = stage == null ? null : stage->AtkInputManager;
+        if (input != null && (nint)input->FocusedNode == focusNode && fallback != null)
         {
             input->SetFocus(fallback, addon, 0);
         }

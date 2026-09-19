@@ -127,15 +127,4 @@ public class GuidanceChangeTests
         var entry = new ObjectiveEntry("Speak with Momodi.", new Progress(1, 3), new Destination.Reachable([There]));
         return new PublishedGuidance(Quests, new Objective("The Ul'dahn Envoy", null, [entry]), entry, route);
     }
-
-    private sealed class FakeSource(string name) : IObjectiveSource
-    {
-        public string Name => name;
-
-        public Objective? Current => null;
-
-        public void Displaced()
-        {
-        }
-    }
 }

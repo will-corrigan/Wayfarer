@@ -53,6 +53,8 @@ internal sealed class PressableLine : ResNode
         control.AttachNode(this);
     }
 
+    /// <summary>Whether this line is a control: it has an action, so it takes a click and the pad's
+    /// cursor can rest on it.</summary>
     public bool Pressable => control.IsVisible;
 
     /// <summary>The node the game's cursor rests on when this line is focused: the control's

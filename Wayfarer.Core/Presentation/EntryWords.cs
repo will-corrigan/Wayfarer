@@ -10,6 +10,8 @@ public static class EntryWords
     private const string CountSeparator = " ";
     private const string CountDivider = "/";
 
+    /// <summary>The words a surface prints for an entry: its own text, with its count after it the
+    /// way the game's tracker writes one.</summary>
     public static string Describe(ObjectiveEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);

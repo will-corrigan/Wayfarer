@@ -9,8 +9,12 @@ namespace Wayfarer.Modules.Quests;
 /// down means both have let go.</summary>
 internal sealed class QuestsModule(QuestObjectives objectives, JournalFollowButton followButton, IGuidance guidance) : IModule
 {
+    /// <summary>What the module is called, everywhere: the checkbox, the guidance it publishes, and
+    /// the enabled set saved in <c>app.json</c>, which is keyed by this.</summary>
+    public const string ModuleName = "Quests";
+
     /// <inheritdoc/>
-    public string Name => "Quests";
+    public string Name => ModuleName;
 
     /// <inheritdoc/>
     public string Description => "Follows the main scenario, or any quest you choose from the journal, in the Main Scenario Guide.";

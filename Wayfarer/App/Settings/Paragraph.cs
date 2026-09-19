@@ -12,13 +12,12 @@ namespace Wayfarer.App.Settings;
 internal sealed class Paragraph : TextNode
 {
     private const uint DefaultFontSize = 12;
-    private const float LeadingAboveFont = 4f;
 
     public Paragraph()
     {
         FontType = FontType.Axis;
         FontSize = DefaultFontSize;
-        LineSpacing = (uint)(DefaultFontSize + LeadingAboveFont);
+        LineSpacing = (uint)GameText.LeadingFor(DefaultFontSize);
         AlignmentType = AlignmentType.TopLeft;
         TextFlags = TextFlags.WordWrap | TextFlags.MultiLine;
         TextColor = GameColors.ListText;

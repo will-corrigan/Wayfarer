@@ -2,6 +2,7 @@ using Wayfarer.Core.Quests;
 
 namespace Wayfarer.Tests;
 
+/// <summary>The two numberings a quest has, and that they convert both ways.</summary>
 public class QuestIdsTests
 {
     /// <summary>"Close to Home", as the quest manager numbers it and as the sheet does.</summary>
