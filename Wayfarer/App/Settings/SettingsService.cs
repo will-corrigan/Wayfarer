@@ -9,7 +9,7 @@ namespace Wayfarer.App.Settings;
 /// <summary>The doors onto the settings window: the plugin installer's cog, its main button, and
 /// <c>/wayfarer</c>. Owns the window and opens it on the framework thread, where the toolkit needs
 /// it.</summary>
-internal sealed class SettingsService : IAsyncDisposable
+internal sealed class SettingsService : ISettingsWindow, IAsyncDisposable
 {
     private const string Command = "/wayfarer";
 
@@ -31,9 +31,9 @@ internal sealed class SettingsService : IAsyncDisposable
             Subtitle = "Settings",
         };
 
-        pluginInterface.UiBuilder.OpenConfigUi += Open;
-        pluginInterface.UiBuilder.OpenMainUi += Open;
-        commands.AddHandler(Command, new CommandInfo((_, _) => Open()) { HelpMessage = "Opens Wayfarer's settings." });
+        pluginInterface.UiBuilder.OpenConfigUi += Toggle;
+        pluginInterface.UiBuilder.OpenMainUi += Toggle;
+        commands.AddHandler(Command, new CommandInfo((_, _) => Toggle()) { HelpMessage = "Opens Wayfarer's settings." });
     }
 
     /// <summary>Unhooks the doors, then closes the window. The close has to happen on the
@@ -42,10 +42,11 @@ internal sealed class SettingsService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         commands.RemoveHandler(Command);
-        pluginInterface.UiBuilder.OpenConfigUi -= Open;
-        pluginInterface.UiBuilder.OpenMainUi -= Open;
+        pluginInterface.UiBuilder.OpenConfigUi -= Toggle;
+        pluginInterface.UiBuilder.OpenMainUi -= Toggle;
         await window.DisposeAsync().ConfigureAwait(false);
     }
 
-    private void Open() => _ = framework.RunOnFrameworkThread(window.Toggle);
+    /// <inheritdoc/>
+    public void Toggle() => _ = framework.RunOnFrameworkThread(window.Toggle);
 }

@@ -27,7 +27,7 @@ internal sealed class AppRegistrations : Module
 
         builder.RegisterType<ConfigStore>().As<IConfigStore>().SingleInstance();
         builder.RegisterType<ModuleHost>().As<IModuleHost>().AsSelf().SingleInstance();
-        builder.RegisterType<SettingsService>().SingleInstance().AutoActivate();
+        builder.RegisterType<SettingsService>().As<ISettingsWindow>().AsSelf().SingleInstance().AutoActivate();
 
         // The one surface for now: the block inside the game's Main Scenario Guide.
         builder.RegisterType<ScenarioTreeSurface>().AsSelf().SingleInstance().AutoActivate();

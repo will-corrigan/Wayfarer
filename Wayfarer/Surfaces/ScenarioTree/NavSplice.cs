@@ -24,11 +24,13 @@ internal sealed unsafe class NavSplice
     /// the block has nothing to press. Re-links only when something changed.</summary>
     public void Splice(AtkComponentBase* plateComponent, AtkComponentBase* aboveUs, GuidanceBlockNode block)
     {
-        if (plateComponent == null || aboveUs == null || block.FirstStop is not { } first || block.LastStop is not { } last)
+        if (plateComponent == null || aboveUs == null)
         {
             Restore();
             return;
         }
+
+        var (first, last) = (block.FirstStop, GuidanceBlockNode.LastStop);
 
         var unchanged = Applied && above == (nint)aboveUs && plate == (nint)plateComponent && firstStop == first && lastStop == last;
         if (unchanged)

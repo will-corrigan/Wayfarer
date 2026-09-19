@@ -20,6 +20,10 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
 {
     /// <summary>Every to-do line in a quest's own text sheet is keyed with this in front of it.</summary>
     private const string TodoKeyPrefix = "TEXT_";
+
+    /// <summary>The script parameter a quest names its duty in. A quest may name several, one per
+    /// difficulty of the same fight, and the first the Duty Finder knows is the one it is about.</summary>
+    private const string DutyParameter = "INSTANCEDUNGEON";
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -131,9 +135,8 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
     /// <summary>The Duty Finder entry for the duty a quest sends the player into, or null when it
-    /// sends them nowhere instanced. A quest names its duties two ways: the ones it is about, of
-    /// which it may list three because a fight comes at several difficulties, and the one it
-    /// unlocks, which for a quest that asks the player to clear a trial is that same trial.</summary>
+    /// sends them nowhere instanced. A quest names the duty among its own script parameters, the
+    /// same list that names its actors and its items, under <c>INSTANCEDUNGEON</c>.</summary>
     public uint? Duty(ushort questId)
     {
         if (QuestRow(questId) is not { } quest)
@@ -142,15 +145,16 @@ internal sealed unsafe class QuestReader(IDataManager dataManager)
         }
 
         dutiesByContent ??= ReadDuties();
-        foreach (var content in quest.InstanceContent)
+        foreach (var parameter in quest.QuestParams)
         {
-            if (Finder(content.RowId) is { } listed)
+            if (parameter.ScriptInstruction.ExtractText().StartsWith(DutyParameter, StringComparison.Ordinal)
+                && Finder(parameter.ScriptArg) is { } duty)
             {
-                return listed;
+                return duty;
             }
         }
 
-        return Finder(quest.InstanceContentUnlock.RowId);
+        return null;
     }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no

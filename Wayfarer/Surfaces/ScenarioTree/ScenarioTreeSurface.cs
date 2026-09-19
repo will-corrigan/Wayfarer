@@ -3,6 +3,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using Wayfarer.App.Guidance;
+using Wayfarer.App.Settings;
 using Wayfarer.Core.Guidance;
 using Wayfarer.Core.Presentation;
 using static Wayfarer.Surfaces.ScenarioTree.ScenarioTreeMetrics;
@@ -26,6 +27,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private readonly ITextureProvider textures;
     private readonly IPluginLog log;
     private readonly ScenarioTreeStyleStore styles;
+    private readonly ISettingsWindow settings;
     private readonly AddonController controller;
     private readonly NavSplice splice = new();
     private readonly PlateTakeover takeover = new();
@@ -36,12 +38,13 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private bool restyleWanted;
     private bool broken;
 
-    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ScenarioTreeStyleStore styles, IAddonLifecycle lifecycle, ITextureProvider textures, IFramework framework, IPluginLog log)
+    public unsafe ScenarioTreeSurface(IGuidance guidance, IHeading heading, IActions actions, ScenarioTreeStyleStore styles, ISettingsWindow settings, IAddonLifecycle lifecycle, ITextureProvider textures, IFramework framework, IPluginLog log)
     {
         this.guidance = guidance;
         this.heading = heading;
         presses = new GuidancePresses(guidance, actions);
         this.styles = styles;
+        this.settings = settings;
         this.textures = textures;
         this.log = log;
         platePress = new PlatePress(lifecycle);
@@ -110,7 +113,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
         {
             var plate = GuideNodes.Plate(addon);
             plateFocus = plate == null || plate->Component == null ? 0 : (nint)plate->Component->GetFocusNode();
-            block = new GuidanceBlockNode(textures, log, presses.Entry, presses.Route) { IsVisible = false };
+            block = new GuidanceBlockNode(textures, log, presses.Entry, presses.Route, settings.Toggle);
             block.Restyle(styles.Current);
             block.AttachNode(addon);
             block.GuestOf(addon, (AtkResNode*)plateFocus);
@@ -204,7 +207,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     /// while the block shows and restored when it hides.</summary>
     private unsafe void FitRootToBlock(AtkUnitBase* addon)
     {
-        var wanted = (ushort)(block!.IsVisible ? Math.Max(RootHeight, block.Y + block.Height) : RootHeight);
+        var wanted = (ushort)Math.Max(RootHeight, block!.Y + block.Height);
         SetRootHeight(addon, wanted);
     }
 

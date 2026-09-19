@@ -36,7 +36,7 @@ internal sealed class ScenarioTreeStyle
     public uint RouteFontSize { get; set; } = 14;
 
     /// <summary>Space between the entry's last line and the route line, in pixels.</summary>
-    public float LineGap { get; set; } = 10f;
+    public float LineGap { get; set; } = 3f;
 
     /// <summary>The compass's side, in pixels.</summary>
     public float CompassSize { get; set; } = 36f;

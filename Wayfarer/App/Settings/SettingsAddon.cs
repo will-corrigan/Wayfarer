@@ -237,7 +237,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         previewStage = new ResNode();
         previewFrame = new BorderNineGridNode();
         previewFrame.AttachNode(previewStage);
-        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
+        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
         preview.AttachNode(previewStage);
         preview.SetWords(
             new LineContent(new ReadOnlySeString(SampleEntry), null, false),
