@@ -27,7 +27,7 @@ public static partial class QuestTodoActions
 
         if ((item ?? Named(todoText, questItems)) is { } used)
         {
-            return new EntryAction.UseItem(used.Id, used.Name, used.IconId);
+            return new EntryAction.UseItem(used.Id, used.Name, used.IconId, KeyItem: true);
         }
 
         if (SayPhrase().Match(todoText) is { Success: true } say)

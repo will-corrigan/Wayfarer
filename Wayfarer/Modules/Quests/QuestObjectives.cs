@@ -61,7 +61,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
 
         // The guide names the main scenario quest itself, so only a quest the player chose to follow
         // instead gives the headline anywhere to lead.
-        var headline = following.Followed is { } followed ? new HeadlineAction.OpenQuestJournal(followed) : null;
+        var headline = following.Followed is not null;
         return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline, reader.Duty(questId), carried);
     }
 

@@ -22,7 +22,6 @@ internal sealed class AppRegistrations : Module
         // first asks for it, and stops when the container is disposed.
         builder.RegisterType<GuidanceService>().As<IGuidance>().SingleInstance().AutoActivate();
         builder.RegisterType<Heading>().As<IHeading>().SingleInstance();
-        builder.RegisterType<QuestJournal>().SingleInstance();
         builder.RegisterType<Actions>().As<IActions>().SingleInstance();
         builder.RegisterType<ScenarioTreeStyleStore>().SingleInstance();
 

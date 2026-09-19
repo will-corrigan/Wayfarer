@@ -4,9 +4,8 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Wayfarer.App;
-using Wayfarer.Modules.Quests;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.Modules.Quests;
 
 /// <summary>The quest journal, opened at a quest of ours.
 ///

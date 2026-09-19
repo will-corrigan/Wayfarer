@@ -17,7 +17,7 @@ public class QuestTodoActionsTests
     {
         var action = QuestTodoActions.From("Use the linkpearl.", new QuestItem(2001346, "Linkpearl", 21001), Emotes);
 
-        Assert.Equal(new EntryAction.UseItem(2001346, "Linkpearl", 21001), action);
+        Assert.Equal(new EntryAction.UseItem(2001346, "Linkpearl", 21001, KeyItem: true), action);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class QuestTodoActionsTests
 
         var action = QuestTodoActions.From("Use a smoke bomb on the beehive.", null, Emotes, carried);
 
-        Assert.Equal(new EntryAction.UseItem(2002547, "Smoke Bomb", 26015), action);
+        Assert.Equal(new EntryAction.UseItem(2002547, "Smoke Bomb", 26015, KeyItem: true), action);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class QuestTodoActionsTests
 
         var action = QuestTodoActions.From("Deliver the buzzing burlap sack to Rhalgr.", null, Emotes, carried);
 
-        Assert.Equal(new EntryAction.UseItem(2002549, "Buzzing Burlap Sack", 25919), action);
+        Assert.Equal(new EntryAction.UseItem(2002549, "Buzzing Burlap Sack", 25919, KeyItem: true), action);
     }
 
     [Fact]

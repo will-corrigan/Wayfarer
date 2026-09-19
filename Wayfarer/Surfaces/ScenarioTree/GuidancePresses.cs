@@ -18,7 +18,7 @@ internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
         switch (guidance.Current?.Target?.Action)
         {
             case EntryAction.UseItem item:
-                actions.UseItem(item.ItemId);
+                actions.UseItem(item.ItemId, item.KeyItem);
                 break;
             case EntryAction.Emote emote:
                 actions.Emote(emote.EmoteId);
@@ -47,16 +47,13 @@ internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
         }
     }
 
-    /// <summary>The headline's press: open the page the guidance is about.</summary>
+    /// <summary>The headline's press, handed straight back to whichever module is guiding. Neither
+    /// the surface nor the app knows what a headline leads to.</summary>
     public void Headline()
     {
-        switch (guidance.Current?.Objective.Action)
+        if (guidance.Current is { Objective.HeadlinePressable: true } current)
         {
-            case HeadlineAction.OpenQuestJournal journal:
-                actions.OpenQuestJournal(journal.QuestId);
-                break;
-            default:
-                break;
+            current.Source.PressHeadline();
         }
     }
 }

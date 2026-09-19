@@ -115,7 +115,7 @@ public class GuidanceChangeTests
     public void A_different_quest_behind_the_same_headline_is_a_change()
     {
         var a = Guide(Walk(100f));
-        var b = a with { Objective = a.Objective with { Action = new HeadlineAction.OpenQuestJournal(65) } };
+        var b = a with { Objective = a.Objective with { HeadlinePressable = true } };
 
         Assert.False(GuidanceChange.IsSame(a, b));
     }

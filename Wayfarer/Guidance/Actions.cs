@@ -4,7 +4,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Wayfarer.App;
-using Wayfarer.Modules.Quests;
 
 namespace Wayfarer.Guidance;
 
@@ -13,7 +12,7 @@ namespace Wayfarer.Guidance;
 ///
 /// <para>Every one of the game's singletons is asked for fresh and checked before it is used: none
 /// of them exist before the player is in the world, and a press can arrive at any moment.</para></summary>
-internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, QuestJournal journal, IPluginLog log) : IActions
+internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, IPluginLog log) : IActions
 {
     /// <summary>The sub-index is for aetherytes with several destinations, such as housing; every
     /// aetheryte on a route is a plain one.</summary>
@@ -60,7 +59,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
     }
 
     /// <inheritdoc/>
-    public void UseItem(uint itemId)
+    public void UseItem(uint itemId, bool keyItem)
     {
         var actionManager = ActionManager.Instance();
         if (Missing(actionManager, "action manager"))
@@ -68,7 +67,7 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
             return;
         }
 
-        var kind = QuestItem.IsKeyItem(itemId) ? ActionType.EventItem : ActionType.Item;
+        var kind = keyItem ? ActionType.EventItem : ActionType.Item;
         if (!actionManager->UseAction(kind, itemId))
         {
             log.Warning($"the game did not use item {itemId}: the usual reason is that nothing suitable is targeted.");
@@ -105,9 +104,6 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
 
         chat->TextInput->SetText(text);
     }
-
-    /// <inheritdoc/>
-    public void OpenQuestJournal(ushort questId) => journal.Open(questId);
 
     /// <summary>Whether one of the game's own singletons is not there, which it is not until the
     /// player is in the world. Says so in the log, because a press that quietly did nothing is

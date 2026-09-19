@@ -18,7 +18,9 @@ public abstract record EntryAction
     /// <param name="ItemId">The item's id.</param>
     /// <param name="Name">The item's name.</param>
     /// <param name="IconId">The item's icon.</param>
-    public sealed record UseItem(uint ItemId, string Name, uint IconId) : EntryAction
+    /// <param name="KeyItem">Whether it is a key item, which the game uses through its own action
+    /// kind. The module that found the item knows which it is; nothing else has to work it out.</param>
+    public sealed record UseItem(uint ItemId, string Name, uint IconId, bool KeyItem) : EntryAction
     {
         /// <inheritdoc/>
         public override string Keyword => Name;

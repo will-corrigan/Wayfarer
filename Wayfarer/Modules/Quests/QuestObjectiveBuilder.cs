@@ -30,7 +30,7 @@ public static class QuestObjectiveBuilder
         IReadOnlyList<QuestTodoProgress> progress,
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
-        HeadlineAction? headline = null,
+        bool headlinePressable = false,
         uint? duty = null,
         IReadOnlyList<QuestItem>? questItems = null)
     {
@@ -44,7 +44,7 @@ public static class QuestObjectiveBuilder
             ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, questItems))]
             : DescribedByMarkers(questName, markers, duty);
 
-        return entries.Count > 0 ? new Objective(questName, null, entries, headline) : null;
+        return entries.Count > 0 ? new Objective(questName, null, entries, headlinePressable) : null;
     }
 
     private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>

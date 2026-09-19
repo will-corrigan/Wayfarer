@@ -45,7 +45,7 @@ public static class GuidanceChange
 
     private static bool SameObjective(Objective a, Objective b) =>
         string.Equals(a.Headline, b.Headline, StringComparison.Ordinal)
-        && a.Action == b.Action
+        && a.HeadlinePressable == b.HeadlinePressable
         && a.Progress == b.Progress
         && Each(a.Entries, b.Entries, SameEntry);
 

@@ -13,14 +13,11 @@ internal interface IActions
     void OpenDutyFinder(uint dutyId);
 
     /// <summary>Uses a key item on the player's current target.</summary>
-    void UseItem(uint itemId);
+    void UseItem(uint itemId, bool keyItem);
 
     /// <summary>Performs an emote, at the player's current target if any.</summary>
     void Emote(ushort emoteId);
 
     /// <summary>Writes text into the chat box without sending it.</summary>
     void FillChat(string text);
-
-    /// <summary>Opens the quest journal at a quest.</summary>
-    void OpenQuestJournal(ushort questId);
 }
