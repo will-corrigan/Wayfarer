@@ -104,6 +104,7 @@ internal sealed class PressableLine : ResNode
         IsVisible = content is not null;
         if (content is null)
         {
+            TextTooltip = string.Empty;
             return;
         }
 
@@ -114,7 +115,12 @@ internal sealed class PressableLine : ResNode
         var iconRoom = content.IconId is null ? 0f : fontSize + IconGap;
         var mark = ShowGlyph(content.Glyph) + (named ? 0f : iconRoom);
         var keywordRoom = named ? iconRoom : 0f;
-        var runs = TextFlow.Lay(content.Words, content.Keyword, Measure, Width - mark, leading, maxLines, keywordRoom);
+        var runs = TextFlow.Arrange(content.Words, content.Keyword, Measure, Width - mark, leading, maxLines, keywordRoom, out var cut);
+
+        // Words that would not fit are cut with an ellipsis, so the whole sentence is offered on
+        // hover instead. Setting a tooltip is also what gives the line the collision it needs to
+        // be hovered at all, so it is cleared again the moment the words do fit.
+        TextTooltip = cut ? content.Words : string.Empty;
         var lead = named || content.IconId is null ? Rect.Empty : new Rect(0f, 0f, iconRoom, leading);
 
         var (wordsBox, keywordBox) = Draw(runs, mark, keywordRoom, lead);

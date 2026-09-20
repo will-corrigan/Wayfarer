@@ -196,8 +196,15 @@ internal sealed class GuidanceBlockNode : ResNode
 
         elevation = Elevation.Classify(rise, elevation);
         compass.Show(style.CompassSize, radians, elevation);
+
+        // The distance is what gives its node a height, so the column cannot be stacked until the
+        // words are in it: laid out while it is still empty, the needle and the distance both come
+        // out at the top of the column, drawn over each other.
         var remaining = MathF.Round(distanceYalms);
-        SetDistance(remaining <= 0f ? Arrived : remaining.ToString(CultureInfo.InvariantCulture) + YalmsSuffix);
+        if (SetDistance(remaining <= 0f ? Arrived : remaining.ToString(CultureInfo.InvariantCulture) + YalmsSuffix))
+        {
+            Relayout();
+        }
     }
 
     /// <summary>Lets the lists place everything, and takes the block's height from what they made.</summary>
@@ -209,14 +216,17 @@ internal sealed class GuidanceBlockNode : ResNode
         Height = columns.Position.Y + columns.Height;
     }
 
-    private void SetDistance(string text)
+    /// <summary>Writes the distance, and says whether it changed, so the caller can re-stack the
+    /// column around whatever height the new words gave it.</summary>
+    private bool SetDistance(string text)
     {
         if (string.Equals(text, lastDistance, StringComparison.Ordinal))
         {
-            return;
+            return false;
         }
 
         lastDistance = text;
         distance.String = text;
+        return true;
     }
 }
