@@ -22,12 +22,13 @@ namespace Wayfarer.Guidance;
 ///
 /// <para>Being inside the circle is what makes something a candidate; which one is guided to is
 /// then decided by how near it is to the player, not to the middle of the circle. A search area
-/// often holds several of the same thing, so they are counted as well: only one of them is the
-/// one, and the player has to try them.</para></summary>
+/// often holds several of the same thing and only one is the one, so what the player has already
+/// tried is passed over and the next nearest is guided to instead. They are never told how many
+/// there are: the answer they want is which one to walk to now.</para></summary>
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions interactions) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Found? Inside(Place area, IReadOnlyList<uint>? marks, EventId? owner)
+    public Place? Inside(Place area, IReadOnlyList<uint>? marks, EventId? owner)
     {
         ArgumentNullException.ThrowIfNull(area);
         if (area.Radius <= 0f || !AnythingToLookFor(marks, owner) || objects.LocalPlayer is not { } player)
@@ -37,7 +38,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
 
         var standing = player.Position;
         Place? nearest = null;
-        var count = 0;
+        var any = false;
         var best = float.MaxValue;
         foreach (var candidate in objects)
         {
@@ -52,7 +53,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
                 continue;
             }
 
-            count++;
+            any = true;
             if (interactions.Tried(candidate.BaseId))
             {
                 continue;
@@ -66,14 +67,9 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
             }
         }
 
-        if (nearest is { } at)
-        {
-            return new Found(at, Math.Max(1, count - interactions.Count));
-        }
-
         // Everything standing here has been tried and none of them answered. Rather than say there
         // is nothing, the player is sent round them again from the beginning.
-        return Again(area, marks, owner, count);
+        return nearest ?? Again(area, marks, owner, any);
     }
 
     /// <summary>How far apart two points are across the ground, ignoring the drop between them.</summary>
@@ -103,9 +99,9 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
 
     /// <summary>The nearest of them all when every one has been tried, so a step whose answer was
     /// missed still leads somewhere.</summary>
-    private Found? Again(Place area, IReadOnlyList<uint>? marks, EventId? owner, int count)
+    private Place? Again(Place area, IReadOnlyList<uint>? marks, EventId? owner, bool any)
     {
-        if (count == 0)
+        if (!any)
         {
             return null;
         }

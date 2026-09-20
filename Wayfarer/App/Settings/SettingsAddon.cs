@@ -74,7 +74,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
 
     /// <summary>How many of the thing a search area holds, in the sample: one, so the preview does
     /// not show a count the player would only see while searching.</summary>
-    private const int SampleCandidates = 1;
 
     /// <summary>The dark the game fills its own framed panels with.</summary>
     private static readonly Vector4 PanelColor = new(0f, 0f, 0f, 0.35f);
@@ -334,7 +333,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         preview.SetWords(
             new LineContent(SampleEntry),
             new LineContent(SampleRoute, SampleRouteKeyword, Glyph: BitmapFontIcon.Aetheryte, Pressable: true));
-        preview.SetHeading(SampleNeedle, SampleYalms, SampleRise, SampleCandidates);
+        preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
         body.AddNode(previewStage);
 
         // Styled only once the block is part of the window's own tree. A style applied before then

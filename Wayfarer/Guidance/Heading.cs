@@ -25,7 +25,6 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects, I
         : null;
 
     /// <inheritdoc/>
-    public int? Candidates => Search() is { } found ? found.Count : null;
 
     /// <inheritdoc/>
     public float? RiseYalms => Offset() is var (_, dy, _, _) ? dy : null;
@@ -51,7 +50,7 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects, I
         var position = player.Position;
         if (Search(walk.To) is { } found)
         {
-            var (x, y, z) = (found.At.X, found.At.Y, found.At.Z);
+            var (x, y, z) = (found.X, found.Y, found.Z);
             return (x - position.X, y - position.Y, z - position.Z, 0f);
         }
 
@@ -60,11 +59,7 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects, I
 
     /// <summary>What the step is about, standing inside the area being walked to, or null. Asked
     /// only of an area, and only while the destination says what belongs to it.</summary>
-    private Found? Search() =>
-        guidance.Current?.Route?.Legs is [Leg.Walk walk, ..] ? Search(walk.To) : null;
-
-    /// <inheritdoc cref="Search()"/>
-    private Found? Search(Place area) =>
+    private Place? Search(Place area) =>
         guidance.Current?.Target?.Where is Destination.Reachable reachable
             ? finder.Inside(area, reachable.Marks, reachable.Owner)
             : null;
