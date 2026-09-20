@@ -90,7 +90,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
             return null;
         }
 
-        var mark = new IconImageNode { IsVisible = false };
+        var mark = new IconImageNode { FitTexture = true, IsVisible = false };
         mark.AttachNode(name, NodePosition.AfterTarget);
         return mark;
     }

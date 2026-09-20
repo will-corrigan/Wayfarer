@@ -59,7 +59,9 @@ internal sealed class PressableLine : ResNode
             TextOutlineColor = restingEdge,
         }.AttachedTo(this);
 
-        icon = new IconImageNode { IsVisible = false }.AttachedTo(this);
+        // FitTexture is what makes the icon drawn at the node's own size. Without it the node
+        // keeps the texture's size, which for a game icon is 32 and stands over two lines of type.
+        icon = new IconImageNode { FitTexture = true, IsVisible = false }.AttachedTo(this);
 
         control = new LineControl
         {
