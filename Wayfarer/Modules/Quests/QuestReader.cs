@@ -41,6 +41,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// quest's own list is what says it then.</summary>
     private const string ItemParameter = "ITEM";
 
+    /// <summary>How far into a marker's range its drawn mark is. The sheet gives the range's first
+    /// number, and that one is not a mark at all: every range begins with the game's own
+    /// placeholder art, and the mark the game draws is the one after it. Checked against the
+    /// pictures themselves for each of the three ranges a quest with a duty uses.</summary>
+    private const uint MarkerInRange = 1;
+
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -173,12 +179,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// and for those the game shows no marker for.</para></summary>
     public uint? QuestIcon(ushort questId)
     {
-        if (QuestRow(questId)?.EventIconType.ValueNullable is not { } marker)
+        if (QuestRow(questId)?.EventIconType.ValueNullable is not { } marker || marker.MapIconAvailable == 0)
         {
             return null;
         }
 
-        return marker.MapIconAvailable != 0 ? marker.MapIconAvailable : null;
+        return marker.MapIconAvailable + MarkerInRange;
     }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
