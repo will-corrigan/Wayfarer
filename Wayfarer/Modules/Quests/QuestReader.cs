@@ -78,6 +78,26 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return quests != null && quests->IsQuestAccepted(questId);
     }
 
+    /// <summary>What is left of a step's places once the bystanders are out of them, or nothing
+    /// when there were none to take out.
+    ///
+    /// <para>A place either names something standing at it or is bare ground to search. When the
+    /// bare ground outnumbers what is named, the ground is what the step is about and whatever is
+    /// named is only standing in it: "speak with the people of Old Sharlayan" draws three parts of
+    /// the city and one of the people, and the one is not the errand. Walking to the named one
+    /// sends the player to a corner of a job they were asked to do all over.</para>
+    ///
+    /// <para>Outnumbering is what makes it a bystander. One bare place beside one named place is a
+    /// step with somewhere to go and someone to see, and the someone is the better answer.</para>
+    /// </summary>
+    public static List<Place> Standing(IReadOnlyList<Place> bare, IReadOnlyList<Place> named)
+    {
+        ArgumentNullException.ThrowIfNull(bare);
+        ArgumentNullException.ThrowIfNull(named);
+
+        return named.Count > 0 && bare.Count > named.Count ? [.. bare] : [];
+    }
+
     /// <summary>The places a quest hangs on most of its own steps, by the row that names them.
     /// A quest pins more than any one step asks for — the hall it happens in, the door back out,
     /// the one who sent you — and the sheet hangs those on step after step. Something the quest
@@ -306,7 +326,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             .Where(pair => !furniture.Contains(pair.RowId) || NamedIn(pair.Level, words))
             .ToList();
 
-        return [.. (wanted.Count > 0 ? wanted : places).Select(pair => At(pair.Level))];
+        var left = wanted.Count > 0 ? wanted : places;
+        var standing = Standing(
+            [.. left.Where(pair => pair.Level.Object.RowId == 0).Select(pair => At(pair.Level))],
+            [.. left.Where(pair => pair.Level.Object.RowId != 0).Select(pair => At(pair.Level))]);
+
+        return standing.Count > 0 ? standing : [.. left.Select(pair => At(pair.Level))];
     }
 
     /// <summary>Whether a step's own words name what stands at a place, by any word of its name
