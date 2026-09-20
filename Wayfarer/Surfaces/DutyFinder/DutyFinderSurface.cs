@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Enums;
@@ -114,6 +115,23 @@ internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager
             OnUpdate = Redrawn,
         };
         window.Enable();
+        Restart();
+    }
+
+    /// <summary>Has the window build its list again, when it was already open before we came to
+    /// watch it.
+    ///
+    /// <para>A row is only ours to draw on as the game draws it, and a window already open has
+    /// drawn its rows already: nothing would be marked until the player scrolled one out of sight
+    /// and back. That is every reload while the window is open, which is every time this is worked
+    /// on.</para></summary>
+    private unsafe void Restart()
+    {
+        var agent = AgentContentsFinder.Instance();
+        if (agent != null && agent->IsAgentActive())
+        {
+            agent->Refresh();
+        }
     }
 
     /// <summary>Gives up marking on behalf of a module. When it was the last, the marks come off
