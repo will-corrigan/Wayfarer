@@ -20,6 +20,12 @@
     <ProjectReference Include="../Wayfarer/Wayfarer.csproj" />
   </ItemGroup>
 
+  <!-- Real quest shapes pulled from the game sheets by tools/Wayfarer.QuestCorpus, so the tests
+       run against what the game really says without needing the game files. -->
+  <ItemGroup>
+    <None Include="data/quest-corpus.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The plugin models the game's own ids with the mapping's own types, so the test host has to
        be able to load it. The SDK references this without copying it. -->
   <PropertyGroup>

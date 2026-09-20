@@ -30,6 +30,15 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// it names its own objects, and one of them spawning inside the circle is the thing.</summary>
     private const string ObjectParameter = "EOBJECT";
 
+    /// <summary>The script parameter a quest names one of its people in, one per person. A step
+    /// that sends the player into a circle to find someone names nobody in the circle itself, and
+    /// the game does not stamp its own event onto people the way it does onto what it spawns, so
+    /// the quest's own list is the only thing that says who is being looked for. Verified in game
+    /// on "The Road Home": its step to find three wounded soldiers named none of them anywhere
+    /// but here, while all three stood in the circle, targetable, stamped with no event at all.
+    /// </summary>
+    private const string PersonParameter = "ACTOR";
+
     /// <summary>The script parameter a quest names a creature in, one per creature it is about.
     /// Each is a place row of its own, and the row names the kind of thing standing there, which is
     /// how a step that sends the player into a circle to fight says what is in it. The world gives
@@ -46,18 +55,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private const int TextSheetFolderDigits = 3;
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
-
-    /// <summary>How many of a quest's steps a thing has to stand on before being on most of them
-    /// means anything. A quest with one step that happens to name a door names it on all of its
-    /// steps, which is not the same as carrying it through.</summary>
-    private const int LeastStepsToBeFurniture = 2;
-
-    /// <summary>How short a word of a thing's name has to be before finding it in a step's words
-    /// says nothing: "of", "the", "to".</summary>
-    private const int ShortestTellingWord = 3;
-
-    /// <summary>What separates the words of a thing's name.</summary>
-    private static readonly char[] NameSeparators = [' ', '\''];
 
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
@@ -76,55 +73,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     {
         var quests = QuestManager.Instance();
         return quests != null && quests->IsQuestAccepted(questId);
-    }
-
-    /// <summary>What is left of a step's places once the bystanders are out of them, or nothing
-    /// when there were none to take out.
-    ///
-    /// <para>A place either names something standing at it or is bare ground to search. When the
-    /// bare ground outnumbers what is named, the ground is what the step is about and whatever is
-    /// named is only standing in it: "speak with the people of Old Sharlayan" draws three parts of
-    /// the city and one of the people, and the one is not the errand. Walking to the named one
-    /// sends the player to a corner of a job they were asked to do all over.</para>
-    ///
-    /// <para>Outnumbering is what makes it a bystander. One bare place beside one named place is a
-    /// step with somewhere to go and someone to see, and the someone is the better answer.</para>
-    /// </summary>
-    public static List<Place> Standing(IReadOnlyList<Place> bare, IReadOnlyList<Place> named)
-    {
-        ArgumentNullException.ThrowIfNull(bare);
-        ArgumentNullException.ThrowIfNull(named);
-
-        return named.Count > 0 && bare.Count > named.Count ? [.. bare] : [];
-    }
-
-    /// <summary>The places a quest hangs on most of its own steps, by the row that names them.
-    /// A quest pins more than any one step asks for — the hall it happens in, the door back out,
-    /// the one who sent you — and the sheet hangs those on step after step. Something the quest
-    /// carries nearly all the way through is not what any single step is about, and it is often
-    /// the nearer of the two, which is enough to win a route to it and send the player away from
-    /// what they were asked to do.
-    ///
-    /// <para>More than half the quest's own located steps is the line. A place named twice out of
-    /// seven is an errand that comes round again; a place named on five steps of six is the
-    /// furniture of the whole quest.</para></summary>
-    public static HashSet<uint> Furniture(IEnumerable<IReadOnlyList<uint>> stepRows, ISet<uint> objects)
-    {
-        ArgumentNullException.ThrowIfNull(stepRows);
-        ArgumentNullException.ThrowIfNull(objects);
-
-        var located = stepRows.Where(rows => rows.Count > 0).ToList();
-        var stepsPerRow = new Dictionary<uint, int>();
-        foreach (var rows in located)
-        {
-            foreach (var row in rows.Distinct().Where(objects.Contains))
-            {
-                stepsPerRow[row] = stepsPerRow.GetValueOrDefault(row) + 1;
-            }
-        }
-
-        var most = located.Count / 2d;
-        return [.. stepsPerRow.Where(pair => pair.Value >= LeastStepsToBeFurniture && pair.Value > most).Select(pair => pair.Key)];
     }
 
     /// <summary>The game's live markers for this quest, this frame.</summary>
@@ -288,82 +236,27 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private static Place At(Level level) =>
         new(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius);
 
-    /// <summary>Whether a place is a thing rather than a person. Only a thing is ever furniture:
-    /// a quest sends the player back to the same person on purpose, over and over, and taking
-    /// those away would send them to the wrong one. The sheet says which by what its row points
-    /// at, so this asks the row rather than reading a number off it.</summary>
-    private static bool IsObject(Level level) => level.Object.Is<EObj>();
-
-    /// <summary>Which of a quest's places are things rather than people.</summary>
-    private static HashSet<uint> Objects(List<(int Index, Quest.TodoParamsStruct Param)> steps) =>
-        [.. steps
-            .SelectMany(step => step.Param.ToDoLocation)
-            .Where(reference => reference.RowId != 0)
-            .Select(reference => (reference.RowId, Level: reference.ValueNullable))
-            .Where(pair => pair.Level is not null && IsObject(pair.Level.Value))
-            .Select(pair => pair.RowId)];
-
-    /// <summary>The Level rows one step names, in order, skipping the empty slots.</summary>
-    private static IEnumerable<uint> Rows(Quest.TodoParamsStruct param) =>
-        param.ToDoLocation.Where(reference => reference.RowId != 0).Select(reference => reference.RowId);
-
-    /// <summary>Where a step happens, with the quest's own furniture left out. All of them when
-    /// taking the furniture out would leave nowhere at all, so a step that names nothing else
-    /// still leads somewhere.</summary>
-    private List<Place> Positions(Quest.TodoParamsStruct param, HashSet<uint> furniture, string words)
+    /// <summary>One line of the sheet read into the plain shape the choosing is done on, so that
+    /// choosing needs nothing of the game but what is written here.</summary>
+    private StepShape Shape(int index, Quest.TodoParamsStruct param, string words)
     {
-        var places = param.ToDoLocation
-            .Where(reference => reference.RowId != 0)
-            .Select(reference => (reference.RowId, Level: reference.ValueNullable))
-            .Where(pair => pair.Level is not null)
-            .Select(pair => (pair.RowId, Level: pair.Level!.Value))
-            .ToList();
-
-        // A step that names the thing wants the thing, whatever the rest of the quest does with
-        // it: "pass through the portal" is about the portal even on a quest that pins that portal
-        // from beginning to end.
-        var wanted = places
-            .Where(pair => !furniture.Contains(pair.RowId) || NamedIn(pair.Level, words))
-            .ToList();
-
-        var left = wanted.Count > 0 ? wanted : places;
-        var standing = Standing(
-            [.. left.Where(pair => pair.Level.Object.RowId == 0).Select(pair => At(pair.Level))],
-            [.. left.Where(pair => pair.Level.Object.RowId != 0).Select(pair => At(pair.Level))]);
-
-        return standing.Count > 0 ? standing : [.. left.Select(pair => At(pair.Level))];
-    }
-
-    /// <summary>Whether a step's own words name what stands at a place.
-    ///
-    /// <para>Both halves come from the game in the player's own language — the thing's name from
-    /// its name sheet, the step's words from the quest's own text sheet — so the two are always
-    /// written the same way and no translation of ours comes into it. The whole name is looked for
-    /// first, which is the only thing that can be done in a language that does not put spaces
-    /// between words. Then each word of it in turn, because a sentence rarely spells a thing out
-    /// in full: a step says "pass through the portal" where the thing is called "portal of
-    /// wisdom". Words too short to mean anything on their own are passed over.</para></summary>
-    private bool NamedIn(Level level, string words)
-    {
-        if (words.Length == 0 || dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(level.Object.RowId) is not { } named)
+        var places = new List<StepPlace>();
+        foreach (var reference in param.ToDoLocation)
         {
-            return false;
+            if (reference.RowId == 0 || reference.ValueNullable is not { } level)
+            {
+                continue;
+            }
+
+            var thing = level.Object.Is<EObj>();
+            var name = thing
+                ? dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(level.Object.RowId)?.Singular.ExtractText() ?? string.Empty
+                : string.Empty;
+
+            places.Add(new StepPlace(level.RowId, level.Object.RowId, thing, name, At(level)));
         }
 
-        var name = named.Singular.ExtractText();
-        if (name.Length == 0)
-        {
-            return false;
-        }
-
-        if (words.Contains(name, StringComparison.CurrentCultureIgnoreCase))
-        {
-            return true;
-        }
-
-        return name
-            .Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(word => word.Length > ShortestTellingWord && words.Contains(word, StringComparison.CurrentCultureIgnoreCase));
+        return new StepShape(index, param.ToDoCompleteSeq, words, places);
     }
 
     /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
@@ -463,13 +356,26 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             return [];
         }
 
+        // A quest names one object at a time and names its people all together, so the two are
+        // not worth the same. An object it names is the step's own; a person it names is one of
+        // everyone the errand involves, and only standing in the circle makes them worth guiding
+        // to. Kept apart so a passing face can never take the answer from a named thing.
         var marks = new HashSet<Mark>();
         foreach (var parameter in quest.QuestParams)
         {
-            if (parameter.ScriptInstruction.ExtractText().StartsWith(ObjectParameter, StringComparison.Ordinal)
-                && parameter.ScriptArg != 0)
+            var instruction = parameter.ScriptInstruction.ExtractText();
+            if (parameter.ScriptArg == 0)
+            {
+                continue;
+            }
+
+            if (instruction.StartsWith(ObjectParameter, StringComparison.Ordinal))
             {
                 marks.Add(new Mark(parameter.ScriptArg, MarkKind.Thing));
+            }
+            else if (instruction.StartsWith(PersonParameter, StringComparison.Ordinal))
+            {
+                marks.Add(new Mark(parameter.ScriptArg, MarkKind.Person));
             }
         }
 
@@ -617,23 +523,22 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         var internalName = quest.Id.ExtractText();
         var rows = OpenTextSheet(internalName) is { } raw ? ParseTodoRows(raw, internalName) : [];
 
-        var steps = new List<(int Index, Quest.TodoParamsStruct Param)>();
+        var shapes = new List<(byte Qty, StepShape Shape)>();
         for (var i = 0; i < quest.TodoParams.Count; i++)
         {
             var param = quest.TodoParams[i];
             if (param.ToDoCompleteSeq != UnusedStep)
             {
-                steps.Add((i, param));
+                shapes.Add((param.ToDoQty, Shape(i, param, rows.GetValueOrDefault(i).ExtractText())));
             }
         }
 
-        var objects = Objects(steps);
-        var furniture = Furniture(steps.Select(step => (IReadOnlyList<uint>)[.. Rows(step.Param)]), objects);
+        var chosen = StepPlaces.Choose([.. shapes.Select(entry => entry.Shape)]);
         var todos = new List<QuestTodoTemplate>();
-        foreach (var (index, param) in steps)
+        for (var i = 0; i < shapes.Count; i++)
         {
-            var words = rows.GetValueOrDefault(index);
-            todos.Add(new QuestTodoTemplate(index, param.ToDoCompleteSeq, words, param.ToDoQty, Positions(param, furniture, words.ExtractText())));
+            var (qty, shape) = shapes[i];
+            todos.Add(new QuestTodoTemplate(shape.Index, shape.Sequence, rows.GetValueOrDefault(shape.Index), qty, chosen[i]));
         }
 
         return todos;

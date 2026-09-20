@@ -18,6 +18,10 @@ namespace Wayfarer.App.Diagnostics;
 /// them are all already in hand at the moment the needle is drawn. This prints them.</para></summary>
 internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable objects, IClientState client, IChatGui chat, IPluginLog log, IObjectFinder finder)
 {
+    /// <summary>How many of the things standing in a place are worth listing before the point
+    /// is made.</summary>
+    private const int NearbyShown = 40;
+
     /// <summary>Writes the report, one line per fact. Every line goes to the plugin log, where it
     /// can be read back after the fact and copied out of; the chat only says where to look, since
     /// a report long enough to be useful is too long to read as it scrolls past.</summary>
@@ -84,6 +88,42 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
         _ => "?",
     };
 
+    /// <summary>Everything standing in the place being walked to, with what the finder asks of
+    /// each: the id the world gives it, the event the game says spawned it, and whether the player
+    /// could act on it now. When the finder says it can see nothing, this says what was there.
+    /// </summary>
+    private void Nearby(Place area)
+    {
+        if (area.Radius <= 0f)
+        {
+            return;
+        }
+
+        var shown = 0;
+        foreach (var candidate in objects)
+        {
+            var position = candidate.Position;
+            if (Flat(position, area.X, area.Z) > area.Radius)
+            {
+                continue;
+            }
+
+            var raw = candidate.Address == 0 ? null : (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)candidate.Address;
+            var stamp = raw == null ? 0u : (uint)raw->EventId;
+            var plate = raw == null ? 0u : raw->NamePlateIconId;
+            var state = raw == null ? (byte)0 : raw->EventState;
+
+            Say($"  in place: base {candidate.BaseId} kind {candidate.ObjectKind} event {stamp} plate {plate} state {state} targetable {candidate.IsTargetable} '{candidate.Name}' {Num(Flat(position, area.X, area.Z))}y from the middle");
+            if (++shown >= NearbyShown)
+            {
+                Say("  in place: ... and more");
+                break;
+            }
+        }
+
+        Say($"in place: {shown} of what the client has loaded");
+    }
+
     /// <summary>One line of the report.</summary>
     private void Say(string line) => log.Information("[why] {Line}", line);
 
@@ -143,6 +183,8 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
             Say(found is null
                 ? "finder: nothing of the step's is standing in that place"
                 : $"finder: aiming at ({Num(found.X)}, {Num(found.Y)}, {Num(found.Z)}), {Num(Flat(at, found.X, found.Z))}y off");
+
+            Nearby(walk.To);
         }
     }
 }

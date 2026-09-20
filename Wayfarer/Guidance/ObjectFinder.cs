@@ -32,117 +32,71 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
     {
         ArgumentNullException.ThrowIfNull(area);
 
-        // One sort of thing is what a place with room in it is about, and the other only turns up
-        // because of it: the thing to act on is there first, and once acted on whatever it called
-        // is there too. So the things are looked for first and the creatures only when there are
-        // none, and only when neither is standing there does where they are known to stand answer
-        // instead. That is judged on what is there now, so nothing has to know what sort of errand
-        // this is.
-        return Nearest(area, marks, owner, MarkKind.Thing)
-            ?? Nearest(area, marks, owner, MarkKind.Creature)
-            ?? Awaited(area, expected);
-    }
-
-    /// <summary>How far apart two points are across the ground, ignoring the drop between them.</summary>
-    private static float OnTheGround(float fromX, float fromZ, float toX, float toZ)
-    {
-        var (dx, dz) = (fromX - toX, fromZ - toZ);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
-    }
-
-    /// <summary>Whether this is one of the things being looked for: stamped by the game as the
-    /// event's own, or named by the module. The stamp is asked first because it is the game's own
-    /// answer and covers objects nobody listed.</summary>
-    private static bool Wanted(IGameObject candidate, List<Mark>? marks, EventId? owner, MarkKind sort)
-    {
-        // The game stamps what it spawned for an event, which is how a thing nobody listed is still
-        // recognised. It says nothing about which sort it is, so it answers for things to act on:
-        // that is what a step sends the player to before anything has been summoned.
-        if (sort is MarkKind.Thing && owner is { } stamped && candidate.Address != 0
-            && ((GameObjectStruct*)candidate.Address)->EventId == stamped)
-        {
-            return true;
-        }
-
-        return marks is not null && marks.Any(mark => mark.Id == candidate.BaseId);
-    }
-
-    /// <summary>Whether the caller said anything at all to look for. Without that there is nothing
-    /// to recognise and the circle is just a circle.</summary>
-    private static bool AnythingToLookFor(List<Mark>? marks, EventId? owner, MarkKind sort) =>
-        (sort is MarkKind.Thing && owner is not null) || marks?.Count > 0;
-
-    /// <summary>Where the things are known to stand, nearest the player, for when none of them is
-    /// standing there yet.</summary>
-    private Place? Awaited(Place area, IReadOnlyList<Place>? expected)
-    {
-        if (expected is null || objects.LocalPlayer is not { } player)
+        if (objects.LocalPlayer is not { } player)
         {
             return null;
         }
 
-        var standing = player.Position;
-        return expected
-            .Where(place => place.Territory == area.Territory && OnTheGround(area.X, area.Z, place.X, place.Z) <= area.Radius)
-            .OrderBy(place => OnTheGround(standing.X, standing.Z, place.X, place.Z))
-            .FirstOrDefault();
-    }
+        var from = new Place(area.Territory, area.Map, player.Position.X, player.Position.Y, player.Position.Z);
+        var standing = Standing(area);
+        var stamp = owner is { } known ? (uint)known : 0u;
 
-    /// <summary>The nearest untried thing of one sort standing inside an area.</summary>
-    private Place? Nearest(Place area, IReadOnlyList<Mark>? marks, EventId? owner, MarkKind sort)
-    {
-        List<Mark>? wanted = marks is null ? null : [.. marks.Where(mark => mark.Kind == sort)];
-        if (area.Radius <= 0f || !AnythingToLookFor(wanted, owner, sort) || objects.LocalPlayer is not { } player)
+        var (nearest, any) = MarkSearch.Choose(area, standing, marks, stamp, from, interactions.Tried);
+        if (nearest is not null)
         {
-            return null;
-        }
-
-        var standing = player.Position;
-        Place? nearest = null;
-        var any = false;
-        var best = float.MaxValue;
-        foreach (var candidate in objects)
-        {
-            if (!candidate.IsTargetable || !Wanted(candidate, wanted, owner, sort))
-            {
-                continue;
-            }
-
-            var position = candidate.Position;
-            if (OnTheGround(area.X, area.Z, position.X, position.Z) > area.Radius)
-            {
-                continue;
-            }
-
-            any = true;
-            if (interactions.Tried(candidate.BaseId))
-            {
-                continue;
-            }
-
-            var apart = OnTheGround(standing.X, standing.Z, position.X, position.Z);
-            if (apart < best)
-            {
-                best = apart;
-                nearest = new Place(area.Territory, area.Map, position.X, position.Y, position.Z);
-            }
+            return nearest;
         }
 
         // Everything standing here has been tried and none of them answered. Rather than say there
         // is nothing, the player is sent round them again from the beginning.
-        return nearest ?? Again(area, marks, owner, sort, any);
+        if (any)
+        {
+            interactions.Forget();
+            return MarkSearch.Choose(area, standing, marks, stamp, from).Nearest;
+        }
+
+        return Awaited(area, expected, from);
     }
 
-    /// <summary>The nearest of them all when every one has been tried, so a step whose answer was
-    /// missed still leads somewhere.</summary>
-    private Place? Again(Place area, IReadOnlyList<Mark>? marks, EventId? owner, MarkKind sort, bool any)
+    /// <summary>Where the things are known to stand, nearest the player, for when none of them is
+    /// standing there yet.</summary>
+    private static Place? Awaited(Place area, IReadOnlyList<Place>? expected, Place from)
     {
-        if (!any)
+        if (expected is null)
         {
             return null;
         }
 
-        interactions.Forget();
-        return Nearest(area, marks, owner, sort);
+        return expected
+            .Where(place => place.Territory == area.Territory && Apart(area, place) <= area.Radius)
+            .OrderBy(place => Apart(from, place))
+            .FirstOrDefault();
+    }
+
+    private static float Apart(Place from, Place to)
+    {
+        var (dx, dz) = (from.X - to.X, from.Z - to.Z);
+        return MathF.Sqrt((dx * dx) + (dz * dz));
+    }
+
+    /// <summary>Everything the world holds that could be what a step is about, read once so the
+    /// choosing is made on one moment's worth of it rather than on a list that moves underneath.
+    /// </summary>
+    private List<Candidate> Standing(Place area)
+    {
+        var standing = new List<Candidate>();
+        foreach (var candidate in objects)
+        {
+            var position = candidate.Position;
+            var raw = candidate.Address == 0 ? null : (GameObjectStruct*)candidate.Address;
+            standing.Add(new Candidate(
+                candidate.BaseId,
+                raw == null ? 0u : (uint)raw->EventId,
+                candidate.IsTargetable,
+                raw == null ? 0u : raw->NamePlateIconId,
+                new Place(area.Territory, area.Map, position.X, position.Y, position.Z)));
+        }
+
+        return standing;
     }
 }
