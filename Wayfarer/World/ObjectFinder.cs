@@ -28,20 +28,20 @@ namespace Wayfarer.World;
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IClientState clientState) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
+    public Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner)
     {
-        ArgumentNullException.ThrowIfNull(area);
+        ArgumentNullException.ThrowIfNull(areas);
 
-        if (objects.LocalPlayer is not { } player || clientState.TerritoryType != area.Territory)
+        // Ground in a zone the player is not standing in holds nothing they can see, and two zones
+        // number their ground the same, so it is left out rather than searched.
+        var here = areas.Where(area => area.Territory == clientState.TerritoryType).ToList();
+        if (here.Count == 0 || objects.LocalPlayer is not { } player)
         {
             return null;
         }
 
         var from = new Place(clientState.TerritoryType, clientState.MapId, player.Position.X, player.Position.Y, player.Position.Z);
-        var standing = Standing();
-        var stamp = owner is { } known ? (uint)known : 0u;
-
-        return MarkSearch.Choose(area, standing, marks, stamp, from);
+        return MarkSearch.Choose(here, Standing(), marks, owner is { } known ? (uint)known : 0u, from);
     }
 
     /// <summary>Everything the world holds that could be what a module is looking for, read once so

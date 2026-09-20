@@ -13,8 +13,9 @@ internal interface IObjectFinder
 {
     /// <summary>The thing to go to inside an area, or null when none of what the module named is
     /// standing there.</summary>
-    /// <param name="area">The ground to search. A place with no room in it is not searched.</param>
+    /// <param name="areas">The ground to search, all of it at once so the nearest answer wins
+    /// rather than the first. A place with no room in it is not searched.</param>
     /// <param name="marks">What is being looked for, by the id the world gives it and its sort.</param>
     /// <param name="owner">The game event whose own spawns count, or null.</param>
-    Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner);
+    Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner);
 }

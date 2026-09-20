@@ -83,16 +83,10 @@ internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
     private IReadOnlyList<Mark>? Left(IReadOnlyList<Mark>? marks) =>
         marks is null ? null : [.. marks.Where(mark => !dealtWith.Tried(mark.Id))];
 
-    private Found? Look(IReadOnlyList<Place> places, IReadOnlyList<Mark>? marks, EventId? owner)
-    {
-        foreach (var place in places)
-        {
-            if (finder.Inside(place, marks, owner) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
+    /// <summary>The one thing of the quest's standing in any of the step's ground, nearest first.
+    /// All of it is asked about at once: a step naming three people gives their places in the
+    /// order the sheet wrote them, and walking to the first of those rather than the nearest sends
+    /// the player past two of them to reach the third.</summary>
+    private Found? Look(IReadOnlyList<Place> places, IReadOnlyList<Mark>? marks, EventId? owner) =>
+        finder.Inside(places, marks, owner);
 }

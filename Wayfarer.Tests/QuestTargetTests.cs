@@ -97,7 +97,7 @@ public class QuestTargetTests
 
         public IReadOnlyList<Mark> Asked { get; private set; } = [];
 
-        public Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
+        public Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner)
         {
             Asked = marks ?? [];
             return Answer;

@@ -18,31 +18,37 @@ public static class MarkSearch
     /// <summary>The sorts of mark, in the order a step means them.</summary>
     private static readonly MarkKind[] Sorts = [MarkKind.Thing, MarkKind.Person, MarkKind.Creature];
 
-    /// <summary>Which thing to walk to, or null when none of what was named is standing there.</summary>
-    /// <param name="area">The circle to search. A place with no room in it is not searched.</param>
+    /// <summary>Which thing to walk to, or null when none of what was named is standing there.
+    ///
+    /// <para>All the ground a step named is searched at once and the nearest answer taken, not the
+    /// first. A step that sends the player to three people gives their three places in the order
+    /// the sheet wrote them, which has nothing to do with where the player is standing.</para>
+    /// </summary>
+    /// <param name="areas">The ground to search. A place with no room in it is not searched.</param>
     /// <param name="standing">Everything the world holds nearby.</param>
     /// <param name="marks">What the step names, by id and sort.</param>
     /// <param name="owner">The event whose own spawns count as things to act on, or zero.</param>
     /// <param name="from">Where the player stands, which decides which of several is nearest.</param>
     public static Found? Choose(
-        Place area,
+        IReadOnlyList<Place> areas,
         IReadOnlyList<Candidate> standing,
         IReadOnlyList<Mark>? marks,
         uint owner,
         Place from)
     {
-        ArgumentNullException.ThrowIfNull(area);
+        ArgumentNullException.ThrowIfNull(areas);
         ArgumentNullException.ThrowIfNull(standing);
         ArgumentNullException.ThrowIfNull(from);
 
-        if (area.Radius <= 0f)
+        var ground = areas.Where(area => area.Radius > 0f).ToList();
+        if (ground.Count == 0)
         {
             return null;
         }
 
         foreach (var sort in Sorts)
         {
-            if (Sort(area, standing, marks, owner, from, sort) is { } nearest)
+            if (Sort(ground, standing, marks, owner, from, sort) is { } nearest)
             {
                 return nearest;
             }
@@ -75,7 +81,7 @@ public static class MarkSearch
 
     /// <summary>The nearest thing of one sort standing inside the area.</summary>
     private static Found? Sort(
-        Place area,
+        IReadOnlyList<Place> areas,
         IReadOnlyList<Candidate> standing,
         IReadOnlyList<Mark>? marks,
         uint owner,
@@ -93,9 +99,9 @@ public static class MarkSearch
         // standing in: without this, something underfoot answers for something a world away.
         var here = standing
             .Where(candidate => candidate.Targetable
-                && candidate.At.Territory == area.Territory
                 && Wanted(candidate, named, owner, sort)
-                && area.OnTheGround(candidate.At) <= area.Radius)
+                && areas.Any(area => area.Territory == candidate.At.Territory
+                    && area.OnTheGround(candidate.At) <= area.Radius))
             .ToList();
 
         if (here.Count == 0)

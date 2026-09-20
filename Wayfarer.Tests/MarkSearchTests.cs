@@ -48,7 +48,7 @@ public class MarkSearchTests
         // The one already helped stands nearer. Going by distance alone sends the player back to
         // someone who wants nothing, over and over, which is what happens when the plugin is
         // loaded again part way through and forgets what it had already done.
-        var nearest = MarkSearch.Choose(Circle, TheCircle, ItsPeople, Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], TheCircle, ItsPeople, Quest, Standing);
 
         Assert.Equal(StillAsking.At, nearest?.At);
     }
@@ -59,7 +59,7 @@ public class MarkSearchTests
         var far = Near(1023835, Asking, targetable: true, 35f);
         var near = Near(1023836, Asking, targetable: true, 5f);
 
-        var nearest = MarkSearch.Choose(Circle, [far, near], ItsPeople, Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], [far, near], ItsPeople, Quest, Standing);
 
         Assert.Equal(near.At, nearest?.At);
     }
@@ -67,7 +67,7 @@ public class MarkSearchTests
     [Fact]
     public void When_the_game_marks_none_of_them_the_nearest_answers()
     {
-        var nearest = MarkSearch.Choose(Circle, [Helped], ItsPeople, Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], [Helped], ItsPeople, Quest, Standing);
 
         Assert.Equal(Helped.At, nearest?.At);
     }
@@ -81,7 +81,7 @@ public class MarkSearchTests
         var near = Near(2008945, 0, targetable: true, 5f);
         Mark[] things = [new(2008944, MarkKind.Thing), new(2008945, MarkKind.Thing)];
 
-        Assert.Equal(near.At, MarkSearch.Choose(Circle, [far, near], things, Quest, Standing)?.At);
+        Assert.Equal(near.At, MarkSearch.Choose([Circle], [far, near], things, Quest, Standing)?.At);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class MarkSearchTests
         var person = Near(1020623, Asking, targetable: true, 5f);
         Mark[] both = [new(2008944, MarkKind.Thing), new(1020623, MarkKind.Person)];
 
-        Assert.Equal(thing.At, MarkSearch.Choose(Circle, [person, thing], both, Quest, Standing)?.At);
+        Assert.Equal(thing.At, MarkSearch.Choose([Circle], [person, thing], both, Quest, Standing)?.At);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class MarkSearchTests
     {
         var inert = Near(1023835, Asking, targetable: false, 2f);
 
-        var nearest = MarkSearch.Choose(Circle, [inert, StillAsking], ItsPeople, Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], [inert, StillAsking], ItsPeople, Quest, Standing);
 
         Assert.Equal(StillAsking.At, nearest?.At);
     }
@@ -110,7 +110,7 @@ public class MarkSearchTests
     public void Naming_nobody_is_how_the_circle_stayed_the_only_answer()
     {
         // What the guidance did before a quest's people were read at all.
-        var nearest = MarkSearch.Choose(Circle, TheCircle, [], Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], TheCircle, [], Quest, Standing);
 
         Assert.Null(nearest);
     }
@@ -124,8 +124,8 @@ public class MarkSearchTests
         var person = Near(1020623, Asking, targetable: true, 5f);
         Mark[] both = [new(2008944, MarkKind.Thing), new(1020623, MarkKind.Person)];
 
-        Assert.Equal(thing.At, MarkSearch.Choose(Circle, [person, thing], both, Quest, Standing)?.At);
-        Assert.Equal(person.At, MarkSearch.Choose(Circle, [person], both, Quest, Standing)?.At);
+        Assert.Equal(thing.At, MarkSearch.Choose([Circle], [person, thing], both, Quest, Standing)?.At);
+        Assert.Equal(person.At, MarkSearch.Choose([Circle], [person], both, Quest, Standing)?.At);
     }
 
     [Fact]
@@ -135,8 +135,8 @@ public class MarkSearchTests
         var person = Near(1020623, Asking, targetable: true, 40f);
         Mark[] both = [new(1020623, MarkKind.Person), new(5000, MarkKind.Creature)];
 
-        Assert.Equal(person.At, MarkSearch.Choose(Circle, [beast, person], both, Quest, Standing)?.At);
-        Assert.Equal(beast.At, MarkSearch.Choose(Circle, [beast], both, Quest, Standing)?.At);
+        Assert.Equal(person.At, MarkSearch.Choose([Circle], [beast, person], both, Quest, Standing)?.At);
+        Assert.Equal(beast.At, MarkSearch.Choose([Circle], [beast], both, Quest, Standing)?.At);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class MarkSearchTests
     {
         var spawned = new Candidate(1, 9999, Quest, true, 0, Near(9999, 0, true, 10f).At);
 
-        Assert.Equal(spawned.At, MarkSearch.Choose(Circle, [spawned], [], Quest, Standing)?.At);
+        Assert.Equal(spawned.At, MarkSearch.Choose([Circle], [spawned], [], Quest, Standing)?.At);
     }
 
     [Fact]
@@ -152,7 +152,7 @@ public class MarkSearchTests
     {
         var far = Out(1020623, Asking, targetable: true, 200f);
 
-        var nearest = MarkSearch.Choose(Circle, [far], ItsPeople, Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], [far], ItsPeople, Quest, Standing);
 
         Assert.Null(nearest);
     }
@@ -162,7 +162,44 @@ public class MarkSearchTests
     {
         Place point = new(620, 368, -183.0f, 281.2f, 288.8f);
 
-        Assert.Null(MarkSearch.Choose(point, TheCircle, ItsPeople, Quest, Standing));
+        Assert.Null(MarkSearch.Choose([point], TheCircle, ItsPeople, Quest, Standing));
+    }
+
+    [Fact]
+    public void The_nearest_of_several_places_wins_whatever_order_the_sheet_wrote_them_in()
+    {
+        // "Out of Sight" names three people to gather word from, each on their own spot, in the
+        // order the sheet happened to write them. Taking the first of those walks the player past
+        // two of them to reach the third.
+        Place first = new(620, 368, -293.4f, 258.9f, 788.6f, 1f);
+        Place second = new(620, 368, -237.9f, 257.7f, 741.6f, 1f);
+        Place third = new(620, 368, -218.6f, 257.5f, 737.2f, 1f);
+        Place standing = new(620, 368, -220f, 257f, 738f);
+
+        var far = new Candidate(1, 1023259, 0, true, Asking, first with { Radius = 0f });
+        var middling = new Candidate(2, 1020871, 0, true, Asking, second with { Radius = 0f });
+        var near = new Candidate(3, 1020870, 0, true, Asking, third with { Radius = 0f });
+        Mark[] people = [new(1023259, MarkKind.Person), new(1020871, MarkKind.Person), new(1020870, MarkKind.Person)];
+
+        var chosen = MarkSearch.Choose([first, second, third], [far, middling, near], people, Quest, standing);
+
+        Assert.Equal(near.At, chosen?.At);
+    }
+
+    [Fact]
+    public void A_thing_in_the_far_place_still_beats_a_person_in_the_near_one()
+    {
+        // The sorts are asked across all the ground at once, not one place at a time: otherwise
+        // which sort wins would depend on which place happened to be looked at first.
+        Place near = new(620, 368, -220f, 257f, 738f, 5f);
+        Place far = new(620, 368, -290f, 258f, 788f, 5f);
+        Place standing = new(620, 368, -220f, 257f, 738f);
+
+        var person = new Candidate(1, 1020870, 0, true, Asking, near with { Radius = 0f });
+        var thing = new Candidate(2, 2008944, 0, true, 0, far with { Radius = 0f });
+        Mark[] both = [new(1020870, MarkKind.Person), new(2008944, MarkKind.Thing)];
+
+        Assert.Equal(thing.At, MarkSearch.Choose([near, far], [person, thing], both, Quest, standing)?.At);
     }
 
     [Fact]
@@ -172,7 +209,7 @@ public class MarkSearchTests
         // is nowhere near. Someone underfoot must never answer for someone a world away.
         var elsewhere = StillAsking with { At = StillAsking.At with { Territory = 999 } };
 
-        Assert.Null(MarkSearch.Choose(Circle, [elsewhere], ItsPeople, Quest, Standing));
+        Assert.Null(MarkSearch.Choose([Circle], [elsewhere], ItsPeople, Quest, Standing));
     }
 
     [Fact]
@@ -181,14 +218,14 @@ public class MarkSearchTests
         var near = Near(1020623, Asking, targetable: true, 2f);
         var far = near with { Id = near.Id + 1, At = near.At with { Territory = 999 } };
 
-        Assert.Equal(near.At, MarkSearch.Choose(Circle, [far, near], ItsPeople, Quest, Standing)?.At);
+        Assert.Equal(near.At, MarkSearch.Choose([Circle], [far, near], ItsPeople, Quest, Standing)?.At);
     }
 
     [Fact]
     public void Nobody_is_taken_for_someone_the_quest_named_by_accident()
     {
         // An adventurer, their cat and a wild beast, all standing in it, none of them the step.
-        var nearest = MarkSearch.Choose(Circle, [Adventurer, TheirCat, Kongamato], ItsPeople, Quest, Standing);
+        var nearest = MarkSearch.Choose([Circle], [Adventurer, TheirCat, Kongamato], ItsPeople, Quest, Standing);
 
         Assert.Null(nearest);
     }
