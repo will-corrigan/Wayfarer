@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.5.0](https://github.com/will-corrigan/Wayfarer/compare/v1.4.0...v1.5.0) (2026-09-20)
+
+
+### New
+
+* a settings page that says less, and a needle you can read ([6bbdd28](https://github.com/will-corrigan/Wayfarer/commit/6bbdd28a37b7064c6c7e46409822a5798f50119d))
+* let the game set the block's words instead of placing them ourselves ([fb937d1](https://github.com/will-corrigan/Wayfarer/commit/fb937d103f53308048de7f8df4aed0f66674e41f))
+* native text, the journal's own page, and search areas you can work through ([ac7126e](https://github.com/will-corrigan/Wayfarer/commit/ac7126e8c6239b5fb2798ba059c44cdcfaf28e25))
+* walk a search area's candidates in order, and say how many there are ([abb0468](https://github.com/will-corrigan/Wayfarer/commit/abb04689cd5dee0c32e1ef119ca7fb0043ef0078))
+
+
+### Fixed
+
+* a duty is somewhere to go ([c16fcc5](https://github.com/will-corrigan/Wayfarer/commit/c16fcc5708a2685e692c9b080a19a18cde72ba2f))
+* know which step of a quest is the one inside the duty ([72d7975](https://github.com/will-corrigan/Wayfarer/commit/72d79757068979c1c48ce0f163812b33339ba04d))
+* read the game's own strings as strings ([8d67337](https://github.com/will-corrigan/Wayfarer/commit/8d67337cd3e703b22258d312f8f6e945523915d7))
+* take a window's name from the mapping rather than from the type's name ([e40a218](https://github.com/will-corrigan/Wayfarer/commit/e40a218625d3963a6104f766cf240025a0c0e7de))
+* the journal's own button, and its own page ([46e97b2](https://github.com/will-corrigan/Wayfarer/commit/46e97b221d5500bd1d09171ccddc9232855b7f26))
+
 ## [1.4.0](https://github.com/will-corrigan/Wayfarer/compare/v1.3.0...v1.4.0) (2026-09-20)
 
 
