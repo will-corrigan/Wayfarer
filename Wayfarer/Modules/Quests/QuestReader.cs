@@ -10,6 +10,7 @@ using Lumina.Excel.Sheets;
 using Lumina.Text.ReadOnly;
 using Wayfarer.Guidance;
 using Wayfarer.Routing;
+using Wayfarer.World;
 using GameMap = FFXIVClientStructs.FFXIV.Client.Game.UI.Map;
 
 namespace Wayfarer.Modules.Quests;

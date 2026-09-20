@@ -5,7 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using Wayfarer.Routing;
 using GameObjectStruct = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.World;
 
 /// <summary>Finds a thing in the world inside an area, when a step sends the player to a circle
 /// rather than a point. The data behind those circles says where to search and never what for, so
@@ -25,7 +25,7 @@ namespace Wayfarer.Guidance;
 /// often holds several of the same thing and only one is the one, so what the player has already
 /// tried is passed over and the next nearest is guided to instead. They are never told how many
 /// there are: the answer they want is which one to walk to now.</para></summary>
-internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions interactions) : IObjectFinder
+internal sealed unsafe class ObjectFinder(IObjectTable objects) : IObjectFinder
 {
     /// <inheritdoc/>
     public Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
@@ -41,21 +41,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
         var standing = Standing(area);
         var stamp = owner is { } known ? (uint)known : 0u;
 
-        var (nearest, any) = MarkSearch.Choose(area, standing, marks, stamp, from, interactions.Tried);
-        if (nearest is not null)
-        {
-            return nearest;
-        }
-
-        // Everything standing here has been tried and none of them answered. Rather than say there
-        // is nothing, the player is sent round them again from the beginning.
-        if (any)
-        {
-            interactions.Forget();
-            return MarkSearch.Choose(area, standing, marks, stamp, from).Nearest;
-        }
-
-        return null;
+        return MarkSearch.Choose(area, standing, marks, stamp, from);
     }
 
     /// <summary>Everything the world holds that could be what a module is looking for, read once so

@@ -19,12 +19,10 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     private readonly IClientState clientState;
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
-    private readonly IInteractions interactions;
     private readonly IPluginLog log;
 
     private bool broken;
     private ObjectiveEntry? routedTo;
-    private string? guiding;
     private Place? routedFrom;
     private Route? route;
 
@@ -33,14 +31,12 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         IClientState clientState,
         IObjectTable objects,
         RouteGraph graph,
-        IInteractions interactions,
         IPluginLog log)
     {
         this.framework = framework;
         this.clientState = clientState;
         this.objects = objects;
         this.graph = graph;
-        this.interactions = interactions;
         this.log = log;
         framework.Update += OnUpdate;
     }
@@ -128,23 +124,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         }
 
         var target = objective.Guided();
-        Rethink(target);
         return new PublishedGuidance(source, objective, target, RouteTo(target));
-    }
-
-    /// <summary>What the player has already tried belongs to the step they tried it for. When the
-    /// guidance moves on to something else, the slate is wiped: the same thing standing in the next
-    /// step's area is a thing they have not tried for that step.</summary>
-    private void Rethink(ObjectiveEntry? target)
-    {
-        // Only a step of its own wipes the slate. Guidance can be without a target for a frame —
-        // between zones, or while a route is thought about again — and that is not the player
-        // moving on to something else.
-        if (target?.Text is { } now && !string.Equals(now, guiding, StringComparison.Ordinal))
-        {
-            guiding = now;
-            interactions.Forget();
-        }
     }
 
     /// <summary>The way to the target, searched again only when the target changed or the player

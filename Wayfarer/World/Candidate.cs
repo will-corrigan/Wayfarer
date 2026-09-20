@@ -1,6 +1,6 @@
 using Wayfarer.Routing;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.World;
 
 /// <summary>One thing standing in the world, as much of it as deciding needs: which one it is,
 /// what it is, what spawned it, whether the player could act on it now, and where it is.</summary>

@@ -1,6 +1,6 @@
 using Wayfarer.Routing;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.World;
 
 /// <summary>Something in the world a module picked out to guide to.</summary>
 /// <param name="Id">The one the world gives it, so it can be found again as it moves.</param>

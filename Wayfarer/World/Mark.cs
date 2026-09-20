@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.World;
 
 /// <summary>Something a step is about, by the id the world gives it, and which sort of thing it is.
 ///

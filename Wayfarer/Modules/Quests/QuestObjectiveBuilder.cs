@@ -1,6 +1,7 @@
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Guidance;
 using Wayfarer.Routing;
+using Wayfarer.World;
 
 namespace Wayfarer.Modules.Quests;
 

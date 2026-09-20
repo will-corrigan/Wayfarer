@@ -1,4 +1,4 @@
-namespace Wayfarer.Guidance;
+namespace Wayfarer.World;
 
 /// <summary>The sorts of thing a step can be about, in the order a step means them.
 ///

@@ -1,7 +1,7 @@
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Routing;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.World;
 
 /// <summary>Finds the thing a module is looking for among everything standing in the world.
 ///

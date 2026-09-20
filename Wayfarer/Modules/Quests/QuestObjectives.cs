@@ -1,4 +1,5 @@
 using Wayfarer.Guidance;
+using Wayfarer.World;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -71,6 +72,13 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         if (signature == last)
         {
             return cached;
+        }
+
+        // What the player has already dealt with belongs to the step they dealt with it for. The
+        // same soil standing in the next step's ground is soil they have not dug for that step.
+        if (last is null || last.QuestId != questId || last.Sequence != sequence)
+        {
+            target.Begin();
         }
 
         last = signature;

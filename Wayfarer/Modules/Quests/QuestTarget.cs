@@ -1,6 +1,7 @@
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Guidance;
 using Wayfarer.Routing;
+using Wayfarer.World;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -17,7 +18,7 @@ namespace Wayfarer.Modules.Quests;
 /// disappear, and what the game marks as still wanting the player changes as the player deals with
 /// them. Nothing downstream re-decides any of this — it is given one thing and follows it.</para>
 /// </summary>
-internal sealed class QuestTarget(IObjectFinder finder)
+internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
 {
     private IReadOnlyList<Place> last = [];
     private IReadOnlyList<Mark>? lastMarks;
@@ -34,8 +35,8 @@ internal sealed class QuestTarget(IObjectFinder finder)
     {
         ArgumentNullException.ThrowIfNull(places);
 
-        (last, lastMarks, lastOwner, lastLairs) = (places, marks, owner, lairs);
-        if (Look(places, marks, owner) is { } found)
+        (last, lastMarks, lastOwner, lastLairs) = (places, Left(marks), owner, lairs);
+        if (Look(places, lastMarks, owner) is { } found)
         {
             return new Destination.AtObject(found.Id, found.At);
         }
@@ -47,6 +48,10 @@ internal sealed class QuestTarget(IObjectFinder finder)
         var awaited = Awaited(places, lairs);
         return new Destination.Reachable(awaited.Count > 0 ? awaited : places);
     }
+
+    /// <summary>Forgets what has been dealt with, because the step moved on and what was tried for
+    /// the last one says nothing about this one.</summary>
+    public void Begin() => dealtWith.Forget();
 
     /// <summary>Which thing the step is about this very moment, asked again of the places last
     /// settled on. The answer moves while the words do not — someone is helped and the next one
@@ -77,6 +82,16 @@ internal sealed class QuestTarget(IObjectFinder finder)
         var (dx, dz) = (from.X - to.X, from.Z - to.Z);
         return MathF.Sqrt((dx * dx) + (dz * dz));
     }
+
+    /// <summary>What is still worth naming: everything the quest named, less what the player has
+    /// already acted on for this step.
+    ///
+    /// <para>Three patches of soil stand in a circle and only one has anything under it. They are
+    /// the same in the sheet, the same in the world, and the game marks none of them, so the only
+    /// thing that tells the dug one from the rest is having watched the player dig it. Naming two
+    /// instead of three is how the next one is walked to.</para></summary>
+    private IReadOnlyList<Mark>? Left(IReadOnlyList<Mark>? marks) =>
+        marks is null ? null : [.. marks.Where(mark => !dealtWith.Tried(mark.Id))];
 
     private Found? Look(IReadOnlyList<Place> places, IReadOnlyList<Mark>? marks, EventId? owner)
     {
