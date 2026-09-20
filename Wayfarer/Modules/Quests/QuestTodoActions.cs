@@ -19,12 +19,13 @@ internal static partial class QuestTodoActions
     public static EntryAction? From(
         string todoText,
         QuestItem? item,
-        IReadOnlyDictionary<string, EmoteCommand> emotes)
+        IReadOnlyDictionary<string, EmoteCommand> emotes,
+        IReadOnlyList<QuestItem>? questItems = null)
     {
         ArgumentNullException.ThrowIfNull(todoText);
         ArgumentNullException.ThrowIfNull(emotes);
 
-        if (item is { } used)
+        if ((item ?? Named(todoText, questItems)) is { } used)
         {
             return new EntryAction.UseItem(used.Id, used.Name, used.IconId, KeyItem: true);
         }
@@ -41,6 +42,17 @@ internal static partial class QuestTodoActions
 
         return null;
     }
+
+    /// <summary>The quest's own key item a ToDo's words name, or null when they name none.
+    ///
+    /// <para>The event handler says which item a step is for when it is asked, and for a good many
+    /// steps it says nothing. The quest still lists its items, and a step that wants one says so in
+    /// its own words: "Use burlap sacks on weakened teleoceroses". The longest name that appears
+    /// wins, so a large burlap sack is not mistaken for a burlap sack.</para></summary>
+    private static QuestItem? Named(string todoText, IReadOnlyList<QuestItem>? questItems) =>
+        questItems?
+            .Where(item => item.Name.Length > 0 && todoText.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
+            .MaxBy(item => item.Name.Length);
 
     [GeneratedRegex("enter “(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
     private static partial Regex SayPhrase();

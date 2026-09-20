@@ -47,4 +47,45 @@ public class QuestTodoActionsTests
     {
         Assert.Null(QuestTodoActions.From("Speak with Momodi.", null, Emotes));
     }
+
+    [Fact]
+    public void A_step_naming_one_of_the_quests_key_items_uses_it()
+    {
+        QuestItem[] items = [new(2002324u, "Burlap Sack", 26110u)];
+
+        var action = QuestTodoActions.From("Use burlap sacks on weakened teleoceroses.", null, Emotes, items);
+
+        var use = Assert.IsType<EntryAction.UseItem>(action);
+        Assert.Equal(2002324u, use.ItemId);
+        Assert.True(use.KeyItem);
+    }
+
+    [Fact]
+    public void What_the_handler_says_beats_what_the_words_say()
+    {
+        QuestItem[] items = [new(2002324u, "Burlap Sack", 26110u)];
+        var reported = new QuestItem(2002325u, "Large Burlap Sack", 26110u);
+
+        var action = QuestTodoActions.From("Use burlap sacks on weakened teleoceroses.", reported, Emotes, items);
+
+        Assert.Equal(2002325u, Assert.IsType<EntryAction.UseItem>(action).ItemId);
+    }
+
+    [Fact]
+    public void The_longest_name_the_words_hold_wins()
+    {
+        QuestItem[] items = [new(1u, "Burlap Sack", 1u), new(2u, "Large Burlap Sack", 2u)];
+
+        var action = QuestTodoActions.From("Use large burlap sacks on the beast.", null, Emotes, items);
+
+        Assert.Equal(2u, Assert.IsType<EntryAction.UseItem>(action).ItemId);
+    }
+
+    [Fact]
+    public void A_step_naming_no_item_of_the_quests_uses_none()
+    {
+        QuestItem[] items = [new(2002324u, "Burlap Sack", 26110u)];
+
+        Assert.Null(QuestTodoActions.From("Speak with Sarisha.", null, Emotes, items));
+    }
 }

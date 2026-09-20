@@ -34,6 +34,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
         bool headlinePressable = false,
         QuestDuty? duty = null,
+        IReadOnlyList<QuestItem>? items = null,
         IReadOnlyList<uint>? marks = null,
         EventId? owner = null,
         IReadOnlyList<Place>? lairs = null,
@@ -46,7 +47,7 @@ internal static class QuestObjectiveBuilder
 
         var step = todos.Where(todo => todo.Sequence == sequence).ToList();
         var entries = step.Count > 0
-            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, marks, owner, lairs))]
+            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, items, marks, owner, lairs))]
             : DescribedByMarkers(questName, markers, duty);
 
         return entries.Count > 0 ? new Objective(questName, entries, headlinePressable, kind) : null;
@@ -61,6 +62,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand> emotes,
         QuestDuty? duty,
+        IReadOnlyList<QuestItem>? items,
         IReadOnlyList<uint>? marks,
         EventId? owner,
         IReadOnlyList<Place>? lairs)
@@ -72,7 +74,7 @@ internal static class QuestObjectiveBuilder
 
         var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
         var words = todo.Text;
-        return new ObjectiveEntry(words, Count(todo, reported), where, QuestTodoActions.From(words, reported?.Item, emotes));
+        return new ObjectiveEntry(words, Count(todo, reported), where, QuestTodoActions.From(words, reported?.Item, emotes, items));
     }
 
     /// <summary>The count for a ToDo that wants more than one of something; null otherwise. The

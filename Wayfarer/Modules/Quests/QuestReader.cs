@@ -36,6 +36,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// a creature that same kind as its id, so it is looked for exactly as an object is.</summary>
     private const string CreatureParameter = "ENEMY";
 
+    /// <summary>The script parameter a quest names one of its key items in, one per item. A ToDo
+    /// that has the player use one does not always say which through the event handler, and the
+    /// quest's own list is what says it then.</summary>
+    private const string ItemParameter = "ITEM";
+
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -46,6 +51,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<uint>> marksByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
     private string lastHandler = string.Empty;
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, ContentFinderCondition>? dutiesByContent;
@@ -116,6 +122,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// once per quest; which of them is spawned is asked of the world, not of the sheet.</summary>
     public IReadOnlyList<uint> Marks(ushort questId) =>
         marksByQuest.TryGetValue(questId, out var marks) ? marks : marksByQuest[questId] = ReadMarks(questId);
+
+    /// <summary>The key items a quest is about, as it names them among its own parameters. Read
+    /// once per quest, and what a ToDo's words are matched against when the handler does not say
+    /// which item the step is for.</summary>
+    public IReadOnlyList<QuestItem> Items(ushort questId) =>
+        itemsByQuest.TryGetValue(questId, out var items) ? items : itemsByQuest[questId] = ReadItems(questId);
 
     /// <summary>Where the creatures a quest is about stand, as the data places them. A step that
     /// sends the player into a circle to fight names them separately from the circle, and the spot
@@ -261,6 +273,44 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return progress;
     }
 
+    /// <summary>The kind of creature a quest's <c>ENEMY</c> parameter names, or null when it names
+    /// nothing we can recognise.
+    ///
+    /// <para>A quest says it one of two ways and both are common: the place row where such a
+    /// creature stands, which says what kind stands there, or the kind itself. Which it is, is
+    /// whichever the number turns out to be — the two sheets do not overlap, so asking settles
+    /// it. Reading only the first way silently lost every quest that used the second.</para></summary>
+    private uint? Creature(uint named)
+    {
+        if (dataManager.GetExcelSheet<Level>().GetRowOrDefault(named)?.Object is { RowId: not 0 } kind)
+        {
+            return kind.Is<BNpcBase>() ? kind.RowId : null;
+        }
+
+        return dataManager.GetExcelSheet<BNpcBase>().GetRowOrDefault(named) is not null ? named : null;
+    }
+
+    /// <summary>The key items a quest names among its own parameters.</summary>
+    private List<QuestItem> ReadItems(ushort questId)
+    {
+        if (QuestRow(questId) is not { } quest)
+        {
+            return [];
+        }
+
+        var items = new List<QuestItem>();
+        foreach (var parameter in quest.QuestParams)
+        {
+            if (parameter.ScriptInstruction.ExtractText().StartsWith(ItemParameter, StringComparison.Ordinal)
+                && KeyItem(parameter.ScriptArg) is { } item)
+            {
+                items.Add(item);
+            }
+        }
+
+        return items;
+    }
+
     /// <summary>The key item with this id, or null when the id is not one.</summary>
     private QuestItem? KeyItem(uint itemId) =>
         QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
@@ -311,9 +361,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
                 continue;
             }
 
-            if (dataManager.GetExcelSheet<Level>().GetRowOrDefault(parameter.ScriptArg)?.Object is { RowId: not 0 } kind && kind.Is<BNpcBase>())
+            if (Creature(parameter.ScriptArg) is { } kind)
             {
-                marks.Add(kind.RowId);
+                marks.Add(kind);
             }
         }
 
