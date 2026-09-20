@@ -1,4 +1,7 @@
 using System.Numerics;
+using Dalamud.Game.Addon.Events;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -25,7 +28,7 @@ namespace Wayfarer.Surfaces.DutyFinder;
 /// <para>The window is only watched while something is marking it, and every node made here is
 /// freed when the row gives it back, when the window closes, when the last module lets go, or when
 /// the plugin unloads.</para></summary>
-internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager events, IPluginLog log) : IDutyFinder, IAsyncDisposable
+internal sealed class DutyFinderSurface(IFramework framework, IAddonLifecycle lifecycle, IPluginLog log) : IDutyFinder, IAsyncDisposable
 {
     private const string AddonName = "ContentsFinder";
 
@@ -35,6 +38,9 @@ internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager
     private NativeListController<AddonContentsFinder, DutyFinderRow>? rows;
     private AddonController<AddonContentsFinder>? window;
     private bool disposed;
+
+    /// <summary>The window a tooltip of ours was last shown in, so it can be taken away again.</summary>
+    private ushort shown;
 
     /// <inheritdoc/>
     public IDisposable Mark(IDutyRowMarks marks)
@@ -115,6 +121,11 @@ internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager
             OnUpdate = Redrawn,
         };
         window.Enable();
+
+        // The window's own events are listened to rather than our marks being made into things it
+        // would hit-test. A row is already something it tests, so the pointer's whereabouts arrive
+        // whatever our marks are, and which mark it is over is ours to work out.
+        lifecycle.RegisterListener(AddonEvent.PreReceiveEvent, AddonName, Pointer);
         Restart();
     }
 
@@ -144,6 +155,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager
             return;
         }
 
+        lifecycle.UnregisterListener(AddonEvent.PreReceiveEvent, AddonName, Pointer);
         rows?.Disable();
         window?.Disable();
         FreeAll();
@@ -183,7 +195,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager
             var wanted = Wanted(row);
             var lit = row.Places.Count(place => place.Lit);
             var strip = StripLayout.Place(wanted.Count, [], lit, DutyFinderMetrics.Strip);
-            For(row).Lay(row, wanted, strip, addon, events);
+            For(row).Lay(row, wanted, strip, addon);
             if (addon != null)
             {
                 // The patches the pointer is tested against have moved, and the window keeps its
@@ -217,6 +229,40 @@ internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager
         {
             addon->AtkUnitBase.UpdateCollisionNodeList(false);
         }
+    }
+
+    /// <summary>Follows the pointer across the window, and says what the mark under it means.
+    ///
+    /// <para>A window only tests the pointer against the parts it keeps its own list of, and a part
+    /// added to one of its rows is never among them however it is flagged, listened to, or counted.
+    /// So nothing is asked of it: the window says where the pointer is, and whether that is on one
+    /// of our marks is arithmetic.</para></summary>
+    private unsafe void Pointer(AddonEvent kind, AddonArgs args)
+    {
+        var stage = AtkStage.Instance();
+        if (args is not AddonReceiveEventArgs mouse || mouse.AtkEventData == 0 || stage == null)
+        {
+            return;
+        }
+
+        if (mouse.AtkEventType is not (AddonEventType.MouseMove or AddonEventType.MouseOver))
+        {
+            return;
+        }
+
+        var where = ((AtkEventData*)mouse.AtkEventData)->MouseData;
+        var over = stripsByRow.Values
+            .Select(strip => strip.Under(where.PosX, where.PosY))
+            .FirstOrDefault(mark => mark is not null);
+
+        if (over is null || over.Drawn == null)
+        {
+            stage->TooltipManager.HideTooltip(shown);
+            return;
+        }
+
+        shown = ((AtkUnitBase*)args.Addon.Address)->Id;
+        stage->TooltipManager.ShowTooltip(shown, over.Drawn, over.Says);
     }
 
     /// <summary>The window has redrawn a row of its own accord, which it does whenever one is

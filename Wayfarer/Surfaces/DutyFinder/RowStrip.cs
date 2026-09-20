@@ -1,5 +1,4 @@
 using System.Numerics;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
@@ -29,7 +28,7 @@ internal sealed unsafe class RowStrip : IDisposable
     /// <param name="marks">What the modules want on it.</param>
     /// <param name="strip">Where everything goes and how big it is.</param>
     /// <param name="addon">The window the row belongs to.</param>
-    public void Lay(DutyFinderRow row, IReadOnlyList<DutyMark> marks, StripLayout.Strip strip, AddonContentsFinder* addon, IAddonEventManager events)
+    public void Lay(DutyFinderRow row, IReadOnlyList<DutyMark> marks, StripLayout.Strip strip, AddonContentsFinder* addon)
     {
         Restore();
 
@@ -50,7 +49,7 @@ internal sealed unsafe class RowStrip : IDisposable
             if (index < marks.Count)
             {
                 icon.Draw(marks[index].IconId, at, size);
-                icon.Explain(events, &addon->AtkUnitBase, row.Owner, marks[index].Tooltip);
+                icon.Explain(marks[index].Tooltip);
                 continue;
             }
 
@@ -58,6 +57,7 @@ internal sealed unsafe class RowStrip : IDisposable
             // speaks for it carried over so its words come with it.
             var slot = lit[index - marks.Count];
             icon.Draw(slot, at, size);
+            icon.Explain(string.Empty);
             Hide(slot);
             Carry(slot.Touch, at, size);
         }
@@ -86,11 +86,6 @@ internal sealed unsafe class RowStrip : IDisposable
     /// <summary>Puts everything of the game's back as it was found. Safe to call twice.</summary>
     public void Restore()
     {
-        foreach (var icon in icons)
-        {
-            icon.Forget();
-        }
-
         hidden.Clear();
         foreach (var was in moved)
         {
@@ -99,6 +94,11 @@ internal sealed unsafe class RowStrip : IDisposable
 
         moved.Clear();
     }
+
+    /// <summary>The icon the pointer is resting on, and what it means, or nothing.</summary>
+    /// <param name="x">Across the screen.</param>
+    /// <param name="y">Down the screen.</param>
+    public RowIcon? Under(float x, float y) => icons.FirstOrDefault(icon => icon.Under(x, y));
 
     /// <inheritdoc/>
     public void Dispose()

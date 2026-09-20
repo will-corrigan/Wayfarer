@@ -1,7 +1,4 @@
 using System.Numerics;
-using Dalamud.Game.Addon.Events;
-using Dalamud.Game.Addon.Events.EventDataTypes;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
@@ -25,13 +22,6 @@ internal sealed unsafe class RowIcon : IDisposable
     private readonly nint parts;
     private readonly ImageNodeFlags fit;
     private readonly byte wrap;
-    private readonly List<IAddonEventHandle> listening = [];
-
-    private IAddonEventManager? events;
-    private string says = string.Empty;
-    private ushort window;
-    private NodeFlags drawnOnly;
-    private nint listed;
 
     private RowIcon(IconImageNode node)
     {
@@ -40,6 +30,12 @@ internal sealed unsafe class RowIcon : IDisposable
         fit = node.Node == null ? default : node.Node->Flags;
         wrap = node.Node == null ? (byte)0 : node.Node->WrapMode;
     }
+
+    /// <summary>What the icon means, or nothing when it means nothing worth saying.</summary>
+    public string Says { get; private set; } = string.Empty;
+
+    /// <summary>The part the words are shown beside.</summary>
+    public AtkResNode* Drawn => node.Node == null ? null : &node.Node->AtkResNode;
 
     /// <summary>Hangs a new icon beside a row's name, or null when there is no name to hang it
     /// beside.</summary>
@@ -88,157 +84,30 @@ internal sealed unsafe class RowIcon : IDisposable
     /// <summary>Hides the icon, for a row that wants fewer than it had.</summary>
     public void Hide() => node.IsVisible = false;
 
-    /// <summary>Says what the icon means when the pointer rests on it.
-    ///
-    /// <para>A window only tests the pointer against the parts it keeps its own list of, and a node
-    /// we add to one of its rows is never among them. Dalamud will put a node of ours into the
-    /// window's own event handling, which is how the pointer finds it at all, and the words are
-    /// then shown and hidden as it comes and goes.</para></summary>
-    /// <param name="manager">What puts our node into the window's event handling.</param>
-    /// <param name="addon">The window the row belongs to.</param>
-    /// <param name="owner">The component the row is drawn by, whose own list of parts decides
-    /// what is tested against the pointer.</param>
-    /// <param name="text">What the icon means, or nothing to say nothing.</param>
-    public void Explain(IAddonEventManager manager, AtkUnitBase* addon, AtkComponentBase* owner, string text)
+    /// <summary>Says what the icon means, for as long as it is drawn.</summary>
+    /// <param name="text">What it means.</param>
+    public void Explain(string text) => Says = text;
+
+    /// <summary>Whether a point on the screen is on this icon.</summary>
+    /// <param name="x">Across the screen.</param>
+    /// <param name="y">Down the screen.</param>
+    public bool Under(float x, float y)
     {
-        Forget();
-        if (addon == null || owner == null || node.Node == null || string.IsNullOrEmpty(text))
+        if (node.Node == null || Says.Length == 0 || !node.Node->AtkResNode.IsVisible())
         {
-            return;
+            return false;
         }
 
-        events = manager;
-        says = text;
-        window = addon->Id;
-
-        // Being listened to is not the same as being heard. A node is only tested against the
-        // pointer when it says it wants to be, and a node of ours is drawn and nothing else until
-        // it is told otherwise. What it was is kept, so it goes back to being only drawn.
-        drawnOnly = node.Node->AtkResNode.NodeFlags;
-        node.Node->AtkResNode.NodeFlags |= NodeFlags.RespondToMouse | NodeFlags.EmitsEvents | NodeFlags.HasCollision;
-
-        // A part is tested against the pointer because the component that draws the row counts it
-        // among its own. Hanging a node in the row's tree does not do that, which is why a node of
-        // ours was never heard however it was flagged or whoever was listening.
-        Enlist(owner);
-
-        var target = (nint)(&node.Node->AtkResNode);
-        Listen(manager, (nint)addon, target, AddonEventType.MouseOver);
-        Listen(manager, (nint)addon, target, AddonEventType.MouseOut);
-    }
-
-    /// <summary>Stops saying anything, and takes the node back out of the window's event handling
-    /// before it is freed.</summary>
-    public void Forget()
-    {
-        if (events is { } manager)
-        {
-            foreach (var handle in listening)
-            {
-                manager.RemoveEvent(handle);
-            }
-
-            Hidden();
-        }
-
-        listening.Clear();
-        events = null;
-        says = string.Empty;
-        Delist();
-        if (node.Node != null && drawnOnly != default)
-        {
-            node.Node->AtkResNode.NodeFlags = drawnOnly;
-            drawnOnly = default;
-        }
+        ref var drawn = ref node.Node->AtkResNode;
+        return x >= drawn.ScreenX && x < drawn.ScreenX + (drawn.Width * drawn.ScaleX)
+            && y >= drawn.ScreenY && y < drawn.ScreenY + (drawn.Height * drawn.ScaleY);
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        Forget();
         Reclaim();
         node.Dispose();
-    }
-
-    /// <summary>Has the component count our part among its own, so the pointer is tested against
-    /// it. The list is grown by one and told to work itself out again.</summary>
-    private void Enlist(AtkComponentBase* owner)
-    {
-        if (node.Node == null || listed != 0)
-        {
-            return;
-        }
-
-        ref var uld = ref owner->UldManager;
-        uld.ExpandNodeListSize((ushort)(uld.NodeListCount + 1));
-        uld.NodeList[uld.NodeListCount++] = &node.Node->AtkResNode;
-        uld.UpdateDrawNodeList();
-        listed = (nint)owner;
-    }
-
-    /// <summary>Takes our part back out of the component's own list, which must happen before the
-    /// node is freed or the row is left counting something that has gone.</summary>
-    private void Delist()
-    {
-        var owner = (AtkComponentBase*)listed;
-        if (owner == null || node.Node == null)
-        {
-            return;
-        }
-
-        listed = 0;
-        ref var uld = ref owner->UldManager;
-        var ours = &node.Node->AtkResNode;
-        for (var index = 0; index < uld.NodeListCount; index++)
-        {
-            if (uld.NodeList[index] != ours)
-            {
-                continue;
-            }
-
-            for (var after = index; after < uld.NodeListCount - 1; after++)
-            {
-                uld.NodeList[after] = uld.NodeList[after + 1];
-            }
-
-            uld.NodeListCount--;
-            uld.UpdateDrawNodeList();
-            return;
-        }
-    }
-
-    private void Listen(IAddonEventManager manager, nint addon, nint target, AddonEventType when)
-    {
-        if (manager.AddEvent(addon, target, when, Told) is { } handle)
-        {
-            listening.Add(handle);
-        }
-    }
-
-    private void Told(AddonEventType when, AddonEventData data)
-    {
-        var stage = AtkStage.Instance();
-        if (stage == null)
-        {
-            return;
-        }
-
-        if (when is AddonEventType.MouseOver && node.Node != null)
-        {
-            stage->TooltipManager.ShowTooltip(window, &node.Node->AtkResNode, says);
-            return;
-        }
-
-        Hidden();
-    }
-
-    private void Hidden()
-    {
-        var stage = AtkStage.Instance();
-        if (stage != null && window != 0)
-        {
-            stage->TooltipManager.HideTooltip(window);
-        }
     }
 
     private void Place(Vector2 at, Vector2 size)
