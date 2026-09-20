@@ -1,6 +1,5 @@
 using Wayfarer.App.Modules;
 using Wayfarer.Guidance;
-using Wayfarer.Surfaces.DutyFinder;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -11,8 +10,7 @@ internal sealed class QuestsModule(
     QuestObjectives objectives,
     QuestFollowing following,
     JournalFollowButton followButton,
-    QuestDutyBadges dutyBadges,
-    IDutyBadges dutyFinder,
+    DutyFinderBadges dutyBadges,
     IGuidance guidance) : IModule
 {
     /// <summary>What the module is called, everywhere: the checkbox, the guidance it publishes, and
@@ -24,8 +22,6 @@ internal sealed class QuestsModule(
 
     private const string DutyMarksName = "Mark duties in the Duty Finder";
     private const string DutyMarksDescription = "Puts a quest mark on every duty in the Duty Finder that a quest in your journal still leads to.";
-
-    private IDisposable? marking;
 
     /// <inheritdoc/>
     public string Name => ModuleName;
@@ -49,7 +45,11 @@ internal sealed class QuestsModule(
             followButton.Start();
         }
 
-        MarkDuties(following.MarkDutyFinder);
+        if (following.MarkDutyFinder)
+        {
+            dutyBadges.Start();
+        }
+
         return Task.CompletedTask;
     }
 
@@ -57,7 +57,7 @@ internal sealed class QuestsModule(
     public async Task DisableAsync()
     {
         guidance.Yield(objectives);
-        MarkDuties(false);
+        await dutyBadges.StopAsync().ConfigureAwait(false);
         await followButton.StopAsync().ConfigureAwait(false);
     }
 
@@ -81,20 +81,13 @@ internal sealed class QuestsModule(
     private void SetDutyMarks(bool wanted)
     {
         following.MarkDutyFinder = wanted;
-        MarkDuties(wanted);
-    }
-
-    /// <summary>Holds the marks, or lets go of them. Holding what was handed over is the only way
-    /// to stop: the surface takes the marks away when the last holder lets go.</summary>
-    private void MarkDuties(bool wanted)
-    {
         if (wanted)
         {
-            marking ??= dutyFinder.Mark(dutyBadges);
-            return;
+            dutyBadges.Start();
         }
-
-        marking?.Dispose();
-        marking = null;
+        else
+        {
+            _ = dutyBadges.StopAsync();
+        }
     }
 }

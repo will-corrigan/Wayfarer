@@ -1,4 +1,4 @@
-namespace Wayfarer.Surfaces.DutyFinder;
+namespace Wayfarer.Modules.Quests;
 
 /// <summary>Where things are in a Duty Finder row.
 ///
