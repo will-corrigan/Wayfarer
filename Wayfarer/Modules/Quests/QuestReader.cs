@@ -41,12 +41,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// quest's own list is what says it then.</summary>
     private const string ItemParameter = "ITEM";
 
-    /// <summary>How far into a marker's range its drawn mark is. The sheet gives the range's first
-    /// number, and that one is not a mark at all: every range begins with the game's own
-    /// placeholder art, and the mark the game draws is the one after it. Checked against the
-    /// pictures themselves for each of the three ranges a quest with a duty uses.</summary>
-    private const uint MarkerInRange = 1;
-
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -169,24 +163,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return null;
     }
 
-    /// <summary>The mark the game itself puts on a quest, which is the one it draws on the map
-    /// where the quest is offered: blue for a quest that unlocks something, and its own for the
-    /// main scenario. The sheet says which per quest, so nothing here chooses an icon — it reads
-    /// the one the game already uses, and a quest the game marks some new way is marked that way
-    /// here too without anything being changed.
-    ///
-    /// <para>Null when the sheet names no mark, which it does for quests the journal never lists
-    /// and for those the game shows no marker for.</para></summary>
-    public uint? QuestIcon(ushort questId)
-    {
-        if (QuestRow(questId)?.EventIconType.ValueNullable is not { } marker || marker.MapIconAvailable == 0)
-        {
-            return null;
-        }
-
-        return marker.MapIconAvailable + MarkerInRange;
-    }
-
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
     public string Name(ushort questId) =>
@@ -223,10 +199,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
         return todos;
     }
-
-    /// <summary>The quest's whole to-do table as authored, read once per quest.</summary>
-    public IReadOnlyList<QuestTodoTemplate> Templates(ushort questId) =>
-        templatesByQuest.TryGetValue(questId, out var todos) ? todos : templatesByQuest[questId] = ReadTemplates(questId);
 
     /// <summary>How many of the thing a line wants. The script's own figure wins when it reports
     /// one, and it does report zero, which is the same rule the surface counts by.</summary>
@@ -491,6 +463,10 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
         return emotes;
     }
+
+    /// <summary>The quest's whole to-do table as authored, read once per quest.</summary>
+    private IReadOnlyList<QuestTodoTemplate> Templates(ushort questId) =>
+        templatesByQuest.TryGetValue(questId, out var todos) ? todos : templatesByQuest[questId] = ReadTemplates(questId);
 
     private Quest? QuestRow(ushort questId) => dataManager.GetExcelSheet<Quest>().GetRowOrDefault(QuestIds.RowId(questId));
 
