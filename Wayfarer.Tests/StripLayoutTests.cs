@@ -16,11 +16,13 @@ public class StripLayoutTests
     private static readonly float[] None = [];
 
     [Fact]
-    public void A_mark_takes_a_slot_the_game_left_dark()
+    public void A_mark_takes_the_rightmost_slot_the_game_left_dark()
     {
+        // The strip is anchored to the right of the row, so a mark on a row the game has not
+        // marked at all belongs at that end rather than floating in the middle of it.
         var strip = StripLayout.Place(1, AllDark, lit: 0, Space);
 
-        Assert.Equal([First], strip.Marks);
+        Assert.Equal([Third], strip.Marks);
         Assert.Empty(strip.GameIcons);
         Assert.Equal(Pitch, strip.Size);
         Assert.Null(strip.Left);
@@ -32,10 +34,18 @@ public class StripLayoutTests
         // The game is showing the middle icon; the outer two are free, and one is all we need.
         var strip = StripLayout.Place(1, [First, Third], lit: 1, Space);
 
-        Assert.Equal([First], strip.Marks);
+        Assert.Equal([Third], strip.Marks);
         Assert.Empty(strip.GameIcons);
         Assert.Equal(Pitch, strip.Size);
         Assert.Null(strip.Left);
+    }
+
+    [Fact]
+    public void Marks_pack_against_the_right_and_keep_their_order()
+    {
+        var strip = StripLayout.Place(2, AllDark, lit: 0, Space);
+
+        Assert.Equal([Second, Third], strip.Marks);
     }
 
     [Fact]

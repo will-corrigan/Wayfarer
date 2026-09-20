@@ -31,9 +31,11 @@ internal static class StripLayout
         ArgumentNullException.ThrowIfNull(space);
 
         // Room enough as things stand: ours go in the gaps, at full size, and the game's stay put.
+        // The gaps taken are the rightmost, because the strip is anchored to the right of the row
+        // and a mark belongs at that end whether or not the game has put anything there.
         if (marks <= dark.Count)
         {
-            return new Strip([.. dark.Take(marks)], [], space.Pitch, null);
+            return new Strip([.. dark.TakeLast(marks)], [], space.Pitch, null);
         }
 
         // Not room enough. Every symbol shrinks together until they all fit, and no further than

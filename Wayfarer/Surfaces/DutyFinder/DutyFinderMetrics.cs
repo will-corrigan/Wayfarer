@@ -33,6 +33,11 @@ internal static class DutyFinderMetrics
     /// <inheritdoc cref="StripLeft"/>
     public const float StripTop = 0f;
 
+    /// <summary>How tall one of the row's icon slots is. A slot is not square: the game draws its
+    /// row icons 20 across and 24 down, so ours are that shape too and the row reads as one set
+    /// rather than as the game's icons with something else among them.</summary>
+    public const float StripSlotHeight = 24f;
+
     /// <summary>How small a symbol may be drawn before it stops being worth drawing. Past this the
     /// strip takes room from the row's name rather than shrinking any further.</summary>
     public const float SmallestIcon = 12f;

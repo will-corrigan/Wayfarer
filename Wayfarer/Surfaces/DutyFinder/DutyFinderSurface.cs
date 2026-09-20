@@ -184,9 +184,9 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
 
     /// <summary>Everything wanted on a row, in the order the modules were asked. What one module
     /// wants is never placed without the rest, because they share the room it goes in.</summary>
-    private List<uint> Wanted(DutyFinderRow row)
+    private List<DutyMark> Wanted(DutyFinderRow row)
     {
-        var wanted = new List<uint>();
+        var wanted = new List<DutyMark>();
         if (row.Duty is not { } duty)
         {
             return wanted;
@@ -224,17 +224,19 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
             held.Restore();
 
             var marks = held.Marks;
+            held.Forget();
             for (var index = 0; index < marks.Count; index++)
             {
-                marks[index].IconId = wanted[index];
-                marks[index].Size = new(strip.Size, strip.Size);
+                marks[index].IconId = wanted[index].IconId;
+                marks[index].Size = new(strip.Size, strip.Size * (DutyFinderMetrics.StripSlotHeight / DutyFinderMetrics.StripPitch));
                 marks[index].Position = new(strip.Marks[index], DutyFinderMetrics.StripTop);
                 marks[index].IsVisible = true;
+                held.Explain(marks[index], addon, wanted[index].Tooltip);
             }
 
             MoveGameIcons(lit, strip, held);
             MakeRoom(row, strip, held);
-            if (strip.GameIcons.Count > 0 && addon != null)
+            if (addon != null)
             {
                 // The slots carry the game's own tooltips, which are hit-tested in the order the
                 // window keeps them, so it is told they have moved.

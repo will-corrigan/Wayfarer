@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
 
@@ -19,6 +20,10 @@ internal sealed unsafe record RowMarks(List<IconImageNode> Marks)
     /// not been asked to.</summary>
     public WasAt? Name { get; set; }
 
+    /// <summary>The words told about each mark on this row, held so the game can be told to let
+    /// them go before they are freed.</summary>
+    private List<RowTooltip> Told { get; } = [];
+
     /// <summary>Puts every part of the game's back the way it was found. Safe to call twice, and
     /// safe to call having changed nothing.</summary>
     public void Restore()
@@ -33,9 +38,36 @@ internal sealed unsafe record RowMarks(List<IconImageNode> Marks)
         Name = null;
     }
 
-    /// <summary>Frees the nodes drawn on this row.</summary>
+    /// <summary>Says what a mark means, so the game shows those words when the player rests on it.
+    /// Silent for a mark that has nothing to say.</summary>
+    /// <param name="mark">The mark drawn on the row.</param>
+    /// <param name="addon">The window the row belongs to.</param>
+    /// <param name="text">What the mark means.</param>
+    public void Explain(IconImageNode mark, AddonContentsFinder* addon, string text)
+    {
+        if (addon != null && RowTooltip.Attach(mark.Node == null ? null : &mark.Node->AtkResNode, addon->AtkUnitBase.Id, text) is { } told)
+        {
+            Told.Add(told);
+        }
+    }
+
+    /// <summary>Takes back everything said about this row's marks, for a row about to be told
+    /// something else.</summary>
+    public void Forget()
+    {
+        foreach (var told in Told)
+        {
+            told.Dispose();
+        }
+
+        Told.Clear();
+    }
+
+    /// <summary>Frees the nodes drawn on this row, having first taken back what was said about
+    /// them: the game holds a pointer to each mark until it is told otherwise.</summary>
     public void Free()
     {
+        Forget();
         foreach (var mark in Marks)
         {
             mark.Dispose();

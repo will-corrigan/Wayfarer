@@ -15,18 +15,18 @@ namespace Wayfarer.Modules.Quests;
 /// is fixed by the sheet, so nothing else about a quest can change the answer.</para></summary>
 internal sealed unsafe class QuestDutyMarks(QuestReader reader) : IDutyRowMarks
 {
-    private static readonly uint[] Nothing = [];
+    private static readonly DutyMark[] Nothing = [];
 
-    private readonly Dictionary<uint, uint> iconsByDuty = [];
+    private readonly Dictionary<uint, DutyMark> marksByDuty = [];
 
     private int journal;
     private bool read;
 
     /// <inheritdoc/>
-    public IReadOnlyList<uint> MarksFor(uint duty)
+    public IReadOnlyList<DutyMark> MarksFor(uint duty)
     {
         Reread();
-        return iconsByDuty.TryGetValue(duty, out var icon) ? [icon] : Nothing;
+        return marksByDuty.TryGetValue(duty, out var mark) ? [mark] : Nothing;
     }
 
     /// <summary>A number that changes when the journal does. The quests in it are what decides
@@ -60,7 +60,7 @@ internal sealed unsafe class QuestDutyMarks(QuestReader reader) : IDutyRowMarks
 
         journal = now;
         read = true;
-        iconsByDuty.Clear();
+        marksByDuty.Clear();
 
         var quests = QuestManager.Instance();
         if (quests == null)
@@ -76,7 +76,7 @@ internal sealed unsafe class QuestDutyMarks(QuestReader reader) : IDutyRowMarks
             {
                 // Two quests can send the player into the same duty. The first one found marks it;
                 // the mark says there is something left to do there, not how many things.
-                iconsByDuty.TryAdd(duty.Finder, icon);
+                marksByDuty.TryAdd(duty.Finder, new DutyMark(icon, reader.Name(quest.QuestId)));
             }
         }
     }
