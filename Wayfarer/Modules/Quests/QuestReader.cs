@@ -334,8 +334,15 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return standing.Count > 0 ? standing : [.. left.Select(pair => At(pair.Level))];
     }
 
-    /// <summary>Whether a step's own words name what stands at a place, by any word of its name
-    /// long enough to mean something on its own.</summary>
+    /// <summary>Whether a step's own words name what stands at a place.
+    ///
+    /// <para>Both halves come from the game in the player's own language — the thing's name from
+    /// its name sheet, the step's words from the quest's own text sheet — so the two are always
+    /// written the same way and no translation of ours comes into it. The whole name is looked for
+    /// first, which is the only thing that can be done in a language that does not put spaces
+    /// between words. Then each word of it in turn, because a sentence rarely spells a thing out
+    /// in full: a step says "pass through the portal" where the thing is called "portal of
+    /// wisdom". Words too short to mean anything on their own are passed over.</para></summary>
     private bool NamedIn(Level level, string words)
     {
         if (words.Length == 0 || dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(level.Object.RowId) is not { } named)
@@ -344,9 +351,19 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         }
 
         var name = named.Singular.ExtractText();
-        return name.Length > 0 && name
+        if (name.Length == 0)
+        {
+            return false;
+        }
+
+        if (words.Contains(name, StringComparison.CurrentCultureIgnoreCase))
+        {
+            return true;
+        }
+
+        return name
             .Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(word => word.Length > ShortestTellingWord && words.Contains(word, StringComparison.OrdinalIgnoreCase));
+            .Any(word => word.Length > ShortestTellingWord && words.Contains(word, StringComparison.CurrentCultureIgnoreCase));
     }
 
     /// <summary>What the game says about these ToDos of the quest right now, from the quest's own

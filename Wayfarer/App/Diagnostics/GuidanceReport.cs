@@ -107,7 +107,7 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
             {
                 ref var data = ref info.MarkerData[i];
                 var tip = data.TooltipString == null ? string.Empty : data.TooltipString->ToString();
-                Say($"marker objective {info.ObjectiveId:X8} label '{info.Label}' | level {data.LevelId} type {data.MarkerType} icon {data.IconId} dataId {data.DataId} state {data.EventState} flags {data.Flags} r={Num(data.Radius)} terr {data.TerritoryTypeId} at ({Num(data.Position.X)}, {Num(data.Position.Z)}) '{tip}'");
+                Say($"marker objective {info.ObjectiveId:X8}/{data.ObjectiveId:X8} label '{info.Label}' | level {data.LevelId} type {data.MarkerType} icon {data.IconId} dataId {data.DataId} state {data.EventState} flags {data.Flags} r={Num(data.Radius)} terr {data.TerritoryTypeId} at ({Num(data.Position.X)}, {Num(data.Position.Z)}) '{tip}'");
                 shown++;
             }
         }
