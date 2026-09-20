@@ -16,7 +16,7 @@ public class ObjectiveTests
 
         var objective = new Objective("Close to Home", [aetheryte, guild]);
 
-        Assert.Same(aetheryte, objective.FirstReachable());
+        Assert.Same(aetheryte, objective.Guided());
     }
 
     [Fact]
@@ -27,14 +27,22 @@ public class ObjectiveTests
 
         var objective = new Objective("A Vigil", [wait, guild]);
 
-        Assert.Same(guild, objective.FirstReachable());
+        Assert.Same(guild, objective.Guided());
     }
 
     [Fact]
-    public void No_reachable_entry_means_no_target()
+    public void A_duty_is_somewhere_to_go()
     {
         var duty = new ObjectiveEntry("Complete the duty.", null, new Destination.InDuty(7));
 
-        Assert.Null(new Objective("Trial", [duty]).FirstReachable());
+        Assert.Same(duty, new Objective("Trial", [duty]).Guided());
+    }
+
+    [Fact]
+    public void A_step_that_is_nowhere_is_not_somewhere_to_go()
+    {
+        var blocked = new ObjectiveEntry("Wait.", null, new Destination.Blocked("no map location for this step"));
+
+        Assert.Null(new Objective("Waiting", [blocked]).Guided());
     }
 }

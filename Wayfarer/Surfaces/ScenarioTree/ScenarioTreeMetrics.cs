@@ -51,15 +51,6 @@ internal static class ScenarioTreeMetrics
     /// <inheritdoc cref="SettingsCogSide"/>
     public const float SettingsCogTop = 3f;
 
-    /// <summary>How many lines the entry's words may wrap to before they are cut.</summary>
-    public const int MaxEntryLines = 2;
-
-    /// <summary>How many lines the route's words may wrap to before they are cut. The compass takes
-    /// its own column out of the width and an aethernet shard's full name rarely fits what is left,
-    /// so a route that does not fit wraps rather than losing where it is sending the player. What
-    /// still does not fit is cut, and the whole sentence is offered on hover instead.</summary>
-    public const int RouteLines = 2;
-
     /// <summary>How many characters wide the distance's box is: four digits and the unit, in a
     /// face whose characters are about two thirds as wide as they are tall.</summary>
     public const float DistanceWidthInCharacters = 3.4f;

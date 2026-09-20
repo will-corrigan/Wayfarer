@@ -64,12 +64,17 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float PanelPadding = 8f;
 
     /// <summary>What the preview block shows: a step, a route with a press, and a compass reading.</summary>
+    private const string PreviewLabel = "Preview:";
     private const string SampleEntry = "Speak with Minfilia at the Waking Sands.";
-    private const string SampleRoute = "Teleport to Vesper Bay, then Walk to the Waking Sands";
-    private const string SampleRouteKeyword = "Teleport to Vesper Bay";
+    private const string SampleRoute = "Teleport to Limsa Lominsa Lower Decks, then Aethernet to Arcanists' Guild";
+    private const string SampleRouteKeyword = "Teleport to Limsa Lominsa Lower Decks";
     private const float SampleNeedle = 0.6f;
     private const float SampleYalms = 143f;
     private const float SampleRise = 2f;
+
+    /// <summary>How many of the thing a search area holds, in the sample: one, so the preview does
+    /// not show a count the player would only see while searching.</summary>
+    private const int SampleCandidates = 1;
 
     /// <summary>The dark the game fills its own framed panels with.</summary>
     private static readonly Vector4 PanelColor = new(0f, 0f, 0f, 0.35f);
@@ -296,15 +301,8 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         };
         pane.AttachNode(this);
 
-        var blurb = page switch
-        {
-            Page.GuideBlock => "How Wayfarer's lines look under the Main Scenario Guide. The preview below is the real thing, drawn by the same node the game draws, so what you set is what you get.",
-            _ => "What Wayfarer follows. Each module is switched on its own and remembers your choice.",
-        };
-
         var body = pane.ContentNode;
         body.AddNode(new UnderlinedTextNode { String = PageTitle(page), Size = new Vector2(PageWidth, TitleHeight) });
-        body.AddNode(Words(blurb));
 
         switch (page)
         {
@@ -323,6 +321,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// <summary>The preview block in a frame, then one row per style value, then a reset.</summary>
     private void BuildGuideBlockPage(VerticalListNode body)
     {
+        body.AddNode(Words(PreviewLabel));
         previewStage = new ResNode();
         previewFrame = new BorderNineGridNode();
         previewFrame.AttachNode(previewStage);
@@ -335,7 +334,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         preview.SetWords(
             new LineContent(SampleEntry),
             new LineContent(SampleRoute, SampleRouteKeyword, Glyph: BitmapFontIcon.Aetheryte, Pressable: true));
-        preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
+        preview.SetHeading(SampleNeedle, SampleYalms, SampleRise, SampleCandidates);
         body.AddNode(previewStage);
 
         // Styled only once the block is part of the window's own tree. A style applied before then

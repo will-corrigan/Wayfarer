@@ -24,6 +24,10 @@ internal sealed class GuidanceBlockNode : ResNode
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
 
+    /// <summary>In front of how many of the thing are still to be tried, when a step sends the
+    /// player to search an area holding several of them.</summary>
+    private const string SeveralPrefix = "\u00d7";
+
     /// <summary>What the distance says once there is none left. A step that sends the player to an
     /// area is measured to the edge of it, so nought is reached the moment they step inside and
     /// stays there while they cross it. "0y" reads as a measurement that has stopped working;
@@ -37,11 +41,13 @@ internal sealed class GuidanceBlockNode : ResNode
     private readonly PressableLine entry;
     private readonly PressableLine route;
     private readonly TextNode distance;
+    private readonly TextNode several;
     private readonly CompassNode compass;
     private ScenarioTreeStyle style = new();
     private float distanceLeading = GameText.LeadingFor(ScenarioTreeStyle.SmallestFont);
-    private (float? Needle, float? Yalms, float? Rise) heading;
+    private (float? Needle, float? Yalms, float? Rise, int? Candidates) heading;
     private string lastDistance = string.Empty;
+    private string lastSeveral = string.Empty;
     private ElevationHint elevation = ElevationHint.Level;
     private bool compassShown;
 
@@ -49,8 +55,8 @@ internal sealed class GuidanceBlockNode : ResNode
     {
         Width = RootWidth;
 
-        entry = new PressableLine(GameColors.Body, MaxEntryLines, onEntryPressed);
-        route = new PressableLine(GameColors.ListText, RouteLines, onRoutePressed);
+        entry = new PressableLine(GameColors.Body, onEntryPressed);
+        route = new PressableLine(GameColors.ListText, onRoutePressed);
         words = new VerticalListNode { FitContents = true };
         words.AddNode(entry);
         words.AddNode(route);
@@ -59,17 +65,13 @@ internal sealed class GuidanceBlockNode : ResNode
         // column and centres itself there rather than the column bending around it.
         compassBox = new ResNode();
         compass = new CompassNode(textures, log) { IsVisible = false }.AttachedTo(compassBox);
-        distance = new TextNode
-        {
-            FontType = FontType.Axis,
-            AlignmentType = AlignmentType.Top,
-            TextFlags = DistanceFlags,
-            TextColor = GameColors.ListText,
-            TextOutlineColor = GameColors.ListTextEdge,
-        };
+        distance = Reading();
+        several = Reading();
+        several.IsVisible = false;
         compassColumn = new VerticalListNode { FitContents = true, IsVisible = false };
         compassColumn.AddNode(compassBox);
         compassColumn.AddNode(distance);
+        compassColumn.AddNode(several);
 
         columns = new HorizontalListNode { ItemSpacing = CompassColumnGap, FitToContentHeight = true }.AttachedTo(this);
         columns.AddNode(words);
@@ -135,11 +137,35 @@ internal sealed class GuidanceBlockNode : ResNode
     /// Whether the target counts as above or below the player is settled by
     /// <see cref="Elevation.Classify"/>, which holds its last answer through small changes so the
     /// mark does not flicker on a slope.</summary>
-    public void SetHeading(float? needle, float? yalms, float? rise)
+    public void SetHeading(float? needle, float? yalms, float? rise, int? candidates)
     {
-        heading = (needle, yalms, rise);
+        heading = (needle, yalms, rise, candidates);
         DrawHeading();
     }
+
+    /// <summary>Writes one of the readings under the needle, and says whether it changed: the words
+    /// are what give the node its height, so the column is only stacked again when they do.</summary>
+    private static bool SetReading(TextNode reading, string text, ref string last)
+    {
+        if (string.Equals(text, last, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        last = text;
+        reading.String = text;
+        return true;
+    }
+
+    /// <summary>A line of the compass column: the distance, and how many are left to try.</summary>
+    private static TextNode Reading() => new()
+    {
+        FontType = FontType.Axis,
+        AlignmentType = AlignmentType.Top,
+        TextFlags = DistanceFlags,
+        TextColor = GameColors.ListText,
+        TextOutlineColor = GameColors.ListTextEdge,
+    };
 
     /// <summary>The compass column is as wide as the wider of the needle and the four characters
     /// its distance needs, so neither overhangs the other.</summary>
@@ -151,9 +177,12 @@ internal sealed class GuidanceBlockNode : ResNode
         compassColumn.Width = width;
         compassBox.Size = new Vector2(width, style.CompassSize);
         compass.Position = new Vector2((width - style.CompassSize) / 2f, 0f);
-        distance.FontSize = style.RouteFontSize;
-        distance.LineSpacing = (uint)distanceLeading;
-        distance.Size = new Vector2(width, distanceLeading);
+        foreach (var reading in (TextNode[])[distance, several])
+        {
+            reading.FontSize = style.RouteFontSize;
+            reading.LineSpacing = (uint)distanceLeading;
+            reading.Size = new Vector2(width, distanceLeading);
+        }
     }
 
     /// <summary>The words take the row, less the compass column only while there is one showing. A
@@ -177,7 +206,7 @@ internal sealed class GuidanceBlockNode : ResNode
     /// again after a restyle, or the compass would move without resizing.</summary>
     private void DrawHeading()
     {
-        var (needle, yalms, rise) = heading;
+        var (needle, yalms, rise, candidates) = heading;
         var drawn = style.Compass != CompassPlacement.Hidden && needle is { } && yalms is { };
         if (drawn != compassShown)
         {
@@ -200,8 +229,10 @@ internal sealed class GuidanceBlockNode : ResNode
         // The distance is what gives its node a height, so the column cannot be stacked until the
         // words are in it: laid out while it is still empty, the needle and the distance both come
         // out at the top of the column, drawn over each other.
-        var remaining = MathF.Round(distanceYalms);
-        if (SetDistance(remaining <= 0f ? Arrived : remaining.ToString(CultureInfo.InvariantCulture) + YalmsSuffix))
+        var left = MathF.Round(distanceYalms);
+        var moved = SetReading(distance, left <= 0f ? Arrived : left.ToString(CultureInfo.InvariantCulture) + YalmsSuffix, ref lastDistance);
+        moved |= SetSeveral(candidates);
+        if (moved)
         {
             Relayout();
         }
@@ -218,15 +249,14 @@ internal sealed class GuidanceBlockNode : ResNode
 
     /// <summary>Writes the distance, and says whether it changed, so the caller can re-stack the
     /// column around whatever height the new words gave it.</summary>
-    private bool SetDistance(string text)
+    /// <summary>Says how many of the thing are still to be tried, and hides itself when there is
+    /// only the one. Reports whether the column has to be stacked again.</summary>
+    private bool SetSeveral(int? candidates)
     {
-        if (string.Equals(text, lastDistance, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        lastDistance = text;
-        distance.String = text;
-        return true;
+        var text = candidates > 1 ? SeveralPrefix + candidates.Value.ToString(CultureInfo.InvariantCulture) : string.Empty;
+        var shown = text.Length > 0;
+        var appeared = shown != several.IsVisible;
+        several.IsVisible = shown;
+        return SetReading(several, text, ref lastSeveral) || appeared;
     }
 }

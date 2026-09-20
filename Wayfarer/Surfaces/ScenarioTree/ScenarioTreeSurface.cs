@@ -184,7 +184,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
             SpliceIntoChain(addon);
 
-            block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
+            block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms, heading.Candidates);
             RetitlePlate(addon);
             FitRootToBlock(addon);
         }
@@ -248,17 +248,19 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
     private unsafe void RetitlePlate(AtkUnitBase* addon)
     {
         // The plate already names whatever the guide itself is about, so it is retitled only when
-        // the guidance is about something else, which is exactly when the headline leads somewhere.
+        // the guidance is about something else, which is exactly when the source gives it a heading
+        // of its own. Whether the plate leads anywhere is a separate question: it names a quest
+        // either way, so pressing it opens that quest either way.
         var objective = guidance.Current?.Objective;
-        takeover.Update(addon, objective?.Headline, objective?.Kind, objective?.HeadlinePressable ?? false);
+        takeover.Update(addon, objective?.Headline, objective?.Kind, objective?.Kind is not null);
     }
 
-    /// <summary>A press of the plate while it carries our words opens the page about what we are
-    /// guiding to. The game's own page is not opened at all, because the press never reaches it.
-    /// While the plate carries the game's own words the press is left alone.</summary>
+    /// <summary>A press of the plate opens the page about whatever the plate names, whether those
+    /// are our words or the guide's own. The game's own handling is not reached, because the press
+    /// is answered here; a plate that leads nowhere is left entirely alone.</summary>
     private bool OnPlatePressed()
     {
-        if (!takeover.Active)
+        if (guidance.Current is not { Objective.HeadlinePressable: true })
         {
             return false;
         }
