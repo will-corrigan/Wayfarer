@@ -13,6 +13,10 @@ internal interface IHeading
     /// route.</summary>
     float? DistanceYalms { get; }
 
+    /// <summary>How many of the things a search area is about are standing in it, or null when the
+    /// step is not a search. More than one means the player has several to try.</summary>
+    int? Candidates { get; }
+
     /// <summary>How far above the player the next walk ends, in yalms, negative when below, or
     /// null when there is nothing to walk to.</summary>
     float? RiseYalms { get; }
