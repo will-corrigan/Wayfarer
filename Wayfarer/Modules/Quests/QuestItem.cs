@@ -1,3 +1,5 @@
+using Dalamud.Utility;
+
 namespace Wayfarer.Modules.Quests;
 
 /// <summary>A key item a ToDo has the player use.</summary>
@@ -6,10 +8,9 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="IconId">The item's icon.</param>
 internal sealed record QuestItem(uint Id, string Name, uint IconId)
 {
-    /// <summary>Key items live in their own id range above the ordinary ones, and the game uses
-    /// them through a different action kind. A ToDo's item below the range is a turn-in, not a use.</summary>
-    private const uint FirstKeyItemId = 2_000_000;
-
-    /// <inheritdoc cref="FirstKeyItemId"/>
-    public static bool IsKeyItem(uint itemId) => itemId >= FirstKeyItemId;
+    /// <summary>Whether an id is a key item's rather than an ordinary item's. Key items are what the
+    /// game calls event items: they live in their own range and are used through a different action
+    /// kind, so a ToDo's ordinary item is a turn-in and not a use. Dalamud knows where that range
+    /// is and that an id inside it is really one of them.</summary>
+    public static bool IsKeyItem(uint itemId) => ItemUtil.IsEventItem(itemId);
 }
