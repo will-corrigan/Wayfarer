@@ -115,23 +115,32 @@ internal sealed class PressableLine : ResNode
             return;
         }
 
-        // The icon is a game icon rather than one of the font's own marks, so it cannot be a
-        // character inside the sentence: it hangs to the left and the words start after it.
-        var room = ShowIcon(content.IconId);
         control.IsVisible = content.Pressable;
 
-        words.Position = new Vector2(room, 0f);
-        words.Width = Width - room;
+        // A game icon is not one of the font's own marks, so it cannot be a character in the
+        // sentence. It can still sit inside one: the words make room for it where it belongs, the
+        // game lays that room out and wraps around it like any other text, and the icon is put in
+        // the gap the game made. It then moves with the words it is about rather than hanging off
+        // the front of the line.
+        var beside = Beside(content);
+        words.Position = Vector2.Zero;
+        words.Width = Width;
         Write();
         Resize();
         Height = MathF.Max(leading, words.Height);
 
         // The control is the keyword when the game says where it drew it, and the whole line when
         // it does not: one control either way, so the line stays one stop for the pad.
-        var pressed = KeywordBox()?.MovedBy(room) ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
+        var box = KeywordBox();
+        var pressed = box ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
         control.Position = pressed.At;
         control.Size = pressed.Size;
+        ShowIcon(content.IconId, beside ? box : null);
     }
+
+    /// <summary>Whether the icon is to sit inside the sentence rather than in front of it, which it
+    /// can only do where there is a word for it to sit beside.</summary>
+    private static bool Beside(LineContent content) => content.IconId is not null && content.Keyword is not null;
 
     private static void Coloured(SeStringBuilder builder, string text, Vector4 color, Vector4 edge)
     {
@@ -218,7 +227,11 @@ internal sealed class PressableLine : ResNode
             // Wrapped in a link so the game works out where the keyword ends up once it has broken
             // the sentence across lines, and says so in the node's own link boxes.
             builder.PushLink(KeywordLink, 0u, 0u, 0u);
-            Coloured(builder, showing.Words.Substring(at, showing.Keyword!.Length), live, liveEdge);
+
+            // The room for the icon goes inside the link, so the box the game reports is the gap
+            // and the word together and the icon lands in the gap wherever the line broke.
+            var room = Beside(showing) ? new string(' ', SpacesForIcon()) : string.Empty;
+            Coloured(builder, string.Concat(room, showing.Words.AsSpan(at, showing.Keyword!.Length)), live, liveEdge);
             builder.PopLink();
             Coloured(builder, showing.Words[(at + showing.Keyword.Length)..], restingColor, restingEdge);
         }
@@ -238,18 +251,43 @@ internal sealed class PressableLine : ResNode
         }
     }
 
-    /// <summary>Hangs the icon in front of the words and reports the room it took.</summary>
-    private float ShowIcon(uint? iconId)
+    /// <summary>Puts the icon in the gap the words left for it, or at the front of the line when
+    /// they left none. Either way it is the size of the type it sits beside.</summary>
+    /// <param name="iconId">The icon, or null to show none.</param>
+    /// <param name="gap">Where the words left room for it, or null when they left none.</param>
+    private void ShowIcon(uint? iconId, LineBox? gap)
     {
         icon.IsVisible = iconId is not null;
         if (iconId is not { } id)
         {
-            return 0f;
+            return;
         }
 
         icon.IconId = id;
         icon.Size = new Vector2(fontSize, fontSize);
-        icon.Position = new Vector2(0f, (leading - fontSize) / 2f);
-        return fontSize + IconGap;
+        icon.Position = gap is { } room
+            ? new Vector2(room.At.X, room.At.Y + ((room.Size.Y - fontSize) / 2f))
+            : new Vector2(0f, (leading - fontSize) / 2f);
+    }
+
+    /// <summary>How many spaces stand as wide as the icon and its air, as the game measures a space
+    /// at the size the line is set in. Nothing is assumed about the font: it is asked.</summary>
+    private unsafe int SpacesForIcon()
+    {
+        var node = words.Node;
+        if (node == null)
+        {
+            return 0;
+        }
+
+        ushort width = 0, height = 0;
+        var space = stackalloc byte[2];
+        space[0] = (byte)' ';
+        space[1] = 0;
+        node->GetTextDrawSize(&width, &height, space, 0, 1, false);
+
+        // A space of no width would ask for an unbounded run of them, so the icon goes in front of
+        // the line instead, which is what a line with nothing to sit beside gets anyway.
+        return width == 0 ? 0 : (int)MathF.Ceiling((fontSize + IconGap) / width);
     }
 }
