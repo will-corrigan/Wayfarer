@@ -151,6 +151,15 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return null;
     }
 
+    /// <summary>The mark the journal puts beside a quest, which is its genre's: the main
+    /// scenario has one of its own and an ordinary quest another. Null when the sheet files the
+    /// quest under no genre at all, which is how it says the journal does not list it.</summary>
+    public uint? JournalIcon(ushort questId)
+    {
+        var icon = QuestRow(questId)?.JournalGenre.ValueNullable?.Icon ?? 0;
+        return icon > 0 ? (uint)icon : null;
+    }
+
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
     public string Name(ushort questId) =>
