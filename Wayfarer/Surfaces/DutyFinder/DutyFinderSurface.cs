@@ -1,3 +1,4 @@
+using System.Numerics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -81,18 +82,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
 
     /// <summary>Hangs a new mark off a row, beside its name. Its place is set when the row is laid
     /// out, so it is made where it will not be seen and moved into place after.</summary>
-    private static unsafe IconImageNode? Attach(DutyFinderRow row)
-    {
-        var name = row.NameNode;
-        if (name == null)
-        {
-            return null;
-        }
-
-        var mark = new IconImageNode { FitTexture = true, IsVisible = false };
-        mark.AttachNode(name, NodePosition.AfterTarget);
-        return mark;
-    }
+    private static unsafe RowMark? Attach(DutyFinderRow row) => RowMark.Beside(row.NameNode);
 
     /// <summary>Moves the game's own icons over, when the strip has been laid out again and they
     /// are part of it. Where each was is written down before it is asked to move.</summary>
@@ -221,15 +211,15 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
             // how the game left it rather than from how we last left it.
             held.Restore();
 
+            // A mark is square, because the art behind it is: a slot is taller than it is wide, so
+            // the mark sits in the middle of that height rather than being stretched down it.
             var marks = held.Marks;
-            held.Forget();
+            var size = new Vector2(strip.Size, strip.Size);
+            var down = DutyFinderMetrics.StripTop + ((DutyFinderMetrics.StripSlotHeight - strip.Size) / 2f);
             for (var index = 0; index < marks.Count; index++)
             {
-                marks[index].IconId = wanted[index].IconId;
-                marks[index].Size = new(strip.Size, strip.Size * (DutyFinderMetrics.StripSlotHeight / DutyFinderMetrics.StripPitch));
-                marks[index].Position = new(strip.Marks[index], DutyFinderMetrics.StripTop);
-                marks[index].IsVisible = true;
-                held.Explain(marks[index], addon, wanted[index].Tooltip);
+                marks[index].Show(wanted[index].IconId, new Vector2(strip.Marks[index], down), size);
+                marks[index].Explain(addon, wanted[index].Tooltip);
             }
 
             MoveGameIcons(lit, strip, held);
@@ -263,7 +253,8 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         // More than are wanted now, from a row that carried more before it was handed on.
         foreach (var spare in held.Marks.Skip(wanted))
         {
-            spare.IsVisible = false;
+            spare.Hide();
+            spare.Forget();
         }
 
         return held;
