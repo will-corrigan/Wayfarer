@@ -74,11 +74,8 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
     private static string Num(float value) => value.ToString("F1", CultureInfo.InvariantCulture);
 
     /// <summary>How far across the ground, which is how a circle is judged.</summary>
-    private static float Flat(Vector3 from, float toX, float toZ)
-    {
-        var (dx, dz) = (from.X - toX, from.Z - toZ);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
-    }
+    private static float Flat(Vector3 from, float toX, float toZ) =>
+        Vector2.Distance(new Vector2(from.X, from.Z), new Vector2(toX, toZ));
 
     private static string Spell(Place place) =>
         $"terr {place.Territory} map {place.Map} ({Num(place.X)}, {Num(place.Y)}, {Num(place.Z)}) r={Num(place.Radius)}";

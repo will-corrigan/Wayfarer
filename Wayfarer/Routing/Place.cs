@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Wayfarer.Routing;
 
 /// <summary>Somewhere a player can be sent: a zone, the map within it (a floor, or an interior
@@ -24,7 +26,6 @@ public sealed record Place(uint Territory, uint Map, float X, float Y, float Z, 
     {
         ArgumentNullException.ThrowIfNull(other);
 
-        var (dx, dz) = (X - other.X, Z - other.Z);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
+        return Vector2.Distance(new Vector2(X, Z), new Vector2(other.X, other.Z));
     }
 }

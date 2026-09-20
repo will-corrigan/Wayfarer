@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Wayfarer.Routing;
 
 /// <summary>Every fixed way of moving through the world, and the search that finds the cheapest
@@ -100,7 +102,7 @@ public sealed class RouteGraph
     }
 
     private static float Distance(Place a, Place b) =>
-        MathF.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)) + ((a.Z - b.Z) * (a.Z - b.Z)));
+        Vector3.Distance(new Vector3(a.X, a.Y, a.Z), new Vector3(b.X, b.Y, b.Z));
 
     /// <summary>What walking somewhere really costs: the distance to it, less the room it has to
     /// stand in. A step often gives a wide circle to search and a precise point beside it, and the

@@ -26,10 +26,16 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// difficulty of the same fight, and the first the Duty Finder knows is the one it is about.</summary>
     private const string DutyParameter = "INSTANCEDUNGEON";
 
-    /// <summary>The script parameter a quest names an object of the world in, one per object it is
-    /// about. A search area names nowhere to look and nothing to look for, but the quest that owns
-    /// it names its own objects, and one of them spawning inside the circle is the thing.</summary>
-    private const string ObjectParameter = "EOBJECT";
+    /// <summary>What a quest's script parameter is called when it names an object of the world,
+    /// one per object it is about. A search area names nowhere to look and nothing to look for,
+    /// but the quest that owns it names its own objects, and one of them standing inside the
+    /// circle is the thing.
+    ///
+    /// <para>Looked for anywhere in the name rather than at the front of it, because the game
+    /// writes the same thing several ways: of the seven thousand four hundred objects quests own,
+    /// most are named under EOBJECT and the rest under LOC_EOBJ, LOC_POS_EOBJ, BIND_EOBJ and
+    /// LCUT_EOBJ. Nothing else in the whole sheet has these letters in its name.</para></summary>
+    private const string ObjectParameter = "EOBJ";
 
     /// <summary>The script parameter a quest names one of its people in, one per person. A step
     /// that sends the player into a circle to find someone names nobody in the circle itself, and
@@ -55,7 +61,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
     private const int UnusedStep = 0;
-    private const int ObjectiveIdQuestBits = 0xFFFF;
 
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
@@ -88,7 +93,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
         foreach (ref var info in map->QuestMarkers)
         {
-            if ((info.ObjectiveId & ObjectiveIdQuestBits) != questId)
+            if (QuestIds.FromAnyId(info.ObjectiveId) != questId)
             {
                 continue;
             }
@@ -370,7 +375,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
                 continue;
             }
 
-            if (instruction.StartsWith(ObjectParameter, StringComparison.Ordinal))
+            if (instruction.Contains(ObjectParameter, StringComparison.Ordinal))
             {
                 marks.Add(new Mark(parameter.ScriptArg, MarkKind.Thing));
             }
@@ -393,17 +398,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             if (Creature(parameter.ScriptArg) is { } kind)
             {
                 marks.Add(new Mark(kind, MarkKind.Creature));
-            }
-        }
-
-        // The objects themselves say which event owns them, and a handful of them are owned by a
-        // quest that never listed them among its parameters. Both halves together is the whole set.
-        var owner = QuestIds.RowId(questId);
-        foreach (var thing in dataManager.GetExcelSheet<EObj>())
-        {
-            if (thing.Data.RowId == owner)
-            {
-                marks.Add(new Mark(thing.RowId, MarkKind.Thing));
             }
         }
 
