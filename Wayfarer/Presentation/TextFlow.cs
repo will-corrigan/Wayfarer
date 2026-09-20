@@ -11,8 +11,10 @@ namespace Wayfarer.Presentation;
 /// stub in a test. Nothing here knows about quests, items or nodes.</para></summary>
 public static class TextFlow
 {
-    /// <summary>What is appended to the last stretch when the words did not fit.</summary>
-    public const string Ellipsis = "…";
+    /// <summary>What is appended to the last stretch when the words did not fit. Three full stops
+    /// rather than the single ellipsis character: the game's face draws that one as dots halfway up
+    /// the line, which reads as a row of bullets rather than as a sentence trailing off.</summary>
+    public const string Ellipsis = "...";
 
     private const char WordSeparator = ' ';
 
@@ -25,14 +27,28 @@ public static class TextFlow
     /// <param name="lineHeight">How far down each wrapped line sits.</param>
     /// <param name="maxLines">How many lines the words may take before they are cut.</param>
     /// <param name="keywordLead">Room kept in front of the keyword for its icon, or zero.</param>
-    public static IReadOnlyList<LineRun> Lay(
+    public static IReadOnlyList<LineRun> Arrange(
         string words,
         string? keyword,
         Func<string, float> measure,
         float width,
         float lineHeight,
         int maxLines,
-        float keywordLead = 0f)
+        float keywordLead = 0f) =>
+        Arrange(words, keyword, measure, width, lineHeight, maxLines, keywordLead, out _);
+
+    /// <inheritdoc cref="Arrange(string, string?, Func{string, float}, float, float, int, float)"/>
+    /// <param name="cut">Whether the words ran out of room and were cut short, so a caller can
+    /// offer the whole sentence some other way.</param>
+    public static IReadOnlyList<LineRun> Arrange(
+        string words,
+        string? keyword,
+        Func<string, float> measure,
+        float width,
+        float lineHeight,
+        int maxLines,
+        float keywordLead,
+        out bool cut)
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(measure);
@@ -46,7 +62,9 @@ public static class TextFlow
             }
         }
 
-        return flow.Finish();
+        var runs = flow.Finish();
+        cut = flow.Cut;
+        return runs;
     }
 
     /// <summary>Whether the sentence says its keyword, so the keyword will be a stretch of its own.
@@ -103,7 +121,9 @@ public static class TextFlow
         private float plainTop;
         private int line;
         private float pen;
-        private bool cut;
+
+        /// <summary>Whether the words ran out of room and were cut short.</summary>
+        public bool Cut { get; private set; }
 
         /// <summary>Places one stretch, and says whether there is room for another.</summary>
         public bool Place(string text, bool keyword)
@@ -134,7 +154,7 @@ public static class TextFlow
         public List<LineRun> Finish()
         {
             FlushPlain();
-            if (cut && runs.Count > 0)
+            if (Cut && runs.Count > 0)
             {
                 var last = runs[^1];
                 runs[^1] = last with { Text = string.Create(CultureInfo.InvariantCulture, $"{last.Text}{Ellipsis}") };
@@ -149,8 +169,8 @@ public static class TextFlow
             FlushPlain();
             line++;
             pen = 0f;
-            cut = line >= maxLines;
-            return !cut;
+            Cut = line >= maxLines;
+            return !Cut;
         }
 
         private void Gather(string text, float left)
