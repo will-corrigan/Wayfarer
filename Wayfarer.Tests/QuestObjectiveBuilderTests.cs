@@ -215,4 +215,60 @@ public class QuestObjectiveBuilderTests
         Assert.Equal(circle, Assert.Single(where.Places));
         Assert.Equal(lair, Assert.Single(where.Expected!));
     }
+
+    [Fact]
+    public void A_marker_the_game_does_not_call_an_objective_is_not_somewhere_to_be()
+    {
+        // The shape "Heavens Weep" really has: the step's search area and the sealed door beside
+        // it, published together under one objective id, the door far the nearer of the two.
+        Place area = new(Gridania, 2, 100f, 0f, 100f, 35f);
+        Place door = new(Gridania, 2, 10f, 0f, 10f);
+        QuestTodo[] search = [new(0, 1, "Search for wounded soldiers.", 3, [area, door])];
+        QuestMarker[] drawn = [new(area, "Heavens Weep"), new(door, "Heavens Weep", Objective: false)];
+
+        var objective = QuestObjectiveBuilder.Build("Heavens Weep", 1, search, [], drawn);
+
+        var where = Assert.IsType<Destination.Reachable>(Assert.Single(objective!.Entries).Where);
+        Assert.Equal(area, Assert.Single(where.Places));
+    }
+
+    [Fact]
+    public void A_quest_that_calls_none_of_its_markers_an_objective_still_leads_to_them()
+    {
+        Place area = new(Gridania, 2, 100f, 0f, 100f, 35f);
+        QuestTodo[] search = [new(0, 1, "Search.", 1, [area])];
+        QuestMarker[] drawn = [new(area, null, Objective: false)];
+
+        var objective = QuestObjectiveBuilder.Build("Old Quest", 1, search, [], drawn);
+
+        var where = Assert.IsType<Destination.Reachable>(Assert.Single(objective!.Entries).Where);
+        Assert.Equal(area, Assert.Single(where.Places));
+    }
+
+    [Fact]
+    public void Every_marker_a_quest_calls_an_objective_is_still_offered()
+    {
+        Place one = new(Gridania, 2, 100f, 0f, 100f, 35f);
+        Place two = new(Gridania, 2, 200f, 0f, 200f, 35f);
+        QuestTodo[] search = [new(0, 1, "Search.", 2, [one, two])];
+        QuestMarker[] drawn = [new(one, null), new(two, null)];
+
+        var objective = QuestObjectiveBuilder.Build("Two Ways", 1, search, [], drawn);
+
+        var where = Assert.IsType<Destination.Reachable>(Assert.Single(objective!.Entries).Where);
+        Assert.Equal(2, where.Places.Count);
+    }
+
+    [Fact]
+    public void A_quest_with_no_todo_list_skips_the_markers_it_does_not_call_objectives()
+    {
+        Place area = new(Gridania, 2, 100f, 0f, 100f, 35f);
+        Place door = new(Gridania, 2, 10f, 0f, 10f);
+        QuestMarker[] drawn = [new(door, "Out", Objective: false), new(area, "In")];
+
+        var objective = QuestObjectiveBuilder.Build("Headline Only", 9, [], [], drawn);
+
+        var where = Assert.IsType<Destination.Reachable>(Assert.Single(objective!.Entries).Where);
+        Assert.Equal(area, Assert.Single(where.Places));
+    }
 }

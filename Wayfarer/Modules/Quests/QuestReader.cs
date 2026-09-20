@@ -47,6 +47,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
 
+    /// <summary>The bit the game sets on a marker that is where a step wants the player, and
+    /// leaves clear on one it draws for the quest without the step asking for it. Verified in
+    /// game: "Heavens Weep" published its search area and the door beside it under one objective
+    /// id, alike in marker type, data id and progress state, and apart only here.</summary>
+    private const byte MarkerIsObjective = 0x80;
+
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
@@ -88,7 +94,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             {
                 var data = info.MarkerData[i];
                 var at = new Place(data.TerritoryTypeId, data.MapId, data.Position.X, data.Position.Y, data.Position.Z, data.Radius);
-                markers.Add(new QuestMarker(at, label.Length > 0 ? label : null));
+                markers.Add(new QuestMarker(at, label.Length > 0 ? label : null, (data.Flags & MarkerIsObjective) != 0));
             }
         }
 
