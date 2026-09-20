@@ -62,6 +62,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private const int TextSheetFolderDigits = 3;
     private const int UnusedStep = 0;
 
+    /// <summary>How far into a marker's range the drawn mark is. The sheet gives the range's first
+    /// number, and that one is not a mark at all: every range begins with the game's own
+    /// placeholder art and the mark it really draws is the one after it. Checked against the
+    /// pictures themselves for each of the ranges a quest with a duty uses.</summary>
+    private const uint MarkerInRange = 1;
+
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
@@ -176,6 +182,24 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         }
 
         return null;
+    }
+
+    /// <summary>The mark the game itself puts on a quest, which is the one it draws on the map
+    /// where the quest is offered: blue for a quest that unlocks something, and its own for the
+    /// main scenario. The sheet says which per quest, so nothing here chooses a picture — it reads
+    /// the one the game already uses, and a quest the game marks some new way is marked that way
+    /// here too without anything being changed.
+    ///
+    /// <para>Null when the sheet names no mark, which it does for quests the journal never lists
+    /// and for those the game shows no marker for.</para></summary>
+    public uint? QuestIcon(ushort questId)
+    {
+        if (QuestRow(questId)?.EventIconType.ValueNullable is not { } marker || marker.MapIconAvailable == 0)
+        {
+            return null;
+        }
+
+        return marker.MapIconAvailable + MarkerInRange;
     }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no

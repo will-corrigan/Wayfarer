@@ -10,6 +10,7 @@ internal sealed class QuestsModule(
     QuestObjectives objectives,
     QuestFollowing following,
     JournalFollowButton followButton,
+    DutyMarking dutyMarks,
     IGuidance guidance) : IModule
 {
     /// <summary>What the module is called, everywhere: the checkbox, the guidance it publishes, and
@@ -18,6 +19,8 @@ internal sealed class QuestsModule(
 
     private const string JournalButtonName = "Follow quests from the journal";
     private const string JournalButtonDescription = "Puts a button in the quest journal that follows the quest on show, so the guide leads to it instead of the main scenario.";
+    private const string DutyMarksName = "Mark duties your quests lead to";
+    private const string DutyMarksDescription = "Puts a quest's own mark beside its duty in the Duty Finder, so a duty an accepted quest is waiting behind is told apart from one that is not.";
 
     /// <inheritdoc/>
     public string Name => ModuleName;
@@ -27,7 +30,10 @@ internal sealed class QuestsModule(
 
     /// <inheritdoc/>
     public IReadOnlyList<ModuleSetting> Settings =>
-        [new ModuleSetting(JournalButtonName, JournalButtonDescription, () => following.FromJournal, SetJournalButton)];
+    [
+        new ModuleSetting(JournalButtonName, JournalButtonDescription, () => following.FromJournal, SetJournalButton),
+        new ModuleSetting(DutyMarksName, DutyMarksDescription, () => following.MarkDuties, SetDutyMarks),
+    ];
 
     /// <inheritdoc/>
     public Task EnableAsync()
@@ -38,6 +44,11 @@ internal sealed class QuestsModule(
             followButton.Start();
         }
 
+        if (following.MarkDuties)
+        {
+            dutyMarks.Start();
+        }
+
         return Task.CompletedTask;
     }
 
@@ -45,7 +56,23 @@ internal sealed class QuestsModule(
     public async Task DisableAsync()
     {
         guidance.Yield(objectives);
+        await dutyMarks.StopAsync().ConfigureAwait(false);
         await followButton.StopAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Switches the Duty Finder's marks, and puts them there or takes them away at once.
+    /// </summary>
+    private void SetDutyMarks(bool wanted)
+    {
+        following.MarkDuties = wanted;
+        if (wanted)
+        {
+            dutyMarks.Start();
+        }
+        else
+        {
+            _ = dutyMarks.StopAsync();
+        }
     }
 
     /// <summary>Switches the journal's button, and puts it there or takes it away at once rather

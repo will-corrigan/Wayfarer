@@ -29,6 +29,21 @@ internal sealed class QuestFollowing(IConfigStore configs)
         }
     }
 
+    /// <summary>Whether Wayfarer marks the Duty Finder's rows for duties an accepted quest still
+    /// leads to.</summary>
+    public bool MarkDuties
+    {
+        get => config.MarkDutyFinder;
+        set
+        {
+            if (config.MarkDutyFinder != value)
+            {
+                config.MarkDutyFinder = value;
+                configs.Save(ConfigName, config);
+            }
+        }
+    }
+
     /// <summary>Whether a quest is the followed one.</summary>
     public bool IsFollowing(ushort questId) => config.FollowedQuestId == questId;
 
