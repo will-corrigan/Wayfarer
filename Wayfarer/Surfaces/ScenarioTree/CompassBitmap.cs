@@ -54,9 +54,9 @@ public static class CompassBitmap
 
     private const float OutlineWidth = 2.2f;
 
-    /// <summary>Where between the two golds the ring, the needle's front and the needle's back sit.</summary>
+    /// <summary>Where between the two golds the ring and the needle's back sit. The front is not
+    /// one of them: it is the red that says which end points.</summary>
     private const float RingBlend = 0.7f;
-    private const float ForeBlend = 0.5f;
     private const float AftShade = 0.15f;
 
     /// <summary>The dark the hub is filled with: a hole in the needle, not an edge around it.</summary>
@@ -82,9 +82,8 @@ public static class CompassBitmap
     /// <summary>The needle alone, pointing straight up, centred on its own hub.</summary>
     public static byte[] RenderNeedle()
     {
-        var fore = Vector3.Lerp(GlyphCanvas.GoldTip, GlyphCanvas.GoldTail, ForeBlend);
         var aft = Vector3.Lerp(GlyphCanvas.GoldTail, GlyphCanvas.OutlineColor, AftShade);
-        return GlyphCanvas.Render(NeedleUnit, OutlineWidth, SignedDistance, (point, perUnit) => NeedleBody(point, perUnit, fore, aft));
+        return GlyphCanvas.Render(NeedleUnit, OutlineWidth, SignedDistance, (point, perUnit) => NeedleBody(point, perUnit, GlyphCanvas.NeedleRed, aft));
     }
 
     /// <summary>The needle's own colours at a point: lighter ahead of the shoulders than behind

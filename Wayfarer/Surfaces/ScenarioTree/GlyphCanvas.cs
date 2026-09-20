@@ -30,6 +30,10 @@ public static class GlyphCanvas
     /// <inheritdoc cref="GoldTip"/>
     public static Vector3 GoldTail { get; } = Rgb(214, 148, 40);
 
+    /// <summary>The red a compass needle's pointing half is painted, the world over. Gold on gold
+    /// says which way the needle lies but not which end of it is the front.</summary>
+    public static Vector3 NeedleRed { get; } = Rgb(198, 62, 48);
+
     /// <summary>The near-black every mark is outlined in, which is what keeps gold readable
     /// against bright terrain.</summary>
     public static Vector3 OutlineColor { get; } = new(0.07f, 0.055f, 0.03f);
