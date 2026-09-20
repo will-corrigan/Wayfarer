@@ -1,4 +1,7 @@
 using System.Numerics;
+using Dalamud.Game.Addon.Events;
+using Dalamud.Game.Addon.Events.EventDataTypes;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
@@ -22,6 +25,11 @@ internal sealed unsafe class RowIcon : IDisposable
     private readonly nint parts;
     private readonly ImageNodeFlags fit;
     private readonly byte wrap;
+    private readonly List<IAddonEventHandle> listening = [];
+
+    private IAddonEventManager? events;
+    private string says = string.Empty;
+    private ushort window;
 
     private RowIcon(IconImageNode node)
     {
@@ -78,11 +86,91 @@ internal sealed unsafe class RowIcon : IDisposable
     /// <summary>Hides the icon, for a row that wants fewer than it had.</summary>
     public void Hide() => node.IsVisible = false;
 
+    /// <summary>Says what the icon means when the pointer rests on it.
+    ///
+    /// <para>A window only tests the pointer against the parts it keeps its own list of, and a node
+    /// we add to one of its rows is never among them. Dalamud will put a node of ours into the
+    /// window's own event handling, which is how the pointer finds it at all, and the words are
+    /// then shown and hidden as it comes and goes.</para></summary>
+    /// <param name="manager">What puts our node into the window's event handling.</param>
+    /// <param name="addon">The window the row belongs to.</param>
+    /// <param name="text">What the icon means, or nothing to say nothing.</param>
+    public void Explain(IAddonEventManager manager, AtkUnitBase* addon, string text)
+    {
+        Forget();
+        if (addon == null || node.Node == null || string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        events = manager;
+        says = text;
+        window = addon->Id;
+
+        var target = (nint)(&node.Node->AtkResNode);
+        Listen(manager, (nint)addon, target, AddonEventType.MouseOver);
+        Listen(manager, (nint)addon, target, AddonEventType.MouseOut);
+    }
+
+    /// <summary>Stops saying anything, and takes the node back out of the window's event handling
+    /// before it is freed.</summary>
+    public void Forget()
+    {
+        if (events is { } manager)
+        {
+            foreach (var handle in listening)
+            {
+                manager.RemoveEvent(handle);
+            }
+
+            Hidden();
+        }
+
+        listening.Clear();
+        events = null;
+        says = string.Empty;
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
+        Forget();
         Reclaim();
         node.Dispose();
+    }
+
+    private void Listen(IAddonEventManager manager, nint addon, nint target, AddonEventType when)
+    {
+        if (manager.AddEvent(addon, target, when, Told) is { } handle)
+        {
+            listening.Add(handle);
+        }
+    }
+
+    private void Told(AddonEventType when, AddonEventData data)
+    {
+        var stage = AtkStage.Instance();
+        if (stage == null)
+        {
+            return;
+        }
+
+        if (when is AddonEventType.MouseOver && node.Node != null)
+        {
+            stage->TooltipManager.ShowTooltip(window, &node.Node->AtkResNode, says);
+            return;
+        }
+
+        Hidden();
+    }
+
+    private void Hidden()
+    {
+        var stage = AtkStage.Instance();
+        if (stage != null && window != 0)
+        {
+            stage->TooltipManager.HideTooltip(window);
+        }
     }
 
     private void Place(Vector2 at, Vector2 size)

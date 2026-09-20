@@ -24,7 +24,7 @@ namespace Wayfarer.Surfaces.DutyFinder;
 /// <para>The window is only watched while something is marking it, and every node made here is
 /// freed when the row gives it back, when the window closes, when the last module lets go, or when
 /// the plugin unloads.</para></summary>
-internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : IDutyFinder, IAsyncDisposable
+internal sealed class DutyFinderSurface(IFramework framework, IAddonEventManager events, IPluginLog log) : IDutyFinder, IAsyncDisposable
 {
     private const string AddonName = "ContentsFinder";
 
@@ -111,6 +111,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         {
             AddonName = AddonName,
             OnFinalize = Closed,
+            OnUpdate = Redrawn,
         };
         window.Enable();
     }
@@ -164,7 +165,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
             var wanted = Wanted(row);
             var lit = row.Places.Count(place => place.Lit);
             var strip = StripLayout.Place(wanted.Count, [], lit, DutyFinderMetrics.Strip);
-            For(row).Lay(row, wanted, strip, addon);
+            For(row).Lay(row, wanted, strip, addon, events);
             if (addon != null)
             {
                 // The patches the pointer is tested against have moved, and the window keeps its
@@ -197,6 +198,17 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         if (addon != null)
         {
             addon->AtkUnitBase.UpdateCollisionNodeList(false);
+        }
+    }
+
+    /// <summary>The window has redrawn a row of its own accord, which it does whenever one is
+    /// chosen or let go of, and put back the pictures we drew in place of. They are hidden again,
+    /// or the row would show both at once.</summary>
+    private unsafe void Redrawn(AddonContentsFinder* addon)
+    {
+        foreach (var strip in stripsByRow.Values)
+        {
+            strip.Reassert();
         }
     }
 

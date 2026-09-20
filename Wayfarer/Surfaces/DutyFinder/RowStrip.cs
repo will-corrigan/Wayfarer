@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
@@ -21,14 +22,14 @@ internal sealed unsafe class RowStrip : IDisposable
 {
     private readonly List<RowIcon> icons = [];
     private readonly List<RowMoved> moved = [];
-    private readonly List<RowTooltip> said = [];
+    private readonly List<nint> hidden = [];
 
     /// <summary>Lays the strip out afresh: the game's pictures as ours, then the marks asked for.</summary>
     /// <param name="row">The row being drawn.</param>
     /// <param name="marks">What the modules want on it.</param>
     /// <param name="strip">Where everything goes and how big it is.</param>
     /// <param name="addon">The window the row belongs to.</param>
-    public void Lay(DutyFinderRow row, IReadOnlyList<DutyMark> marks, StripLayout.Strip strip, AddonContentsFinder* addon)
+    public void Lay(DutyFinderRow row, IReadOnlyList<DutyMark> marks, StripLayout.Strip strip, AddonContentsFinder* addon, IAddonEventManager events)
     {
         Restore();
 
@@ -37,11 +38,6 @@ internal sealed unsafe class RowStrip : IDisposable
         var size = new Vector2(strip.Size, strip.Size);
         var down = DutyFinderMetrics.StripTop + ((DutyFinderMetrics.StripSlotHeight - strip.Size) / 2f);
         var places = strip.Marks.Concat(strip.GameIcons).ToList();
-
-        // A slot the game is using keeps its own patch, because the words the window says about
-        // that picture are said through it. The rest are free, and a mark speaks through one of
-        // those. No patch is ever asked to speak for two icons at once.
-        var spare = new Queue<nint>(all.Where(place => !place.Lit && place.Touch != 0).Select(place => place.Touch));
 
         for (var index = 0; index < places.Count; index++)
         {
@@ -54,11 +50,7 @@ internal sealed unsafe class RowStrip : IDisposable
             if (index < marks.Count)
             {
                 icon.Draw(marks[index].IconId, at, size);
-                if (spare.Count > 0)
-                {
-                    Say(spare.Dequeue(), at, size, addon, marks[index].Tooltip);
-                }
-
+                icon.Explain(events, &addon->AtkUnitBase, marks[index].Tooltip);
                 continue;
             }
 
@@ -76,15 +68,30 @@ internal sealed unsafe class RowStrip : IDisposable
         }
     }
 
+    /// <summary>Hides again any picture of the game's that it has shown again itself. The game
+    /// redraws a row whenever it is chosen or let go of, which puts back the pictures we drew in
+    /// its place, and both would then be drawn at once.</summary>
+    public void Reassert()
+    {
+        foreach (var picture in hidden)
+        {
+            var node = (AtkResNode*)picture;
+            if (node != null && node->IsVisible())
+            {
+                node->ToggleVisibility(false);
+            }
+        }
+    }
+
     /// <summary>Puts everything of the game's back as it was found. Safe to call twice.</summary>
     public void Restore()
     {
-        foreach (var tooltip in said)
+        foreach (var icon in icons)
         {
-            tooltip.Dispose();
+            icon.Forget();
         }
 
-        said.Clear();
+        hidden.Clear();
         foreach (var was in moved)
         {
             was.Restore();
@@ -128,6 +135,7 @@ internal sealed unsafe class RowStrip : IDisposable
         if (picture != null)
         {
             moved.Add(RowMoved.Of(picture));
+            hidden.Add(slot.Picture);
             picture->ToggleVisibility(false);
         }
     }
@@ -146,23 +154,5 @@ internal sealed unsafe class RowStrip : IDisposable
         touch->SetYFloat(at.Y);
         touch->SetWidth((ushort)size.X);
         touch->SetHeight((ushort)size.Y);
-    }
-
-    /// <summary>Says what one of our marks means, through a patch the row already has: a window
-    /// only tests the pointer against the parts it keeps a list of, and a patch of our own inside
-    /// a row is never one of them.</summary>
-    private void Say(nint patch, Vector2 at, Vector2 size, AddonContentsFinder* addon, string text)
-    {
-        var touch = (AtkResNode*)patch;
-        if (touch == null || addon == null || string.IsNullOrEmpty(text))
-        {
-            return;
-        }
-
-        Carry(patch, at, size);
-        if (RowTooltip.Attach(touch, addon->AtkUnitBase.Id, text) is { } tooltip)
-        {
-            said.Add(tooltip);
-        }
     }
 }
