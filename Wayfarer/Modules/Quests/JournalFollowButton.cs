@@ -19,7 +19,7 @@ namespace Wayfarer.Modules.Quests;
 /// sits whatever the game does with it. It lives only while the quests module is up: the controller
 /// is enabled and disabled with the module, and the button is made when the pane opens and freed
 /// when it closes, the way every node added to a game window is.</para></summary>
-internal sealed class JournalFollowButton(QuestFollowing following, IFramework framework, IPluginLog log) : IAsyncDisposable
+internal sealed class JournalFollowButton(QuestFollowing following, IGameGui gameGui, IFramework framework, IPluginLog log) : IAsyncDisposable
 {
     /// <summary>The row of wide buttons at the foot of the pane, node 49, and the two the game
     /// puts in it: Map at one end and Abandon at the other. Ours goes in the space between them,
@@ -54,6 +54,11 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     private AddonController? controller;
     private TextButtonNode? button;
     private ushort? shownQuest;
+
+    /// <summary>The window our button is in. The game keeps more than one of these panes open at
+    /// once — the Duty Finder opens its own — and every one of them is announced to us, so the
+    /// button has to know which it belongs to or another pane's setup would take it away.</summary>
+    private ushort attachedTo;
     private bool shownAsFollowed;
     private bool linked;
     private byte mapRightBefore;
@@ -75,14 +80,6 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
 
-    /// <summary>The quest the pane is showing, or null when it shows a leve, a quest the player has
-    /// already finished, or nothing at all.</summary>
-    private static unsafe ushort? QuestOnShow()
-    {
-        var agent = AgentQuestJournal.Instance();
-        return agent == null || agent->SelectedQuestType != QuestIds.OrdinaryQuest ? null : QuestIds.FromAnyId(agent->SelectedQuestId);
-    }
-
     /// <summary>The space the game has left between its own two buttons, or nothing when there is
     /// not enough of it. In the row's own coordinates, which ours shares by hanging off it.</summary>
     private static unsafe (float Left, float Width)? SpaceBetweenTheGamesButtons(AtkUnitBase* addon)
@@ -97,6 +94,34 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         var left = map->X + map->Width + Margin;
         var width = abandon->X - Margin - left;
         return width >= NarrowestButton ? (left, width) : null;
+    }
+
+    /// <summary>The quest the pane is showing, or null when it shows a leve, a quest the player has
+    /// already finished, or nothing at all.
+    ///
+    /// <para>The game lends this same pane to other windows: the Duty Finder describes a duty in one
+    /// of its own while the journal has another open, and the journal's agent goes on holding
+    /// whichever quest was last chosen either way. Which window opened this one is what tells them
+    /// apart — the journal's pane hangs off the list the agent is driving, and the Duty Finder's
+    /// hangs off the Duty Finder.</para></summary>
+    private unsafe ushort? QuestOnShow(AtkUnitBase* addon)
+    {
+        var agent = AgentQuestJournal.Instance();
+        if (agent == null || !OpenedByTheJournal(addon))
+        {
+            return null;
+        }
+
+        return agent->SelectedQuestType != QuestIds.OrdinaryQuest ? null : QuestIds.FromAnyId(agent->SelectedQuestId);
+    }
+
+    /// <summary>Whether the quest journal is the thing that opened this pane. The game lends the
+    /// same pane to the Duty Finder, which opens one of its own while the journal has another, so
+    /// the pane is asked who owns it rather than guessed at from what it is drawing.</summary>
+    private unsafe bool OpenedByTheJournal(AtkUnitBase* addon)
+    {
+        var journal = AgentQuestJournal.Instance();
+        return addon != null && journal != null && gameGui.FindAgentInterface(addon).Address == (nint)journal;
     }
 
     private unsafe void Enable()
@@ -116,6 +141,11 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         // A setup we have already handled can be delivered again, so anything from last time goes
         // before anything new is made: otherwise the game keeps nodes we no longer hold and can
         // never be told to free.
+        if (!OpenedByTheJournal(addon))
+        {
+            return;
+        }
+
         Detach(addon);
 
         try
@@ -134,6 +164,7 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
                 IsVisible = false,
             };
             button.AttachNode(row);
+            attachedTo = addon->Id;
             shownQuest = null;
         }
         catch (Exception ex)
@@ -145,10 +176,16 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
 
     private unsafe void Detach(AtkUnitBase* addon)
     {
+        if (button is null || (addon != null && attachedTo != 0 && addon->Id != attachedTo))
+        {
+            return;
+        }
+
         UnlinkFromCursorChain(addon);
         HandFocusBack(addon);
-        button?.Dispose();
+        button.Dispose();
         button = null;
+        attachedTo = 0;
     }
 
     /// <summary>Points the journal's focus away from our button. The button can go while the
@@ -216,8 +253,13 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
             return;
         }
 
+        if (button is null || addon == null || addon->Id != attachedTo)
+        {
+            return;
+        }
+
         var space = SpaceBetweenTheGamesButtons(addon);
-        var quest = space is null ? null : QuestOnShow();
+        var quest = space is null ? null : QuestOnShow(addon);
         var followed = quest is { } id && following.IsFollowing(id);
         if (quest == shownQuest && followed == shownAsFollowed)
         {
@@ -241,9 +283,12 @@ internal sealed class JournalFollowButton(QuestFollowing following, IFramework f
         LinkIntoCursorChain(addon);
     }
 
+    /// <summary>Follows or stops following the quest the button is currently offering, which is
+    /// the one the last refresh found and showed it for. Read from there rather than asked again:
+    /// the press belongs to what the player can see on the button.</summary>
     private void Toggle()
     {
-        if (QuestOnShow() is not { } quest)
+        if (shownQuest is not { } quest)
         {
             return;
         }

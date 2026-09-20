@@ -1,52 +1,19 @@
-using Dalamud.Game.Addon.Lifecycle;
-using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Wayfarer.App;
 
 namespace Wayfarer.Modules.Quests;
 
 /// <summary>The quest journal, opened at a quest of ours.
 ///
-/// <para>When the journal is already open the quest is simply selected. When it is not, asking for
-/// it opens it, and the game shows whatever page it was last on or has just been told to show;
-/// the quest is selected again once the window itself says it has finished setting up. That is the
-/// game saying when it is ready rather than us counting frames at it.</para></summary>
-internal sealed unsafe class QuestJournal(IAddonLifecycle lifecycle, IGameGui gameGui, IPluginLog log) : IDisposable
+/// <para>The agent keeps its own selection by the quest manager id, not the sheet row, and opens
+/// and selects in a single call. Asking twice with the window already open shuts it again.</para></summary>
+internal sealed unsafe class QuestJournal(IPluginLog log)
 {
-    private static readonly string DetailAddonName = GameAddon.NameOf<AddonJournalDetail>();
-
-    private ushort? wanted;
-    private bool listening;
-
-    private bool IsOpen => gameGui.GetAddonByName(DetailAddonName).Address != nint.Zero;
-
-    /// <summary>Opens the journal at a quest, whether or not it is already open.</summary>
-    public void Open(ushort questId)
-    {
-        if (IsOpen)
-        {
-            Select(questId);
-            return;
-        }
-
-        wanted = questId;
-        Listen();
-        Select(questId);
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        if (listening)
-        {
-            lifecycle.UnregisterListener(AddonEvent.PostSetup, DetailAddonName, OnReady);
-            listening = false;
-        }
-
-        wanted = null;
-    }
+    /// <summary>Opens the journal at a quest, whether or not it is already open.
+    ///
+    /// <para>Asked once and only once: the agent opens the window and selects the quest in the one
+    /// call, and asking again with the window already open shuts it.</para></summary>
+    public void Open(ushort questId) => Select(questId);
 
     private void Select(ushort questId)
     {
@@ -57,26 +24,6 @@ internal sealed unsafe class QuestJournal(IAddonLifecycle lifecycle, IGameGui ga
             return;
         }
 
-        journal->OpenForQuest(QuestIds.RowId(questId), QuestIds.OrdinaryQuest);
-    }
-
-    private void Listen()
-    {
-        if (!listening)
-        {
-            lifecycle.RegisterListener(AddonEvent.PostSetup, DetailAddonName, OnReady);
-            listening = true;
-        }
-    }
-
-    /// <summary>The journal has finished opening. Whatever page it chose for itself, the quest the
-    /// player asked for goes back on show.</summary>
-    private void OnReady(AddonEvent type, AddonArgs args)
-    {
-        if (wanted is { } questId)
-        {
-            wanted = null;
-            Select(questId);
-        }
+        journal->OpenForQuest(questId, QuestIds.OrdinaryQuest);
     }
 }
