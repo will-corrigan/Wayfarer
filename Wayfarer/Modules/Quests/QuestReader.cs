@@ -47,12 +47,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
 
-    /// <summary>The bit the game sets on a marker that is where a step wants the player, and
-    /// leaves clear on one it draws for the quest without the step asking for it. Verified in
-    /// game: "Heavens Weep" published its search area and the door beside it under one objective
-    /// id, alike in marker type, data id and progress state, and apart only here.</summary>
-    private const byte MarkerIsObjective = 0x80;
-
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
@@ -70,6 +64,34 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     {
         var quests = QuestManager.Instance();
         return quests != null && quests->IsQuestAccepted(questId);
+    }
+
+    /// <summary>The places a quest hangs on most of its own steps, by the row that names them.
+    /// A quest pins more than any one step asks for — the hall it happens in, the door back out,
+    /// the one who sent you — and the sheet hangs those on step after step. Something the quest
+    /// carries nearly all the way through is not what any single step is about, and it is often
+    /// the nearer of the two, which is enough to win a route to it and send the player away from
+    /// what they were asked to do.
+    ///
+    /// <para>More than half the quest's own located steps is the line. A place named twice out of
+    /// seven is an errand that comes round again; a place named on five steps of six is the
+    /// furniture of the whole quest.</para></summary>
+    public static HashSet<uint> Furniture(IEnumerable<IReadOnlyList<uint>> stepRows)
+    {
+        ArgumentNullException.ThrowIfNull(stepRows);
+
+        var located = stepRows.Where(rows => rows.Count > 0).ToList();
+        var stepsPerRow = new Dictionary<uint, int>();
+        foreach (var rows in located)
+        {
+            foreach (var row in rows.Distinct())
+            {
+                stepsPerRow[row] = stepsPerRow.GetValueOrDefault(row) + 1;
+            }
+        }
+
+        var most = located.Count / 2d;
+        return [.. stepsPerRow.Where(pair => pair.Value > most).Select(pair => pair.Key)];
     }
 
     /// <summary>The game's live markers for this quest, this frame.</summary>
@@ -94,7 +116,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             {
                 var data = info.MarkerData[i];
                 var at = new Place(data.TerritoryTypeId, data.MapId, data.Position.X, data.Position.Y, data.Position.Z, data.Radius);
-                markers.Add(new QuestMarker(at, label.Length > 0 ? label : null, (data.Flags & MarkerIsObjective) != 0));
+                markers.Add(new QuestMarker(at, label.Length > 0 ? label : null));
             }
         }
 
@@ -230,12 +252,28 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return rows;
     }
 
-    private static List<Place> Positions(Quest.TodoParamsStruct param) =>
-        [.. param.ToDoLocation
+    /// <summary>The Level rows one step names, in order, skipping the empty slots.</summary>
+    private static IEnumerable<uint> Rows(Quest.TodoParamsStruct param) =>
+        param.ToDoLocation.Where(reference => reference.RowId != 0).Select(reference => reference.RowId);
+
+    /// <summary>Where a step happens, with the quest's own furniture left out. All of them when
+    /// taking the furniture out would leave nowhere at all, so a step that names nothing else
+    /// still leads somewhere.</summary>
+    private static List<Place> Positions(Quest.TodoParamsStruct param, HashSet<uint> furniture)
+    {
+        var places = param.ToDoLocation
             .Where(reference => reference.RowId != 0)
-            .Select(reference => reference.ValueNullable)
-            .OfType<Level>()
-            .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius))];
+            .Select(reference => (reference.RowId, Level: reference.ValueNullable))
+            .Where(pair => pair.Level is not null)
+            .Select(pair => (pair.RowId, Place: At(pair.Level!.Value)))
+            .ToList();
+
+        var wanted = places.Where(pair => !furniture.Contains(pair.RowId)).ToList();
+        return [.. (wanted.Count > 0 ? wanted : places).Select(pair => pair.Place)];
+    }
+
+    private static Place At(Level level) =>
+        new(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius);
 
     /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
     /// event handler. Empty when the handler is not loaded or there is no player.</summary>
@@ -488,16 +526,21 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         var internalName = quest.Id.ExtractText();
         var rows = OpenTextSheet(internalName) is { } raw ? ParseTodoRows(raw, internalName) : [];
 
-        var todos = new List<QuestTodoTemplate>();
+        var steps = new List<(int Index, Quest.TodoParamsStruct Param)>();
         for (var i = 0; i < quest.TodoParams.Count; i++)
         {
             var param = quest.TodoParams[i];
-            if (param.ToDoCompleteSeq == UnusedStep)
+            if (param.ToDoCompleteSeq != UnusedStep)
             {
-                continue;
+                steps.Add((i, param));
             }
+        }
 
-            todos.Add(new QuestTodoTemplate(i, param.ToDoCompleteSeq, rows.GetValueOrDefault(i), param.ToDoQty, Positions(param)));
+        var furniture = Furniture(steps.Select(step => (IReadOnlyList<uint>)[.. Rows(step.Param)]));
+        var todos = new List<QuestTodoTemplate>();
+        foreach (var (index, param) in steps)
+        {
+            todos.Add(new QuestTodoTemplate(index, param.ToDoCompleteSeq, rows.GetValueOrDefault(index), param.ToDoQty, Positions(param, furniture)));
         }
 
         return todos;

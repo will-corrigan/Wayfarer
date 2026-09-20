@@ -56,20 +56,6 @@ internal static class QuestObjectiveBuilder
     private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>
         progress.Any(p => p.Index == todo.Index && p.Done);
 
-    /// <summary>The markers that are somewhere to be, out of every marker the quest drew. A quest
-    /// pins more than its step asks for — the way out of where the step happens, the door back in —
-    /// and those stand nearer than the step's own area often enough to win a route to them. The
-    /// game says which is which, so this asks rather than judges by distance or by shape.
-    ///
-    /// <para>All of them when none says it is an objective, so a quest that marks nothing this way
-    /// still leads somewhere.</para></summary>
-    private static List<QuestMarker> Wanted(IEnumerable<QuestMarker> markers)
-    {
-        var all = markers.ToList();
-        var wanted = all.Where(marker => marker.Objective).ToList();
-        return wanted.Count > 0 ? wanted : all;
-    }
-
     private static ObjectiveEntry Entry(
         QuestTodo todo,
         IReadOnlyList<QuestTodoProgress> progress,
@@ -81,7 +67,7 @@ internal static class QuestObjectiveBuilder
         EventId? owner,
         IReadOnlyList<Place>? lairs)
     {
-        var markersAtThisTodo = Wanted(markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))));
+        var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
         Destination where = Enters(todo, duty) || todo.Positions.Count == 0 ? Nowhere(duty)
             : markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo, marks, owner, lairs)
             : new Destination.Reachable(todo.Positions, marks, owner, lairs);
@@ -114,7 +100,7 @@ internal static class QuestObjectiveBuilder
     /// <summary>What a quest with no to-do list for this step is about: wherever its markers are,
     /// or its duty when it has neither.</summary>
     private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers, QuestDuty? duty) =>
-        Wanted(markers) is { Count: > 0 } wanted ? [new ObjectiveEntry(FirstLabel(wanted) ?? questName, null, Reachable(wanted))]
+        markers.Count > 0 ? [new ObjectiveEntry(FirstLabel(markers) ?? questName, null, Reachable(markers))]
             : duty is { } instance ? [new ObjectiveEntry(questName, null, new Destination.InDuty(instance.Finder))]
             : [];
 
