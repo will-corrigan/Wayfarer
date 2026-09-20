@@ -33,7 +33,6 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
     private NativeListController<AddonContentsFinder, DutyFinderRow>? rows;
     private AddonController<AddonContentsFinder>? window;
     private bool disposed;
-    private bool described;
 
     /// <inheritdoc/>
     public IDisposable Mark(IDutyRowMarks marks)
@@ -204,7 +203,6 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
     /// us to take old marks back off.</summary>
     private unsafe bool Wants(AddonContentsFinder* addon, DutyFinderRow row)
     {
-        Describe(row);
         return Wanted(row).Count > 0;
     }
 
@@ -290,24 +288,6 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
     /// <summary>The window has closed and taken its rows with it, so the marks hung off them are
     /// done with too.</summary>
     private unsafe void Closed(AddonContentsFinder* addon) => FreeAll(putBack: false);
-
-    /// <summary>TEMPORARY. Writes out the parts of a row once, so where the game keeps its own
-    /// strip of row icons can be read off rather than guessed at. Delete once the answer is in
-    /// <see cref="DutyFinderMetrics"/>.</summary>
-    private unsafe void Describe(DutyFinderRow row)
-    {
-        if (described)
-        {
-            return;
-        }
-
-        described = true;
-        foreach (var part in row.Parts)
-        {
-            var node = (AtkResNode*)part;
-            log.Information($"duty row part id {node->NodeId}: type {node->Type} at ({node->X}, {node->Y}) {node->Width}x{node->Height} shown {node->IsVisible()}");
-        }
-    }
 
     /// <summary>Frees every mark, and safe to call when there is nothing to free.</summary>
     /// <param name="putBack">Whether the game's own parts are to be put back as well. They are,

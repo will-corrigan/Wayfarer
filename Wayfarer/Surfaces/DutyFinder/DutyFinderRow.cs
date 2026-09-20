@@ -52,32 +52,6 @@ internal sealed unsafe class DutyFinderRow : ListItemData
     /// they are moved and resized only when there is no other room, and always put back.</summary>
     public List<nint> LitSlots => [.. Slots.Where(Lit).Select(slot => (nint)slot.Value)];
 
-    /// <summary>Every part the row is built from, as the row itself counts them. The array the game
-    /// hands over when it draws a row does not say how long it is, so the component it is drawn by
-    /// is asked instead, which knows.</summary>
-    public List<nint> Parts
-    {
-        get
-        {
-            var component = Component;
-            if (component == null)
-            {
-                return [];
-            }
-
-            var parts = new List<nint>(component->UldManager.NodeListCount);
-            for (var index = 0; index < component->UldManager.NodeListCount; index++)
-            {
-                if (component->UldManager.NodeList[index] != null)
-                {
-                    parts.Add((nint)component->UldManager.NodeList[index]);
-                }
-            }
-
-            return parts;
-        }
-    }
-
     /// <summary>The row's icon slots in the order they sit, whether or not the row has them. Read
     /// fresh, because a row is the game's and may be anything by the next drawing.</summary>
     private List<Pointer<AtkResNode>> Slots
@@ -95,14 +69,56 @@ internal sealed unsafe class DutyFinderRow : ListItemData
         }
     }
 
-    /// <summary>The row as the component it is, which is what names a part by its id. Null when
-    /// this row is not drawn by one, which is the game's way of saying there is nothing here.
-    /// A pointer cannot be asked with <c>?.</c>, so it is asked the long way.</summary>
-    private AtkComponentBase* Component =>
-        ItemRenderer == null ? null : &ItemRenderer->AtkComponentButton.AtkComponentBase;
+    /// <summary>The component a row is drawn by, which is what names a part by its id.
+    ///
+    /// <para>A list hands over one of two things and never both: the renderer it draws a row with,
+    /// or the row's own record. This list hands over the record, so there is no renderer to ask and
+    /// the component is found by climbing from a part of the row we were given until a part of it
+    /// turns out to be one. Asking the renderer alone answered nothing at all here, and a row whose
+    /// parts cannot be named looks exactly like a row with none.</para></summary>
+    private AtkComponentBase* Component
+    {
+        get
+        {
+            if (ItemRenderer != null)
+            {
+                return &ItemRenderer->AtkComponentButton.AtkComponentBase;
+            }
 
-    /// <summary>Whether the game is using a slot.</summary>
-    private static bool Lit(Pointer<AtkResNode> slot) => slot.Value != null && slot.Value->IsVisible();
+            for (var node = (AtkResNode*)NameNode; node != null; node = node->ParentNode)
+            {
+                var owner = node->GetAsAtkComponentNode();
+                if (owner != null && owner->Component != null)
+                {
+                    return owner->Component;
+                }
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>Whether the game is using a slot.
+    ///
+    /// <para>The slot itself is always shown, on every row, whether or not the game has put
+    /// anything in it. What it holds is what is switched on and off, so a slot is in use when
+    /// something inside it is being drawn. Asking the slot answered yes for every row and is why
+    /// a mark once landed on top of an icon.</para></summary>
+    private static bool Lit(Pointer<AtkResNode> slot) => slot.Value != null && Draws(slot.Value);
+
+    /// <summary>Whether anything inside a slot is being drawn.</summary>
+    private static bool Draws(AtkResNode* slot)
+    {
+        for (var held = slot->ChildNode; held != null; held = held->PrevSiblingNode)
+        {
+            if (held->GetAsAtkImageNode() != null && held->IsVisible())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>Where a slot is standing empty, or null when the game is using it. A slot the row
     /// does not have at all is room the layout file says is there, so it is offered.</summary>
@@ -111,7 +127,7 @@ internal sealed unsafe class DutyFinderRow : ListItemData
     private static float? Unused(Pointer<AtkResNode> slot, int place) => slot.Value switch
     {
         null => DutyFinderMetrics.StripLeft + (place * DutyFinderMetrics.StripPitch),
-        var node when node->IsVisible() => null,
+        var node when Draws(node) => null,
         var node => node->X,
     };
 }
