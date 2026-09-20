@@ -10,29 +10,23 @@ namespace Wayfarer;
 
 /// <summary>The plugin's entry point and its only composition root.
 ///
-/// <para>Dalamud constructs this class with the game services its constructor asks for, then
+/// <para>Dalamud constructs this class with the one thing it needs to reach everything else, then
 /// calls <see cref="LoadAsync"/>, which is where the container is built and anything that has to
 /// start does so — asynchronously, which is what a toolkit with an async initialisation needs.
 /// Everything below this class is built by the container: the app's own services from
 /// <see cref="AppRegistrations"/>, and one Autofac module per feature module, each registering what it
 /// owns. This class never constructs anything itself.</para>
 ///
-/// <para>Dalamud's services are registered as externally owned: Dalamud created them and Dalamud
-/// disposes them, so the container must never do so. Everything the container creates, it
-/// disposes, in reverse order of creation, when the plugin is unloaded — asynchronously, so a
-/// service that has to finish on the framework thread can await its way there instead of
-/// blocking the unload.</para></summary>
-public sealed class Plugin(
-    IDalamudPluginInterface pluginInterface,
-    IFramework framework,
-    IClientState clientState,
-    IObjectTable objects,
-    IDataManager dataManager,
-    ICommandManager commands,
-    IAddonLifecycle addonLifecycle,
-    ITextureProvider textures,
-    IGameGui gameGui,
-    IPluginLog log) : IAsyncDalamudPlugin
+/// <para>The game's own services are not listed here. <see cref="GameServices"/> fetches whichever
+/// of them something asks for, so a class that wants one takes it and nothing else has to be told;
+/// a list kept here instead would be a second copy to keep in step, and the plugin would fail to
+/// load the first time the two disagreed.</para>
+///
+/// <para>Everything the container creates, it disposes, in reverse order of creation, when the
+/// plugin is unloaded — asynchronously, so a service that has to finish on the framework thread
+/// can await its way there instead of blocking the unload. Dalamud's own services are excepted:
+/// Dalamud made them and Dalamud disposes them.</para></summary>
+public sealed class Plugin(IDalamudPluginInterface pluginInterface) : IAsyncDalamudPlugin
 {
     private IContainer? container;
 
@@ -45,15 +39,7 @@ public sealed class Plugin(
         var builder = new ContainerBuilder();
 
         builder.RegisterInstance(pluginInterface).ExternallyOwned();
-        builder.RegisterInstance(framework).ExternallyOwned();
-        builder.RegisterInstance(clientState).ExternallyOwned();
-        builder.RegisterInstance(objects).ExternallyOwned();
-        builder.RegisterInstance(dataManager).ExternallyOwned();
-        builder.RegisterInstance(commands).ExternallyOwned();
-        builder.RegisterInstance(addonLifecycle).ExternallyOwned();
-        builder.RegisterInstance(textures).ExternallyOwned();
-        builder.RegisterInstance(gameGui).ExternallyOwned();
-        builder.RegisterInstance(log).ExternallyOwned();
+        builder.RegisterSource(new GameServices(pluginInterface));
 
         builder.RegisterModule<AppRegistrations>();
         builder.RegisterModule<QuestsRegistrations>();
