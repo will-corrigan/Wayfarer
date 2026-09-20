@@ -28,10 +28,50 @@ namespace Wayfarer.Guidance;
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions interactions) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Place? Inside(Place area, IReadOnlyList<uint>? marks, EventId? owner)
+    public Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
     {
         ArgumentNullException.ThrowIfNull(area);
-        if (area.Radius <= 0f || !AnythingToLookFor(marks, owner) || objects.LocalPlayer is not { } player)
+
+        // A step is about one sort of thing and the other only turns up because of it: a circle
+        // holds the thing to act on, and once acted on it holds whatever that summoned. So the
+        // things to act on are looked for first, and the creatures only when there are none.
+        return Nearest(area, marks, owner, MarkKind.Thing) ?? Nearest(area, marks, owner, MarkKind.Creature);
+    }
+
+    /// <summary>How far apart two points are across the ground, ignoring the drop between them.</summary>
+    private static float OnTheGround(float fromX, float fromZ, float toX, float toZ)
+    {
+        var (dx, dz) = (fromX - toX, fromZ - toZ);
+        return MathF.Sqrt((dx * dx) + (dz * dz));
+    }
+
+    /// <summary>Whether this is one of the things being looked for: stamped by the game as the
+    /// event's own, or named by the module. The stamp is asked first because it is the game's own
+    /// answer and covers objects nobody listed.</summary>
+    private static bool Wanted(IGameObject candidate, List<Mark>? marks, EventId? owner, MarkKind sort)
+    {
+        // The game stamps what it spawned for an event, which is how a thing nobody listed is still
+        // recognised. It says nothing about which sort it is, so it answers for things to act on:
+        // that is what a step sends the player to before anything has been summoned.
+        if (sort is MarkKind.Thing && owner is { } stamped && candidate.Address != 0
+            && ((GameObjectStruct*)candidate.Address)->EventId == stamped)
+        {
+            return true;
+        }
+
+        return marks is not null && marks.Any(mark => mark.Id == candidate.BaseId);
+    }
+
+    /// <summary>Whether the caller said anything at all to look for. Without that there is nothing
+    /// to recognise and the circle is just a circle.</summary>
+    private static bool AnythingToLookFor(List<Mark>? marks, EventId? owner, MarkKind sort) =>
+        (sort is MarkKind.Thing && owner is not null) || marks?.Count > 0;
+
+    /// <summary>The nearest untried thing of one sort standing inside an area.</summary>
+    private Place? Nearest(Place area, IReadOnlyList<Mark>? marks, EventId? owner, MarkKind sort)
+    {
+        List<Mark>? wanted = marks is null ? null : [.. marks.Where(mark => mark.Kind == sort)];
+        if (area.Radius <= 0f || !AnythingToLookFor(wanted, owner, sort) || objects.LocalPlayer is not { } player)
         {
             return null;
         }
@@ -42,7 +82,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
         var best = float.MaxValue;
         foreach (var candidate in objects)
         {
-            if (!candidate.IsTargetable || !Wanted(candidate, marks, owner))
+            if (!candidate.IsTargetable || !Wanted(candidate, wanted, owner, sort))
             {
                 continue;
             }
@@ -69,37 +109,12 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
 
         // Everything standing here has been tried and none of them answered. Rather than say there
         // is nothing, the player is sent round them again from the beginning.
-        return nearest ?? Again(area, marks, owner, any);
+        return nearest ?? Again(area, marks, owner, sort, any);
     }
-
-    /// <summary>How far apart two points are across the ground, ignoring the drop between them.</summary>
-    private static float OnTheGround(float fromX, float fromZ, float toX, float toZ)
-    {
-        var (dx, dz) = (fromX - toX, fromZ - toZ);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
-    }
-
-    /// <summary>Whether this is one of the things being looked for: stamped by the game as the
-    /// event's own, or named by the module. The stamp is asked first because it is the game's own
-    /// answer and covers objects nobody listed.</summary>
-    private static bool Wanted(IGameObject candidate, IReadOnlyList<uint>? marks, EventId? owner)
-    {
-        if (owner is { } stamped && candidate.Address != 0 && ((GameObjectStruct*)candidate.Address)->EventId == stamped)
-        {
-            return true;
-        }
-
-        return marks is not null && marks.Contains(candidate.BaseId);
-    }
-
-    /// <summary>Whether the caller said anything at all to look for. Without that there is nothing
-    /// to recognise and the circle is just a circle.</summary>
-    private static bool AnythingToLookFor(IReadOnlyList<uint>? marks, EventId? owner) =>
-        owner is not null || marks?.Count > 0;
 
     /// <summary>The nearest of them all when every one has been tried, so a step whose answer was
     /// missed still leads somewhere.</summary>
-    private Place? Again(Place area, IReadOnlyList<uint>? marks, EventId? owner, bool any)
+    private Place? Again(Place area, IReadOnlyList<Mark>? marks, EventId? owner, MarkKind sort, bool any)
     {
         if (!any)
         {
@@ -107,6 +122,6 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
         }
 
         interactions.Forget();
-        return Inside(area, marks, owner);
+        return Nearest(area, marks, owner, sort);
     }
 }

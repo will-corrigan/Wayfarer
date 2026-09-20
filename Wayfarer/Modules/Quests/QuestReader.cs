@@ -55,7 +55,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
-    private readonly Dictionary<ushort, IReadOnlyList<uint>> marksByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
     private string lastHandler = string.Empty;
@@ -126,7 +126,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
     /// <summary>The objects of the world this quest is about, by the id the game gives them. Read
     /// once per quest; which of them is spawned is asked of the world, not of the sheet.</summary>
-    public IReadOnlyList<uint> Marks(ushort questId) =>
+    public IReadOnlyList<Mark> Marks(ushort questId) =>
         marksByQuest.TryGetValue(questId, out var marks) ? marks : marksByQuest[questId] = ReadMarks(questId);
 
     /// <summary>The key items a quest is about, as it names them among its own parameters. Read
@@ -349,20 +349,20 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private ContentFinderCondition? Finder(uint contentId) =>
         contentId != 0 && dutiesByContent is { } duties && duties.TryGetValue(contentId, out var duty) ? duty : null;
 
-    private List<uint> ReadMarks(ushort questId)
+    private List<Mark> ReadMarks(ushort questId)
     {
         if (QuestRow(questId) is not { } quest)
         {
             return [];
         }
 
-        var marks = new HashSet<uint>();
+        var marks = new HashSet<Mark>();
         foreach (var parameter in quest.QuestParams)
         {
             if (parameter.ScriptInstruction.ExtractText().StartsWith(ObjectParameter, StringComparison.Ordinal)
                 && parameter.ScriptArg != 0)
             {
-                marks.Add(parameter.ScriptArg);
+                marks.Add(new Mark(parameter.ScriptArg, MarkKind.Thing));
             }
         }
 
@@ -378,7 +378,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
             if (Creature(parameter.ScriptArg) is { } kind)
             {
-                marks.Add(kind);
+                marks.Add(new Mark(kind, MarkKind.Creature));
             }
         }
 
@@ -389,7 +389,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         {
             if (thing.Data.RowId == owner)
             {
-                marks.Add(thing.RowId);
+                marks.Add(new Mark(thing.RowId, MarkKind.Thing));
             }
         }
 

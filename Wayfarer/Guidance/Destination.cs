@@ -22,16 +22,18 @@ public abstract record Destination
     /// wherever the player is standing this frame.</summary>
     /// <param name="Places">Where the entry can be done, each with its radius when it is an area to
     /// search rather than a point to stand on.</param>
-    /// <param name="Marks">Things that are what the player is looking for, by the id the world gives
-    /// them: an object it put there, or a kind of creature that lives there. Both are that same id. Only consulted inside a place with a radius, where the data says where to
-    /// search but not what for, and only while one of them is actually spawned there.</param>
+    /// <param name="Marks">Things that are what the player is looking for, each by the id the world
+    /// gives it and which sort of thing it is. Only consulted inside a place with a radius, where
+    /// the data says where to search but not what for, and only while one of them is actually
+    /// spawned there. The sort decides which is meant when several are: a thing to act on before
+    /// whatever stands around it.</param>
     /// <param name="Owner">The game event these things belong to, if the module knows it. The game
     /// stamps every object it spawns for an event with that event's id, so this recognises the right
     /// object without anyone having listed it, including the ones the data forgot. Marks stay as the
     /// answer for anything the game has not stamped.</param>
     public sealed record Reachable(
         IReadOnlyList<Place> Places,
-        IReadOnlyList<uint>? Marks = null,
+        IReadOnlyList<Mark>? Marks = null,
         EventId? Owner = null) : Destination;
 
     /// <summary>Inside instanced content. Nothing to walk to; the only guidance is to queue.</summary>

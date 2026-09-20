@@ -35,7 +35,7 @@ internal static class QuestObjectiveBuilder
         bool headlinePressable = false,
         QuestDuty? duty = null,
         IReadOnlyList<QuestItem>? items = null,
-        IReadOnlyList<uint>? marks = null,
+        IReadOnlyList<Mark>? marks = null,
         EventId? owner = null,
         IReadOnlyList<Place>? lairs = null,
         string? kind = null)
@@ -63,7 +63,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyDictionary<string, EmoteCommand> emotes,
         QuestDuty? duty,
         IReadOnlyList<QuestItem>? items,
-        IReadOnlyList<uint>? marks,
+        IReadOnlyList<Mark>? marks,
         EventId? owner,
         IReadOnlyList<Place>? lairs)
     {
@@ -134,7 +134,7 @@ internal static class QuestObjectiveBuilder
     /// <summary>What the game's own markers say, narrowed to the creatures standing inside them.
     /// A marker for a step that sends the player somewhere to fight is a circle to be somewhere in;
     /// where the things in it stand is the better answer when the data says.</summary>
-    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers, IReadOnlyList<uint>? marks = null, EventId? owner = null, IReadOnlyList<Place>? lairs = null) =>
+    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers, IReadOnlyList<Mark>? marks = null, EventId? owner = null, IReadOnlyList<Place>? lairs = null) =>
         new(Narrowed([.. markers.Select(marker => marker.At)], lairs), marks, owner);
 
     /// <summary>Whether a marker belongs to a step's place: standing on it, or standing inside it
