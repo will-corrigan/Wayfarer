@@ -166,6 +166,25 @@ public class MarkSearchTests
     }
 
     [Fact]
+    public void Somebody_standing_at_the_same_numbers_in_another_zone_is_not_the_one()
+    {
+        // Two zones can hold the very same coordinates, and a step often names ground the player
+        // is nowhere near. Someone underfoot must never answer for someone a world away.
+        var elsewhere = StillAsking with { At = StillAsking.At with { Territory = 999 } };
+
+        Assert.Null(MarkSearch.Choose(Circle, [elsewhere], ItsPeople, Quest, Standing));
+    }
+
+    [Fact]
+    public void The_one_in_this_zone_answers_over_the_one_in_another()
+    {
+        var near = Near(1020623, Asking, targetable: true, 2f);
+        var far = near with { Id = near.Id + 1, At = near.At with { Territory = 999 } };
+
+        Assert.Equal(near.At, MarkSearch.Choose(Circle, [far, near], ItsPeople, Quest, Standing)?.At);
+    }
+
+    [Fact]
     public void Nobody_is_taken_for_someone_the_quest_named_by_accident()
     {
         // An adventurer, their cat and a wild beast, all standing in it, none of them the step.

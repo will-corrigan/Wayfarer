@@ -97,8 +97,12 @@ public static class MarkSearch
             return null;
         }
 
+        // Where a thing stands is asked before how far it is. Two places on different maps can
+        // hold the very same numbers, and a step often names ground in a zone the player is not
+        // standing in: without this, something underfoot answers for something a world away.
         var here = standing
             .Where(candidate => candidate.Targetable
+                && candidate.At.Territory == area.Territory
                 && Wanted(candidate, named, owner, sort)
                 && OnTheGround(area, candidate.At) <= area.Radius)
             .ToList();

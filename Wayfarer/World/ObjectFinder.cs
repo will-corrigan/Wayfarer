@@ -25,20 +25,20 @@ namespace Wayfarer.World;
 /// often holds several of the same thing and only one is the one, so what the player has already
 /// tried is passed over and the next nearest is guided to instead. They are never told how many
 /// there are: the answer they want is which one to walk to now.</para></summary>
-internal sealed unsafe class ObjectFinder(IObjectTable objects) : IObjectFinder
+internal sealed unsafe class ObjectFinder(IObjectTable objects, IClientState clientState) : IObjectFinder
 {
     /// <inheritdoc/>
     public Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
     {
         ArgumentNullException.ThrowIfNull(area);
 
-        if (objects.LocalPlayer is not { } player)
+        if (objects.LocalPlayer is not { } player || clientState.TerritoryType != area.Territory)
         {
             return null;
         }
 
-        var from = new Place(area.Territory, area.Map, player.Position.X, player.Position.Y, player.Position.Z);
-        var standing = Standing(area);
+        var from = new Place(clientState.TerritoryType, clientState.MapId, player.Position.X, player.Position.Y, player.Position.Z);
+        var standing = Standing();
         var stamp = owner is { } known ? (uint)known : 0u;
 
         return MarkSearch.Choose(area, standing, marks, stamp, from);
@@ -47,7 +47,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects) : IObjectFinder
     /// <summary>Everything the world holds that could be what a module is looking for, read once so
     /// the choosing is made on one moment's worth of it rather than on a list that moves underneath.
     /// </summary>
-    private List<Candidate> Standing(Place area)
+    private List<Candidate> Standing()
     {
         var standing = new List<Candidate>();
         foreach (var candidate in objects)
@@ -60,7 +60,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects) : IObjectFinder
                 raw == null ? 0u : (uint)raw->EventId,
                 candidate.IsTargetable,
                 raw == null ? 0u : raw->NamePlateIconId,
-                new Place(area.Territory, area.Map, position.X, position.Y, position.Z)));
+                new Place(clientState.TerritoryType, clientState.MapId, position.X, position.Y, position.Z)));
         }
 
         return standing;

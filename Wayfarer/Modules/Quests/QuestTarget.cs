@@ -23,7 +23,6 @@ internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
     private IReadOnlyList<Place> last = [];
     private IReadOnlyList<Mark>? lastMarks;
     private EventId? lastOwner;
-    private IReadOnlyList<Place>? lastLairs;
 
     /// <summary>Where a step sends the player: the one thing of the quest's standing in the ground
     /// it named, or the ground itself.</summary>
@@ -35,7 +34,7 @@ internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
     {
         ArgumentNullException.ThrowIfNull(places);
 
-        (last, lastMarks, lastOwner, lastLairs) = (places, Left(marks), owner, lairs);
+        (last, lastMarks, lastOwner) = (places, Left(marks), owner);
         if (Look(places, lastMarks, owner) is { } found)
         {
             return new Destination.AtObject(found.Id, found.At);

@@ -66,15 +66,12 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects) :
             return null;
         }
 
-        foreach (var candidate in objects)
+        if (objects.SearchById(thing.Id) is not { } standing)
         {
-            if (candidate.GameObjectId == thing.Id)
-            {
-                var at = candidate.Position;
-                return new Place(thing.At.Territory, thing.At.Map, at.X, at.Y, at.Z);
-            }
+            return thing.At;
         }
 
-        return thing.At;
+        var at = standing.Position;
+        return new Place(thing.At.Territory, thing.At.Map, at.X, at.Y, at.Z);
     }
 }
