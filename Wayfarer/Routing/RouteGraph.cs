@@ -102,6 +102,15 @@ public sealed class RouteGraph
     private static float Distance(Place a, Place b) =>
         MathF.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)) + ((a.Z - b.Z) * (a.Z - b.Z)));
 
+    /// <summary>What walking somewhere really costs: the distance to it, less the room it has to
+    /// stand in. A step often gives a wide circle to search and a precise point beside it, and the
+    /// circle's middle means nothing — reaching anywhere inside it is arriving. Measured to the
+    /// middle, a circle the player is already standing in loses to a point a few yalms away and
+    /// the route turns them round and walks them out of the very area the step is about. Nought
+    /// for a place already stood in, so it wins as it should. Everything the graph itself holds is
+    /// a point, so this only ever changes which of a step's own places is chosen.</summary>
+    private static float Reach(Place from, Place to) => MathF.Max(0f, Distance(from, to) - to.Radius);
+
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
     private readonly record struct StaticEdge(int To, Leg Leg);
@@ -221,7 +230,7 @@ public sealed class RouteGraph
 
                 if (SameMap(here, places[other]))
                 {
-                    yield return (other, new Leg.Walk(places[other], Distance(here, places[other])));
+                    yield return (other, new Leg.Walk(places[other], Reach(here, places[other])));
                 }
             }
 
