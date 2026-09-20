@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Wayfarer.Modules.Quests;
+namespace Wayfarer.Surfaces.DutyFinder;
 
 /// <summary>Where a row's icons go when the game's own and ours are laid out together.
 ///

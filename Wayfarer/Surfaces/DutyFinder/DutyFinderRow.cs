@@ -2,7 +2,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 
-namespace Wayfarer.Modules.Quests;
+namespace Wayfarer.Surfaces.DutyFinder;
 
 /// <summary>One row of the Duty Finder, and what it is about.
 ///

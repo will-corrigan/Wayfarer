@@ -1,4 +1,4 @@
-using Wayfarer.Modules.Quests;
+using Wayfarer.Surfaces.DutyFinder;
 
 namespace Wayfarer.Tests;
 
