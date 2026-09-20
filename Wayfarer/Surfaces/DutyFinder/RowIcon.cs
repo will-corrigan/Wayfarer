@@ -31,6 +31,7 @@ internal sealed unsafe class RowIcon : IDisposable
     private string says = string.Empty;
     private ushort window;
     private NodeFlags drawnOnly;
+    private nint listed;
 
     private RowIcon(IconImageNode node)
     {
@@ -95,11 +96,13 @@ internal sealed unsafe class RowIcon : IDisposable
     /// then shown and hidden as it comes and goes.</para></summary>
     /// <param name="manager">What puts our node into the window's event handling.</param>
     /// <param name="addon">The window the row belongs to.</param>
+    /// <param name="owner">The component the row is drawn by, whose own list of parts decides
+    /// what is tested against the pointer.</param>
     /// <param name="text">What the icon means, or nothing to say nothing.</param>
-    public void Explain(IAddonEventManager manager, AtkUnitBase* addon, string text)
+    public void Explain(IAddonEventManager manager, AtkUnitBase* addon, AtkComponentBase* owner, string text)
     {
         Forget();
-        if (addon == null || node.Node == null || string.IsNullOrEmpty(text))
+        if (addon == null || owner == null || node.Node == null || string.IsNullOrEmpty(text))
         {
             return;
         }
@@ -113,6 +116,11 @@ internal sealed unsafe class RowIcon : IDisposable
         // it is told otherwise. What it was is kept, so it goes back to being only drawn.
         drawnOnly = node.Node->AtkResNode.NodeFlags;
         node.Node->AtkResNode.NodeFlags |= NodeFlags.RespondToMouse | NodeFlags.EmitsEvents | NodeFlags.HasCollision;
+
+        // A part is tested against the pointer because the component that draws the row counts it
+        // among its own. Hanging a node in the row's tree does not do that, which is why a node of
+        // ours was never heard however it was flagged or whoever was listening.
+        Enlist(owner);
 
         var target = (nint)(&node.Node->AtkResNode);
         Listen(manager, (nint)addon, target, AddonEventType.MouseOver);
@@ -136,6 +144,7 @@ internal sealed unsafe class RowIcon : IDisposable
         listening.Clear();
         events = null;
         says = string.Empty;
+        Delist();
         if (node.Node != null && drawnOnly != default)
         {
             node.Node->AtkResNode.NodeFlags = drawnOnly;
@@ -149,6 +158,53 @@ internal sealed unsafe class RowIcon : IDisposable
         Forget();
         Reclaim();
         node.Dispose();
+    }
+
+    /// <summary>Has the component count our part among its own, so the pointer is tested against
+    /// it. The list is grown by one and told to work itself out again.</summary>
+    private void Enlist(AtkComponentBase* owner)
+    {
+        if (node.Node == null || listed != 0)
+        {
+            return;
+        }
+
+        ref var uld = ref owner->UldManager;
+        uld.ExpandNodeListSize((ushort)(uld.NodeListCount + 1));
+        uld.NodeList[uld.NodeListCount++] = &node.Node->AtkResNode;
+        uld.UpdateDrawNodeList();
+        listed = (nint)owner;
+    }
+
+    /// <summary>Takes our part back out of the component's own list, which must happen before the
+    /// node is freed or the row is left counting something that has gone.</summary>
+    private void Delist()
+    {
+        var owner = (AtkComponentBase*)listed;
+        if (owner == null || node.Node == null)
+        {
+            return;
+        }
+
+        listed = 0;
+        ref var uld = ref owner->UldManager;
+        var ours = &node.Node->AtkResNode;
+        for (var index = 0; index < uld.NodeListCount; index++)
+        {
+            if (uld.NodeList[index] != ours)
+            {
+                continue;
+            }
+
+            for (var after = index; after < uld.NodeListCount - 1; after++)
+            {
+                uld.NodeList[after] = uld.NodeList[after + 1];
+            }
+
+            uld.NodeListCount--;
+            uld.UpdateDrawNodeList();
+            return;
+        }
     }
 
     private void Listen(IAddonEventManager manager, nint addon, nint target, AddonEventType when)

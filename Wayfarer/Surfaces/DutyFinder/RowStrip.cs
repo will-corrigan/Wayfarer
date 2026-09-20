@@ -50,7 +50,7 @@ internal sealed unsafe class RowStrip : IDisposable
             if (index < marks.Count)
             {
                 icon.Draw(marks[index].IconId, at, size);
-                icon.Explain(events, &addon->AtkUnitBase, marks[index].Tooltip);
+                icon.Explain(events, &addon->AtkUnitBase, row.Owner, marks[index].Tooltip);
                 continue;
             }
 
