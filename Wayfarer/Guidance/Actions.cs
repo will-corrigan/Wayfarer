@@ -12,11 +12,15 @@ namespace Wayfarer.Guidance;
 ///
 /// <para>Every one of the game's singletons is asked for fresh and checked before it is used: none
 /// of them exist before the player is in the world, and a press can arrive at any moment.</para></summary>
-internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, IPluginLog log) : IActions
+internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui, ITargetManager targets, IPluginLog log) : IActions
 {
     /// <summary>The sub-index is for aetherytes with several destinations, such as housing; every
     /// aetheryte on a route is a plain one.</summary>
     private const byte PlainAetheryte = 0;
+
+    /// <summary>What the game means by nothing picked out. It is what an item is used on when it
+    /// is not told otherwise, and an item that wants something to be used on is refused.</summary>
+    private const ulong NoTarget = 0xE000_0000;
 
     /// <summary>The chat window, which is where a phrase the quest wants said is written.</summary>
     private static readonly string ChatLogAddon = GameAddon.NameOf<AddonChatLog>();
@@ -67,8 +71,11 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
             return;
         }
 
+        // A step that has the player use an item on something means the thing they have picked
+        // out. Left to itself the game uses it on nothing and refuses, which is what a burlap sack
+        // and a targeted beast look like when the two are never introduced.
         var kind = keyItem ? ActionType.EventItem : ActionType.Item;
-        if (!actionManager->UseAction(kind, itemId))
+        if (!actionManager->UseAction(kind, itemId, targets.Target?.GameObjectId ?? NoTarget))
         {
             log.Warning($"the game did not use item {itemId}: the usual reason is that nothing suitable is targeted.");
         }
