@@ -1,5 +1,6 @@
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using FFXIVClientStructs.Interop;
 using KamiToolKit.Classes;
 
 namespace Wayfarer.Surfaces.DutyFinder;
@@ -15,7 +16,8 @@ namespace Wayfarer.Surfaces.DutyFinder;
 /// as the list scrolls, and none of it may be held from one drawing to the next.</para></summary>
 internal sealed unsafe class DutyFinderRow : ListItemData
 {
-    /// <summary>The row's own name, the text the player reads. A mark is hung beside it.</summary>
+    /// <summary>The row's own name, the text the player reads. Marks are hung beside it, and when
+    /// they will not otherwise fit it is what gives up the room.</summary>
     public AtkTextNode* NameNode => GetNode<AtkTextNode>(DutyFinderMetrics.RowNameNodeIndex);
 
     /// <summary>The duty this row queues for, or null when the row is not for one: a roulette, or
@@ -32,74 +34,43 @@ internal sealed unsafe class DutyFinderRow : ListItemData
 
             // The row counts its place from one, and the list from zero.
             var place = (long)GetNumber(DutyFinderMetrics.RowContentIndexValue) - 1;
-            if (place < 0 || place >= agent->ContentList.LongCount)
-            {
-                return null;
-            }
+            var content = place >= 0 && place < agent->ContentList.LongCount
+                ? agent->ContentList[place].Value
+                : null;
 
-            var content = agent->ContentList[place].Value;
-            return content != null && content->Id.ContentType == ContentsType.Regular && content->Id.Id != 0
-                ? content->Id.Id
+            return content != null && content->Id is { ContentType: ContentsType.Regular, Id: not 0 } duty
+                ? duty.Id
                 : null;
         }
     }
 
     /// <summary>Where this row's icon slots are standing empty, left to right: the room a mark can
-    /// go in without anything of the game's having to move.
-    ///
-    /// <para>The slots are reached by node id rather than by their place in the parts the row is
-    /// drawn from, because the game names them in its layout and does not say where they sit in
-    /// that list. Where a slot really is is read off the slot itself, so the game moving them is
-    /// followed rather than argued with; only a slot the row does not have at all falls back to
-    /// where the layout file puts it.</para>
-    ///
-    /// <para>Nothing of the game's is written to here or anywhere else. A lit slot is simply not
-    /// offered, and a mark goes somewhere else.</para></summary>
-    public List<float> DarkSlots
-    {
-        get
-        {
-            var dark = new List<float>();
-            var component = Component;
-            for (var slot = 0; slot < DutyFinderMetrics.GameIconNodeIds.Length; slot++)
-            {
-                var node = component == null ? null : component->GetNodeById(DutyFinderMetrics.GameIconNodeIds[slot]);
-                if (node == null)
-                {
-                    dark.Add(DutyFinderMetrics.StripLeft + (slot * DutyFinderMetrics.StripPitch));
-                }
-                else if (!node->IsVisible())
-                {
-                    dark.Add(node->X);
-                }
-            }
+    /// go in without anything of the game's having to move.</summary>
+    public List<float> DarkSlots => [.. Slots.Select(Unused).OfType<float>()];
 
-            return dark;
-        }
-    }
+    /// <summary>The game's own icons this row is showing, left to right. They belong to the game:
+    /// they are moved and resized only when there is no other room, and always put back.</summary>
+    public List<nint> LitSlots => [.. Slots.Where(Lit).Select(slot => (nint)slot.Value)];
 
-    /// <summary>Every part the row is built from, as the row itself counts them.
-    ///
-    /// <para>The array the game hands over when it draws a row does not say how long it is, so it
-    /// cannot be walked. The component the row is knows how many parts it has, and that is what is
-    /// walked instead.</para></summary>
+    /// <summary>Every part the row is built from, as the row itself counts them. The array the game
+    /// hands over when it draws a row does not say how long it is, so the component it is drawn by
+    /// is asked instead, which knows.</summary>
     public List<nint> Parts
     {
         get
         {
-            var parts = new List<nint>();
             var component = Component;
             if (component == null)
             {
-                return parts;
+                return [];
             }
 
-            ref var uld = ref component->UldManager;
-            for (var index = 0; index < uld.NodeListCount; index++)
+            var parts = new List<nint>(component->UldManager.NodeListCount);
+            for (var index = 0; index < component->UldManager.NodeListCount; index++)
             {
-                if (uld.NodeList[index] != null)
+                if (component->UldManager.NodeList[index] != null)
                 {
-                    parts.Add((nint)uld.NodeList[index]);
+                    parts.Add((nint)component->UldManager.NodeList[index]);
                 }
             }
 
@@ -107,8 +78,40 @@ internal sealed unsafe class DutyFinderRow : ListItemData
         }
     }
 
+    /// <summary>The row's icon slots in the order they sit, whether or not the row has them. Read
+    /// fresh, because a row is the game's and may be anything by the next drawing.</summary>
+    private List<Pointer<AtkResNode>> Slots
+    {
+        get
+        {
+            var component = Component;
+            var slots = new List<Pointer<AtkResNode>>(DutyFinderMetrics.GameIconNodeIds.Length);
+            foreach (var id in DutyFinderMetrics.GameIconNodeIds)
+            {
+                slots.Add(component == null ? null : component->GetNodeById(id));
+            }
+
+            return slots;
+        }
+    }
+
     /// <summary>The row as the component it is, which is what names a part by its id. Null when
-    /// this row is not drawn by one, which is the game's way of saying there is nothing here.</summary>
+    /// this row is not drawn by one, which is the game's way of saying there is nothing here.
+    /// A pointer cannot be asked with <c>?.</c>, so it is asked the long way.</summary>
     private AtkComponentBase* Component =>
         ItemRenderer == null ? null : &ItemRenderer->AtkComponentButton.AtkComponentBase;
+
+    /// <summary>Whether the game is using a slot.</summary>
+    private static bool Lit(Pointer<AtkResNode> slot) => slot.Value != null && slot.Value->IsVisible();
+
+    /// <summary>Where a slot is standing empty, or null when the game is using it. A slot the row
+    /// does not have at all is room the layout file says is there, so it is offered.</summary>
+    /// <param name="slot">The slot itself, which the row may not have.</param>
+    /// <param name="place">Which of the strip's slots it is, counted from the left.</param>
+    private static float? Unused(Pointer<AtkResNode> slot, int place) => slot.Value switch
+    {
+        null => DutyFinderMetrics.StripLeft + (place * DutyFinderMetrics.StripPitch),
+        var node when node->IsVisible() => null,
+        var node => node->X,
+    };
 }

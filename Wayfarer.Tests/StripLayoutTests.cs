@@ -4,91 +4,121 @@ namespace Wayfarer.Tests;
 
 public class StripLayoutTests
 {
-    // The strip a Duty Finder row keeps for icons: three slots of 20, left to right.
-    private const float Left = 302f;
-    private const float Middle = 322f;
-    private const float Right = 342f;
+    // The strip a Duty Finder row keeps for icons: three slots of 20, from 302 to 362.
+    private const float First = 302f;
+    private const float Second = 322f;
+    private const float Third = 342f;
     private const float Pitch = 20f;
+    private const float Smallest = 12f;
 
-    private static readonly float[] AllDark = [Left, Middle, Right];
+    private static readonly StripLayout.StripSpace Space = new(First, 362f, Pitch, Smallest);
+    private static readonly float[] AllDark = [First, Second, Third];
     private static readonly float[] None = [];
 
     [Fact]
-    public void A_mark_takes_the_first_slot_the_game_left_dark()
+    public void A_mark_takes_a_slot_the_game_left_dark()
     {
-        var strip = StripLayout.Place(1, AllDark, Left, Pitch);
+        var strip = StripLayout.Place(1, AllDark, lit: 0, Space);
 
-        Assert.Equal([Left], strip.Places);
-        Assert.Equal(0f, strip.Overflow);
+        Assert.Equal([First], strip.Marks);
+        Assert.Empty(strip.GameIcons);
+        Assert.Equal(Pitch, strip.Size);
+        Assert.Null(strip.Left);
     }
 
     [Fact]
-    public void Marks_fill_the_dark_slots_in_order()
+    public void While_there_is_room_nothing_of_the_games_is_touched_or_shrunk()
     {
-        var strip = StripLayout.Place(3, AllDark, Left, Pitch);
+        // The game is showing the middle icon; the outer two are free, and one is all we need.
+        var strip = StripLayout.Place(1, [First, Third], lit: 1, Space);
 
-        Assert.Equal([Left, Middle, Right], strip.Places);
-        Assert.Equal(0f, strip.Overflow);
+        Assert.Equal([First], strip.Marks);
+        Assert.Empty(strip.GameIcons);
+        Assert.Equal(Pitch, strip.Size);
+        Assert.Null(strip.Left);
     }
 
     [Fact]
-    public void A_lit_slot_is_left_alone_and_marks_go_round_it()
+    public void A_full_row_shrinks_every_symbol_rather_than_taking_from_the_name()
     {
-        // The game is showing the middle icon, so only the outer two are free.
-        var strip = StripLayout.Place(2, [Left, Right], Left, Pitch);
+        // Three lit and one mark wanted: four into the room three had, so all four shrink.
+        var strip = StripLayout.Place(1, None, lit: 3, Space);
 
-        Assert.Equal([Left, Right], strip.Places);
-        Assert.Equal(0f, strip.Overflow);
+        Assert.Equal(15f, strip.Size);
+        Assert.Null(strip.Left);
+        Assert.Equal([First], strip.Marks);
+        Assert.Equal([317f, 332f, 347f], strip.GameIcons);
     }
 
     [Fact]
-    public void More_marks_than_dark_slots_carry_on_left_of_the_strip()
+    public void The_games_icons_shrink_with_ours_rather_than_ours_alone()
     {
-        var strip = StripLayout.Place(2, [Right], Left, Pitch);
+        var strip = StripLayout.Place(2, None, lit: 3, Space);
 
-        Assert.Equal([Right, Left - Pitch], strip.Places);
-        Assert.Equal(Pitch, strip.Overflow);
+        // Five into sixty is twelve, which is as small as a symbol may be drawn.
+        Assert.Equal(Smallest, strip.Size);
+        Assert.Equal(5, strip.Marks.Count + strip.GameIcons.Count);
+        Assert.Null(strip.Left);
     }
 
     [Fact]
-    public void A_full_strip_puts_every_mark_left_of_it()
+    public void Past_the_smallest_a_symbol_may_be_the_name_gives_up_the_room()
     {
-        var strip = StripLayout.Place(2, None, Left, Pitch);
+        var strip = StripLayout.Place(3, None, lit: 3, Space);
 
-        Assert.Equal([Left - Pitch, Left - (2f * Pitch)], strip.Places);
-        Assert.Equal(2f * Pitch, strip.Overflow);
+        Assert.Equal(Smallest, strip.Size);
+        Assert.Equal(362f - (6f * Smallest), strip.Left);
+        Assert.True(strip.Left < First);
     }
 
     [Fact]
-    public void What_fits_asks_the_name_for_nothing()
+    public void Ours_sit_on_the_inside_and_the_games_keep_the_right()
     {
-        Assert.Equal(0f, StripLayout.Place(0, AllDark, Left, Pitch).Overflow);
-        Assert.Equal(0f, StripLayout.Place(3, AllDark, Left, Pitch).Overflow);
+        var strip = StripLayout.Place(2, None, lit: 3, Space);
+
+        Assert.True(strip.Marks.Max() < strip.GameIcons.Min());
     }
 
     [Fact]
-    public void Nothing_to_show_takes_no_room_at_all()
+    public void The_strip_always_keeps_its_right_edge()
     {
-        var strip = StripLayout.Place(0, AllDark, Left, Pitch);
+        foreach (var lit in new[] { 0, 1, 2, 3 })
+        {
+            var strip = StripLayout.Place(2, None, lit, Space);
+            var all = strip.Marks.Concat(strip.GameIcons).ToList();
 
-        Assert.Empty(strip.Places);
-        Assert.Equal(0f, strip.Overflow);
+            Assert.Equal(362f - strip.Size, all.Max(), 3);
+        }
     }
 
     [Fact]
-    public void Overflowing_marks_stay_one_pitch_apart()
+    public void Every_icon_sits_one_size_from_the_next()
     {
-        var strip = StripLayout.Place(3, None, Left, Pitch);
+        var strip = StripLayout.Place(2, None, lit: 3, Space);
+        var all = strip.Marks.Concat(strip.GameIcons).ToList();
 
-        Assert.Equal(strip.Places[0] - Pitch, strip.Places[1]);
-        Assert.Equal(strip.Places[1] - Pitch, strip.Places[2]);
+        for (var index = 1; index < all.Count; index++)
+        {
+            Assert.Equal(all[index - 1] + strip.Size, all[index], 3);
+        }
+    }
+
+    [Fact]
+    public void Nothing_wanted_asks_for_nothing_and_moves_nothing()
+    {
+        var strip = StripLayout.Place(0, None, lit: 3, Space);
+
+        Assert.Empty(strip.Marks);
+        Assert.Empty(strip.GameIcons);
+        Assert.Null(strip.Left);
     }
 
     [Fact]
     public void A_row_cannot_be_laid_out_backwards_or_on_top_of_itself()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => StripLayout.Place(-1, AllDark, Left, Pitch));
-        Assert.Throws<ArgumentOutOfRangeException>(() => StripLayout.Place(1, AllDark, Left, 0f));
-        Assert.Throws<ArgumentNullException>(() => StripLayout.Place(1, null!, Left, Pitch));
+        Assert.Throws<ArgumentOutOfRangeException>(() => StripLayout.Place(-1, AllDark, 0, Space));
+        Assert.Throws<ArgumentOutOfRangeException>(() => StripLayout.Place(1, AllDark, -1, Space));
+        Assert.Throws<ArgumentNullException>(() => StripLayout.Place(1, null!, 0, Space));
+        Assert.Throws<ArgumentNullException>(() => StripLayout.Place(1, AllDark, 0, null!));
     }
 }

@@ -33,12 +33,15 @@ internal static class DutyFinderMetrics
     /// <inheritdoc cref="StripLeft"/>
     public const float StripTop = 0f;
 
-    /// <summary>How big a mark is: one slot of the row's own strip, so ours read as the game's
-    /// own icons do.</summary>
-    public const float BadgeSize = StripPitch;
+    /// <summary>How small a symbol may be drawn before it stops being worth drawing. Past this the
+    /// strip takes room from the row's name rather than shrinking any further.</summary>
+    public const float SmallestIcon = 12f;
 
     /// <summary>The node ids of the slots holding the game's own icons — level sync, unrestricted
     /// party, and the rest — in the order they sit, left to right. Most are dark on most rows,
     /// which is the room our own marks go in. PROVISIONAL, from the layout file.</summary>
     public static readonly uint[] GameIconNodeIds = [7u, 10u, 14u];
+
+    /// <summary>The room a row keeps for its icons, as the layout rule wants it.</summary>
+    public static readonly StripLayout.StripSpace Strip = new(StripLeft, StripRight, StripPitch, SmallestIcon);
 }

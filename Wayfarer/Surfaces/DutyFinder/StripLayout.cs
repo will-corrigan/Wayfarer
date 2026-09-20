@@ -1,45 +1,70 @@
 namespace Wayfarer.Surfaces.DutyFinder;
 
-/// <summary>Where a row's marks go, given the slots the game is not using.
+/// <summary>Where a row's icons go and how big they are: the game's own and ours, laid out as one
+/// strip.
 ///
-/// <para>A row keeps a strip of slots for the icons it may need to show — level sync, unrestricted
-/// party, and the rest — and most rows light only one or two. The dark ones are room already set
-/// aside at the right size and spacing, so marks go in those and the game's own icons are left
-/// exactly where they are. Nothing of the game's is moved, so nothing has to be put back, and
-/// another plugin marking the same row is not disturbed.</para>
+/// <para>A row keeps three slots for the icons it may need to show, and lights one or two on most
+/// rows. While the dark ones are room enough, marks go in those at their natural size and nothing
+/// of the game's is touched: its icons stay where the player is used to finding them, and a row
+/// another plugin has marked is left as it was found.</para>
 ///
-/// <para>Only when there are more marks than dark slots does anything have to give. Then they
-/// carry on leftwards past the strip and the layout says how much room that took, which is what
-/// the row's name has to give up. It does not take it: that is the caller's to do, or not.</para></summary>
+/// <para>When there is not room enough, the strip is worked out again as one list. It keeps its
+/// right edge, and the first thing to give is the size of the icons: every symbol in the strip,
+/// the game's and ours, is drawn smaller so that more of them fit in the same space. Only when
+/// they would be too small to read does the strip grow leftwards, and then the room it takes comes
+/// out of the row's name.</para>
+///
+/// <para>Everything that has to move or change size is said here, so putting it all back is a
+/// matter of record rather than of guesswork.</para></summary>
 internal static class StripLayout
 {
-    /// <summary>Lays out a row's marks in the slots the game left dark.</summary>
-    /// <param name="marks">How many marks are to be shown.</param>
-    /// <param name="dark">Where the unused slots are, left to right.</param>
-    /// <param name="stripLeft">Where the strip begins, which is where marks carry on left from.</param>
-    /// <param name="pitch">How far apart slots sit, which is one slot's width.</param>
-    /// <returns>Where each mark goes, in order, and how much room was wanted past the strip.</returns>
-    public static Strip Place(int marks, IReadOnlyList<float> dark, float stripLeft, float pitch)
+    /// <summary>Lays out a row's icons.</summary>
+    /// <param name="marks">How many marks are wanted.</param>
+    /// <param name="dark">Where the row's unused slots are, left to right.</param>
+    /// <param name="lit">How many icons the game itself is showing.</param>
+    /// <param name="space">The room the row keeps for them.</param>
+    public static Strip Place(int marks, IReadOnlyList<float> dark, int lit, StripSpace space)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(marks);
         ArgumentNullException.ThrowIfNull(dark);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pitch);
+        ArgumentOutOfRangeException.ThrowIfNegative(lit);
+        ArgumentNullException.ThrowIfNull(space);
 
-        var places = new List<float>(marks);
-        for (var index = 0; index < marks; index++)
+        // Room enough as things stand: ours go in the gaps, at full size, and the game's stay put.
+        if (marks <= dark.Count)
         {
-            places.Add(index < dark.Count
-                ? dark[index]
-                : stripLeft - ((index - dark.Count + 1) * pitch));
+            return new Strip([.. dark.Take(marks)], [], space.Pitch, null);
         }
 
-        var beyond = Math.Max(0, marks - dark.Count);
-        return new Strip(places, beyond * pitch);
+        // Not room enough. Every symbol shrinks together until they all fit, and no further than
+        // is still legible.
+        var icons = lit + marks;
+        var size = Math.Clamp(space.Width / icons, space.Smallest, space.Pitch);
+
+        // Still short even at that size, so the strip grows left and the name gives up the room.
+        var left = space.Right - (icons * size);
+        var places = Enumerable.Range(0, icons).Select(slot => left + (slot * size)).ToList();
+        return new Strip(places[..marks], places[marks..], size, left < space.Left ? left : null);
     }
 
-    /// <summary>Where a row's marks sit.</summary>
-    /// <param name="Places">Where each mark goes, in the order they were asked for.</param>
-    /// <param name="Overflow">How much room was wanted past the strip's left edge, which is what
-    /// the row's name has to give up for everything to fit. Zero when it all fits.</param>
-    internal sealed record Strip(IReadOnlyList<float> Places, float Overflow);
+    /// <summary>The room a row keeps for its icons.</summary>
+    /// <param name="Left">Where the strip begins while it holds what it was built for.</param>
+    /// <param name="Right">Where it ends, which it keeps however many icons there are.</param>
+    /// <param name="Pitch">How big an icon is when there is room for it to be.</param>
+    /// <param name="Smallest">How small an icon may be drawn before it stops being worth drawing,
+    /// past which the strip takes room from the name instead of shrinking further.</param>
+    internal sealed record StripSpace(float Left, float Right, float Pitch, float Smallest)
+    {
+        /// <summary>How wide the strip is before it has to take room from anything.</summary>
+        public float Width => Right - Left;
+    }
+
+    /// <summary>Where a row's icons sit and how big they are.</summary>
+    /// <param name="Marks">Where each mark goes, in the order they were asked for.</param>
+    /// <param name="GameIcons">Where the game's own icons go, left to right, when they have had to
+    /// move. Empty when they have not, which is when nothing of the game's is to be touched.</param>
+    /// <param name="Size">How big every icon in the strip is to be drawn, the game's and ours.</param>
+    /// <param name="Left">Where the strip now begins, and so where the row's name must now end.
+    /// Null when the strip has not outgrown its own room and the name is to be left alone.</param>
+    internal sealed record Strip(IReadOnlyList<float> Marks, IReadOnlyList<float> GameIcons, float Size, float? Left);
 }
