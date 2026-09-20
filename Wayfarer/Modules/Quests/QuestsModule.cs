@@ -1,3 +1,4 @@
+using Dalamud.Plugin.Services;
 using Wayfarer.App.Modules;
 using Wayfarer.Guidance;
 
@@ -9,8 +10,10 @@ namespace Wayfarer.Modules.Quests;
 internal sealed class QuestsModule(
     QuestObjectives objectives,
     QuestFollowing following,
+    QuestReader reader,
     JournalFollowButton followButton,
     DutyMarking dutyMarks,
+    IFramework framework,
     IGuidance guidance) : IModule
 {
     /// <summary>What the module is called, everywhere: the checkbox, the guidance it publishes, and
@@ -36,8 +39,10 @@ internal sealed class QuestsModule(
     ];
 
     /// <inheritdoc/>
-    public Task EnableAsync()
+    public async Task EnableAsync()
     {
+        await WarmAsync().ConfigureAwait(false);
+
         guidance.Claim(objectives);
         if (following.FromJournal)
         {
@@ -48,8 +53,6 @@ internal sealed class QuestsModule(
         {
             dutyMarks.Start();
         }
-
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
@@ -58,6 +61,25 @@ internal sealed class QuestsModule(
         guidance.Yield(objectives);
         await dutyMarks.StopAsync().ConfigureAwait(false);
         await followButton.StopAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Reads what the first frame of guidance would otherwise read, away from that frame.
+    ///
+    /// <para>Which quest is being guided is the game's own answer and has to be asked for on its
+    /// thread; everything read about that quest is sheets, and is read off it. A quest that cannot
+    /// be named yet -- the player is not in the world -- is no reason to hold the module up, and
+    /// the frame that wants it will read it as it always did.</para></summary>
+    private async Task WarmAsync()
+    {
+        reader.Warm();
+
+        var guided = await framework.RunOnFrameworkThread(
+            () => following.Followed ?? reader.CurrentMainScenarioQuest()).ConfigureAwait(false);
+
+        if (guided is { } questId)
+        {
+            reader.Warm(questId);
+        }
     }
 
     /// <summary>Switches the Duty Finder's marks, and puts them there or takes them away at once.

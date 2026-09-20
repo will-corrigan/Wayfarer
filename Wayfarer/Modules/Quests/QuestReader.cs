@@ -17,7 +17,7 @@ namespace Wayfarer.Modules.Quests;
 
 /// <summary>Every read the quests module makes of the game, so the rest of the module is pure.
 /// Framework thread only.</summary>
-internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEvaluator evaluator, IPluginLog log)
+internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEvaluator evaluator)
 {
     /// <summary>Every to-do line in a quest's own text sheet is keyed with this in front of it.</summary>
     private const string TodoKeyPrefix = "TEXT_";
@@ -73,7 +73,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
-    private string lastHandler = string.Empty;
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, ContentFinderCondition>? dutiesByContent;
 
@@ -156,6 +155,32 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     public IReadOnlyList<Place> Lairs(ushort questId) =>
         lairsByQuest.TryGetValue(questId, out var lairs) ? lairs : lairsByQuest[questId] = ReadLairs(questId);
 
+    /// <summary>Reads the whole-game tables this makes of the sheets, so the first frame that
+    /// wants one does not pay for all of them at once.
+    ///
+    /// <para>Nothing here touches the game's own memory — it is the sheets and nothing else — so
+    /// it can be done away from the frame the player is waiting on. Everything else this reads is
+    /// per quest and small.</para></summary>
+    public void Warm()
+    {
+        _ = Emotes();
+        dutiesByContent ??= ReadDuties();
+    }
+
+    /// <summary>Reads everything this keeps about one quest, so the first frame that guides it
+    /// does not pay for all of it at once. Sheets only, like <see cref="Warm()"/>: the quest's own
+    /// table of steps, the places and things it names, and the duty it leads to.</summary>
+    /// <param name="questId">The quest about to be guided.</param>
+    public void Warm(ushort questId)
+    {
+        _ = Templates(questId);
+        _ = Marks(questId);
+        _ = Lairs(questId);
+        _ = Items(questId);
+        _ = Name(questId);
+        _ = Duty(questId);
+    }
+
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
@@ -212,7 +237,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// which is what tells the module whether anything moved.</summary>
     public List<QuestTodoProgress> Progress(ushort questId, byte sequence)
     {
-        Probe(questId, sequence);
         return Progress(questId, Templates(questId).Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
     }
 
@@ -426,38 +450,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         }
 
         return [.. marks];
-    }
-
-    /// <summary>Temporary: everything the live quest handler holds about this step.</summary>
-    private void Probe(ushort questId, byte sequence)
-    {
-        var events = EventFramework.Instance();
-        var control = Control.Instance();
-        var handler = events == null ? null : (QuestEventHandler*)events->GetEventHandlerById(questId);
-        var player = control == null ? null : control->LocalPlayer;
-        if (handler == null || player == null)
-        {
-            return;
-        }
-
-        var args = new List<string>();
-        for (byte idx = 0; idx < 8; idx++)
-        {
-            uint a = 0, b = 0, c = 0;
-            handler->GetTodoArgs(player, idx, &a, &b, &c);
-            if (a != 0 || b != 0 || c != 0)
-            {
-                args.Add($"[{idx}] {a},{b},{c} checked={handler->IsTodoChecked(player, idx)}");
-            }
-        }
-
-        var custom = string.Join(",", handler->CustomTodoValues.ToArray().Select(v => v.ToString(CultureInfo.InvariantCulture)));
-        var line = $"seq={sequence} customLoaded={handler->CustomTodoValuesLoaded} custom=[{custom}] instances=[{string.Join(",", handler->InstanceContents.ToArray().Select(v => v.ToString(CultureInfo.InvariantCulture)))}] todoArgs={string.Join(" | ", args)}";
-        if (!string.Equals(line, lastHandler, StringComparison.Ordinal))
-        {
-            lastHandler = line;
-            log.Debug($"[handler] {line}");
-        }
     }
 
     /// <summary>Every place a creature this quest names stands, from the place rows the quest

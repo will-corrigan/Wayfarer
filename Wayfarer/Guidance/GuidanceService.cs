@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Wayfarer.Routing;
@@ -14,6 +15,10 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// enough that a different aetheryte or door cannot quietly become the nearer one, long enough
     /// that walking does not start a search every frame.</summary>
     private const float RouteRethinkYalms = 10f;
+
+    /// <summary>How long a frame of guidance has to take before it is worth saying so. The game
+    /// draws at sixty a second, so anything near this has already been seen as a stutter.</summary>
+    private static readonly TimeSpan SlowFrame = TimeSpan.FromMilliseconds(20);
 
     private readonly IFramework framework;
     private readonly IClientState clientState;
@@ -118,13 +123,36 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
     private PublishedGuidance? Compute()
     {
+        var started = Stopwatch.GetTimestamp();
         if (Holder is not { } source || source.Current is not { } objective)
         {
             return null;
         }
 
+        var asked = Stopwatch.GetTimestamp();
         var target = objective.Guided();
-        return new PublishedGuidance(source, objective, target, RouteTo(target));
+        var way = RouteTo(target);
+        Slow(started, asked, Stopwatch.GetTimestamp());
+
+        return new PublishedGuidance(source, objective, target, way);
+    }
+
+    /// <summary>Notes where a slow frame went, for whoever is working on this. A frame of
+    /// guidance is two things — asking whoever holds it what it is about, and working out the way
+    /// there — and which of them cost the frame cannot be told from outside. Nothing a player can
+    /// do anything about, so it is said quietly and only when a frame was slow.</summary>
+    private void Slow(long started, long asked, long done)
+    {
+        var whole = Stopwatch.GetElapsedTime(started, done);
+        if (whole < SlowFrame)
+        {
+            return;
+        }
+
+        log.Debug(
+            $"a frame of guidance took {whole.TotalMilliseconds:F0}ms: " +
+            $"{Stopwatch.GetElapsedTime(started, asked).TotalMilliseconds:F0}ms asking {Holder?.Name ?? "nobody"} what it is about, " +
+            $"{Stopwatch.GetElapsedTime(asked, done).TotalMilliseconds:F0}ms working out the way there.");
     }
 
     /// <summary>The way to the target, searched again only when the target changed or the player
