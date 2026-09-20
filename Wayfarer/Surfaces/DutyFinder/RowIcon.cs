@@ -30,6 +30,7 @@ internal sealed unsafe class RowIcon : IDisposable
     private IAddonEventManager? events;
     private string says = string.Empty;
     private ushort window;
+    private NodeFlags drawnOnly;
 
     private RowIcon(IconImageNode node)
     {
@@ -107,6 +108,12 @@ internal sealed unsafe class RowIcon : IDisposable
         says = text;
         window = addon->Id;
 
+        // Being listened to is not the same as being heard. A node is only tested against the
+        // pointer when it says it wants to be, and a node of ours is drawn and nothing else until
+        // it is told otherwise. What it was is kept, so it goes back to being only drawn.
+        drawnOnly = node.Node->AtkResNode.NodeFlags;
+        node.Node->AtkResNode.NodeFlags |= NodeFlags.RespondToMouse | NodeFlags.EmitsEvents | NodeFlags.HasCollision;
+
         var target = (nint)(&node.Node->AtkResNode);
         Listen(manager, (nint)addon, target, AddonEventType.MouseOver);
         Listen(manager, (nint)addon, target, AddonEventType.MouseOut);
@@ -129,6 +136,11 @@ internal sealed unsafe class RowIcon : IDisposable
         listening.Clear();
         events = null;
         says = string.Empty;
+        if (node.Node != null && drawnOnly != default)
+        {
+            node.Node->AtkResNode.NodeFlags = drawnOnly;
+            drawnOnly = default;
+        }
     }
 
     /// <inheritdoc/>
