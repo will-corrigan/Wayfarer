@@ -13,11 +13,13 @@ internal sealed unsafe class RowTooltip : IDisposable
 {
     private readonly nint words;
     private readonly nint node;
+    private readonly bool wasFound;
 
-    private RowTooltip(nint node, nint words)
+    private RowTooltip(nint node, nint words, bool wasFound)
     {
         this.node = node;
         this.words = words;
+        this.wasFound = wasFound;
     }
 
     /// <summary>Attaches words to a node, or nothing when there are no words to attach or no game
@@ -33,23 +35,29 @@ internal sealed unsafe class RowTooltip : IDisposable
             return null;
         }
 
-        // The node has to be one the window hit-tests, or the game is never asked about it.
+        // The patch has to be one the pointer is actually tested against. A slot the game is not
+        // using keeps its patch but hides it, and a hidden patch is never tested, so it is shown
+        // for as long as we have something to say and hidden again afterwards.
+        var showing = node->IsVisible();
         node->NodeFlags |= NodeFlags.RespondToMouse | NodeFlags.EmitsEvents | NodeFlags.HasCollision;
+        node->ToggleVisibility(true);
 
         var held = Marshal.StringToHGlobalAnsi(text);
         var args = default(AtkTooltipManager.AtkTooltipArgs);
         args.TextArgs.Text = (byte*)held;
         stage->TooltipManager.AttachTooltip(AtkTooltipType.Text, addonId, node, &args);
-        return new RowTooltip((nint)node, held);
+        return new RowTooltip((nint)node, held, showing);
     }
 
     /// <summary>Tells the game to let the node go, and only then frees the words.</summary>
     public void Dispose()
     {
         var stage = AtkStage.Instance();
-        if (stage != null && node != 0)
+        var patch = (AtkResNode*)node;
+        if (stage != null && patch != null)
         {
-            stage->TooltipManager.DetachTooltip((AtkResNode*)node);
+            stage->TooltipManager.DetachTooltip(patch);
+            patch->ToggleVisibility(wasFound);
         }
 
         Marshal.FreeHGlobal(words);
