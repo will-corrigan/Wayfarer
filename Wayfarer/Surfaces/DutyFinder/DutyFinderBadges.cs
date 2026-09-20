@@ -1,44 +1,37 @@
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
+using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
-using Wayfarer.App;
 
 namespace Wayfarer.Surfaces.DutyFinder;
 
 /// <summary>Puts a small icon on Duty Finder rows, on behalf of anything that asks. This knows
-/// nothing about what the marks mean: it finds the rows, asks whoever is marking what icon each
-/// duty should carry, and draws that.
+/// nothing about what the marks mean: it is told which rows the game is drawing, asks whoever is
+/// marking what icon each duty should carry, and draws that.
 ///
-/// <para>The window is only watched while something is marking it. A mark hangs off the row that
-/// draws it, and the game hands those rows round as the list scrolls, so a mark belongs to a row
-/// rather than to a duty: every update, each row on show is asked what it is now for and its mark
-/// is set to suit, or hidden when it is for nothing.</para>
+/// <para>The game is what says when a row is drawn and what it is drawn as, so that is what is
+/// listened to rather than the window being read every frame. A row is handed round as the list
+/// scrolls, and the same telling that hands it to another duty is the one that sets its mark; a
+/// row that stops wanting one is told to give it back.</para>
 ///
-/// <para>Only the rows the game says it is drawing this frame are touched. A row it has stopped
-/// drawing keeps whatever mark it had, which is not drawn either, and is set right again the
-/// moment the row comes back — so nothing here ever writes to a row on the strength of having
-/// seen it in an earlier frame.</para>
+/// <para>The window is only watched while something is marking it, and every node made here is
+/// freed when the row gives it back, when the window closes, when the last mark is taken away, or
+/// when the plugin unloads.</para>
 ///
-/// <para>Every node made here is freed when the window closes, when the last mark is taken away,
-/// or when the plugin unloads, whichever comes first. The rows outlive the nodes hung off them in
-/// all three cases, so the game is never left holding one that has been freed.</para>
-///
-/// <para>Who is marking is only ever changed on the framework thread. Modules come up and go down
-/// away from it, and the list of them is read while the window draws, which is on it.</para></summary>
+/// <para>The mark sits on the corner of the game's own icon at the left of a row. Other plugins
+/// mark these rows too, and they put their marks after the name and take width off it to make
+/// room; nothing here touches the name or its width, so both can mark the same row.</para></summary>
 internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : IDutyBadges, IAsyncDisposable
 {
-    private static readonly string AddonName = GameAddon.NameOf<AddonContentsFinder>();
+    private const string AddonName = "ContentsFinder";
 
     private readonly List<IDutyBadgeSource> sources = [];
-    private readonly Dictionary<nint, IconImageNode> badgesByRow = [];
-    private readonly DutyRoster roster = new();
+    private readonly Dictionary<uint, IconImageNode> badgesByRow = [];
 
-    private AddonController? controller;
+    private NativeListController<AddonContentsFinder, DutyFinderRow>? rows;
     private bool disposed;
-    private bool broken;
 
     /// <inheritdoc/>
     public IDisposable Mark(IDutyBadgeSource source)
@@ -65,39 +58,42 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
             FreeAll();
         }).ConfigureAwait(false);
 
-        if (controller is { } watching)
+        if (rows is { } watching)
         {
-            controller = null;
+            rows = null;
             await watching.DisposeAsync().ConfigureAwait(false);
         }
     }
 
-    /// <summary>The list of duties, or null when the window has not drawn one.</summary>
-    private static unsafe AtkComponentTreeList* ListOf(AtkUnitBase* addon)
-    {
-        var finder = (AddonContentsFinder*)addon;
-        return finder == null ? null : finder->DutyList;
-    }
-
-    /// <summary>The words a row is showing, or null when the row is not a duty's. Only a duty's row
-    /// has a name node, so a heading answers null here and is passed over without the kinds of
-    /// rows ever being enumerated.</summary>
-    private static unsafe string? NameOn(AtkComponentListItemRenderer* row)
-    {
-        var text = row == null
+    /// <summary>The row the duty list fills every one of its rows in from. Everything the game
+    /// draws in this list goes through it, which is what there is to listen to.</summary>
+    private static unsafe AtkComponentListItemRenderer* Template(AddonContentsFinder* addon) =>
+        addon == null || addon->DutyList == null
             ? null
-            : GameNodes.Text(&row->AtkComponentButton.AtkComponentBase, DutyFinderMetrics.RowNameTextNodeId);
-        if (text == null || text->NodeText.Length == 0)
+            : addon->DutyList->GetComponentItemRendererById(DutyFinderMetrics.RowTemplateNodeId);
+
+    /// <summary>Hangs a new mark off a row, beside its name, or null when there is no name to hang
+    /// it beside. Its place is the row's own, which is the space the name is placed in.</summary>
+    private static unsafe IconImageNode? Attach(DutyFinderRow row)
+    {
+        var name = row.NameNode;
+        if (name == null)
         {
             return null;
         }
 
-        var name = text->NodeText.ExtractText();
-        return name.Length > 0 ? name : null;
+        var badge = new IconImageNode
+        {
+            Size = new(DutyFinderMetrics.BadgeSize, DutyFinderMetrics.BadgeSize),
+            Position = new(DutyFinderMetrics.BadgeLeft, DutyFinderMetrics.BadgeTop),
+            IsVisible = false,
+        };
+        badge.AttachNode(name, NodePosition.AfterTarget);
+        return badge;
     }
 
-    /// <summary>Takes up marking on behalf of something, and starts watching the window if nothing
-    /// else was. On the framework thread.</summary>
+    /// <summary>Takes up marking on behalf of something, and starts listening to the window if
+    /// nothing else was. On the framework thread.</summary>
     private unsafe void Begin(IDutyBadgeSource source)
     {
         if (disposed)
@@ -106,19 +102,20 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
         }
 
         sources.Add(source);
-        if (sources.Count == 1)
+        if (sources.Count > 1)
         {
-            // Marking switched off after it broke and then back on is a fresh ask, not the same
-            // one carrying on, so whatever went wrong is given another chance to not.
-            broken = false;
-            controller ??= new AddonController
-            {
-                AddonName = AddonName,
-                OnFinalize = WindowClosed,
-                OnUpdate = Refresh,
-            };
-            controller.Enable();
+            return;
         }
+
+        rows ??= new NativeListController<AddonContentsFinder, DutyFinderRow>
+        {
+            AddonName = AddonName,
+            GetPopulatorNode = Template,
+            ShouldModifyElement = Wants,
+            UpdateElement = Set,
+            ResetElement = Clear,
+        };
+        rows.Enable();
     }
 
     /// <summary>Gives up marking on behalf of something. When it was the last, the marks come off
@@ -131,53 +128,19 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
             return;
         }
 
+        rows?.Disable();
         FreeAll();
-        controller?.Disable();
     }
 
-    /// <summary>Sets every row on show to the mark it should be carrying this frame.</summary>
-    private unsafe void Refresh(AtkUnitBase* addon)
-    {
-        if (broken)
-        {
-            return;
-        }
+    /// <summary>Whether this row wants a mark at all. Answering no here is what has the game tell
+    /// us to take an old one back off.</summary>
+    private unsafe bool Wants(AddonContentsFinder* addon, DutyFinderRow row) => IconFor(row) is not null;
 
-        try
-        {
-            var list = ListOf(addon);
-            if (list == null)
-            {
-                return;
-            }
-
-            roster.Reread();
-            foreach (var entry in list->Items)
-            {
-                var item = entry.Value;
-                if (item != null && item->Renderer != null && !item->IsHidden)
-                {
-                    Show(item->Renderer, WantedOn(item->Renderer));
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Whatever this was will still be true next frame, so marking stops rather than
-            // throwing behind a log line once per frame for as long as the window is open. The
-            // window is left watched: this is running inside its own update, and tearing that
-            // down from in here would free what is calling us.
-            broken = true;
-            log.Error(ex, "marking the Duty Finder's rows threw, so the marks are switched off for this session.");
-            FreeAll();
-        }
-    }
-
-    /// <summary>The icon a row should carry, or null for none: what the row is for, put to
+    /// <summary>The icon this row should carry, or null for none: what the row is for, put to
     /// whoever is marking, first answer wins.</summary>
-    private unsafe uint? WantedOn(AtkComponentListItemRenderer* row)
+    private uint? IconFor(DutyFinderRow row)
     {
-        if (NameOn(row) is not { } name || roster.DutyNamed(name) is not { } duty)
+        if (row.Duty is not { } duty)
         {
             return null;
         }
@@ -193,69 +156,48 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
         return null;
     }
 
-    /// <summary>Puts a mark on a row, makes one if the row has not had one before, and hides it
-    /// when the row is for nothing that wants marking.</summary>
-    private unsafe void Show(AtkComponentListItemRenderer* row, uint? icon)
+    /// <summary>Marks a row the game has just drawn, making the mark if this row has not carried
+    /// one before.</summary>
+    private unsafe void Set(AddonContentsFinder* addon, DutyFinderRow row)
     {
-        if (!badgesByRow.TryGetValue((nint)row, out var badge))
-        {
-            if (icon is null)
-            {
-                // Nothing to show and nothing made yet: a row that never needs a mark never gets
-                // a node, so a list of a hundred duties with two marks holds two nodes.
-                return;
-            }
-
-            if (Attach(row) is not { } made)
-            {
-                return;
-            }
-
-            badge = made;
-            badgesByRow[(nint)row] = badge;
-        }
-
-        if (icon is { } id)
-        {
-            badge.IconId = id;
-        }
-
-        badge.IsVisible = icon is not null;
-    }
-
-    /// <summary>Hangs a new mark off a row, or null when the game will not take it.</summary>
-    private unsafe IconImageNode? Attach(AtkComponentListItemRenderer* row)
-    {
-        var owner = row == null ? null : row->OwnerNode;
-        if (owner == null)
-        {
-            return null;
-        }
-
         try
         {
-            var badge = new IconImageNode
+            if (IconFor(row) is not { } icon)
             {
-                Size = new(DutyFinderMetrics.BadgeSize, DutyFinderMetrics.BadgeSize),
-                Position = new(DutyFinderMetrics.BadgeLeft, DutyFinderMetrics.BadgeTop),
-                IsVisible = false,
-            };
-            badge.AttachNode((AtkResNode*)owner);
-            return badge;
+                return;
+            }
+
+            if (!badgesByRow.TryGetValue(row.NodeId, out var badge))
+            {
+                if (Attach(row) is not { } made)
+                {
+                    return;
+                }
+
+                badge = made;
+                badgesByRow[row.NodeId] = badge;
+            }
+
+            badge.IconId = icon;
+            badge.IsVisible = true;
         }
         catch (Exception ex)
         {
-            log.Error(ex, "a Duty Finder row would not take a mark, so that row stays unmarked.");
-            return null;
+            log.Error(ex, "a Duty Finder row could not be marked, so it stays unmarked.");
         }
     }
 
-    /// <summary>The window has closed and taken its rows with it, so the marks hung off them are
-    /// done with too.</summary>
-    private unsafe void WindowClosed(AtkUnitBase* addon) => FreeAll();
+    /// <summary>Takes the mark back off a row that no longer wants one. The game says when, which
+    /// is the whole reason a row can be handed to another duty without a mark going with it.</summary>
+    private unsafe void Clear(AddonContentsFinder* addon, DutyFinderRow row)
+    {
+        if (badgesByRow.Remove(row.NodeId, out var badge))
+        {
+            badge.Dispose();
+        }
+    }
 
-    /// <summary>Frees every mark. Called when the window closes, when the last thing marking it
-    /// goes away, and at unload, and safe to call when there is nothing to free.</summary>
+    /// <summary>Frees every mark, and safe to call when there is nothing to free.</summary>
     private void FreeAll()
     {
         foreach (var badge in badgesByRow.Values)

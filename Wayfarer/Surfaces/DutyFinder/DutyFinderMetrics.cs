@@ -1,14 +1,22 @@
 namespace Wayfarer.Surfaces.DutyFinder;
 
-/// <summary>Where things are in a Duty Finder row, from the window's own layout file
-/// (<c>ui/uld/ContentsFinder.uld</c>, the 448x24 list item). Read from the file rather than
-/// measured in game, so these are the game's numbers and not a guess at them.</summary>
+/// <summary>Where things are in a Duty Finder row.
+///
+/// <para>The node indexes are into the list's own populator, which is the array of parts the game
+/// fills in as it draws a row, and not node ids. The geometry is out of the window's layout file
+/// (<c>ui/uld/ContentsFinder.uld</c>, the 448x24 list item), so these are the game's numbers
+/// rather than a guess at them.</para></summary>
 internal static class DutyFinderMetrics
 {
-    /// <summary>The row's own name, the text the player reads. Present only on a duty's row: a
-    /// heading in the list is a different kind of row and has no node with this id, which is what
-    /// tells the two apart without trusting anything else.</summary>
-    public const uint RowNameTextNodeId = 6;
+    /// <summary>The node id of the row template the duty list draws its rows from. What the list
+    /// is asked for to find the function that fills a row in.</summary>
+    public const uint RowTemplateNodeId = 6;
+
+    /// <summary>The row's own name, the text the player reads.</summary>
+    public const int RowNameNodeIndex = 3;
+
+    /// <summary>Where a row keeps its place in the Duty Finder agent's list, counted from one.</summary>
+    public const int RowContentIndexValue = 1;
 
     /// <summary>The square at the left of a row holding the game's own icon for what kind of
     /// content it is, 20x20 at (2, 2).</summary>
@@ -25,8 +33,8 @@ internal static class DutyFinderMetrics
     public const float BadgeSize = 13f;
 
     /// <summary>Where the mark sits: the bottom right corner of the game's own icon, hanging a
-    /// little off it. Nothing else in the row is drawn here, so no name is ever covered however
-    /// long it runs.</summary>
+    /// little off it. Nothing else in the row is drawn there, so no name is ever covered however
+    /// long it runs, and the right of the row is left to whatever else marks it.</summary>
     public const float BadgeLeft = TypeIconLeft + TypeIconSize - (BadgeSize * BadgeOverhang);
 
     /// <inheritdoc cref="BadgeLeft"/>
