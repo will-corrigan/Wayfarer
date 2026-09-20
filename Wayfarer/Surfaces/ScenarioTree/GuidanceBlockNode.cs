@@ -90,6 +90,14 @@ internal sealed class GuidanceBlockNode : ResNode
     /// <summary>The last of our lines, or null when neither can be pressed.</summary>
     public int? LastStop => route.Pressable ? GuideStops.Route : entry.Pressable ? GuideStops.Entry : null;
 
+    /// <summary>Settles both lines against where the game has drawn their words, which it may not
+    /// have done by the time it was given them.</summary>
+    public void Settle()
+    {
+        entry.Settle();
+        route.Settle();
+    }
+
     /// <summary>Applies a style: the type sizes, the columns' widths, the space between the lines,
     /// and which side the compass is on. Every one of the player's settings lands here.</summary>
     public void Restyle(ScenarioTreeStyle style)

@@ -44,6 +44,7 @@ internal sealed class PressableLine : ResNode
     private float leading;
     private bool lit;
     private LineContent? content;
+    private LineBox? placed;
 
     public unsafe PressableLine(Vector4 color, Action onPressed)
     {
@@ -129,13 +130,21 @@ internal sealed class PressableLine : ResNode
         Resize();
         Height = MathF.Max(leading, words.Height);
 
-        // The control is the keyword when the game says where it drew it, and the whole line when
-        // it does not: one control either way, so the line stays one stop for the pad.
-        var box = KeywordBox();
-        var pressed = box ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
-        control.Position = pressed.At;
-        control.Size = pressed.Size;
-        ShowIcon(content.IconId, beside ? box : null);
+        Place(KeywordBox());
+    }
+
+    /// <summary>Puts the control and the icon where the game has drawn the keyword, once it has.
+    ///
+    /// <para>The boxes a link reports are worked out when the game lays the sentence out, which is
+    /// not always by the time the words have been handed to it. Asking in the same breath as
+    /// setting them can therefore be asking too early, and once was all we asked. So the guide asks
+    /// again every time it draws, and acts only when the answer has moved.</para></summary>
+    public void Settle()
+    {
+        if (content is not null && KeywordBox() is var box && box != placed)
+        {
+            Place(box);
+        }
     }
 
     /// <summary>Whether the icon is to sit inside the sentence rather than in front of it, which it
@@ -237,6 +246,18 @@ internal sealed class PressableLine : ResNode
         }
 
         words.String = builder.ToReadOnlySeString();
+    }
+
+    /// <summary>Puts the control over the keyword and the icon in the room the words left for it.
+    /// The control is the keyword when the game says where it drew it, and the whole line when it
+    /// does not: one control either way, so the line stays one stop for the pad.</summary>
+    private void Place(LineBox? box)
+    {
+        placed = box;
+        var pressed = box ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
+        control.Position = pressed.At;
+        control.Size = pressed.Size;
+        ShowIcon(content?.IconId, content is not null && Beside(content) ? box : null);
     }
 
     /// <summary>Lights the line, which is the keyword going white while the pointer is on it. The

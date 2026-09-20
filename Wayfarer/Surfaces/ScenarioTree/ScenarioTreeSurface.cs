@@ -185,6 +185,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
             SpliceIntoChain(addon);
 
             block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms, heading.Candidates);
+            block.Settle();
             RetitlePlate(addon);
             FitRootToBlock(addon);
         }
