@@ -1,6 +1,5 @@
 using Wayfarer.App.Modules;
 using Wayfarer.Guidance;
-using Wayfarer.Surfaces.DutyFinder;
 
 namespace Wayfarer.Modules.Quests;
 
@@ -11,8 +10,6 @@ internal sealed class QuestsModule(
     QuestObjectives objectives,
     QuestFollowing following,
     JournalFollowButton followButton,
-    QuestDutyMarks dutyMarks,
-    IDutyFinder dutyFinder,
     IGuidance guidance) : IModule
 {
     /// <summary>What the module is called, everywhere: the checkbox, the guidance it publishes, and
@@ -22,11 +19,6 @@ internal sealed class QuestsModule(
     private const string JournalButtonName = "Follow quests from the journal";
     private const string JournalButtonDescription = "Puts a button in the quest journal that follows the quest on show, so the guide leads to it instead of the main scenario.";
 
-    private const string DutyMarksName = "Mark duties in the Duty Finder";
-    private const string DutyMarksDescription = "Puts a quest mark on every duty in the Duty Finder that a quest in your journal still leads to.";
-
-    private IDisposable? marking;
-
     /// <inheritdoc/>
     public string Name => ModuleName;
 
@@ -35,10 +27,7 @@ internal sealed class QuestsModule(
 
     /// <inheritdoc/>
     public IReadOnlyList<ModuleSetting> Settings =>
-    [
-        new ModuleSetting(JournalButtonName, JournalButtonDescription, () => following.FromJournal, SetJournalButton),
-        new ModuleSetting(DutyMarksName, DutyMarksDescription, () => following.MarkDutyFinder, SetDutyMarks),
-    ];
+        [new ModuleSetting(JournalButtonName, JournalButtonDescription, () => following.FromJournal, SetJournalButton)];
 
     /// <inheritdoc/>
     public Task EnableAsync()
@@ -49,7 +38,6 @@ internal sealed class QuestsModule(
             followButton.Start();
         }
 
-        MarkDuties(following.MarkDutyFinder);
         return Task.CompletedTask;
     }
 
@@ -57,7 +45,6 @@ internal sealed class QuestsModule(
     public async Task DisableAsync()
     {
         guidance.Yield(objectives);
-        MarkDuties(false);
         await followButton.StopAsync().ConfigureAwait(false);
     }
 
@@ -74,28 +61,5 @@ internal sealed class QuestsModule(
         {
             _ = followButton.StopAsync();
         }
-    }
-
-    /// <summary>Switches the Duty Finder's marks, and puts them there or takes them away at once
-    /// rather than waiting for the module to come round again.</summary>
-    private void SetDutyMarks(bool wanted)
-    {
-        following.MarkDutyFinder = wanted;
-        MarkDuties(wanted);
-    }
-
-    /// <summary>Asks the Duty Finder to draw this module's marks, or stops asking. What it hands
-    /// back is the asking: letting go of it is how the marks come off, and the window stops being
-    /// watched at all once no module is asking.</summary>
-    private void MarkDuties(bool wanted)
-    {
-        if (wanted)
-        {
-            marking ??= dutyFinder.Mark(dutyMarks);
-            return;
-        }
-
-        marking?.Dispose();
-        marking = null;
     }
 }

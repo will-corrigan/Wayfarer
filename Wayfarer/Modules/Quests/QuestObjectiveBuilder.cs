@@ -70,7 +70,7 @@ internal static class QuestObjectiveBuilder
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
         Destination where = Enters(todo, duty) || todo.Positions.Count == 0 ? Nowhere(duty)
             : markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo, marks, owner, lairs)
-            : new Destination.Reachable(Narrowed(todo.Positions, lairs), marks, owner);
+            : new Destination.Reachable(Narrowed(todo.Positions, lairs, marks), marks, owner);
 
         var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
         var words = todo.Text;
@@ -88,9 +88,15 @@ internal static class QuestObjectiveBuilder
     /// <summary>A step's places, with any circle that holds one of the quest's creatures replaced
     /// by where those creatures stand. The data draws a wide circle and names what is in it apart
     /// from it; the circle says roughly, and the creature's own place says exactly.</summary>
-    private static IReadOnlyList<Place> Narrowed(IReadOnlyList<Place> places, IReadOnlyList<Place>? lairs)
+    private static IReadOnlyList<Place> Narrowed(IReadOnlyList<Place> places, IReadOnlyList<Place>? lairs, IReadOnlyList<Mark>? marks)
     {
-        if (lairs is null || lairs.Count == 0)
+        // A circle stays a circle while the quest names anything to act on. Where creatures stand
+        // is only the answer to a step that is about the creatures: when there is something in
+        // there to be used or spoken to, that is what the step means, and the beasts are what it
+        // summons. Narrowing to their places first sends the player to where they will appear
+        // rather than to the thing that makes them appear, and takes the circle away with it, so
+        // nothing is left to search.
+        if (lairs is null || lairs.Count == 0 || marks?.Any(mark => mark.Kind is MarkKind.Thing) is true)
         {
             return places;
         }
@@ -135,7 +141,7 @@ internal static class QuestObjectiveBuilder
     /// A marker for a step that sends the player somewhere to fight is a circle to be somewhere in;
     /// where the things in it stand is the better answer when the data says.</summary>
     private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers, IReadOnlyList<Mark>? marks = null, EventId? owner = null, IReadOnlyList<Place>? lairs = null) =>
-        new(Narrowed([.. markers.Select(marker => marker.At)], lairs), marks, owner);
+        new(Narrowed([.. markers.Select(marker => marker.At)], lairs, marks), marks, owner);
 
     /// <summary>Whether a marker belongs to a step's place: standing on it, or standing inside it
     /// when the place is a circle to search. The game draws its own marker where it really wants

@@ -11,7 +11,4 @@ internal sealed class QuestsConfig
 
     /// <summary>Whether Wayfarer puts its own button in the quest journal.</summary>
     public bool FollowFromJournal { get; set; } = true;
-
-    /// <summary>Whether Wayfarer marks the Duty Finder's rows for duties a journal quest leads to.</summary>
-    public bool MarkDutyFinder { get; set; } = true;
 }

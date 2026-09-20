@@ -15,7 +15,6 @@ internal sealed class QuestsRegistrations : Module
         builder.RegisterType<QuestReader>().SingleInstance();
         builder.RegisterType<QuestFollowing>().SingleInstance();
         builder.RegisterType<JournalFollowButton>().SingleInstance();
-        builder.RegisterType<QuestDutyMarks>().SingleInstance();
         builder.RegisterType<QuestObjectives>().As<IObjectiveSource>().AsSelf().SingleInstance();
         builder.RegisterType<QuestsModule>().As<IModule>().SingleInstance();
     }

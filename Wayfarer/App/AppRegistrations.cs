@@ -5,7 +5,6 @@ using Wayfarer.App.Config;
 using Wayfarer.App.Modules;
 using Wayfarer.App.Settings;
 using Wayfarer.Guidance;
-using Wayfarer.Surfaces.DutyFinder;
 using Wayfarer.Surfaces.ScenarioTree;
 
 namespace Wayfarer.App;
@@ -32,11 +31,8 @@ internal sealed class AppRegistrations : Module
         builder.RegisterType<ModuleHost>().As<IModuleHost>().AsSelf().SingleInstance();
         builder.RegisterType<SettingsService>().As<ISettingsWindow>().AsSelf().SingleInstance().AutoActivate();
 
-        // The surfaces: game windows more than one module can draw in, which own the window and
-        // settle what goes where. A window only one module will ever draw in belongs to that
-        // module instead. The Duty Finder watches nothing until a module asks it to, so it is not
-        // activated with the container the way one that draws of its own accord is.
+        // The one surface: the block inside the game's Main Scenario Guide, which draws whatever
+        // guidance is published to it.
         builder.RegisterType<ScenarioTreeSurface>().AsSelf().SingleInstance().AutoActivate();
-        builder.RegisterType<DutyFinderSurface>().As<IDutyFinder>().SingleInstance();
     }
 }
