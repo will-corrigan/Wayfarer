@@ -1,44 +1,34 @@
-using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Routing;
 
 namespace Wayfarer.Guidance;
 
-/// <summary>Where an entry's target is. Exactly three kinds, because routing treats exactly three
-/// things differently: it runs the graph over places, it offers the Duty Finder for a duty, and
-/// it does nothing for something that cannot be reached. Only routing switches on this; surfaces
-/// read the words and the route instead.
+/// <summary>Where an entry's target is. Exactly four kinds, because routing treats exactly four
+/// things differently: it runs the graph over places, it follows one thing standing in the world,
+/// it offers the Duty Finder for a duty, and it does nothing for something that cannot be reached.
 ///
 /// <para>Each kind carries only its own fields, so a module cannot produce a duty with a radius or
-/// a place with a queue id. Adding a kind is only right when routing would treat it differently
-/// from all three of these.</para></summary>
+/// a place with a queue id. Nothing here says how a module decided any of it: which of a step's
+/// places are the step's, and which of the things standing in one is the one, are the module's own
+/// questions, answered before anything is published.</para></summary>
 public abstract record Destination
 {
     private Destination()
     {
     }
 
-    /// <summary>Somewhere the player can go. Several places when the entry can be completed at
-    /// any of them — six roses, three loaded karakul — and routing picks the cheapest to reach from
-    /// wherever the player is standing this frame.</summary>
-    /// <param name="Places">Where the entry can be done, each with its radius when it is an area to
+    /// <summary>Somewhere the player can go. Several places when the entry can be done at any of
+    /// them — six roses, three loaded karakul — and routing picks the cheapest to reach from
+    /// wherever the player is standing.</summary>
+    /// <param name="Places">Where the entry can be done, each with its radius when it is ground to
     /// search rather than a point to stand on.</param>
-    /// <param name="Marks">Things that are what the player is looking for, each by the id the world
-    /// gives it and which sort of thing it is. Only consulted inside a place with a radius, where
-    /// the data says where to search but not what for, and only while one of them is actually
-    /// spawned there. The sort decides which is meant when several are: a thing to act on before
-    /// whatever stands around it.</param>
-    /// <param name="Owner">The game event these things belong to, if the module knows it. The game
-    /// stamps every object it spawns for an event with that event's id, so this recognises the right
-    /// object without anyone having listed it, including the ones the data forgot. Marks stay as the
-    /// answer for anything the game has not stamped.</param>
-    /// <param name="Expected">Where the marks are known to stand, for when none of them is there
-    /// yet. A place with room in it often holds nothing until something has been done, and walking
-    /// to where the thing will be beats standing in the middle of the circle waiting for it.</param>
-    public sealed record Reachable(
-        IReadOnlyList<Place> Places,
-        IReadOnlyList<Mark>? Marks = null,
-        EventId? Owner = null,
-        IReadOnlyList<Place>? Expected = null) : Destination;
+    public sealed record Reachable(IReadOnlyList<Place> Places) : Destination;
+
+    /// <summary>One particular thing standing in the world, which the module picked out of
+    /// everything that was there. Routing walks to it and the needle follows it as it moves.</summary>
+    /// <param name="Id">The one the world gives it, so it is still the same thing a moment later.</param>
+    /// <param name="At">Where it stood when it was picked, and where to go if it is no longer
+    /// loaded.</param>
+    public sealed record AtObject(ulong Id, Place At) : Destination;
 
     /// <summary>Inside instanced content. Nothing to walk to; the only guidance is to queue.</summary>
     public sealed record InDuty(uint DutyId) : Destination;

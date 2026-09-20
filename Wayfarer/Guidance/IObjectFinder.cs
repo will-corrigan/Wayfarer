@@ -3,15 +3,18 @@ using Wayfarer.Routing;
 
 namespace Wayfarer.Guidance;
 
-/// <summary>Finds the thing a step is about among the objects standing in the world. Behind an
-/// interface so the guidance that uses it can be reasoned about, and tested, without the game.</summary>
+/// <summary>Finds the thing a module is looking for among everything standing in the world.
+///
+/// <para>Shared, because more than one module will want it: a step that says search this ground,
+/// a hunt that says kill that creature and a gathering node that comes and goes are all the same
+/// question — of everything standing here, which one do I mean. What counts as wanted is the
+/// module's own business and comes in as marks; finding it is not.</para></summary>
 internal interface IObjectFinder
 {
-    /// <summary>The nearest wanted thing standing inside an area, or null when none is there.
-    /// Only an area has an answer: a place with no room in it is already the thing.</summary>
-    /// <param name="area">The circle being searched, with its radius.</param>
-    /// <param name="marks">Ids the caller listed as what to look for, or null.</param>
-    /// <param name="owner">The game event whose own objects count, or null.</param>
-    /// <param name="expected">Where they are known to stand when none is there, or null.</param>
-    Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner, IReadOnlyList<Place>? expected);
+    /// <summary>The thing to go to inside an area, or null when none of what the module named is
+    /// standing there.</summary>
+    /// <param name="area">The ground to search. A place with no room in it is not searched.</param>
+    /// <param name="marks">What is being looked for, by the id the world gives it and its sort.</param>
+    /// <param name="owner">The game event whose own spawns count, or null.</param>
+    Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner);
 }

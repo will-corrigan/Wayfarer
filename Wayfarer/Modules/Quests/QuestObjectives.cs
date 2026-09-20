@@ -8,7 +8,7 @@ namespace Wayfarer.Modules.Quests;
 /// the objective when something it depends on changed: the quest, the step, the ToDos' progress
 /// or the markers. Focus is claimed and released by
 /// <see cref="QuestsModule"/> as the module goes up and down.</summary>
-internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal) : IObjectiveSource
+internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal, QuestTarget target) : IObjectiveSource
 {
     /// <summary>What the guide's own heading says while the plate carries a followed quest rather
     /// than the main scenario the guide is about.</summary>
@@ -67,7 +67,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         var sequence = QuestReader.Sequence(questId);
         var progress = reader.Progress(questId, sequence);
         var markers = QuestReader.Markers(questId);
-        var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers));
+        var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers), target.Aim());
         if (signature == last)
         {
             return cached;
@@ -95,6 +95,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             reader.Marks(questId),
             QuestIds.Event(questId),
             reader.Lairs(questId),
+            target,
             followed ? FollowedHeader : null);
     }
 
@@ -115,5 +116,8 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         return reader.CurrentMainScenarioQuest();
     }
 
-    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers);
+    /// <param name="Aiming">Which thing of the quest's is standing in the step's ground right
+    /// now. A step that says search names nothing in particular, so this changes while the words
+    /// do not, and the objective has to be made again when it does.</param>
+    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers, ulong Aiming);
 }

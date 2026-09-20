@@ -16,7 +16,7 @@ namespace Wayfarer.App.Diagnostics;
 /// the data never meant, the wrong choice between two it did mean, or the wrong thing found inside
 /// the right one. None of those can be told apart from a screenshot, and the numbers that separate
 /// them are all already in hand at the moment the needle is drawn. This prints them.</para></summary>
-internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable objects, IClientState client, IChatGui chat, IPluginLog log, IObjectFinder finder)
+internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable objects, IClientState client, IChatGui chat, IPluginLog log)
 {
     /// <summary>How many of the things standing in a place are worth listing before the point
     /// is made.</summary>
@@ -56,7 +56,11 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
         switch (target.Where)
         {
             case Destination.Reachable reachable:
-                Describe(reachable, at, now.Route);
+                Describe(reachable.Places, at, now.Route);
+                break;
+            case Destination.AtObject thing:
+                Say($"where: the thing the module picked, id {thing.Id:X}");
+                Describe([thing.At], at, now.Route);
                 break;
             case Destination.InDuty duty:
                 Say($"where: inside duty {duty.DutyId}");
@@ -155,20 +159,17 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
         Say($"markers drawn: {shown}");
     }
 
-    /// <summary>Every place the step offered, how far each is by its middle and by its edge, which
-    /// one the route chose, and what the finder sees inside the one it walks to.</summary>
-    private void Describe(Destination.Reachable reachable, Vector3 at, Route? route)
+    /// <summary>Every place the entry offered, how far each is by its middle and by its edge,
+    /// which one the route chose, and what is standing in the one it walks to.</summary>
+    private void Describe(IReadOnlyList<Place> places, Vector3 at, Route? route)
     {
-        Say($"places offered: {reachable.Places.Count}");
-        foreach (var place in reachable.Places)
+        Say($"places offered: {places.Count}");
+        foreach (var place in places)
         {
             var apart = Flat(at, place.X, place.Z);
             var chosen = route is { } taken && taken.End == place ? "  <= ROUTED HERE" : string.Empty;
             Say($"  {Spell(place)}  middle {Num(apart)}y  edge {Num(MathF.Max(0f, apart - place.Radius))}y{chosen}");
         }
-
-        Say($"marks: {(reachable.Marks is not { Count: > 0 } marks ? "none" : string.Join(", ", marks.Select(mark => $"{mark.Id}/{mark.Kind}")))}");
-        Say($"owner event: {(reachable.Owner is { } owner ? ((uint)owner).ToString(CultureInfo.InvariantCulture) : "none")}, expected places: {reachable.Expected?.Count ?? 0}");
 
         if (route is null)
         {
@@ -179,11 +180,6 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
         Say($"route: cost {Num(route.Cost)} - {string.Join(" | ", route.Legs.Select(Spell))}");
         if (route.Legs is [Leg.Walk walk, ..])
         {
-            var found = finder.Inside(walk.To, reachable.Marks, reachable.Owner, reachable.Expected);
-            Say(found is null
-                ? "finder: nothing of the step's is standing in that place"
-                : $"finder: aiming at ({Num(found.X)}, {Num(found.Y)}, {Num(found.Z)}), {Num(Flat(at, found.X, found.Z))}y off");
-
             Nearby(walk.To);
         }
     }

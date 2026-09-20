@@ -49,7 +49,7 @@ public class MarkSearchTests
         // loaded again part way through and forgets what it had already done.
         var (nearest, _) = MarkSearch.Choose(Circle, TheCircle, ItsPeople, Quest, Standing);
 
-        Assert.Equal(StillAsking.At, nearest);
+        Assert.Equal(StillAsking.At, nearest?.At);
     }
 
     [Fact]
@@ -59,8 +59,8 @@ public class MarkSearchTests
         var fresh = MarkSearch.Choose(Circle, TheCircle, ItsPeople, Quest, Standing, tried: null);
         var remembering = MarkSearch.Choose(Circle, TheCircle, ItsPeople, Quest, Standing, id => id == Helped.BaseId);
 
-        Assert.Equal(StillAsking.At, fresh.Nearest);
-        Assert.Equal(remembering.Nearest, fresh.Nearest);
+        Assert.Equal(StillAsking.At, fresh.Nearest?.At);
+        Assert.Equal(remembering.Nearest?.At, fresh.Nearest?.At);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class MarkSearchTests
 
         var (nearest, _) = MarkSearch.Choose(Circle, [far, near], ItsPeople, Quest, Standing);
 
-        Assert.Equal(near.At, nearest);
+        Assert.Equal(near.At, nearest?.At);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class MarkSearchTests
         var (nearest, any) = MarkSearch.Choose(Circle, [Helped], ItsPeople, Quest, Standing);
 
         Assert.True(any);
-        Assert.Equal(Helped.At, nearest);
+        Assert.Equal(Helped.At, nearest?.At);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class MarkSearchTests
         var near = Near(2008945, 0, targetable: true, 5f);
         Mark[] things = [new(2008944, MarkKind.Thing), new(2008945, MarkKind.Thing)];
 
-        Assert.Equal(near.At, MarkSearch.Choose(Circle, [far, near], things, Quest, Standing).Nearest);
+        Assert.Equal(near.At, MarkSearch.Choose(Circle, [far, near], things, Quest, Standing).Nearest?.At);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class MarkSearchTests
         var person = Near(1020623, Asking, targetable: true, 5f);
         Mark[] both = [new(2008944, MarkKind.Thing), new(1020623, MarkKind.Person)];
 
-        Assert.Equal(thing.At, MarkSearch.Choose(Circle, [person, thing], both, Quest, Standing).Nearest);
+        Assert.Equal(thing.At, MarkSearch.Choose(Circle, [person, thing], both, Quest, Standing).Nearest?.At);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class MarkSearchTests
 
         var (nearest, _) = MarkSearch.Choose(Circle, [inert, StillAsking], ItsPeople, Quest, Standing);
 
-        Assert.Equal(StillAsking.At, nearest);
+        Assert.Equal(StillAsking.At, nearest?.At);
     }
 
     [Fact]
@@ -136,8 +136,8 @@ public class MarkSearchTests
         var person = Near(1020623, Asking, targetable: true, 5f);
         Mark[] both = [new(2008944, MarkKind.Thing), new(1020623, MarkKind.Person)];
 
-        Assert.Equal(thing.At, MarkSearch.Choose(Circle, [person, thing], both, Quest, Standing).Nearest);
-        Assert.Equal(person.At, MarkSearch.Choose(Circle, [person], both, Quest, Standing).Nearest);
+        Assert.Equal(thing.At, MarkSearch.Choose(Circle, [person, thing], both, Quest, Standing).Nearest?.At);
+        Assert.Equal(person.At, MarkSearch.Choose(Circle, [person], both, Quest, Standing).Nearest?.At);
     }
 
     [Fact]
@@ -147,16 +147,16 @@ public class MarkSearchTests
         var person = Near(1020623, Asking, targetable: true, 40f);
         Mark[] both = [new(1020623, MarkKind.Person), new(5000, MarkKind.Creature)];
 
-        Assert.Equal(person.At, MarkSearch.Choose(Circle, [beast, person], both, Quest, Standing).Nearest);
-        Assert.Equal(beast.At, MarkSearch.Choose(Circle, [beast], both, Quest, Standing).Nearest);
+        Assert.Equal(person.At, MarkSearch.Choose(Circle, [beast, person], both, Quest, Standing).Nearest?.At);
+        Assert.Equal(beast.At, MarkSearch.Choose(Circle, [beast], both, Quest, Standing).Nearest?.At);
     }
 
     [Fact]
     public void What_the_game_spawned_for_the_event_is_found_without_being_named()
     {
-        var spawned = new Candidate(9999, Quest, true, 0, Near(9999, 0, true, 10f).At);
+        var spawned = new Candidate(1, 9999, Quest, true, 0, Near(9999, 0, true, 10f).At);
 
-        Assert.Equal(spawned.At, MarkSearch.Choose(Circle, [spawned], [], Quest, Standing).Nearest);
+        Assert.Equal(spawned.At, MarkSearch.Choose(Circle, [spawned], [], Quest, Standing).Nearest?.At);
     }
 
     [Fact]
@@ -198,6 +198,9 @@ public class MarkSearchTests
         Assert.False(any);
     }
 
+    /// <summary>A unique id for one thing standing somewhere, so two of a kind are still two.</summary>
+    private static ulong Instance(uint baseId, float where) => ((ulong)baseId << 16) + (ulong)(where * 10f);
+
     /// <summary>One thing standing the given distance from the player, on the way in towards the
     /// middle of the circle, for when how far there is to walk is the point.</summary>
     private static Candidate Near(uint baseId, uint plate, bool targetable, float fromPlayer)
@@ -205,6 +208,7 @@ public class MarkSearchTests
         var (dx, dz) = (Circle.X - Standing.X, Circle.Z - Standing.Z);
         var length = MathF.Sqrt((dx * dx) + (dz * dz));
         return new Candidate(
+            Instance(baseId, fromPlayer),
             baseId,
             0,
             targetable,
@@ -220,6 +224,7 @@ public class MarkSearchTests
         var (dx, dz) = (Standing.X - Circle.X, Standing.Z - Circle.Z);
         var length = MathF.Sqrt((dx * dx) + (dz * dz));
         return new Candidate(
+            Instance(baseId, fromMiddle),
             baseId,
             0,
             targetable,

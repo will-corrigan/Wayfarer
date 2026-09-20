@@ -198,21 +198,4 @@ public class QuestObjectiveBuilderTests
         var where = Assert.IsType<Destination.Reachable>(entry.Where);
         Assert.Equal(Lancers, Assert.Single(where.Places));
     }
-
-    [Theory]
-    [InlineData(MarkKind.Thing)]
-    [InlineData(MarkKind.Creature)]
-    public void A_circle_stays_the_place_and_where_its_creatures_stand_is_carried_as_the_fallback(MarkKind sort)
-    {
-        Place circle = new(Gridania, 2, 100f, 0f, 100f, 30f);
-        Place lair = new(Gridania, 2, 112f, 0f, 96f);
-        QuestTodo[] search = [new(0, 1, "Search the wilds.", 1, [circle])];
-
-        var objective = QuestObjectiveBuilder.Build(
-            "The Wilds", 1, search, [], [], marks: [new Mark(1234u, sort)], lairs: [lair]);
-
-        var where = Assert.IsType<Destination.Reachable>(Assert.Single(objective!.Entries).Where);
-        Assert.Equal(circle, Assert.Single(where.Places));
-        Assert.Equal(lair, Assert.Single(where.Expected!));
-    }
 }

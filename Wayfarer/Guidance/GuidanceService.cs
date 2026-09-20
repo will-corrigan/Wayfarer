@@ -80,6 +80,15 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;
 
+    /// <summary>Everywhere a destination could end, for routing to choose between. A duty and a
+    /// gate end nowhere on the map; a thing the module picked out ends where it stood.</summary>
+    private static IReadOnlyList<Place> Ends(Destination where) => where switch
+    {
+        Destination.Reachable reachable => reachable.Places,
+        Destination.AtObject thing => [thing.At],
+        _ => [],
+    };
+
     /// <summary>Whether the player has stayed put enough that the last search still answers: the
     /// same zone, and not far enough from where they were standing for a different aetheryte or
     /// door to have become the nearer one.</summary>
@@ -144,7 +153,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// thing sixty times.</summary>
     private Route? RouteTo(ObjectiveEntry? target)
     {
-        if (target?.Where is not Destination.Reachable reachable || Standing() is not { } from)
+        if (target is null || Ends(target.Where) is not { Count: > 0 } ends || Standing() is not { } from)
         {
             routedTo = null;
             routedFrom = null;
@@ -158,7 +167,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
         routedTo = target;
         routedFrom = from;
-        return route = graph.FindRoute(from, reachable.Places, PlayerState.IsAttuned);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>

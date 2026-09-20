@@ -28,7 +28,7 @@ namespace Wayfarer.Guidance;
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions interactions) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner, IReadOnlyList<Place>? expected)
+    public Found? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
     {
         ArgumentNullException.ThrowIfNull(area);
 
@@ -55,32 +55,11 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
             return MarkSearch.Choose(area, standing, marks, stamp, from).Nearest;
         }
 
-        return Awaited(area, expected, from);
+        return null;
     }
 
-    /// <summary>Where the things are known to stand, nearest the player, for when none of them is
-    /// standing there yet.</summary>
-    private static Place? Awaited(Place area, IReadOnlyList<Place>? expected, Place from)
-    {
-        if (expected is null)
-        {
-            return null;
-        }
-
-        return expected
-            .Where(place => place.Territory == area.Territory && Apart(area, place) <= area.Radius)
-            .OrderBy(place => Apart(from, place))
-            .FirstOrDefault();
-    }
-
-    private static float Apart(Place from, Place to)
-    {
-        var (dx, dz) = (from.X - to.X, from.Z - to.Z);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
-    }
-
-    /// <summary>Everything the world holds that could be what a step is about, read once so the
-    /// choosing is made on one moment's worth of it rather than on a list that moves underneath.
+    /// <summary>Everything the world holds that could be what a module is looking for, read once so
+    /// the choosing is made on one moment's worth of it rather than on a list that moves underneath.
     /// </summary>
     private List<Candidate> Standing(Place area)
     {
@@ -90,6 +69,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
             var position = candidate.Position;
             var raw = candidate.Address == 0 ? null : (GameObjectStruct*)candidate.Address;
             standing.Add(new Candidate(
+                candidate.GameObjectId,
                 candidate.BaseId,
                 raw == null ? 0u : (uint)raw->EventId,
                 candidate.IsTargetable,

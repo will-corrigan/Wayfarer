@@ -27,7 +27,7 @@ public static class MarkSearch
     /// <param name="owner">The event whose own spawns count as things to act on, or zero.</param>
     /// <param name="from">Where the player stands, which decides which of several is nearest.</param>
     /// <param name="tried">What the player has already acted on and need not be sent back to.</param>
-    public static (Place? Nearest, bool AnyPresent) Choose(
+    public static (Found? Nearest, bool AnyPresent) Choose(
         Place area,
         IReadOnlyList<Candidate> standing,
         IReadOnlyList<Mark>? marks,
@@ -91,7 +91,7 @@ public static class MarkSearch
 
     /// <summary>The nearest untried thing of one sort standing inside the area, and whether any of
     /// that sort was standing there at all.</summary>
-    private static (Place? Nearest, bool AnyPresent) Sort(
+    private static (Found? Nearest, bool AnyPresent) Sort(
         Place area,
         IReadOnlyList<Candidate> standing,
         IReadOnlyList<Mark>? marks,
@@ -131,6 +131,6 @@ public static class MarkSearch
         }
 
         var nearest = untried.OrderBy(candidate => OnTheGround(from, candidate.At)).First();
-        return (nearest.At, true);
+        return (new Found(nearest.Id, nearest.At), true);
     }
 }
