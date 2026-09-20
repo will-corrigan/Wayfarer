@@ -19,14 +19,6 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// presses it.</para></summary>
 internal sealed class PressableLine : ResNode
 {
-    /// <summary>Air between the icon and the words it is about.</summary>
-    private const float IconGap = 4f;
-
-    /// <summary>How big the icon is drawn. The game's own quest tracker draws a 24 icon against
-    /// 22 of row and lets it stand a little proud of the type, rather than shrinking it to the
-    /// size of the words, so ours is the same.</summary>
-    private const float IconSize = 24f;
-
     /// <summary>Everything about how the words are set, left to the game: an outline, wrapping at
     /// the node's width, more than one line, and the boxes it works out for any link inside them.
     ///
@@ -43,7 +35,6 @@ internal sealed class PressableLine : ResNode
     private readonly Vector4 restingColor;
     private readonly Vector4 restingEdge;
     private readonly TextNode words;
-    private readonly IconImageNode icon;
     private readonly LineControl control;
     private float fontSize = ScenarioTreeStyle.SmallestFont;
     private float leading;
@@ -63,10 +54,6 @@ internal sealed class PressableLine : ResNode
             TextColor = color,
             TextOutlineColor = restingEdge,
         }.AttachedTo(this);
-
-        // FitTexture is what makes the icon drawn at the node's own size. Without it the node
-        // keeps the texture's size, which for a game icon is 32 and stands over two lines of type.
-        icon = new IconImageNode { FitTexture = true, IsVisible = false }.AttachedTo(this);
 
         control = new LineControl
         {
@@ -120,22 +107,17 @@ internal sealed class PressableLine : ResNode
             return;
         }
 
-        // A game icon is not one of the font's own marks, so it cannot be a character inside the
-        // sentence. It goes in a gutter of its own and the words start after it, which is what the
-        // game's own quest tracker does: a fixed gutter, and a row of text shifted to clear it.
-        var room = content.IconId is null ? 0f : IconSize + IconGap;
         control.IsVisible = content.Pressable;
 
-        words.Position = new Vector2(room, 0f);
-        words.Width = Width - room;
+        words.Position = Vector2.Zero;
+        words.Width = Width;
         Write();
         Resize();
         Height = MathF.Max(leading, words.Height);
-        ShowIcon(content.IconId);
 
         // The control is the keyword when the game says where it drew it, and the whole line when
         // it does not: one control either way, so the line stays one stop for the pad.
-        var pressed = KeywordBox()?.MovedBy(room) ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
+        var pressed = KeywordBox() ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
         control.Position = pressed.At;
         control.Size = pressed.Size;
     }
@@ -259,22 +241,5 @@ internal sealed class PressableLine : ResNode
             lit = wanted;
             Write();
         }
-    }
-
-    /// <summary>Hangs the icon in front of the words and reports the room it took.</summary>
-    private void ShowIcon(uint? iconId)
-    {
-        icon.IsVisible = iconId is not null;
-        if (iconId is not { } id)
-        {
-            return;
-        }
-
-        icon.IconId = id;
-        icon.Size = new Vector2(IconSize, IconSize);
-
-        // Against the middle of the whole line, however many rows the sentence wrapped to, so it
-        // reads as belonging to all of them rather than sitting against the first.
-        icon.Position = new Vector2(0f, (Height - IconSize) / 2f);
     }
 }

@@ -25,9 +25,11 @@ internal static partial class QuestTodoActions
         ArgumentNullException.ThrowIfNull(todoText);
         ArgumentNullException.ThrowIfNull(emotes);
 
-        if ((item ?? Named(todoText, questItems)) is { } used)
+        // Only an item the game gives something to do is offered for use. The rest are carried
+        // and handed over, and a step that says to deliver one is not a step that uses it.
+        if ((item ?? Named(todoText, questItems)) is { Usable: true } used)
         {
-            return new EntryAction.UseItem(used.Id, used.Name, used.IconId, KeyItem: true);
+            return new EntryAction.UseItem(used.Id, used.Name, KeyItem: true);
         }
 
         if (SayPhrase().Match(todoText) is { Success: true } say)
@@ -37,7 +39,7 @@ internal static partial class QuestTodoActions
 
         if (SlashCommand().Match(todoText) is { Success: true } command && emotes.TryGetValue(command.Value, out var emote))
         {
-            return new EntryAction.Emote(emote.Id, emote.Command, emote.IconId);
+            return new EntryAction.Emote(emote.Id, emote.Command);
         }
 
         return null;

@@ -10,13 +10,12 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// and <see cref="RouteWords"/> — so this is only about how the game draws them.</summary>
 internal static class BlockWords
 {
-    /// <summary>The step being guided to: its sentence, the words naming whatever it asks the
-    /// player to use, perform or say, and the icon of that thing.</summary>
+    /// <summary>The step being guided to: its sentence, and the words inside it naming whatever it
+    /// asks the player to use, perform or say.</summary>
     public static LineContent? Entry(ObjectiveEntry? entry) =>
         entry is null ? null : new LineContent(
             EntryWords.Describe(entry),
             entry.Action?.Keyword,
-            IconFor(entry.Action),
             Pressable: entry.Action is not null);
 
     /// <summary>The way there: its sentence behind the game's own mark for the kind of travel, and
@@ -27,16 +26,6 @@ internal static class BlockWords
             line.Keyword,
             Glyph: Glyph(line.Glyph),
             Pressable: line.Press is not null);
-
-    /// <summary>The icon of the thing an entry asks for, or none when it only asks the player to
-    /// be somewhere or to say something, which no icon says better than the words do.</summary>
-    private static uint? IconFor(EntryAction? action) => action switch
-    {
-        EntryAction.UseItem item => item.IconId,
-        EntryAction.Emote emote => emote.IconId,
-        EntryAction.Own own => own.IconId,
-        _ => null,
-    };
 
     private static BitmapFontIcon? Glyph(RouteGlyph glyph) => glyph switch
     {

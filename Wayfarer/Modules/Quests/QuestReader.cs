@@ -329,7 +329,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>The key item with this id, or null when the id is not one.</summary>
     private QuestItem? KeyItem(uint itemId) =>
         QuestItem.IsKeyItem(itemId) && dataManager.GetExcelSheet<EventItem>().GetRowOrDefault(itemId) is { } item
-            ? new QuestItem(itemId, item.Name.ExtractText(), item.Icon)
+            ? new QuestItem(itemId, item.Name.ExtractText(), item.Action.RowId != 0)
             : null;
 
     /// <summary>A line's words as the player would read them. The sheet authors them with macros
@@ -484,7 +484,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
                 var key = text.ExtractText();
                 if (key.Length > 0)
                 {
-                    emotes.TryAdd(key, new EmoteCommand((ushort)emote.RowId, command.Command.ExtractText(), emote.Icon));
+                    emotes.TryAdd(key, new EmoteCommand((ushort)emote.RowId, command.Command.ExtractText()));
                 }
             }
         }
