@@ -32,15 +32,20 @@ internal sealed unsafe class RowStrip : IDisposable
     {
         Restore();
 
-        var lit = row.Places.Where(place => place.Lit).ToList();
+        var all = row.Places;
+        var lit = all.Where(place => place.Lit).ToList();
         var size = new Vector2(strip.Size, strip.Size);
         var down = DutyFinderMetrics.StripTop + ((DutyFinderMetrics.StripSlotHeight - strip.Size) / 2f);
         var places = strip.Marks.Concat(strip.GameIcons).ToList();
 
+        // A slot the game is using keeps its own patch, because the words the window says about
+        // that picture are said through it. The rest are free, and a mark speaks through one of
+        // those. No patch is ever asked to speak for two icons at once.
+        var spare = new Queue<nint>(all.Where(place => !place.Lit && place.Touch != 0).Select(place => place.Touch));
+
         for (var index = 0; index < places.Count; index++)
         {
-            var icon = At(index, row);
-            if (icon is null)
+            if (At(index, row) is not { } icon)
             {
                 continue;
             }
@@ -49,7 +54,11 @@ internal sealed unsafe class RowStrip : IDisposable
             if (index < marks.Count)
             {
                 icon.Draw(marks[index].IconId, at, size);
-                Say(row, index, at, size, addon, marks[index].Tooltip);
+                if (spare.Count > 0)
+                {
+                    Say(spare.Dequeue(), at, size, addon, marks[index].Tooltip);
+                }
+
                 continue;
             }
 
@@ -58,12 +67,12 @@ internal sealed unsafe class RowStrip : IDisposable
             var slot = lit[index - marks.Count];
             icon.Draw(slot, at, size);
             Hide(slot);
-            Carry(slot, at, size);
+            Carry(slot.Touch, at, size);
         }
 
-        for (var spare = places.Count; spare < icons.Count; spare++)
+        for (var extra = places.Count; extra < icons.Count; extra++)
         {
-            icons[spare].Hide();
+            icons[extra].Hide();
         }
     }
 
@@ -123,11 +132,10 @@ internal sealed unsafe class RowStrip : IDisposable
         }
     }
 
-    /// <summary>Carries a slot's patch to where its picture now stands, so the words the window
-    /// says about it are said over the right icon.</summary>
-    private void Carry(RowSlot slot, Vector2 at, Vector2 size)
+    /// <summary>Carries a patch to where the icon it speaks for now stands.</summary>
+    private void Carry(nint patch, Vector2 at, Vector2 size)
     {
-        var touch = (AtkResNode*)slot.Touch;
+        var touch = (AtkResNode*)patch;
         if (touch == null)
         {
             return;
@@ -138,26 +146,20 @@ internal sealed unsafe class RowStrip : IDisposable
         touch->SetYFloat(at.Y);
         touch->SetWidth((ushort)size.X);
         touch->SetHeight((ushort)size.Y);
-        touch->ToggleVisibility(true);
     }
 
     /// <summary>Says what one of our marks means, through a patch the row already has: a window
     /// only tests the pointer against the parts it keeps a list of, and a patch of our own inside
     /// a row is never one of them.</summary>
-    private void Say(DutyFinderRow row, int index, Vector2 at, Vector2 size, AddonContentsFinder* addon, string text)
+    private void Say(nint patch, Vector2 at, Vector2 size, AddonContentsFinder* addon, string text)
     {
-        var spare = row.Places.Select(place => place.Touch).Where(touch => touch != 0).Skip(index).FirstOrDefault();
-        var touch = (AtkResNode*)spare;
+        var touch = (AtkResNode*)patch;
         if (touch == null || addon == null || string.IsNullOrEmpty(text))
         {
             return;
         }
 
-        moved.Add(RowMoved.Of(touch));
-        touch->SetXFloat(at.X);
-        touch->SetYFloat(at.Y);
-        touch->SetWidth((ushort)size.X);
-        touch->SetHeight((ushort)size.Y);
+        Carry(patch, at, size);
         if (RowTooltip.Attach(touch, addon->AtkUnitBase.Id, text) is { } tooltip)
         {
             said.Add(tooltip);
