@@ -47,6 +47,18 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private const int UnusedStep = 0;
     private const int ObjectiveIdQuestBits = 0xFFFF;
 
+    /// <summary>How many of a quest's steps a thing has to stand on before being on most of them
+    /// means anything. A quest with one step that happens to name a door names it on all of its
+    /// steps, which is not the same as carrying it through.</summary>
+    private const int LeastStepsToBeFurniture = 2;
+
+    /// <summary>How short a word of a thing's name has to be before finding it in a step's words
+    /// says nothing: "of", "the", "to".</summary>
+    private const int ShortestTellingWord = 3;
+
+    /// <summary>What separates the words of a thing's name.</summary>
+    private static readonly char[] NameSeparators = [' ', '\''];
+
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
@@ -76,22 +88,23 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <para>More than half the quest's own located steps is the line. A place named twice out of
     /// seven is an errand that comes round again; a place named on five steps of six is the
     /// furniture of the whole quest.</para></summary>
-    public static HashSet<uint> Furniture(IEnumerable<IReadOnlyList<uint>> stepRows)
+    public static HashSet<uint> Furniture(IEnumerable<IReadOnlyList<uint>> stepRows, ISet<uint> objects)
     {
         ArgumentNullException.ThrowIfNull(stepRows);
+        ArgumentNullException.ThrowIfNull(objects);
 
         var located = stepRows.Where(rows => rows.Count > 0).ToList();
         var stepsPerRow = new Dictionary<uint, int>();
         foreach (var rows in located)
         {
-            foreach (var row in rows.Distinct())
+            foreach (var row in rows.Distinct().Where(objects.Contains))
             {
                 stepsPerRow[row] = stepsPerRow.GetValueOrDefault(row) + 1;
             }
         }
 
         var most = located.Count / 2d;
-        return [.. stepsPerRow.Where(pair => pair.Value > most).Select(pair => pair.Key)];
+        return [.. stepsPerRow.Where(pair => pair.Value >= LeastStepsToBeFurniture && pair.Value > most).Select(pair => pair.Key)];
     }
 
     /// <summary>The game's live markers for this quest, this frame.</summary>
@@ -252,6 +265,24 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return rows;
     }
 
+    private static Place At(Level level) =>
+        new(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius);
+
+    /// <summary>Whether a place is a thing rather than a person. Only a thing is ever furniture:
+    /// a quest sends the player back to the same person on purpose, over and over, and taking
+    /// those away would send them to the wrong one. The sheet says which by what its row points
+    /// at, so this asks the row rather than reading a number off it.</summary>
+    private static bool IsObject(Level level) => level.Object.Is<EObj>();
+
+    /// <summary>Which of a quest's places are things rather than people.</summary>
+    private static HashSet<uint> Objects(List<(int Index, Quest.TodoParamsStruct Param)> steps) =>
+        [.. steps
+            .SelectMany(step => step.Param.ToDoLocation)
+            .Where(reference => reference.RowId != 0)
+            .Select(reference => (reference.RowId, Level: reference.ValueNullable))
+            .Where(pair => pair.Level is not null && IsObject(pair.Level.Value))
+            .Select(pair => pair.RowId)];
+
     /// <summary>The Level rows one step names, in order, skipping the empty slots.</summary>
     private static IEnumerable<uint> Rows(Quest.TodoParamsStruct param) =>
         param.ToDoLocation.Where(reference => reference.RowId != 0).Select(reference => reference.RowId);
@@ -259,21 +290,39 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>Where a step happens, with the quest's own furniture left out. All of them when
     /// taking the furniture out would leave nowhere at all, so a step that names nothing else
     /// still leads somewhere.</summary>
-    private static List<Place> Positions(Quest.TodoParamsStruct param, HashSet<uint> furniture)
+    private List<Place> Positions(Quest.TodoParamsStruct param, HashSet<uint> furniture, string words)
     {
         var places = param.ToDoLocation
             .Where(reference => reference.RowId != 0)
             .Select(reference => (reference.RowId, Level: reference.ValueNullable))
             .Where(pair => pair.Level is not null)
-            .Select(pair => (pair.RowId, Place: At(pair.Level!.Value)))
+            .Select(pair => (pair.RowId, Level: pair.Level!.Value))
             .ToList();
 
-        var wanted = places.Where(pair => !furniture.Contains(pair.RowId)).ToList();
-        return [.. (wanted.Count > 0 ? wanted : places).Select(pair => pair.Place)];
+        // A step that names the thing wants the thing, whatever the rest of the quest does with
+        // it: "pass through the portal" is about the portal even on a quest that pins that portal
+        // from beginning to end.
+        var wanted = places
+            .Where(pair => !furniture.Contains(pair.RowId) || NamedIn(pair.Level, words))
+            .ToList();
+
+        return [.. (wanted.Count > 0 ? wanted : places).Select(pair => At(pair.Level))];
     }
 
-    private static Place At(Level level) =>
-        new(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z, level.Radius);
+    /// <summary>Whether a step's own words name what stands at a place, by any word of its name
+    /// long enough to mean something on its own.</summary>
+    private bool NamedIn(Level level, string words)
+    {
+        if (words.Length == 0 || dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(level.Object.RowId) is not { } named)
+        {
+            return false;
+        }
+
+        var name = named.Singular.ExtractText();
+        return name.Length > 0 && name
+            .Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(word => word.Length > ShortestTellingWord && words.Contains(word, StringComparison.OrdinalIgnoreCase));
+    }
 
     /// <summary>What the game says about these ToDos of the quest right now, from the quest's own
     /// event handler. Empty when the handler is not loaded or there is no player.</summary>
@@ -536,11 +585,13 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             }
         }
 
-        var furniture = Furniture(steps.Select(step => (IReadOnlyList<uint>)[.. Rows(step.Param)]));
+        var objects = Objects(steps);
+        var furniture = Furniture(steps.Select(step => (IReadOnlyList<uint>)[.. Rows(step.Param)]), objects);
         var todos = new List<QuestTodoTemplate>();
         foreach (var (index, param) in steps)
         {
-            todos.Add(new QuestTodoTemplate(index, param.ToDoCompleteSeq, rows.GetValueOrDefault(index), param.ToDoQty, Positions(param, furniture)));
+            var words = rows.GetValueOrDefault(index);
+            todos.Add(new QuestTodoTemplate(index, param.ToDoCompleteSeq, words, param.ToDoQty, Positions(param, furniture, words.ExtractText())));
         }
 
         return todos;
