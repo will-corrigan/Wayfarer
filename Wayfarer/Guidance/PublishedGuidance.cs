@@ -8,7 +8,7 @@ namespace Wayfarer.Guidance;
 /// bearing — are read separately by the surfaces that draw them.</summary>
 /// <param name="Source">The module that is guiding.</param>
 /// <param name="Objective">What it is guiding to.</param>
-/// <param name="Target">The entry the route is for — <see cref="Guidance.Objective.FirstReachable"/>
+/// <param name="Target">The entry the route is for — <see cref="Guidance.Objective.Guided"/>
 /// — so a surface knows which line the needle belongs to. Null when no entry can be reached.</param>
 /// <param name="Route">How to get to the target, or null when there is no target or no way there.</param>
 public sealed record PublishedGuidance(IObjectiveSource Source, Objective Objective, ObjectiveEntry? Target, Route? Route);

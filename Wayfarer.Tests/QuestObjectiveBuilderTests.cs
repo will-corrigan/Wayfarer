@@ -13,6 +13,9 @@ public class QuestObjectiveBuilderTests
     /// <summary>The Limitless Blue (Extreme), as the Duty Finder numbers it.</summary>
     private const uint Bismarck = 60u;
 
+    /// <summary>The territory the Limitless Blue (Extreme) runs in, which is inside the duty.</summary>
+    private const uint BismarckTerritory = 431u;
+
     private static readonly Place Aetheryte = new(Gridania, 2, 32.9f, 2.7f, 30f);
     private static readonly Place Lancers = new(133, 3, 147.1f, 15.5f, -268f);
     private static readonly Place Markets = new(133, 3, 172.4f, 15.5f, -89.9f);
@@ -170,5 +173,29 @@ public class QuestObjectiveBuilderTests
         var entry = Assert.Single(objective!.Entries);
         Assert.Equal("The Diabolical Bismarck", entry.Text);
         Assert.Equal(Bismarck, Assert.IsType<Destination.InDuty>(entry.Where).DutyId);
+    }
+
+    [Fact]
+    public void A_step_the_data_puts_inside_the_duty_is_the_duty()
+    {
+        Place inside = new(BismarckTerritory, 0, 200.1f, 0f, 230.2f);
+        QuestTodo[] confront = [new(0, 1, "Do battle with Bismarck.", 1, [inside])];
+
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: Bismarck, dutyTerritory: BismarckTerritory);
+
+        var entry = Assert.Single(objective!.Entries);
+        Assert.Equal(Bismarck, Assert.IsType<Destination.InDuty>(entry.Where).DutyId);
+    }
+
+    [Fact]
+    public void A_step_outside_the_duty_is_a_place_even_when_the_quest_has_one()
+    {
+        QuestTodo[] speak = [new(0, 1, "Speak with the Admiral.", 1, [Lancers])];
+
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, speak, [], [], duty: Bismarck, dutyTerritory: BismarckTerritory);
+
+        var entry = Assert.Single(objective!.Entries);
+        var where = Assert.IsType<Destination.Reachable>(entry.Where);
+        Assert.Equal(Lancers, Assert.Single(where.Places));
     }
 }

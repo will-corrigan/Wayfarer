@@ -13,15 +13,18 @@ namespace Wayfarer.Guidance;
 /// the source's own business: see <see cref="IObjectiveSource.PressHeadline"/>.</param>
 public sealed record Objective(string Headline, IReadOnlyList<ObjectiveEntry> Entries, bool HeadlinePressable = false, string? Kind = null)
 {
-    /// <summary>The entry the app routes to: the first, in the order the module listed them, that
+    /// <summary>The entry the app guides to: the first, in the order the module listed them, that
     /// has somewhere to go. The list reads top down the way the game wrote it, so the player is
-    /// taken through it in that order rather than to whichever part happens to be nearest. Null
-    /// when no entry can be reached.</summary>
-    public ObjectiveEntry? FirstReachable()
+    /// taken through it in that order rather than to whichever part happens to be nearest.
+    ///
+    /// <para>Somewhere to go is a place to walk to or a duty to queue for. A duty is not a point on
+    /// a map and nothing routes to it, but it is still what the step is about and still something
+    /// the player can be sent to do. Null when no entry is either.</para></summary>
+    public ObjectiveEntry? Guided()
     {
         foreach (var entry in Entries)
         {
-            if (entry.Where is Destination.Reachable)
+            if (entry.Where is Destination.Reachable or Destination.InDuty)
             {
                 return entry;
             }
