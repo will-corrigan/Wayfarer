@@ -22,8 +22,8 @@
       "compass",
       "qol"
     ],
-    "DownloadLinkTesting": "https://github.com/will-corrigan/Wayfarer/releases/download/v1.4.0/Wayfarer.zip",
-    "TestingAssemblyVersion": "1.4.0.0",
+    "DownloadLinkTesting": "https://github.com/will-corrigan/Wayfarer/releases/download/v1.5.0/Wayfarer.zip",
+    "TestingAssemblyVersion": "1.5.0.0",
     "TestingDalamudApiLevel": 15
   }
 ]
