@@ -29,7 +29,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
     private const string AddonName = "ContentsFinder";
 
     private readonly List<IDutyRowMarks> contributors = [];
-    private readonly Dictionary<uint, RowMarks> marksByRow = [];
+    private readonly Dictionary<uint, RowStrip> stripsByRow = [];
 
     private NativeListController<AddonContentsFinder, DutyFinderRow>? rows;
     private AddonController<AddonContentsFinder>? window;
@@ -79,47 +79,6 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         addon == null || addon->DutyList == null
             ? null
             : addon->DutyList->GetComponentItemRendererById(DutyFinderMetrics.RowTemplateNodeId);
-
-    /// <summary>Hangs a new mark off a row, beside its name. Its place is set when the row is laid
-    /// out, so it is made where it will not be seen and moved into place after.</summary>
-    private static unsafe RowMark? Attach(DutyFinderRow row) => RowMark.Beside(row.NameNode);
-
-    /// <summary>Moves the game's own icons over, when the strip has been laid out again and they
-    /// are part of it. Where each was is written down before it is asked to move.</summary>
-    private static unsafe void MoveGameIcons(List<nint> lit, StripLayout.Strip strip, RowMarks held)
-    {
-        for (var index = 0; index < strip.GameIcons.Count && index < lit.Count; index++)
-        {
-            var node = (AtkResNode*)lit[index];
-            if (node == null)
-            {
-                continue;
-            }
-
-            held.Moved.Add(RowMarks.WasAt.Of(node));
-            node->SetXFloat(strip.GameIcons[index]);
-            node->SetWidth((ushort)strip.Size);
-            node->SetHeight((ushort)strip.Size);
-        }
-    }
-
-    /// <summary>Takes from the row's name what the strip could not find anywhere else, and only
-    /// when the strip says it has to. How wide the name was is written down before it is asked.</summary>
-    private static unsafe void MakeRoom(DutyFinderRow row, StripLayout.Strip strip, RowMarks held)
-    {
-        var name = row.NameNode;
-        if (strip.Left is not { } left || name == null)
-        {
-            return;
-        }
-
-        var wanted = left - name->AtkResNode.X;
-        if (wanted > 0 && wanted < name->AtkResNode.Width)
-        {
-            held.Name = RowMarks.WasAt.Of(&name->AtkResNode);
-            name->AtkResNode.SetWidth((ushort)wanted);
-        }
-    }
 
     /// <summary>Takes up marking on behalf of a module, and starts listening to the window if
     /// nothing else was. On the framework thread.</summary>
@@ -196,38 +155,20 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         return Wanted(row).Count > 0;
     }
 
-    /// <summary>Marks a row the game has just drawn: as many marks as were asked for, laid out
-    /// together in the space the row keeps for its icons.</summary>
+    /// <summary>Lays a row's strip out afresh: everything the game would have drawn, drawn again
+    /// by us, beside the marks the modules asked for.</summary>
     private unsafe void Set(AddonContentsFinder* addon, DutyFinderRow row)
     {
         try
         {
             var wanted = Wanted(row);
-            var lit = row.LitSlots;
-            var strip = StripLayout.Place(wanted.Count, row.DarkSlots, lit.Count, DutyFinderMetrics.Strip);
-            var held = For(row, wanted.Count);
-
-            // Whatever was moved or resized last time goes back first, so the row is laid out from
-            // how the game left it rather than from how we last left it.
-            held.Restore();
-
-            // A mark is square, because the art behind it is: a slot is taller than it is wide, so
-            // the mark sits in the middle of that height rather than being stretched down it.
-            var marks = held.Marks;
-            var size = new Vector2(strip.Size, strip.Size);
-            var down = DutyFinderMetrics.StripTop + ((DutyFinderMetrics.StripSlotHeight - strip.Size) / 2f);
-            for (var index = 0; index < marks.Count; index++)
-            {
-                marks[index].Show(wanted[index].IconId, new Vector2(strip.Marks[index], down), size);
-                marks[index].Explain(addon, row.TouchAt(strip.Marks[index]), wanted[index].Tooltip);
-            }
-
-            MoveGameIcons(lit, strip, held);
-            MakeRoom(row, strip, held);
+            var lit = row.Places.Count(place => place.Lit);
+            var strip = StripLayout.Place(wanted.Count, [], lit, DutyFinderMetrics.Strip);
+            For(row).Lay(row, wanted, strip, addon);
             if (addon != null)
             {
-                // The slots carry the game's own tooltips, which are hit-tested in the order the
-                // window keeps them, so it is told they have moved.
+                // The patches the pointer is tested against have moved, and the window keeps its
+                // own list of them.
                 addon->AtkUnitBase.UpdateCollisionNodeList(false);
             }
         }
@@ -237,39 +178,22 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         }
     }
 
-    /// <summary>This row's marks, made up to the number wanted. A row that has carried marks before
-    /// keeps the nodes it had rather than making them again.</summary>
-    private unsafe RowMarks For(DutyFinderRow row, int wanted)
-    {
-        var held = marksByRow.TryGetValue(row.NodeId, out var carried)
-            ? carried
-            : marksByRow[row.NodeId] = new RowMarks([]);
+    /// <summary>This row's strip, made the first time the row is drawn and kept while the window
+    /// is open. A row is handed round as the list scrolls, so a strip belongs to the row rather
+    /// than to any one duty.</summary>
+    private RowStrip For(DutyFinderRow row) =>
+        stripsByRow.TryGetValue(row.NodeId, out var held) ? held : stripsByRow[row.NodeId] = new RowStrip();
 
-        while (held.Marks.Count < wanted && Attach(row) is { } made)
-        {
-            held.Marks.Add(made);
-        }
-
-        // More than are wanted now, from a row that carried more before it was handed on.
-        foreach (var spare in held.Marks.Skip(wanted))
-        {
-            spare.Hide();
-            spare.Forget();
-        }
-
-        return held;
-    }
-
-    /// <summary>Takes every mark back off a row that no longer wants any.</summary>
+    /// <summary>Gives a row back exactly as it was found, for a row that no longer wants marking.
+    /// The game says when, which is what makes handing a row on safe.</summary>
     private unsafe void Clear(AddonContentsFinder* addon, DutyFinderRow row)
     {
-        if (!marksByRow.Remove(row.NodeId, out var held))
+        if (!stripsByRow.Remove(row.NodeId, out var strip))
         {
             return;
         }
 
-        held.Restore();
-        held.Free();
+        strip.Dispose();
         if (addon != null)
         {
             addon->AtkUnitBase.UpdateCollisionNodeList(false);
@@ -280,23 +204,22 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
     /// done with too.</summary>
     private unsafe void Closed(AddonContentsFinder* addon) => FreeAll(putBack: false);
 
-    /// <summary>Frees every mark, and safe to call when there is nothing to free.</summary>
-    /// <param name="putBack">Whether the game's own parts are to be put back as well. They are,
-    /// unless the window itself is closing, in which case they are going anyway and the rows they
-    /// belong to are not ours to touch on the way out.</param>
+    /// <summary>Gives every row back and frees everything we drew on it. Safe to call twice, and
+    /// safe to call with nothing to free.</summary>
+    /// <param name="putBack">Whether the game's own parts are put back as well. They are, unless
+    /// the window itself is closing: its rows are going with it and are not ours to write to on
+    /// the way out.</param>
     private void FreeAll(bool putBack = true)
     {
-        foreach (var held in marksByRow.Values)
+        foreach (var strip in stripsByRow.Values)
         {
             if (putBack)
             {
-                held.Restore();
+                strip.Dispose();
             }
-
-            held.Free();
         }
 
-        marksByRow.Clear();
+        stripsByRow.Clear();
     }
 
     /// <summary>Gives up marking, from wherever the holder happens to let go.</summary>

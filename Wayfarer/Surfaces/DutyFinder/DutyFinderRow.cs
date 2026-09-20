@@ -44,16 +44,42 @@ internal sealed unsafe class DutyFinderRow : ListItemData
         }
     }
 
-    /// <summary>Where this row's icon slots are standing empty, left to right: the room a mark can
-    /// go in without anything of the game's having to move.</summary>
-    public List<float> DarkSlots => [.. Slots.Select(Unused).OfType<float>()];
-
-    /// <summary>The game's own icons this row is showing, left to right. They belong to the game:
-    /// they are moved and resized only when there is no other room, and always put back.</summary>
-    public List<nint> LitSlots => [.. Slots.Where(Lit).Select(slot => (nint)slot.Value)];
-
     /// <summary>The component a row is drawn by, for anything that needs to walk its parts.</summary>
     public AtkComponentBase* Owner => Component;
+
+    /// <summary>The row's icon places, left to right, as the game left them: what it would draw in
+    /// each and the patch of row the pointer is tested against there.</summary>
+    public List<RowSlot> Places
+    {
+        get
+        {
+            var places = new List<RowSlot>(DutyFinderMetrics.GameIconNodeIds.Length);
+            foreach (var slot in Slots)
+            {
+                if (slot.Value is null)
+                {
+                    continue;
+                }
+
+                nint picture = 0, touch = 0;
+                for (var held = slot.Value->ChildNode; held != null; held = held->PrevSiblingNode)
+                {
+                    if (held->GetAsAtkCollisionNode() != null)
+                    {
+                        touch = (nint)held;
+                    }
+                    else if (held->GetAsAtkImageNode() != null && (picture == 0 || held->IsVisible()))
+                    {
+                        picture = (nint)held;
+                    }
+                }
+
+                places.Add(new RowSlot((nint)slot.Value, picture, touch));
+            }
+
+            return places;
+        }
+    }
 
     /// <summary>The row's icon slots in the order they sit, whether or not the row has them. Read
     /// fresh, because a row is the game's and may be anything by the next drawing.</summary>
@@ -101,34 +127,6 @@ internal sealed unsafe class DutyFinderRow : ListItemData
         }
     }
 
-    /// <summary>The patch of row the game already hit-tests for the slot standing at this place,
-    /// or nothing when no slot stands there.
-    ///
-    /// <para>A window finds the pointer through the collision nodes it keeps a list of, and that
-    /// list is built from the window's own parts. A patch added inside one of its rows is never in
-    /// it, so a patch of our own is never asked about however it is flagged. Every slot already has
-    /// one, kept whether or not the slot is drawing anything, so a mark standing in a slot says
-    /// what it means through the patch already there.</para></summary>
-    /// <param name="at">Where the mark was put.</param>
-    public AtkResNode* TouchAt(float at)
-    {
-        foreach (var slot in Slots)
-        {
-            if (slot.Value != null && Math.Abs(slot.Value->X - at) < 1f)
-            {
-                for (var held = slot.Value->ChildNode; held != null; held = held->PrevSiblingNode)
-                {
-                    if (held->GetAsAtkCollisionNode() != null)
-                    {
-                        return held;
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
     /// <summary>Whether the game is using a slot.
     ///
     /// <para>The slot itself is always shown, on every row, whether or not the game has put
@@ -150,15 +148,4 @@ internal sealed unsafe class DutyFinderRow : ListItemData
 
         return false;
     }
-
-    /// <summary>Where a slot is standing empty, or null when the game is using it. A slot the row
-    /// does not have at all is room the layout file says is there, so it is offered.</summary>
-    /// <param name="slot">The slot itself, which the row may not have.</param>
-    /// <param name="place">Which of the strip's slots it is, counted from the left.</param>
-    private static float? Unused(Pointer<AtkResNode> slot, int place) => slot.Value switch
-    {
-        null => DutyFinderMetrics.StripLeft + (place * DutyFinderMetrics.StripPitch),
-        var node when Draws(node) => null,
-        var node => node->X,
-    };
 }
