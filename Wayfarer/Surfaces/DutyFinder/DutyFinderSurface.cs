@@ -11,8 +11,9 @@ namespace Wayfarer.Surfaces.DutyFinder;
 ///
 /// <para>More than one module can want a duty marked — a quest left in it, a hunt target inside
 /// it — and a row keeps one small strip for icons. Neither module can place its own mark without
-/// knowing what the other asked for, so neither does: they say what they want drawn and this
-/// places all of it together.</para>
+/// knowing what the other asked for, nor without knowing which slots the game is using itself, so
+/// neither does: they say what they want drawn and this places all of it together, in the slots
+/// the game left dark. Nothing of the game's is moved or written to.</para>
 ///
 /// <para>The game is what says when a row is drawn and what it is drawn as, so that is what is
 /// listened to rather than the window being read every frame. A row is handed round as the list
@@ -26,14 +27,11 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
 {
     private const string AddonName = "ContentsFinder";
 
-    /// <summary>TEMPORARY. How far along a row's parts to read when describing one. The game does
-    /// not say how many there are, so this is far enough to reach past the icons.</summary>
-    private const int DescribeDepth = 24;
-
     private readonly List<IDutyRowMarks> contributors = [];
     private readonly Dictionary<uint, List<IconImageNode>> marksByRow = [];
 
     private NativeListController<AddonContentsFinder, DutyFinderRow>? rows;
+    private AddonController<AddonContentsFinder>? window;
     private bool disposed;
     private bool described;
 
@@ -60,6 +58,12 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         {
             rows = null;
             await watching.DisposeAsync().ConfigureAwait(false);
+        }
+
+        if (window is { } watched)
+        {
+            window = null;
+            await watched.DisposeAsync().ConfigureAwait(false);
         }
 
         await framework.RunOnFrameworkThread(() =>
@@ -119,6 +123,15 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
             ResetElement = Clear,
         };
         rows.Enable();
+
+        // The rows a mark hangs off are the window's, and go when it closes. Nothing else tells us
+        // that has happened, and a node held past it is a node pointing at freed memory.
+        window ??= new AddonController<AddonContentsFinder>
+        {
+            AddonName = AddonName,
+            OnFinalize = Closed,
+        };
+        window.Enable();
     }
 
     /// <summary>Gives up marking on behalf of a module. When it was the last, the marks come off
@@ -132,6 +145,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         }
 
         rows?.Disable();
+        window?.Disable();
         FreeAll();
     }
 
@@ -168,12 +182,12 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         try
         {
             var wanted = Wanted(row);
+            var strip = StripLayout.Place(wanted.Count, row.DarkSlots, DutyFinderMetrics.StripLeft, DutyFinderMetrics.StripPitch);
             var marks = For(row, wanted.Count);
-            var strip = StripLayout.Place(wanted.Count, DutyFinderMetrics.StripLeft, DutyFinderMetrics.StripRight, DutyFinderMetrics.StripPitch);
             for (var index = 0; index < marks.Count; index++)
             {
                 marks[index].IconId = wanted[index];
-                marks[index].Position = new(strip.At(index), DutyFinderMetrics.StripTop);
+                marks[index].Position = new(strip.Places[index], DutyFinderMetrics.StripTop);
                 marks[index].IsVisible = true;
             }
         }
@@ -221,24 +235,25 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
         }
     }
 
+    /// <summary>The window has closed and taken its rows with it, so the marks hung off them are
+    /// done with too.</summary>
+    private unsafe void Closed(AddonContentsFinder* addon) => FreeAll();
+
     /// <summary>TEMPORARY. Writes out the parts of a row once, so where the game keeps its own
     /// strip of row icons can be read off rather than guessed at. Delete once the answer is in
     /// <see cref="DutyFinderMetrics"/>.</summary>
     private unsafe void Describe(DutyFinderRow row)
     {
-        if (described || row.NodeList == null)
+        if (described)
         {
             return;
         }
 
         described = true;
-        for (var index = 0; index < DescribeDepth; index++)
+        foreach (var part in row.Parts)
         {
-            var node = row.NodeList[index];
-            if (node != null)
-            {
-                log.Information($"duty row part {index}: type {node->Type} at ({node->X}, {node->Y}) {node->Width}x{node->Height} shown {node->IsVisible()}");
-            }
+            var node = (AtkResNode*)part;
+            log.Information($"duty row part id {node->NodeId}: type {node->Type} at ({node->X}, {node->Y}) {node->Width}x{node->Height} shown {node->IsVisible()}");
         }
     }
 
