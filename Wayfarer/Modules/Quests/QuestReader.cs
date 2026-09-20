@@ -16,7 +16,7 @@ namespace Wayfarer.Modules.Quests;
 
 /// <summary>Every read the quests module makes of the game, so the rest of the module is pure.
 /// Framework thread only.</summary>
-internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEvaluator evaluator)
+internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEvaluator evaluator, IPluginLog log)
 {
     /// <summary>Every to-do line in a quest's own text sheet is keyed with this in front of it.</summary>
     private const string TodoKeyPrefix = "TEXT_";
@@ -30,6 +30,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// it names its own objects, and one of them spawning inside the circle is the thing.</summary>
     private const string ObjectParameter = "EOBJECT";
 
+    /// <summary>The script parameter a quest names a creature in, one per creature it is about.
+    /// Each is a place row of its own, and the row names the kind of thing standing there, which is
+    /// how a step that sends the player into a circle to fight says what is in it. The world gives
+    /// a creature that same kind as its id, so it is looked for exactly as an object is.</summary>
+    private const string CreatureParameter = "ENEMY";
+
     private const string TodoKeyInfix = "_TODO_";
     private const string TextSheetFolder = "quest/";
     private const int TextSheetFolderDigits = 3;
@@ -39,6 +45,8 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<uint>> marksByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
+    private string lastHandler = string.Empty;
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, uint>? dutiesByContent;
 
@@ -109,6 +117,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     public IReadOnlyList<uint> Marks(ushort questId) =>
         marksByQuest.TryGetValue(questId, out var marks) ? marks : marksByQuest[questId] = ReadMarks(questId);
 
+    /// <summary>Where the creatures a quest is about stand, as the data places them. A step that
+    /// sends the player into a circle to fight names them separately from the circle, and the spot
+    /// inside it beats the middle of it whether or not anything has spawned yet.</summary>
+    public IReadOnlyList<Place> Lairs(ushort questId) =>
+        lairsByQuest.TryGetValue(questId, out var lairs) ? lairs : lairsByQuest[questId] = ReadLairs(questId);
+
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
@@ -135,6 +149,14 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return null;
     }
 
+    /// <summary>The territory a duty runs in, which is the instance's own and nowhere a player can
+    /// walk to. A step the data puts in there is a step that happens inside the duty.</summary>
+    public uint? DutyTerritory(uint duty)
+    {
+        var territory = dataManager.GetExcelSheet<ContentFinderCondition>().GetRowOrDefault(duty)?.TerritoryType.RowId;
+        return territory is 0 or null ? null : territory;
+    }
+
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
     /// such quest.</summary>
     public string Name(ushort questId) =>
@@ -143,8 +165,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>What the quest's own running script says about each line of a step: whether it is
     /// ticked, how far along it is, and the key item it is about. Cheap enough to ask every frame,
     /// which is what tells the module whether anything moved.</summary>
-    public List<QuestTodoProgress> Progress(ushort questId, byte sequence) =>
-        Progress(questId, Templates(questId).Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
+    public List<QuestTodoProgress> Progress(ushort questId, byte sequence)
+    {
+        Probe(questId, sequence);
+        return Progress(questId, Templates(questId).Where(todo => todo.Sequence == sequence).Select(todo => todo.Index));
+    }
 
     /// <summary>The step's lines with their words finished, built from the progress just read.
     /// Finishing the words means resolving macros and allocating strings, so this is asked only
@@ -274,6 +299,22 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             }
         }
 
+        // A creature the quest names is a place row of its own, and the row says what kind of
+        // thing stands there. Lumina types that by the row's own kind, so a creature is only taken
+        // as one when the row really says creature.
+        foreach (var parameter in quest.QuestParams)
+        {
+            if (!parameter.ScriptInstruction.ExtractText().StartsWith(CreatureParameter, StringComparison.Ordinal) || parameter.ScriptArg == 0)
+            {
+                continue;
+            }
+
+            if (dataManager.GetExcelSheet<Level>().GetRowOrDefault(parameter.ScriptArg)?.Object is { RowId: not 0 } kind && kind.Is<BNpcBase>())
+            {
+                marks.Add(kind.RowId);
+            }
+        }
+
         // The objects themselves say which event owns them, and a handful of them are owned by a
         // quest that never listed them among its parameters. Both halves together is the whole set.
         var owner = QuestIds.RowId(questId);
@@ -286,6 +327,64 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         }
 
         return [.. marks];
+    }
+
+    /// <summary>Temporary: everything the live quest handler holds about this step.</summary>
+    private void Probe(ushort questId, byte sequence)
+    {
+        var events = EventFramework.Instance();
+        var control = Control.Instance();
+        var handler = events == null ? null : (QuestEventHandler*)events->GetEventHandlerById(QuestIds.RowId(questId));
+        var player = control == null ? null : control->LocalPlayer;
+        if (handler == null || player == null)
+        {
+            return;
+        }
+
+        var args = new List<string>();
+        for (byte idx = 0; idx < 8; idx++)
+        {
+            uint a = 0, b = 0, c = 0;
+            handler->GetTodoArgs(player, idx, &a, &b, &c);
+            if (a != 0 || b != 0 || c != 0)
+            {
+                args.Add($"[{idx}] {a},{b},{c} checked={handler->IsTodoChecked(player, idx)}");
+            }
+        }
+
+        var custom = string.Join(",", handler->CustomTodoValues.ToArray().Select(v => v.ToString(CultureInfo.InvariantCulture)));
+        var line = $"seq={sequence} customLoaded={handler->CustomTodoValuesLoaded} custom=[{custom}] instances=[{string.Join(",", handler->InstanceContents.ToArray().Select(v => v.ToString(CultureInfo.InvariantCulture)))}] todoArgs={string.Join(" | ", args)}";
+        if (!string.Equals(line, lastHandler, StringComparison.Ordinal))
+        {
+            lastHandler = line;
+            log.Debug($"[handler] {line}");
+        }
+    }
+
+    /// <summary>Every place a creature this quest names stands, from the place rows the quest
+    /// points at.</summary>
+    private List<Place> ReadLairs(ushort questId)
+    {
+        if (QuestRow(questId) is not { } quest)
+        {
+            return [];
+        }
+
+        var lairs = new List<Place>();
+        foreach (var parameter in quest.QuestParams)
+        {
+            if (!parameter.ScriptInstruction.ExtractText().StartsWith(CreatureParameter, StringComparison.Ordinal) || parameter.ScriptArg == 0)
+            {
+                continue;
+            }
+
+            if (dataManager.GetExcelSheet<Level>().GetRowOrDefault(parameter.ScriptArg) is { } where && where.Object.Is<BNpcBase>())
+            {
+                lairs.Add(new Place(where.Territory.RowId, where.Map.RowId, where.X, where.Y, where.Z));
+            }
+        }
+
+        return lairs;
     }
 
     private Dictionary<uint, uint> ReadDuties()

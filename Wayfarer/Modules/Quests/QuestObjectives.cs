@@ -17,6 +17,9 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
     private Signature? last;
     private Objective? cached;
 
+    /// <summary>The quest the plate is naming right now, which is what pressing it leads to.</summary>
+    private ushort? guided;
+
     /// <inheritdoc/>
     public string Name => QuestsModule.ModuleName;
 
@@ -24,14 +27,13 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
     public Objective? Current => Refresh();
 
     /// <inheritdoc/>
-    /// <remarks>The plate names the followed quest, so pressing it opens that quest's page in the
-    /// journal. Nothing is followed while the main scenario is guiding, and the objective says the
-    /// headline is not pressable, so this is not called then.</remarks>
+    /// <remarks>The plate names whichever quest is being guided, followed or the main scenario, so
+    /// pressing it opens that quest's page in the journal.</remarks>
     public void PressHeadline()
     {
-        if (following.Followed is { } followed)
+        if (guided is { } questId)
         {
-            journal.Open(followed);
+            journal.Open(questId);
         }
     }
 
@@ -56,8 +58,11 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         if (QuestToFollow() is not { } questId)
         {
             last = null;
+            guided = null;
             return cached = null;
         }
+
+        guided = questId;
 
         var sequence = QuestReader.Sequence(questId);
         var progress = reader.Progress(questId, sequence);
@@ -72,10 +77,25 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
 
         var todos = reader.Todos(questId, sequence, progress);
 
-        // The guide names the main scenario quest itself, so only a quest the player chose to follow
-        // instead gives the headline anywhere to lead.
-        var headline = following.Followed is not null;
-        return cached = QuestObjectiveBuilder.Build(reader.Name(questId), sequence, todos, progress, markers, reader.Emotes(), headline, reader.Duty(questId), reader.Marks(questId), QuestIds.RowId(questId), headline ? FollowedHeader : null);
+        // The plate leads to the journal page of whichever quest it names, followed or not. Only a
+        // quest the player chose to follow retitles the heading above it: the guide already says
+        // what it is about when the main scenario is the one being guided.
+        var followed = following.Followed is not null;
+        var duty = reader.Duty(questId);
+        return cached = QuestObjectiveBuilder.Build(
+            reader.Name(questId),
+            sequence,
+            todos,
+            progress,
+            markers,
+            reader.Emotes(),
+            true,
+            duty,
+            duty is { } dutyId ? reader.DutyTerritory(dutyId) : null,
+            reader.Marks(questId),
+            QuestIds.RowId(questId),
+            reader.Lairs(questId),
+            followed ? FollowedHeader : null);
     }
 
     /// <summary>The followed quest while it is still accepted; completing or abandoning it hands
