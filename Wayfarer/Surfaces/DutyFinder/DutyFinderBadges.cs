@@ -17,6 +17,11 @@ namespace Wayfarer.Surfaces.DutyFinder;
 /// rather than to a duty: every update, each row on show is asked what it is now for and its mark
 /// is set to suit, or hidden when it is for nothing.</para>
 ///
+/// <para>Only the rows the game says it is drawing this frame are touched. A row it has stopped
+/// drawing keeps whatever mark it had, which is not drawn either, and is set right again the
+/// moment the row comes back — so nothing here ever writes to a row on the strength of having
+/// seen it in an earlier frame.</para>
+///
 /// <para>Every node made here is freed when the window closes, when the last mark is taken away,
 /// or when the plugin unloads, whichever comes first. The rows outlive the nodes hung off them in
 /// all three cases, so the game is never left holding one that has been freed.</para>
@@ -79,7 +84,9 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
     /// rows ever being enumerated.</summary>
     private static unsafe string? NameOn(AtkComponentListItemRenderer* row)
     {
-        var text = GameNodes.Text((AtkComponentBase*)row, DutyFinderMetrics.RowNameTextNodeId);
+        var text = row == null
+            ? null
+            : GameNodes.Text(&row->AtkComponentButton.AtkComponentBase, DutyFinderMetrics.RowNameTextNodeId);
         if (text == null || text->NodeText.Length == 0)
         {
             return null;
@@ -101,6 +108,9 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
         sources.Add(source);
         if (sources.Count == 1)
         {
+            // Marking switched off after it broke and then back on is a fresh ask, not the same
+            // one carrying on, so whatever went wrong is given another chance to not.
+            broken = false;
             controller ??= new AddonController
             {
                 AddonName = AddonName,
@@ -142,14 +152,6 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
             }
 
             roster.Reread();
-
-            // Every mark goes out first, so a row the game has stopped drawing cannot be left
-            // wearing the one it had when it was last something else.
-            foreach (var badge in badgesByRow.Values)
-            {
-                badge.IsVisible = false;
-            }
-
             foreach (var entry in list->Items)
             {
                 var item = entry.Value;
@@ -270,13 +272,12 @@ internal sealed class DutyFinderBadges(IFramework framework, IPluginLog log) : I
     /// <summary>One thing's marks, taken away when it is disposed.</summary>
     private sealed class Marking(DutyFinderBadges badges, IDutyBadgeSource source) : IDisposable
     {
-        private bool done;
+        private int done;
 
         public void Dispose()
         {
-            if (!done)
+            if (Interlocked.Exchange(ref done, 1) == 0)
             {
-                done = true;
                 badges.Release(source);
             }
         }

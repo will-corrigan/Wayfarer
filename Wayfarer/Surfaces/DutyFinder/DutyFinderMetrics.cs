@@ -27,8 +27,13 @@ internal static class DutyFinderMetrics
     /// <summary>Where the mark sits: the bottom right corner of the game's own icon, hanging a
     /// little off it. Nothing else in the row is drawn here, so no name is ever covered however
     /// long it runs.</summary>
-    public const float BadgeLeft = TypeIconLeft + TypeIconSize - (BadgeSize * 0.65f);
+    public const float BadgeLeft = TypeIconLeft + TypeIconSize - (BadgeSize * BadgeOverhang);
 
     /// <inheritdoc cref="BadgeLeft"/>
-    public const float BadgeTop = TypeIconTop + TypeIconSize - (BadgeSize * 0.65f);
+    public const float BadgeTop = TypeIconTop + TypeIconSize - (BadgeSize * BadgeOverhang);
+
+    /// <summary>How much of the mark hangs off the corner of the game's icon. Enough that it reads
+    /// as sitting on the corner rather than inside the square, and not so much that it drifts off
+    /// into the row.</summary>
+    private const float BadgeOverhang = 0.65f;
 }
