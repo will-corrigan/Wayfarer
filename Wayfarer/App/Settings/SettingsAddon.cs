@@ -48,7 +48,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float CheckboxHeight = 24f;
     private const float DropDownHeight = 24f;
 
-    private const float FramePadding = 12f;
     private const float SectionGap = 10f;
 
     /// <summary>How far a module's own settings are stepped in from the module itself.</summary>
@@ -327,13 +326,22 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         previewStage = new ResNode();
         previewFrame = new BorderNineGridNode();
         previewFrame.AttachNode(previewStage);
-        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(FramePadding, FramePadding) };
+
+        // The frame is a nine-grid: its border art is drawn inside its own offsets, so anything
+        // placed nearer an edge than that is drawn over the border rather than within it. The
+        // block is inset by the frame's own measurements, whatever art the frame is made of.
+        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(previewFrame.LeftOffset, previewFrame.TopOffset) };
         preview.AttachNode(previewStage);
         preview.SetWords(
             new LineContent(SampleEntry),
             new LineContent(SampleRoute, SampleRouteKeyword, Glyph: BitmapFontIcon.Aetheryte, Pressable: true));
         preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
         body.AddNode(previewStage);
+
+        // Styled only once the block is part of the window's own tree. A style applied before then
+        // is laid out against nothing and lost when the tree is joined, which is why the preview
+        // showed the defaults until a slider moved and restyled it in place.
+        preview.Restyle(styles.Current);
 
         var style = styles.Current;
         body.AddNode(Row("Entry text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size)))));
@@ -399,7 +407,9 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     {
         if (preview is not null && previewFrame is not null && previewStage is not null)
         {
-            previewStage.Size = new Vector2(preview.Width + (2f * FramePadding), preview.Height + (2f * FramePadding));
+            previewStage.Size = new Vector2(
+                preview.Width + previewFrame.LeftOffset + previewFrame.RightOffset,
+                preview.Height + previewFrame.TopOffset + previewFrame.BottomOffset);
             previewFrame.Size = previewStage.Size;
         }
 
