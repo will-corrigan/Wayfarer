@@ -1,3 +1,4 @@
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
@@ -77,11 +78,11 @@ internal sealed unsafe class PlateTakeover
             return;
         }
 
-        var shown = title->NodeText.ToString();
+        var shown = title->NodeText.ExtractText();
         if (!Active || !string.Equals(shown, ourTitle, StringComparison.Ordinal))
         {
             // Either we have not taken over yet, or the game rewrote the plate since we did.
-            Remember(shown, header->NodeText.ToString());
+            Remember(shown, header->NodeText.ExtractText());
         }
 
         if (gameTitle is null || string.Equals(headline, gameTitle, StringComparison.Ordinal))

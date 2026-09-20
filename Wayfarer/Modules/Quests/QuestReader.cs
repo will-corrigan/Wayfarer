@@ -77,7 +77,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
                 continue;
             }
 
-            var label = info.Label.ToString();
+            var label = info.Label.ExtractText();
             for (var i = 0; i < (int)info.MarkerData.LongCount; i++)
             {
                 var data = info.MarkerData[i];
