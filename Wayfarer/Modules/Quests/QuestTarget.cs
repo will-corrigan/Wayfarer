@@ -70,16 +70,7 @@ internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
 
         return [.. lairs.Where(lair => places.Any(place => place.Radius > 0f
             && place.Territory == lair.Territory
-            && OnTheGround(place, lair) <= place.Radius))];
-    }
-
-    /// <summary>How far apart two places are across the ground, ignoring the drop between them.
-    /// Heights in the routing data are flat, so counting the drop would push somewhere on a ledge
-    /// out of ground it is plainly standing in.</summary>
-    private static float OnTheGround(Place from, Place to)
-    {
-        var (dx, dz) = (from.X - to.X, from.Z - to.Z);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
+            && place.OnTheGround(lair) <= place.Radius))];
     }
 
     /// <summary>What is still worth naming: everything the quest named, less what the player has

@@ -36,27 +36,6 @@ internal static class StepPlaces
         return [.. steps.Select(step => Chosen(step, furniture))];
     }
 
-    /// <summary>The things a quest carries through most of its own steps. Never a person: a quest
-    /// sends the player back to the same one over and over on purpose, and taking those away would
-    /// send them to the wrong one.</summary>
-    public static HashSet<uint> Furniture(IReadOnlyList<StepShape> steps)
-    {
-        ArgumentNullException.ThrowIfNull(steps);
-
-        var located = steps.Where(step => step.Places.Count > 0).ToList();
-        var stepsPerRow = new Dictionary<uint, int>();
-        foreach (var step in located)
-        {
-            foreach (var row in step.Places.Where(place => place.IsObject).Select(place => place.Row).Distinct())
-            {
-                stepsPerRow[row] = stepsPerRow.GetValueOrDefault(row) + 1;
-            }
-        }
-
-        var most = located.Count / 2d;
-        return [.. stepsPerRow.Where(pair => pair.Value >= LeastStepsToBeFurniture && pair.Value > most).Select(pair => pair.Key)];
-    }
-
     /// <summary>Whether a line's own words name what stands at a place.
     ///
     /// <para>Both halves come from the game in the player's own language, so the two are always
@@ -74,6 +53,25 @@ internal static class StepPlaces
         return words.Contains(name, StringComparison.CurrentCultureIgnoreCase)
             || name.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Any(word => word.Length > ShortestTellingWord && words.Contains(word, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    /// <summary>The things a quest carries through most of its own steps. Never a person: a quest
+    /// sends the player back to the same one over and over on purpose, and taking those away would
+    /// send them to the wrong one.</summary>
+    private static HashSet<uint> Furniture(IReadOnlyList<StepShape> steps)
+    {
+        var located = steps.Where(step => step.Places.Count > 0).ToList();
+        var stepsPerRow = new Dictionary<uint, int>();
+        foreach (var step in located)
+        {
+            foreach (var row in step.Places.Where(place => place.IsObject).Select(place => place.Row).Distinct())
+            {
+                stepsPerRow[row] = stepsPerRow.GetValueOrDefault(row) + 1;
+            }
+        }
+
+        var most = located.Count / 2d;
+        return [.. stepsPerRow.Where(pair => pair.Value >= LeastStepsToBeFurniture && pair.Value > most).Select(pair => pair.Key)];
     }
 
     /// <summary>Where one line sends the player: its own places, less the quest's furniture and

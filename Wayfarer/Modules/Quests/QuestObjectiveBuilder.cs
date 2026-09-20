@@ -125,9 +125,7 @@ internal static class QuestObjectiveBuilder
     /// the player, and inside a wide circle that is a far better answer than the circle's middle.</summary>
     private static bool Near(Place position, Place marker) =>
         position.Territory == marker.Territory
-        && Apart(position, marker) <= MathF.Max(MatchYalms, position.Radius);
+        && position.OnTheGround(marker) <= MathF.Max(MatchYalms, position.Radius);
 
     /// <summary>How far apart two places are across the ground.</summary>
-    private static float Apart(Place from, Place to) =>
-        MathF.Sqrt(((from.X - to.X) * (from.X - to.X)) + ((from.Z - to.Z) * (from.Z - to.Z)));
 }

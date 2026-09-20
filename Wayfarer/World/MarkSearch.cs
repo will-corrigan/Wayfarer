@@ -51,15 +51,6 @@ public static class MarkSearch
         return null;
     }
 
-    /// <summary>How far apart two points are across the ground. Heights in the routing data are
-    /// flat, so counting the drop would push something on a ledge out of a circle it is plainly
-    /// standing in.</summary>
-    private static float OnTheGround(Place from, Place to)
-    {
-        var (dx, dz) = (from.X - to.X, from.Z - to.Z);
-        return MathF.Sqrt((dx * dx) + (dz * dz));
-    }
-
     /// <summary>Whether a step names this one: stamped by the game as the guided event's own, or
     /// named by the module. The stamp answers only for things to act on, which is what a step
     /// sends the player to before anything has been summoned, and never for people — the game does
@@ -104,7 +95,7 @@ public static class MarkSearch
             .Where(candidate => candidate.Targetable
                 && candidate.At.Territory == area.Territory
                 && Wanted(candidate, named, owner, sort)
-                && OnTheGround(area, candidate.At) <= area.Radius)
+                && area.OnTheGround(candidate.At) <= area.Radius)
             .ToList();
 
         if (here.Count == 0)
@@ -119,7 +110,7 @@ public static class MarkSearch
         var asking = here.Where(candidate => candidate.Plate != 0).ToList();
         var wanted = asking.Count > 0 ? asking : here;
 
-        var nearest = wanted.OrderBy(candidate => OnTheGround(from, candidate.At)).First();
+        var nearest = wanted.OrderBy(candidate => from.OnTheGround(candidate.At)).First();
         return new Found(nearest.Id, nearest.At);
     }
 }
