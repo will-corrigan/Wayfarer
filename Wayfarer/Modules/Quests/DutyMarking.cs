@@ -12,7 +12,7 @@ namespace Wayfarer.Modules.Quests;
 /// <para>Both hooking the window and letting go of a node have to happen on the game's own thread,
 /// and a module is brought up and taken down on whichever thread it pleases, so both are handed
 /// there rather than done where they were asked for.</para></summary>
-internal sealed class DutyMarking(QuestDuties duties, QuestJournal journal, IFramework framework) : IAsyncDisposable
+internal sealed class DutyMarking(QuestDuties duties, IFramework framework) : IAsyncDisposable
 {
     private DutyFinderMarks? marks;
 
@@ -34,5 +34,5 @@ internal sealed class DutyMarking(QuestDuties duties, QuestJournal journal, IFra
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
 
-    private void Hook() => marks ??= new DutyFinderMarks(duties, journal);
+    private void Hook() => marks ??= new DutyFinderMarks(duties);
 }

@@ -19,8 +19,17 @@ internal sealed unsafe class DutyRow : ListItemData
     /// <summary>Which of the row's numbers counts into the agent's list, from one.</summary>
     private const int ContentIndexValue = 1;
 
+    /// <summary>The first of the places the row keeps for the marks the game puts on it. Asked
+    /// only how big it is and where it sits: a mark of ours beside the game's own should be the
+    /// size the game makes them, and the row is the only thing that knows what that is.</summary>
+    private const int FirstIconSlot = 5;
+
     /// <summary>The words naming the duty, or null while the row is being built.</summary>
     public AtkTextNode* Words => GetNode<AtkTextNode>(DutyNameNode);
+
+    /// <summary>One of the places the row keeps for a mark, to be measured against. Null while the
+    /// row is being built.</summary>
+    public AtkResNode* IconSlot => GetNode<AtkResNode>(FirstIconSlot);
 
     /// <summary>The Duty Finder entry this row stands for, or null when the row is not showing
     /// one — the list holds headings and blanks as well as duties.</summary>
