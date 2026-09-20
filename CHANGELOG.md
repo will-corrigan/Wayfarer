@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/will-corrigan/Wayfarer/compare/v1.3.0...v1.4.0) (2026-09-20)
+
+
+### New
+
+* wrap the route line, and offer the whole sentence on hover when it is cut ([5edb4cf](https://github.com/will-corrigan/Wayfarer/commit/5edb4cfef6f68e69cb5a7990e04d0d5c4a8fba34))
+
+
+### Fixed
+
+* let the container find every game service, not the ten named by hand ([8b7f866](https://github.com/will-corrigan/Wayfarer/commit/8b7f8664589f633c84c6fa28c39b0448dc48d474))
+* stack the compass under its distance, and keep the preview inside its frame ([744773c](https://github.com/will-corrigan/Wayfarer/commit/744773cf8aea6dfae507675df278089603c6c8a9))
+
 ## [1.3.0](https://github.com/will-corrigan/Wayfarer/compare/v1.2.0...v1.3.0) (2026-09-19)
 
 
