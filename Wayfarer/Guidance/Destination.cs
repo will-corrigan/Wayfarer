@@ -31,10 +31,14 @@ public abstract record Destination
     /// stamps every object it spawns for an event with that event's id, so this recognises the right
     /// object without anyone having listed it, including the ones the data forgot. Marks stay as the
     /// answer for anything the game has not stamped.</param>
+    /// <param name="Expected">Where the marks are known to stand, for when none of them is there
+    /// yet. A place with room in it often holds nothing until something has been done, and walking
+    /// to where the thing will be beats standing in the middle of the circle waiting for it.</param>
     public sealed record Reachable(
         IReadOnlyList<Place> Places,
         IReadOnlyList<Mark>? Marks = null,
-        EventId? Owner = null) : Destination;
+        EventId? Owner = null,
+        IReadOnlyList<Place>? Expected = null) : Destination;
 
     /// <summary>Inside instanced content. Nothing to walk to; the only guidance is to queue.</summary>
     public sealed record InDuty(uint DutyId) : Destination;

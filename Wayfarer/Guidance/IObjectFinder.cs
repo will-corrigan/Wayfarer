@@ -12,5 +12,6 @@ internal interface IObjectFinder
     /// <param name="area">The circle being searched, with its radius.</param>
     /// <param name="marks">Ids the caller listed as what to look for, or null.</param>
     /// <param name="owner">The game event whose own objects count, or null.</param>
-    Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner);
+    /// <param name="expected">Where they are known to stand when none is there, or null.</param>
+    Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner, IReadOnlyList<Place>? expected);
 }

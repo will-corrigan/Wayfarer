@@ -28,14 +28,19 @@ namespace Wayfarer.Guidance;
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions interactions) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner)
+    public Place? Inside(Place area, IReadOnlyList<Mark>? marks, EventId? owner, IReadOnlyList<Place>? expected)
     {
         ArgumentNullException.ThrowIfNull(area);
 
-        // A step is about one sort of thing and the other only turns up because of it: a circle
-        // holds the thing to act on, and once acted on it holds whatever that summoned. So the
-        // things to act on are looked for first, and the creatures only when there are none.
-        return Nearest(area, marks, owner, MarkKind.Thing) ?? Nearest(area, marks, owner, MarkKind.Creature);
+        // One sort of thing is what a place with room in it is about, and the other only turns up
+        // because of it: the thing to act on is there first, and once acted on whatever it called
+        // is there too. So the things are looked for first and the creatures only when there are
+        // none, and only when neither is standing there does where they are known to stand answer
+        // instead. That is judged on what is there now, so nothing has to know what sort of errand
+        // this is.
+        return Nearest(area, marks, owner, MarkKind.Thing)
+            ?? Nearest(area, marks, owner, MarkKind.Creature)
+            ?? Awaited(area, expected);
     }
 
     /// <summary>How far apart two points are across the ground, ignoring the drop between them.</summary>
@@ -66,6 +71,22 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
     /// to recognise and the circle is just a circle.</summary>
     private static bool AnythingToLookFor(List<Mark>? marks, EventId? owner, MarkKind sort) =>
         (sort is MarkKind.Thing && owner is not null) || marks?.Count > 0;
+
+    /// <summary>Where the things are known to stand, nearest the player, for when none of them is
+    /// standing there yet.</summary>
+    private Place? Awaited(Place area, IReadOnlyList<Place>? expected)
+    {
+        if (expected is null || objects.LocalPlayer is not { } player)
+        {
+            return null;
+        }
+
+        var standing = player.Position;
+        return expected
+            .Where(place => place.Territory == area.Territory && OnTheGround(area.X, area.Z, place.X, place.Z) <= area.Radius)
+            .OrderBy(place => OnTheGround(standing.X, standing.Z, place.X, place.Z))
+            .FirstOrDefault();
+    }
 
     /// <summary>The nearest untried thing of one sort standing inside an area.</summary>
     private Place? Nearest(Place area, IReadOnlyList<Mark>? marks, EventId? owner, MarkKind sort)
