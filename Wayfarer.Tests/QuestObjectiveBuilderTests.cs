@@ -148,7 +148,7 @@ public class QuestObjectiveBuilderTests
     {
         QuestTodo[] confront = [new(0, 1, "Confront Bismarck in the Limitless Blue (Extreme).", 1, [])];
 
-        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: Bismarck);
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: new QuestDuty(Bismarck, null));
 
         var entry = Assert.Single(objective!.Entries);
         Assert.Equal(Bismarck, Assert.IsType<Destination.InDuty>(entry.Where).DutyId);
@@ -168,7 +168,7 @@ public class QuestObjectiveBuilderTests
     [Fact]
     public void A_quest_the_sheet_says_nothing_about_is_its_duty()
     {
-        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 7, CloseToHome, [], [], duty: Bismarck);
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 7, CloseToHome, [], [], duty: new QuestDuty(Bismarck, null));
 
         var entry = Assert.Single(objective!.Entries);
         Assert.Equal("The Diabolical Bismarck", entry.Text);
@@ -181,7 +181,7 @@ public class QuestObjectiveBuilderTests
         Place inside = new(BismarckTerritory, 0, 200.1f, 0f, 230.2f);
         QuestTodo[] confront = [new(0, 1, "Do battle with Bismarck.", 1, [inside])];
 
-        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: Bismarck, dutyTerritory: BismarckTerritory);
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, confront, [], [], duty: new QuestDuty(Bismarck, BismarckTerritory));
 
         var entry = Assert.Single(objective!.Entries);
         Assert.Equal(Bismarck, Assert.IsType<Destination.InDuty>(entry.Where).DutyId);
@@ -192,7 +192,7 @@ public class QuestObjectiveBuilderTests
     {
         QuestTodo[] speak = [new(0, 1, "Speak with the Admiral.", 1, [Lancers])];
 
-        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, speak, [], [], duty: Bismarck, dutyTerritory: BismarckTerritory);
+        var objective = QuestObjectiveBuilder.Build("The Diabolical Bismarck", 1, speak, [], [], duty: new QuestDuty(Bismarck, BismarckTerritory));
 
         var entry = Assert.Single(objective!.Entries);
         var where = Assert.IsType<Destination.Reachable>(entry.Where);

@@ -48,7 +48,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
     private string lastHandler = string.Empty;
     private Dictionary<string, EmoteCommand>? emotesByCommand;
-    private Dictionary<uint, uint>? dutiesByContent;
+    private Dictionary<uint, ContentFinderCondition>? dutiesByContent;
 
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
@@ -126,10 +126,11 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
-    /// <summary>The Duty Finder entry for the duty a quest sends the player into, or null when it
-    /// sends them nowhere instanced. A quest names the duty among its own script parameters, the
-    /// same list that names its actors and its items, under <c>INSTANCEDUNGEON</c>.</summary>
-    public uint? Duty(ushort questId)
+    /// <summary>The duty a quest sends the player into, or null when it sends them nowhere
+    /// instanced. A quest names the duty among its own script parameters, the same list that names
+    /// its actors and its items, under <c>INSTANCEDUNGEON</c>. The Finder row it names carries the
+    /// instance's own territory, so both halves of the answer come off the one row.</summary>
+    public QuestDuty? Duty(ushort questId)
     {
         if (QuestRow(questId) is not { } quest)
         {
@@ -142,19 +143,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             if (parameter.ScriptInstruction.ExtractText().StartsWith(DutyParameter, StringComparison.Ordinal)
                 && Finder(parameter.ScriptArg) is { } duty)
             {
-                return duty;
+                var territory = duty.TerritoryType.RowId;
+                return new QuestDuty(duty.RowId, territory != 0 ? territory : null);
             }
         }
 
         return null;
-    }
-
-    /// <summary>The territory a duty runs in, which is the instance's own and nowhere a player can
-    /// walk to. A step the data puts in there is a step that happens inside the duty.</summary>
-    public uint? DutyTerritory(uint duty)
-    {
-        var territory = dataManager.GetExcelSheet<ContentFinderCondition>().GetRowOrDefault(duty)?.TerritoryType.RowId;
-        return territory is 0 or null ? null : territory;
     }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no
@@ -278,10 +272,9 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
     /// <summary>The Duty Finder entry that runs a piece of instanced content, or null when the
     /// Finder does not queue for it.</summary>
-    private uint? Finder(uint contentId) =>
+    private ContentFinderCondition? Finder(uint contentId) =>
         contentId != 0 && dutiesByContent is { } duties && duties.TryGetValue(contentId, out var duty) ? duty : null;
 
-    /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>
     private List<uint> ReadMarks(ushort questId)
     {
         if (QuestRow(questId) is not { } quest)
@@ -387,14 +380,15 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return lairs;
     }
 
-    private Dictionary<uint, uint> ReadDuties()
+    /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>
+    private Dictionary<uint, ContentFinderCondition> ReadDuties()
     {
-        var duties = new Dictionary<uint, uint>();
+        var duties = new Dictionary<uint, ContentFinderCondition>();
         foreach (var condition in dataManager.GetExcelSheet<ContentFinderCondition>())
         {
             if (condition.Content.Is<InstanceContent>() && condition.Content.RowId != 0)
             {
-                duties.TryAdd(condition.Content.RowId, condition.RowId);
+                duties.TryAdd(condition.Content.RowId, condition);
             }
         }
 

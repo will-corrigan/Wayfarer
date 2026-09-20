@@ -91,7 +91,6 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             reader.Emotes(),
             true,
             duty,
-            duty is { } dutyId ? reader.DutyTerritory(dutyId) : null,
             reader.Marks(questId),
             QuestIds.Event(questId),
             reader.Lairs(questId),

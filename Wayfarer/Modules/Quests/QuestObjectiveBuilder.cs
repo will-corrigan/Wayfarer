@@ -33,8 +33,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
         bool headlinePressable = false,
-        uint? duty = null,
-        uint? dutyTerritory = null,
+        QuestDuty? duty = null,
         IReadOnlyList<uint>? marks = null,
         EventId? owner = null,
         IReadOnlyList<Place>? lairs = null,
@@ -47,7 +46,7 @@ internal static class QuestObjectiveBuilder
 
         var step = todos.Where(todo => todo.Sequence == sequence).ToList();
         var entries = step.Count > 0
-            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, dutyTerritory, marks, owner, lairs))]
+            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, marks, owner, lairs))]
             : DescribedByMarkers(questName, markers, duty);
 
         return entries.Count > 0 ? new Objective(questName, entries, headlinePressable, kind) : null;
@@ -61,14 +60,13 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestTodoProgress> progress,
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand> emotes,
-        uint? duty,
-        uint? dutyTerritory,
+        QuestDuty? duty,
         IReadOnlyList<uint>? marks,
         EventId? owner,
         IReadOnlyList<Place>? lairs)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
-        Destination where = Enters(todo, dutyTerritory) || todo.Positions.Count == 0 ? Nowhere(duty)
+        Destination where = Enters(todo, duty) || todo.Positions.Count == 0 ? Nowhere(duty)
             : markersAtThisTodo.Count > 0 ? Reachable(markersAtThisTodo, marks, owner, lairs)
             : new Destination.Reachable(Narrowed(todo.Positions, lairs), marks, owner);
 
@@ -113,19 +111,19 @@ internal static class QuestObjectiveBuilder
     /// own territory, which is not a place the player can be walked to. A step named anywhere else
     /// is an ordinary place, even for a quest that has a duty, because most of a duty quest happens
     /// outside it.</summary>
-    private static bool Enters(QuestTodo todo, uint? dutyTerritory) =>
-        dutyTerritory is { } territory && todo.Positions.Any(position => position.Territory == territory);
+    private static bool Enters(QuestTodo todo, QuestDuty? duty) =>
+        duty?.Territory is { } territory && todo.Positions.Any(position => position.Territory == territory);
 
     /// <summary>Where a step with nothing on a map to go to is: inside the quest's duty, or
     /// nowhere the app can help with.</summary>
-    private static Destination Nowhere(uint? duty) =>
-        duty is { } dutyId ? new Destination.InDuty(dutyId) : new Destination.Blocked(NoLocation);
+    private static Destination Nowhere(QuestDuty? duty) =>
+        duty is { } instance ? new Destination.InDuty(instance.Finder) : new Destination.Blocked(NoLocation);
 
     /// <summary>What a quest with no to-do list for this step is about: wherever its markers are,
     /// or its duty when it has neither.</summary>
-    private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers, uint? duty) =>
+    private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers, QuestDuty? duty) =>
         markers.Count > 0 ? [new ObjectiveEntry(FirstLabel(markers) ?? questName, null, Reachable(markers))]
-            : duty is { } dutyId ? [new ObjectiveEntry(questName, null, new Destination.InDuty(dutyId))]
+            : duty is { } instance ? [new ObjectiveEntry(questName, null, new Destination.InDuty(instance.Finder))]
             : [];
 
     private static string? FirstLabel(IEnumerable<QuestMarker> markers) =>
@@ -134,7 +132,7 @@ internal static class QuestObjectiveBuilder
     /// <summary>What the game's own markers say, narrowed to the creatures standing inside them.
     /// A marker for a step that sends the player somewhere to fight is a circle to be somewhere in;
     /// where the things in it stand is the better answer when the data says.</summary>
-    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers, IReadOnlyList<uint>? marks = null, uint? owner = null, IReadOnlyList<Place>? lairs = null) =>
+    private static Destination.Reachable Reachable(IEnumerable<QuestMarker> markers, IReadOnlyList<uint>? marks = null, EventId? owner = null, IReadOnlyList<Place>? lairs = null) =>
         new(Narrowed([.. markers.Select(marker => marker.At)], lairs), marks, owner);
 
     /// <summary>Whether a marker belongs to a step's place: standing on it, or standing inside it
