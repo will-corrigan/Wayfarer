@@ -4,9 +4,9 @@
     "net10.0-windows7.0": {
       "Meziantou.Analyzer": {
         "type": "Direct",
-        "requested": "[3.0.177, )",
-        "resolved": "3.0.177",
-        "contentHash": "Un9RDShcg4kaNiQtNJvNaRQU5ogcFCB6YLSL2TLx49hmLSU+vd6YixciWxWmoKIOdGvPV27dqHHFIBm8qd5U1Q=="
+        "requested": "[3.0.264, )",
+        "resolved": "3.0.264",
+        "contentHash": "6/w8WEGjJuzdWvmYB5pbGvCx5jV5OP3UQ4ats15cUAbBWTRUkoHx7IRoAUi82Vj0WZd8KvBqE9/3ed3J8594nQ=="
       },
       "StyleCop.Analyzers": {
         "type": "Direct",
@@ -34,8 +34,8 @@
       },
       "Autofac": {
         "type": "Transitive",
-        "resolved": "9.3.2",
-        "contentHash": "an3dLpmXWvb2aBP5qyA7GVEcXhoG+W/EtFRa3sBYzJdXSNDnB0aoeo4MgOQru0G5sjNDGYM3D3CnBzNFXEVOOA=="
+        "resolved": "9.3.4",
+        "contentHash": "sKldkrIDjhic/BtE6KBl50VjwnuVVOXMnJgh9CsG5uHa8IsGR1BkvjyF6UifPfXPfnkauPqJrAF0QF+JhhRTsw=="
       },
       "DalamudPackager": {
         "type": "Transitive",
@@ -44,8 +44,8 @@
       },
       "KamiToolKit": {
         "type": "Transitive",
-        "resolved": "2.2.45",
-        "contentHash": "C0JOr2uCHt4NUKIgwKghmpTxWCGJWYfJsFMODJSxmbe1fmpJMWKwC+QRVAioUqprBuj6DnsKoNbwp5jM9M9qlw=="
+        "resolved": "2.2.49",
+        "contentHash": "844sNr7eI4Eo+JlLyW05qF9wLOIdICS5bE8HKdpQE5agp7As+fskn/8ZSa+jn7cyVv2e/r36ARyHW86IVVloCg=="
       },
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
@@ -168,9 +168,9 @@
       "wayfarer": {
         "type": "Project",
         "dependencies": {
-          "Autofac": "[9.3.2, )",
+          "Autofac": "[9.3.4, )",
           "DalamudPackager": "[15.0.0, )",
-          "KamiToolKit": "[2.2.45, )"
+          "KamiToolKit": "[2.2.49, )"
         }
       }
     }
