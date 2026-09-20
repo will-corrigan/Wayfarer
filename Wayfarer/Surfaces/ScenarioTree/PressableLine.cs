@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
 using Lumina.Text;
 using Lumina.Text.Payloads;
+using BitmapFontIcon = Dalamud.Game.Text.SeStringHandling.BitmapFontIcon;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
@@ -137,6 +138,16 @@ internal sealed class PressableLine : ResNode
         return end;
     }
 
+    /// <summary>Sets one of the game's own marks, if there is one to set. It is a character in the
+    /// sentence like any other, so the game wraps the line around it.</summary>
+    private static void Mark(SeStringBuilder builder, BitmapFontIcon? mark)
+    {
+        if (mark is { } icon)
+        {
+            builder.AppendIcon((uint)icon);
+        }
+    }
+
     private static void Coloured(SeStringBuilder builder, string text, Vector4 color, Vector4 edge)
     {
         if (text.Length > 0)
@@ -223,7 +234,9 @@ internal sealed class PressableLine : ResNode
             // Wrapped in a link so the game works out where the keyword ends up once it has broken
             // the sentence across lines, and says so in the node's own link boxes.
             builder.PushLink(KeywordLink, 0u, 0u, 0u);
+            Mark(builder, showing.Opens);
             Coloured(builder, showing.Words[at..end], live, liveEdge);
+            Mark(builder, showing.Closes);
             builder.PopLink();
             Coloured(builder, showing.Words[end..], restingColor, restingEdge);
         }

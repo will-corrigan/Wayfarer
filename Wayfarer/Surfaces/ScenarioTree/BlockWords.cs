@@ -12,11 +12,21 @@ internal static class BlockWords
 {
     /// <summary>The step being guided to: its sentence, and the words inside it naming whatever it
     /// asks the player to use, perform or say.</summary>
-    public static LineContent? Entry(ObjectiveEntry? entry) =>
-        entry is null ? null : new LineContent(
+    public static LineContent? Entry(ObjectiveEntry? entry)
+    {
+        if (entry is null)
+        {
+            return null;
+        }
+
+        var (opens, closes) = Marks(entry.Action);
+        return new LineContent(
             EntryWords.Describe(entry),
             entry.Action?.Keyword,
+            Opens: opens,
+            Closes: closes,
             Pressable: entry.Action is not null);
+    }
 
     /// <summary>The way there: its sentence behind the game's own mark for the kind of travel, and
     /// the leg the press is about.</summary>
@@ -26,6 +36,17 @@ internal static class BlockWords
             line.Keyword,
             Glyph: Glyph(line.Glyph),
             Pressable: line.Press is not null);
+
+    /// <summary>The game's own marks set around the words a press is about, where the font has one
+    /// that says what the press is. A phrase to be said is bracketed the way the game brackets an
+    /// auto-translated one; a key item carries the star the game marks key items with. Nothing is
+    /// invented: an action the font has no mark for gets none.</summary>
+    private static (BitmapFontIcon? Opens, BitmapFontIcon? Closes) Marks(EntryAction? action) => action switch
+    {
+        EntryAction.Say => (BitmapFontIcon.AutoTranslateBegin, BitmapFontIcon.AutoTranslateEnd),
+        EntryAction.UseItem { KeyItem: true } => (BitmapFontIcon.GoldStar, null),
+        _ => (null, null),
+    };
 
     private static BitmapFontIcon? Glyph(RouteGlyph glyph) => glyph switch
     {
