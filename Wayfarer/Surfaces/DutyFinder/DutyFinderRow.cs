@@ -52,10 +52,6 @@ internal sealed unsafe class DutyFinderRow : ListItemData
     /// they are moved and resized only when there is no other room, and always put back.</summary>
     public List<nint> LitSlots => [.. Slots.Where(Lit).Select(slot => (nint)slot.Value)];
 
-    /// <summary>The component a row is drawn by. A collision patch added to a row has to say which
-    /// component owns it, or the window has nothing to route the pointer through.</summary>
-    public AtkComponentBase* Owner => Component;
-
     /// <summary>The row's icon slots in the order they sit, whether or not the row has them. Read
     /// fresh, because a row is the game's and may be anything by the next drawing.</summary>
     private List<Pointer<AtkResNode>> Slots
@@ -100,6 +96,34 @@ internal sealed unsafe class DutyFinderRow : ListItemData
 
             return null;
         }
+    }
+
+    /// <summary>The patch of row the game already hit-tests for the slot standing at this place,
+    /// or nothing when no slot stands there.
+    ///
+    /// <para>A window finds the pointer through the collision nodes it keeps a list of, and that
+    /// list is built from the window's own parts. A patch added inside one of its rows is never in
+    /// it, so a patch of our own is never asked about however it is flagged. Every slot already has
+    /// one, kept whether or not the slot is drawing anything, so a mark standing in a slot says
+    /// what it means through the patch already there.</para></summary>
+    /// <param name="at">Where the mark was put.</param>
+    public AtkResNode* TouchAt(float at)
+    {
+        foreach (var slot in Slots)
+        {
+            if (slot.Value != null && Math.Abs(slot.Value->X - at) < 1f)
+            {
+                for (var held = slot.Value->ChildNode; held != null; held = held->PrevSiblingNode)
+                {
+                    if (held->GetAsAtkCollisionNode() != null)
+                    {
+                        return held;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /// <summary>Whether the game is using a slot.

@@ -15,19 +15,14 @@ namespace Wayfarer.Surfaces.DutyFinder;
 internal sealed unsafe class RowMark : IDisposable
 {
     private readonly IconImageNode icon;
-    private readonly CollisionNode touch;
 
     private RowTooltip? says;
 
-    private RowMark(IconImageNode icon, CollisionNode touch)
-    {
-        this.icon = icon;
-        this.touch = touch;
-    }
+    private RowMark(IconImageNode icon) => this.icon = icon;
 
     /// <summary>Hangs a new mark beside a row's name, or null when there is no name to hang it
     /// beside.</summary>
-    public static RowMark? Beside(AtkTextNode* name, AtkComponentBase* owner)
+    public static RowMark? Beside(AtkTextNode* name)
     {
         if (name == null)
         {
@@ -36,17 +31,7 @@ internal sealed unsafe class RowMark : IDisposable
 
         var drawn = new IconImageNode { FitTexture = true, IsVisible = false };
         drawn.AttachNode(name, NodePosition.AfterTarget);
-
-        // A collision patch is routed to through the component it belongs to, exactly as the
-        // game's own row icons are, and it is the pointer resting rather than a press it is for.
-        var felt = new CollisionNode
-        {
-            CollisionType = CollisionType.Hit,
-            LinkedComponent = owner,
-            IsVisible = true,
-        };
-        felt.AttachNode(name, NodePosition.AfterTarget);
-        return new RowMark(drawn, felt);
+        return new RowMark(drawn);
     }
 
     /// <summary>Draws the mark, and puts the patch that notices the pointer exactly over it.</summary>
@@ -59,9 +44,6 @@ internal sealed unsafe class RowMark : IDisposable
         icon.Size = size;
         icon.Position = at;
         icon.IsVisible = true;
-
-        touch.Size = size;
-        touch.Position = at;
     }
 
     /// <summary>Hides the mark, for a row that no longer wants this many.</summary>
@@ -69,13 +51,14 @@ internal sealed unsafe class RowMark : IDisposable
 
     /// <summary>Says what the mark means, replacing whatever it said before.</summary>
     /// <param name="addon">The window the row belongs to.</param>
+    /// <param name="touch">The patch of row the game hit-tests where the mark stands.</param>
     /// <param name="text">What the mark means.</param>
-    public void Explain(AddonContentsFinder* addon, string text)
+    public void Explain(AddonContentsFinder* addon, AtkResNode* touch, string text)
     {
         Forget();
-        if (addon != null)
+        if (addon != null && touch != null)
         {
-            says = RowTooltip.Attach(&touch.Node->AtkResNode, addon->AtkUnitBase.Id, text);
+            says = RowTooltip.Attach(touch, addon->AtkUnitBase.Id, text);
         }
     }
 
@@ -91,7 +74,6 @@ internal sealed unsafe class RowMark : IDisposable
     public void Dispose()
     {
         Forget();
-        touch.Dispose();
         icon.Dispose();
     }
 }
