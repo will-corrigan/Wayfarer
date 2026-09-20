@@ -163,13 +163,22 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return null;
     }
 
-    /// <summary>The mark the journal puts beside a quest, which is its genre's: the main
-    /// scenario has one of its own and an ordinary quest another. Null when the sheet files the
-    /// quest under no genre at all, which is how it says the journal does not list it.</summary>
-    public uint? JournalIcon(ushort questId)
+    /// <summary>The mark the game itself puts on a quest, which is the one it draws on the map
+    /// where the quest is offered: blue for a quest that unlocks something, and its own for the
+    /// main scenario. The sheet says which per quest, so nothing here chooses an icon — it reads
+    /// the one the game already uses, and a quest the game marks some new way is marked that way
+    /// here too without anything being changed.
+    ///
+    /// <para>Null when the sheet names no mark, which it does for quests the journal never lists
+    /// and for those the game shows no marker for.</para></summary>
+    public uint? QuestIcon(ushort questId)
     {
-        var icon = QuestRow(questId)?.JournalGenre.ValueNullable?.Icon ?? 0;
-        return icon > 0 ? (uint)icon : null;
+        if (QuestRow(questId)?.EventIconType.ValueNullable is not { } marker)
+        {
+            return null;
+        }
+
+        return marker.MapIconAvailable != 0 ? marker.MapIconAvailable : null;
     }
 
     /// <summary>The quest's name as the sheet writes it, or an empty string when the sheet has no

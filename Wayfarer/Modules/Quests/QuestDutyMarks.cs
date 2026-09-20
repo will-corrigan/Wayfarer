@@ -72,7 +72,7 @@ internal sealed unsafe class QuestDutyMarks(QuestReader reader) : IDutyRowMarks
         {
             if (quest.QuestId != 0
                 && reader.Duty(quest.QuestId) is { } duty
-                && reader.JournalIcon(quest.QuestId) is { } icon)
+                && reader.QuestIcon(quest.QuestId) is { } icon)
             {
                 // Two quests can send the player into the same duty. The first one found marks it;
                 // the mark says there is something left to do there, not how many things.
