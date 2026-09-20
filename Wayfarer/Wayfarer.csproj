@@ -4,7 +4,7 @@
          DotNet.ReproducibleBuilds); Central Package Management would otherwise
          require a matching PackageVersion entry for those. -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Author>Will Corrigan</Author>
     <Name>Wayfarer</Name>
     <Punchline>Your quest step and the way there, under the game's own Main Scenario Guide.</Punchline>
