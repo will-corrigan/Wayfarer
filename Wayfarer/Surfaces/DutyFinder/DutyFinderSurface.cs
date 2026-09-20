@@ -82,7 +82,7 @@ internal sealed class DutyFinderSurface(IFramework framework, IPluginLog log) : 
 
     /// <summary>Hangs a new mark off a row, beside its name. Its place is set when the row is laid
     /// out, so it is made where it will not be seen and moved into place after.</summary>
-    private static unsafe RowMark? Attach(DutyFinderRow row) => RowMark.Beside(row.NameNode);
+    private static unsafe RowMark? Attach(DutyFinderRow row) => RowMark.Beside(row.NameNode, row.Owner);
 
     /// <summary>Moves the game's own icons over, when the strip has been laid out again and they
     /// are part of it. Where each was is written down before it is asked to move.</summary>

@@ -27,7 +27,7 @@ internal sealed unsafe class RowMark : IDisposable
 
     /// <summary>Hangs a new mark beside a row's name, or null when there is no name to hang it
     /// beside.</summary>
-    public static RowMark? Beside(AtkTextNode* name)
+    public static RowMark? Beside(AtkTextNode* name, AtkComponentBase* owner)
     {
         if (name == null)
         {
@@ -37,7 +37,14 @@ internal sealed unsafe class RowMark : IDisposable
         var drawn = new IconImageNode { FitTexture = true, IsVisible = false };
         drawn.AttachNode(name, NodePosition.AfterTarget);
 
-        var felt = new CollisionNode { IsVisible = true };
+        // A collision patch is routed to through the component it belongs to, exactly as the
+        // game's own row icons are, and it is the pointer resting rather than a press it is for.
+        var felt = new CollisionNode
+        {
+            CollisionType = CollisionType.Hit,
+            LinkedComponent = owner,
+            IsVisible = true,
+        };
         felt.AttachNode(name, NodePosition.AfterTarget);
         return new RowMark(drawn, felt);
     }

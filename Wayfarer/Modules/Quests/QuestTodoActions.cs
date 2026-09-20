@@ -27,9 +27,12 @@ internal static partial class QuestTodoActions
 
         // Only an item the game gives something to do is offered for use. The rest are carried
         // and handed over, and a step that says to deliver one is not a step that uses it.
+        //
+        // What is named is the words the step itself used, not the sheet's title for the item, so
+        // the press is about words the player can see in front of them.
         if ((item ?? Named(todoText, questItems)) is { Usable: true } used)
         {
-            return new EntryAction.UseItem(used.Id, used.Name, KeyItem: true);
+            return new EntryAction.UseItem(used.Id, used.NamedIn(todoText) ?? used.Name, KeyItem: true);
         }
 
         if (SayPhrase().Match(todoText) is { Success: true } say)
@@ -53,8 +56,11 @@ internal static partial class QuestTodoActions
     /// wins, so a large burlap sack is not mistaken for a burlap sack.</para></summary>
     private static QuestItem? Named(string todoText, IReadOnlyList<QuestItem>? questItems) =>
         questItems?
-            .Where(item => item.Name.Length > 0 && todoText.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
-            .MaxBy(item => item.Name.Length);
+            .Select(item => (Item: item, Called: item.NamedIn(todoText)))
+            .Where(found => found.Called is not null)
+            .OrderByDescending(found => found.Called!.Length)
+            .Select(found => found.Item)
+            .FirstOrDefault();
 
     [GeneratedRegex("enter “(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
     private static partial Regex SayPhrase();

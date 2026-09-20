@@ -52,6 +52,10 @@ internal sealed unsafe class DutyFinderRow : ListItemData
     /// they are moved and resized only when there is no other room, and always put back.</summary>
     public List<nint> LitSlots => [.. Slots.Where(Lit).Select(slot => (nint)slot.Value)];
 
+    /// <summary>The component a row is drawn by. A collision patch added to a row has to say which
+    /// component owns it, or the window has nothing to route the pointer through.</summary>
+    public AtkComponentBase* Owner => Component;
+
     /// <summary>The row's icon slots in the order they sit, whether or not the row has them. Read
     /// fresh, because a row is the game's and may be anything by the next drawing.</summary>
     private List<Pointer<AtkResNode>> Slots
