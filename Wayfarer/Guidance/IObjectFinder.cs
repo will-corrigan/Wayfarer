@@ -1,3 +1,4 @@
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Routing;
 
 namespace Wayfarer.Guidance;
@@ -12,5 +13,5 @@ internal interface IObjectFinder
     /// <param name="area">The circle being searched, with its radius.</param>
     /// <param name="marks">Ids the caller listed as what to look for, or null.</param>
     /// <param name="owner">The game event whose own objects count, or null.</param>
-    Found? Inside(Place area, IReadOnlyList<uint>? marks, uint? owner);
+    Found? Inside(Place area, IReadOnlyList<uint>? marks, EventId? owner);
 }

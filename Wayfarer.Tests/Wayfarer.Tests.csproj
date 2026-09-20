@@ -20,6 +20,21 @@
     <ProjectReference Include="../Wayfarer/Wayfarer.csproj" />
   </ItemGroup>
 
+  <!-- The plugin models the game's own ids with the mapping's own types, so the test host has to
+       be able to load it. The SDK references this without copying it. -->
+  <PropertyGroup>
+    <DalamudLibPath Condition="'$(DALAMUD_HOME)' != ''">$(DALAMUD_HOME)</DalamudLibPath>
+    <DalamudLibPath Condition="'$(DalamudLibPath)' == '' and '$(AppData)' != ''">$(AppData)/XIVLauncher/addon/Hooks/dev</DalamudLibPath>
+    <DalamudLibPath Condition="'$(DalamudLibPath)' == ''">$(HOME)/.xlcore/dalamud/Hooks/dev</DalamudLibPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="FFXIVClientStructs">
+      <HintPath>$(DalamudLibPath)/FFXIVClientStructs.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
   <!-- The shipped routing data, so its validator can read it. -->
   <ItemGroup>
     <Content Include="../data/routing-graph.json" Link="routing-graph.json" CopyToOutputDirectory="PreserveNewest" />

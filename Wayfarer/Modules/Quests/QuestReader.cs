@@ -240,7 +240,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             return [];
         }
 
-        var handler = (QuestEventHandler*)events->GetEventHandlerById(QuestIds.RowId(questId));
+        var handler = (QuestEventHandler*)events->GetEventHandlerById(questId);
         var player = control->LocalPlayer;
         if (handler == null || player == null)
         {
@@ -334,7 +334,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     {
         var events = EventFramework.Instance();
         var control = Control.Instance();
-        var handler = events == null ? null : (QuestEventHandler*)events->GetEventHandlerById(QuestIds.RowId(questId));
+        var handler = events == null ? null : (QuestEventHandler*)events->GetEventHandlerById(questId);
         var player = control == null ? null : control->LocalPlayer;
         if (handler == null || player == null)
         {

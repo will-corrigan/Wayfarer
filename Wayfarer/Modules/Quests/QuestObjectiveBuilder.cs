@@ -1,3 +1,4 @@
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Guidance;
 using Wayfarer.Routing;
 
@@ -35,7 +36,7 @@ internal static class QuestObjectiveBuilder
         uint? duty = null,
         uint? dutyTerritory = null,
         IReadOnlyList<uint>? marks = null,
-        uint? owner = null,
+        EventId? owner = null,
         IReadOnlyList<Place>? lairs = null,
         string? kind = null)
     {
@@ -63,7 +64,7 @@ internal static class QuestObjectiveBuilder
         uint? duty,
         uint? dutyTerritory,
         IReadOnlyList<uint>? marks,
-        uint? owner,
+        EventId? owner,
         IReadOnlyList<Place>? lairs)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();

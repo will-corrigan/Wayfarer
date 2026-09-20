@@ -1,3 +1,4 @@
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using Wayfarer.Routing;
 
 namespace Wayfarer.Guidance;
@@ -31,7 +32,7 @@ public abstract record Destination
     public sealed record Reachable(
         IReadOnlyList<Place> Places,
         IReadOnlyList<uint>? Marks = null,
-        uint? Owner = null) : Destination;
+        EventId? Owner = null) : Destination;
 
     /// <summary>Inside instanced content. Nothing to walk to; the only guidance is to queue.</summary>
     public sealed record InDuty(uint DutyId) : Destination;

@@ -1,5 +1,6 @@
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using Wayfarer.Routing;
 using GameObjectStruct = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
@@ -26,7 +27,7 @@ namespace Wayfarer.Guidance;
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions interactions) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Found? Inside(Place area, IReadOnlyList<uint>? marks, uint? owner)
+    public Found? Inside(Place area, IReadOnlyList<uint>? marks, EventId? owner)
     {
         ArgumentNullException.ThrowIfNull(area);
         if (area.Radius <= 0f || !AnythingToLookFor(marks, owner) || objects.LocalPlayer is not { } player)
@@ -85,9 +86,9 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
     /// <summary>Whether this is one of the things being looked for: stamped by the game as the
     /// event's own, or named by the module. The stamp is asked first because it is the game's own
     /// answer and covers objects nobody listed.</summary>
-    private static bool Wanted(IGameObject candidate, IReadOnlyList<uint>? marks, uint? owner)
+    private static bool Wanted(IGameObject candidate, IReadOnlyList<uint>? marks, EventId? owner)
     {
-        if (owner is { } id && candidate.Address != 0 && ((GameObjectStruct*)candidate.Address)->EventId.Id == id)
+        if (owner is { } stamped && candidate.Address != 0 && ((GameObjectStruct*)candidate.Address)->EventId == stamped)
         {
             return true;
         }
@@ -97,12 +98,12 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IInteractions in
 
     /// <summary>Whether the caller said anything at all to look for. Without that there is nothing
     /// to recognise and the circle is just a circle.</summary>
-    private static bool AnythingToLookFor(IReadOnlyList<uint>? marks, uint? owner) =>
+    private static bool AnythingToLookFor(IReadOnlyList<uint>? marks, EventId? owner) =>
         owner is not null || marks?.Count > 0;
 
     /// <summary>The nearest of them all when every one has been tried, so a step whose answer was
     /// missed still leads somewhere.</summary>
-    private Found? Again(Place area, IReadOnlyList<uint>? marks, uint? owner, int count)
+    private Found? Again(Place area, IReadOnlyList<uint>? marks, EventId? owner, int count)
     {
         if (count == 0)
         {

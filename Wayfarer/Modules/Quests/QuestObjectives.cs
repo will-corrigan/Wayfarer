@@ -93,7 +93,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             duty,
             duty is { } dutyId ? reader.DutyTerritory(dutyId) : null,
             reader.Marks(questId),
-            QuestIds.RowId(questId),
+            QuestIds.Event(questId),
             reader.Lairs(questId),
             followed ? FollowedHeader : null);
     }
