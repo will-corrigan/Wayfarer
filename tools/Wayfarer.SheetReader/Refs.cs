@@ -24,14 +24,17 @@ internal static class Refs
     {
         var sheets = typeof(Lumina.Excel.Sheets.Addon).Assembly
             .GetTypes()
-            .Where(t => t.Namespace == "Lumina.Excel.Sheets" && t.IsValueType && !t.IsEnum)
+            // Nested types are a sheet's own column groups, not sheets. They read as unreadable
+            // and leaving them in made the count of what could not be searched look alarming when
+            // every one of them was already being read inside its parent.
+            .Where(t => t.Namespace == "Lumina.Excel.Sheets" && t.IsValueType && !t.IsEnum && !t.IsNested)
             .Where(t => only is null || t.Name.Contains(only, StringComparison.OrdinalIgnoreCase))
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .ToList();
 
         Console.WriteLine($"looking for {wanted} across {sheets.Count} sheets");
         var hits = 0;
-        var unread = 0;
+        var unread = new List<string>();
 
         foreach (var type in sheets)
         {
@@ -40,9 +43,9 @@ internal static class Refs
             {
                 rows = Rows(game, type);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                unread++;
+                unread.Add($"{type.Name} ({ex.GetType().Name})");
                 continue;
             }
 
@@ -71,13 +74,19 @@ internal static class Refs
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                unread++;
+                unread.Add($"{type.Name} ({ex.GetType().Name})");
             }
         }
 
-        Console.WriteLine($"{hits} references, {unread} sheets unreadable");
+        Console.WriteLine($"{hits} references, {unread.Count} sheets unreadable");
+        if (unread.Count > 0)
+        {
+            // Named rather than counted. A sheet that could not be read is a place the answer
+            // might be, and "not found" means nothing while that list is a number.
+            Console.WriteLine($"  unreadable: {string.Join(", ", unread)}");
+        }
     }
 
     /// <summary>Every row of a sheet, whichever of the two kinds it is. Some sheets hold several

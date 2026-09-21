@@ -121,9 +121,19 @@ internal static class Sources
         Console.WriteLine($"  no teaching item:   {noItem}");
         Console.WriteLine($"  accounted for:      {(taughtBy.Count - unknown) * 100 / Math.Max(1, total)}%");
 
+        // Named, because a list of numbers says nothing about whether the gap is one the sheets
+        // could close or one they never could -- a mount sold on the Mog Station is not missing
+        // data, it is data the game was never given.
         if (missing.Count > 0)
         {
-            Console.WriteLine($"  first unaccounted: {string.Join(", ", missing.Take(20))}");
+            Console.WriteLine("  unaccounted:");
+            foreach (var id in missing)
+            {
+                var name = teaches == TeachesMount
+                    ? game.GetExcelSheet<Mount>()!.GetRowOrDefault(id)?.Singular.ExtractText()
+                    : game.GetExcelSheet<Companion>()!.GetRowOrDefault(id)?.Singular.ExtractText();
+                Console.WriteLine($"    {id,4}  {name}  (item {taughtBy[id]})");
+            }
         }
     }
 }
