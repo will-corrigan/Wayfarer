@@ -130,7 +130,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         }
 
         var asked = Stopwatch.GetTimestamp();
-        var target = objective.Guided();
+        var target = objective.Guided(Standing());
         var way = RouteTo(target);
         Slow(started, asked, Stopwatch.GetTimestamp());
 
