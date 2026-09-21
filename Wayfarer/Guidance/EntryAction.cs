@@ -17,10 +17,9 @@ public abstract record EntryAction
     /// <summary>Use a key item, on whatever the player has targeted.</summary>
     /// <param name="ItemId">The item's id.</param>
     /// <param name="Name">The item's name.</param>
-    /// <param name="IconId">The item's icon.</param>
     /// <param name="KeyItem">Whether it is a key item, which the game uses through its own action
     /// kind. The module that found the item knows which it is; nothing else has to work it out.</param>
-    public sealed record UseItem(uint ItemId, string Name, uint IconId, bool KeyItem) : EntryAction
+    public sealed record UseItem(uint ItemId, string Name, bool KeyItem) : EntryAction
     {
         /// <inheritdoc/>
         public override string Keyword => Name;
@@ -29,8 +28,7 @@ public abstract record EntryAction
     /// <summary>Perform an emote, at whatever the player has targeted.</summary>
     /// <param name="EmoteId">The emote's id.</param>
     /// <param name="Command">The emote's chat command, "/bow".</param>
-    /// <param name="IconId">The emote's icon.</param>
-    public sealed record Emote(ushort EmoteId, string Command, uint IconId) : EntryAction
+    public sealed record Emote(ushort EmoteId, string Command) : EntryAction
     {
         /// <inheritdoc/>
         public override string Keyword => Command;
@@ -41,8 +39,7 @@ public abstract record EntryAction
     /// is asked to do it itself through <see cref="IObjectiveSource.PressEntry"/>. The words and the
     /// icon are still here, because the surface has to draw the line whoever performs it.</summary>
     /// <param name="Words">The words in the sentence that name what the press does.</param>
-    /// <param name="IconId">An icon to draw in front of those words, or null.</param>
-    public sealed record Own(string Words, uint? IconId) : EntryAction
+    public sealed record Own(string Words) : EntryAction
     {
         /// <inheritdoc/>
         public override string Keyword => Words;

@@ -14,6 +14,20 @@ internal sealed class QuestFollowing(IConfigStore configs)
     /// <summary>The followed quest's id, or null while the main scenario is followed.</summary>
     public ushort? Followed => config.FollowedQuestId;
 
+    /// <summary>Whether Wayfarer guides the player through their quests at all.</summary>
+    public bool Guiding
+    {
+        get => config.Guide;
+        set
+        {
+            if (config.Guide != value)
+            {
+                config.Guide = value;
+                configs.Save(ConfigName, config);
+            }
+        }
+    }
+
     /// <summary>Whether Wayfarer puts its own button in the quest journal. Switching it off leaves
     /// whatever is already followed followed; there is just no longer a way to change it there.</summary>
     public bool FromJournal
@@ -24,6 +38,21 @@ internal sealed class QuestFollowing(IConfigStore configs)
             if (config.FollowFromJournal != value)
             {
                 config.FollowFromJournal = value;
+                configs.Save(ConfigName, config);
+            }
+        }
+    }
+
+    /// <summary>Whether Wayfarer marks the Duty Finder's rows for duties an accepted quest still
+    /// leads to.</summary>
+    public bool MarkDuties
+    {
+        get => config.MarkDutyFinder;
+        set
+        {
+            if (config.MarkDutyFinder != value)
+            {
+                config.MarkDutyFinder = value;
                 configs.Save(ConfigName, config);
             }
         }

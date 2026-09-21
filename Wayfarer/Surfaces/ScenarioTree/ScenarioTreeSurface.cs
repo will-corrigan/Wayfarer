@@ -4,6 +4,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Enums;
 using KamiToolKit.Nodes;
+using Wayfarer.App;
 using Wayfarer.App.Settings;
 using Wayfarer.Guidance;
 using Wayfarer.Presentation;
@@ -65,7 +66,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
         guidance.OnChanged += OnGuidanceChanged;
         styles.OnChanged += OnStyleChanged;
-        _ = framework.RunOnFrameworkThread(controller.Enable);
+        framework.Hand(controller.Enable, log, "watch the Main Scenario Guide");
     }
 
     /// <inheritdoc/>
@@ -184,7 +185,7 @@ internal sealed class ScenarioTreeSurface : IAsyncDisposable
 
             SpliceIntoChain(addon);
 
-            block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms, heading.Candidates);
+            block.SetHeading(heading.Needle, heading.DistanceYalms, heading.RiseYalms);
             RetitlePlate(addon);
             FitRootToBlock(addon);
         }

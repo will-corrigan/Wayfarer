@@ -1,7 +1,7 @@
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 
-namespace Wayfarer.Guidance;
+namespace Wayfarer.Modules.Quests;
 
 /// <summary>Remembers what the player has interacted with, by watching the game rather than the
 /// player: the moment the game says they are occupied in a quest event, whatever they had targeted

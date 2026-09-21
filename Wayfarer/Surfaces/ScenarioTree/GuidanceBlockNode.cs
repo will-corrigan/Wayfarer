@@ -24,10 +24,6 @@ internal sealed class GuidanceBlockNode : ResNode
     private const TextFlags DistanceFlags = TextFlags.Edge;
     private const string YalmsSuffix = "y";
 
-    /// <summary>In front of how many of the thing are still to be tried, when a step sends the
-    /// player to search an area holding several of them.</summary>
-    private const string SeveralPrefix = "\u00d7";
-
     /// <summary>What the distance says once there is none left. A step that sends the player to an
     /// area is measured to the edge of it, so nought is reached the moment they step inside and
     /// stays there while they cross it. "0y" reads as a measurement that has stopped working;
@@ -41,18 +37,17 @@ internal sealed class GuidanceBlockNode : ResNode
     private readonly PressableLine entry;
     private readonly PressableLine route;
     private readonly TextNode distance;
-    private readonly TextNode several;
     private readonly CompassNode compass;
     private ScenarioTreeStyle style = new();
     private float distanceLeading = GameText.LeadingFor(ScenarioTreeStyle.SmallestFont);
-    private (float? Needle, float? Yalms, float? Rise, int? Candidates) heading;
+    private (float? Needle, float? Yalms, float? Rise) heading;
     private string lastDistance = string.Empty;
-    private string lastSeveral = string.Empty;
     private ElevationHint elevation = ElevationHint.Level;
     private bool compassShown;
 
     public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed)
     {
+        // The guide's own width, until somebody gives it another.
         Width = RootWidth;
 
         entry = new PressableLine(GameColors.Body, onEntryPressed);
@@ -66,12 +61,9 @@ internal sealed class GuidanceBlockNode : ResNode
         compassBox = new ResNode();
         compass = new CompassNode(textures, log) { IsVisible = false }.AttachedTo(compassBox);
         distance = Reading();
-        several = Reading();
-        several.IsVisible = false;
         compassColumn = new VerticalListNode { FitContents = true, IsVisible = false };
         compassColumn.AddNode(compassBox);
         compassColumn.AddNode(distance);
-        compassColumn.AddNode(several);
 
         columns = new HorizontalListNode { ItemSpacing = CompassColumnGap, FitToContentHeight = true }.AttachedTo(this);
         columns.AddNode(words);
@@ -97,8 +89,12 @@ internal sealed class GuidanceBlockNode : ResNode
         ArgumentNullException.ThrowIfNull(style);
         this.style = style;
 
+        // Laid out against whatever width this node has been given rather than the guide's own, so
+        // the block fills what it is put in. In the game it is put in the guide and given the
+        // guide's width, which is what it was measured against before; the settings page gives it
+        // the width of the page instead, and the words wrap to that.
         columns.Position = new Vector2(style.ContentLeft, RowTextTop);
-        columns.Width = RootWidth - RightInset - style.ContentLeft;
+        columns.Width = Width - RightInset - style.ContentLeft;
         words.ItemSpacing = style.LineGap;
 
         SizeCompassColumn();
@@ -137,9 +133,9 @@ internal sealed class GuidanceBlockNode : ResNode
     /// Whether the target counts as above or below the player is settled by
     /// <see cref="Elevation.Classify"/>, which holds its last answer through small changes so the
     /// mark does not flicker on a slope.</summary>
-    public void SetHeading(float? needle, float? yalms, float? rise, int? candidates)
+    public void SetHeading(float? needle, float? yalms, float? rise)
     {
-        heading = (needle, yalms, rise, candidates);
+        heading = (needle, yalms, rise);
         DrawHeading();
     }
 
@@ -177,12 +173,9 @@ internal sealed class GuidanceBlockNode : ResNode
         compassColumn.Width = width;
         compassBox.Size = new Vector2(width, style.CompassSize);
         compass.Position = new Vector2((width - style.CompassSize) / 2f, 0f);
-        foreach (var reading in (TextNode[])[distance, several])
-        {
-            reading.FontSize = style.RouteFontSize;
-            reading.LineSpacing = (uint)distanceLeading;
-            reading.Size = new Vector2(width, distanceLeading);
-        }
+        distance.FontSize = style.RouteFontSize;
+        distance.LineSpacing = (uint)distanceLeading;
+        distance.Size = new Vector2(width, distanceLeading);
     }
 
     /// <summary>The words take the row, less the compass column only while there is one showing. A
@@ -206,7 +199,7 @@ internal sealed class GuidanceBlockNode : ResNode
     /// again after a restyle, or the compass would move without resizing.</summary>
     private void DrawHeading()
     {
-        var (needle, yalms, rise, candidates) = heading;
+        var (needle, yalms, rise) = heading;
         var drawn = style.Compass != CompassPlacement.Hidden && needle is { } && yalms is { };
         if (drawn != compassShown)
         {
@@ -231,7 +224,6 @@ internal sealed class GuidanceBlockNode : ResNode
         // out at the top of the column, drawn over each other.
         var left = MathF.Round(distanceYalms);
         var moved = SetReading(distance, left <= 0f ? Arrived : left.ToString(CultureInfo.InvariantCulture) + YalmsSuffix, ref lastDistance);
-        moved |= SetSeveral(candidates);
         if (moved)
         {
             Relayout();
@@ -249,14 +241,4 @@ internal sealed class GuidanceBlockNode : ResNode
 
     /// <summary>Writes the distance, and says whether it changed, so the caller can re-stack the
     /// column around whatever height the new words gave it.</summary>
-    /// <summary>Says how many of the thing are still to be tried, and hides itself when there is
-    /// only the one. Reports whether the column has to be stacked again.</summary>
-    private bool SetSeveral(int? candidates)
-    {
-        var text = candidates > 1 ? SeveralPrefix + candidates.Value.ToString(CultureInfo.InvariantCulture) : string.Empty;
-        var shown = text.Length > 0;
-        var appeared = shown != several.IsVisible;
-        several.IsVisible = shown;
-        return SetReading(several, text, ref lastSeveral) || appeared;
-    }
 }

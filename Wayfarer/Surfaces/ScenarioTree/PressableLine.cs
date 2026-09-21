@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Nodes;
 using Lumina.Text;
 using Lumina.Text.Payloads;
+using BitmapFontIcon = Dalamud.Game.Text.SeStringHandling.BitmapFontIcon;
 
 namespace Wayfarer.Surfaces.ScenarioTree;
 
@@ -19,9 +20,6 @@ namespace Wayfarer.Surfaces.ScenarioTree;
 /// presses it.</para></summary>
 internal sealed class PressableLine : ResNode
 {
-    /// <summary>Air between the icon and the words it is about.</summary>
-    private const float IconGap = 4f;
-
     /// <summary>Everything about how the words are set, left to the game: an outline, wrapping at
     /// the node's width, more than one line, and the boxes it works out for any link inside them.
     ///
@@ -38,7 +36,6 @@ internal sealed class PressableLine : ResNode
     private readonly Vector4 restingColor;
     private readonly Vector4 restingEdge;
     private readonly TextNode words;
-    private readonly IconImageNode icon;
     private readonly LineControl control;
     private float fontSize = ScenarioTreeStyle.SmallestFont;
     private float leading;
@@ -58,8 +55,6 @@ internal sealed class PressableLine : ResNode
             TextColor = color,
             TextOutlineColor = restingEdge,
         }.AttachedTo(this);
-
-        icon = new IconImageNode { IsVisible = false }.AttachedTo(this);
 
         control = new LineControl
         {
@@ -113,22 +108,44 @@ internal sealed class PressableLine : ResNode
             return;
         }
 
-        // The icon is a game icon rather than one of the font's own marks, so it cannot be a
-        // character inside the sentence: it hangs to the left and the words start after it.
-        var room = ShowIcon(content.IconId);
         control.IsVisible = content.Pressable;
 
-        words.Position = new Vector2(room, 0f);
-        words.Width = Width - room;
+        words.Position = Vector2.Zero;
+        words.Width = Width;
         Write();
         Resize();
         Height = MathF.Max(leading, words.Height);
 
         // The control is the keyword when the game says where it drew it, and the whole line when
         // it does not: one control either way, so the line stays one stop for the pad.
-        var pressed = KeywordBox()?.MovedBy(room) ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
+        var pressed = KeywordBox() ?? new LineBox(Vector2.Zero, new Vector2(Width, Height));
         control.Position = pressed.At;
         control.Size = pressed.Size;
+    }
+
+    /// <summary>Where the word a keyword lands in really ends. The keyword is the thing's own
+    /// name and the sentence may have put it in the plural — a burlap sack named, burlap sacks
+    /// asked for — so the colour runs to the end of the word rather than to the end of the name,
+    /// which would leave the s behind in another colour.</summary>
+    private static int WholeWord(string words, int from)
+    {
+        var end = from;
+        while (end < words.Length && char.IsLetter(words[end]))
+        {
+            end++;
+        }
+
+        return end;
+    }
+
+    /// <summary>Sets one of the game's own marks, if there is one to set. It is a character in the
+    /// sentence like any other, so the game wraps the line around it.</summary>
+    private static void Mark(SeStringBuilder builder, BitmapFontIcon? mark)
+    {
+        if (mark is { } icon)
+        {
+            builder.AppendIcon((uint)icon);
+        }
     }
 
     private static void Coloured(SeStringBuilder builder, string text, Vector4 color, Vector4 edge)
@@ -204,6 +221,7 @@ internal sealed class PressableLine : ResNode
         };
         var liveEdge = control.IsVisible ? GameColors.LinkEdge : restingEdge;
         var at = showing.Keyword is null ? -1 : showing.Words.IndexOf(showing.Keyword, StringComparison.OrdinalIgnoreCase);
+        var end = at < 0 ? -1 : WholeWord(showing.Words, at + showing.Keyword!.Length);
         if (at < 0)
         {
             // Nothing inside the sentence is named, so the sentence itself is what a press is about.
@@ -216,9 +234,11 @@ internal sealed class PressableLine : ResNode
             // Wrapped in a link so the game works out where the keyword ends up once it has broken
             // the sentence across lines, and says so in the node's own link boxes.
             builder.PushLink(KeywordLink, 0u, 0u, 0u);
-            Coloured(builder, showing.Words.Substring(at, showing.Keyword!.Length), live, liveEdge);
+            Mark(builder, showing.Opens);
+            Coloured(builder, showing.Words[at..end], live, liveEdge);
+            Mark(builder, showing.Closes);
             builder.PopLink();
-            Coloured(builder, showing.Words[(at + showing.Keyword.Length)..], restingColor, restingEdge);
+            Coloured(builder, showing.Words[end..], restingColor, restingEdge);
         }
 
         words.String = builder.ToReadOnlySeString();
@@ -234,20 +254,5 @@ internal sealed class PressableLine : ResNode
             lit = wanted;
             Write();
         }
-    }
-
-    /// <summary>Hangs the icon in front of the words and reports the room it took.</summary>
-    private float ShowIcon(uint? iconId)
-    {
-        icon.IsVisible = iconId is not null;
-        if (iconId is not { } id)
-        {
-            return 0f;
-        }
-
-        icon.IconId = id;
-        icon.Size = new Vector2(fontSize, fontSize);
-        icon.Position = new Vector2(0f, (leading - fontSize) / 2f);
-        return fontSize + IconGap;
     }
 }

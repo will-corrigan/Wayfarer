@@ -11,10 +11,10 @@ namespace Wayfarer.Guidance;
 ///
 /// <para>A walk to an area rather than a point is measured to the edge of the circle, so standing
 /// anywhere inside it reads as nought rather than counting down to a middle that means nothing.
-/// And while the destination names things to look for, the first of them actually spawned inside
-/// the circle is aimed at instead of the circle: that is the sparkling thing the step is about,
-/// which the data never says and the world does.</para></summary>
-internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects, IObjectFinder finder) : IHeading
+/// When the module picked out one particular thing, the needle follows that thing as it moves,
+/// which is all this does with it: which thing, and why, was settled before it was published.</para>
+/// </summary>
+internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects) : IHeading
 {
     /// <inheritdoc/>
     public float? Needle => Offset() is var (dx, _, dz, _) ? Compass.NeedleAngle(Compass.Bearing(dx, dz), CameraYaw()) : null;
@@ -23,9 +23,6 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects, I
     public float? DistanceYalms => Offset() is var (dx, dy, dz, slack)
         ? MathF.Max(0f, MathF.Sqrt((dx * dx) + (dy * dy) + (dz * dz)) - slack)
         : null;
-
-    /// <inheritdoc/>
-    public int? Candidates => Search() is { } found ? found.Count : null;
 
     /// <inheritdoc/>
     public float? RiseYalms => Offset() is var (_, dy, _, _) ? dy : null;
@@ -49,23 +46,32 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects, I
         }
 
         var position = player.Position;
-        if (Search(walk.To) is { } found)
+        if (Following() is { } thing)
         {
-            var (x, y, z) = (found.At.X, found.At.Y, found.At.Z);
+            var (x, y, z) = (thing.X, thing.Y, thing.Z);
             return (x - position.X, y - position.Y, z - position.Z, 0f);
         }
 
         return (walk.To.X - position.X, walk.To.Y - position.Y, walk.To.Z - position.Z, walk.To.Radius);
     }
 
-    /// <summary>What the step is about, standing inside the area being walked to, or null. Asked
-    /// only of an area, and only while the destination says what belongs to it.</summary>
-    private Found? Search() =>
-        guidance.Current?.Route?.Legs is [Leg.Walk walk, ..] ? Search(walk.To) : null;
+    /// <summary>Where the thing the module picked is standing now, or null when it picked none.
+    /// It is looked up again every frame because it walks about: a person who was twenty yalms off
+    /// when guidance was published is not there a moment later, and the needle has to follow. Where
+    /// it stood when it was picked answers while it is not loaded.</summary>
+    private Place? Following()
+    {
+        if (guidance.Current?.Target?.Where is not Destination.AtObject thing)
+        {
+            return null;
+        }
 
-    /// <inheritdoc cref="Search()"/>
-    private Found? Search(Place area) =>
-        guidance.Current?.Target?.Where is Destination.Reachable reachable
-            ? finder.Inside(area, reachable.Marks, reachable.Owner)
-            : null;
+        if (objects.SearchById(thing.Id) is not { } standing)
+        {
+            return thing.At;
+        }
+
+        var at = standing.Position;
+        return new Place(thing.At.Territory, thing.At.Map, at.X, at.Y, at.Z);
+    }
 }

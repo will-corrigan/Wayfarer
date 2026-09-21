@@ -21,7 +21,7 @@ internal sealed unsafe class PlateTakeover
     private string? ourTitle;
 
     /// <summary>Whether the plate currently carries our words rather than the game's.</summary>
-    public bool Active => ourTitle is not null;
+    private bool Active => ourTitle is not null;
 
     /// <summary>Puts the guidance on the plate, or takes ours back off it. A plate the game has
     /// left blank is filled in with the headline, which is the same thing the game would write:

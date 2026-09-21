@@ -1,0 +1,3321 @@
+[
+  {
+    "QuestRow": 68073,
+    "Name": "Heavens Weep",
+    "InternalName": "StmBda611_02537",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Follow Alisaie.",
+        "Places": [
+          {
+            "Row": 6858337,
+            "ObjectId": 1020609,
+            "ObjectName": "Alisaie",
+            "Territory": 620,
+            "Map": 368,
+            "X": -134.2,
+            "Y": 305.2,
+            "Z": 187.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Raubahn.",
+        "Places": [
+          {
+            "Row": 6858338,
+            "ObjectId": 1020610,
+            "ObjectName": "Raubahn",
+            "Territory": 620,
+            "Map": 368,
+            "X": -77.2,
+            "Y": 305.9,
+            "Z": 154,
+            "Radius": 1
+          },
+          {
+            "Row": 6990273,
+            "ObjectId": 2008944,
+            "IsObject": true,
+            "ObjectName": "cermet bulkhead",
+            "Territory": 620,
+            "Map": 368,
+            "X": -129,
+            "Y": 306.5,
+            "Z": 188.6,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 3,
+        "Words": "Search for wounded soldiers in need of assistance.",
+        "Places": [
+          {
+            "Row": 6858361,
+            "ObjectName": "",
+            "Territory": 620,
+            "Map": 368,
+            "X": 4.3,
+            "Y": 314.8,
+            "Z": 113.8,
+            "Radius": 103
+          },
+          {
+            "Row": 6858361,
+            "ObjectName": "",
+            "Territory": 620,
+            "Map": 368,
+            "X": 4.3,
+            "Y": 314.8,
+            "Z": 113.8,
+            "Radius": 103
+          },
+          {
+            "Row": 6858361,
+            "ObjectName": "",
+            "Territory": 620,
+            "Map": 368,
+            "X": 4.3,
+            "Y": 314.8,
+            "Z": 113.8,
+            "Radius": 103
+          },
+          {
+            "Row": 6990273,
+            "ObjectId": 2008944,
+            "IsObject": true,
+            "ObjectName": "cermet bulkhead",
+            "Territory": 620,
+            "Map": 368,
+            "X": -129,
+            "Y": 306.5,
+            "Z": 188.6,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Continue searching for wounded soldiers.",
+        "Places": [
+          {
+            "Row": 6904991,
+            "ObjectId": 1022335,
+            "ObjectName": "wounded Temple Knight",
+            "Territory": 620,
+            "Map": 368,
+            "X": -30.3,
+            "Y": 317.6,
+            "Z": 123.9,
+            "Radius": 1
+          },
+          {
+            "Row": 6990273,
+            "ObjectId": 2008944,
+            "IsObject": true,
+            "ObjectName": "cermet bulkhead",
+            "Territory": 620,
+            "Map": 368,
+            "X": -129,
+            "Y": 306.5,
+            "Z": 188.6,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Speak with Lyse.",
+        "Places": [
+          {
+            "Row": 6858341,
+            "ObjectId": 1020613,
+            "ObjectName": "Lyse",
+            "Territory": 620,
+            "Map": 368,
+            "X": 7.8,
+            "Y": 317.6,
+            "Z": 110,
+            "Radius": 1
+          },
+          {
+            "Row": 6990273,
+            "ObjectId": 2008944,
+            "IsObject": true,
+            "ObjectName": "cermet bulkhead",
+            "Territory": 620,
+            "Map": 368,
+            "X": -129,
+            "Y": 306.5,
+            "Z": 188.6,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Alphinaud.",
+        "Places": [
+          {
+            "Row": 6858339,
+            "ObjectId": 1020611,
+            "ObjectName": "Alphinaud",
+            "Territory": 620,
+            "Map": 368,
+            "X": 7.8,
+            "Y": 317.6,
+            "Z": 112.4,
+            "Radius": 1
+          },
+          {
+            "Row": 6990273,
+            "ObjectId": 2008944,
+            "IsObject": true,
+            "ObjectName": "cermet bulkhead",
+            "Territory": 620,
+            "Map": 368,
+            "X": -129,
+            "Y": 306.5,
+            "Z": 188.6,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 69970,
+    "Name": "Hunger in the Garden",
+    "InternalName": "AktKme116_04434",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Travel from easterly Boreneus to Euroneus.",
+        "Places": [
+          {
+            "Row": 8962174,
+            "ObjectId": 2012153,
+            "IsObject": true,
+            "ObjectName": "passage to Misopses Euros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -207.8,
+            "Y": 306.7,
+            "Z": -653.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Hythlodaeus.",
+        "Places": [
+          {
+            "Row": 8954911,
+            "ObjectId": 1040138,
+            "ObjectName": "Hythlodaeus",
+            "Territory": 961,
+            "Map": 700,
+            "X": -47.2,
+            "Y": 151.9,
+            "Z": -624.7,
+            "Radius": 1
+          },
+          {
+            "Row": 8962174,
+            "ObjectId": 2012153,
+            "IsObject": true,
+            "ObjectName": "passage to Misopses Euros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -207.8,
+            "Y": 306.7,
+            "Z": -653.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Search for Hermes in the Hungering Gardens.",
+        "Places": [
+          {
+            "Row": 8954910,
+            "ObjectName": "",
+            "Territory": 961,
+            "Map": 700,
+            "X": 175.9,
+            "Y": 161.5,
+            "Z": -580,
+            "Radius": 206
+          },
+          {
+            "Row": 8962174,
+            "ObjectId": 2012153,
+            "IsObject": true,
+            "ObjectName": "passage to Misopses Euros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -207.8,
+            "Y": 306.7,
+            "Z": -653.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Hythlodaeus.",
+        "Places": [
+          {
+            "Row": 8954911,
+            "ObjectId": 1040138,
+            "ObjectName": "Hythlodaeus",
+            "Territory": 961,
+            "Map": 700,
+            "X": -47.2,
+            "Y": 151.9,
+            "Z": -624.7,
+            "Radius": 1
+          },
+          {
+            "Row": 8962174,
+            "ObjectId": 2012153,
+            "IsObject": true,
+            "ObjectName": "passage to Misopses Euros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -207.8,
+            "Y": 306.7,
+            "Z": -653.1,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 69998,
+    "Name": "Forge Ahead",
+    "InternalName": "AktKmg113_04462",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with Alphinaud.",
+        "Places": [
+          {
+            "Row": 8961187,
+            "ObjectId": 1041163,
+            "ObjectName": "Alphinaud",
+            "Territory": 960,
+            "Map": 699,
+            "X": 493.2,
+            "Y": 436.9,
+            "Z": 360.5,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Alphinaud and have him accompany you.",
+        "Places": [
+          {
+            "Row": 8961189,
+            "ObjectId": 1041165,
+            "ObjectName": "Alphinaud",
+            "Territory": 960,
+            "Map": 699,
+            "X": 460.6,
+            "Y": 417,
+            "Z": 415.2,
+            "Radius": 1
+          },
+          {
+            "Row": 9064352,
+            "ObjectId": 2012795,
+            "IsObject": true,
+            "ObjectName": "lambent portal",
+            "Territory": 960,
+            "Map": 699,
+            "X": 492.5,
+            "Y": 438.1,
+            "Z": 365.4,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Speak with Alisaie while accompanied by Alphinaud and have them accompany you.",
+        "Places": [
+          {
+            "Row": 8961190,
+            "ObjectId": 1041166,
+            "ObjectName": "Alisaie",
+            "Territory": 960,
+            "Map": 699,
+            "X": 459.3,
+            "Y": 417,
+            "Z": 414.7,
+            "Radius": 1
+          },
+          {
+            "Row": 8961189,
+            "ObjectId": 1041165,
+            "ObjectName": "Alphinaud",
+            "Territory": 960,
+            "Map": 699,
+            "X": 460.6,
+            "Y": 417,
+            "Z": 415.2,
+            "Radius": 1
+          },
+          {
+            "Row": 9064352,
+            "ObjectId": 2012795,
+            "IsObject": true,
+            "ObjectName": "lambent portal",
+            "Territory": 960,
+            "Map": 699,
+            "X": 492.5,
+            "Y": 438.1,
+            "Z": 365.4,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Follow the crystalline path while accompanied by Alphinaud and Alisaie, and speak with Alphinaud at the designated location.",
+        "Places": [
+          {
+            "Row": 8961189,
+            "ObjectId": 1041165,
+            "ObjectName": "Alphinaud",
+            "Territory": 960,
+            "Map": 699,
+            "X": 460.6,
+            "Y": 417,
+            "Z": 415.2,
+            "Radius": 1
+          },
+          {
+            "Row": 8961207,
+            "ObjectName": "",
+            "Territory": 960,
+            "Map": 699,
+            "X": 228,
+            "Y": 563.4,
+            "Z": 317,
+            "Radius": 102
+          },
+          {
+            "Row": 8961190,
+            "ObjectId": 1041166,
+            "ObjectName": "Alisaie",
+            "Territory": 960,
+            "Map": 699,
+            "X": 459.3,
+            "Y": 417,
+            "Z": 414.7,
+            "Radius": 1
+          },
+          {
+            "Row": 9064352,
+            "ObjectId": 2012795,
+            "IsObject": true,
+            "ObjectName": "lambent portal",
+            "Territory": 960,
+            "Map": 699,
+            "X": 492.5,
+            "Y": 438.1,
+            "Z": 365.4,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Alphinaud.",
+        "Places": [
+          {
+            "Row": 8961227,
+            "ObjectId": 1041167,
+            "ObjectName": "Alphinaud",
+            "Territory": 960,
+            "Map": 699,
+            "X": 221.2,
+            "Y": 566,
+            "Z": 314.4,
+            "Radius": 1
+          },
+          {
+            "Row": 9064352,
+            "ObjectId": 2012795,
+            "IsObject": true,
+            "ObjectName": "lambent portal",
+            "Territory": 960,
+            "Map": 699,
+            "X": 492.5,
+            "Y": 438.1,
+            "Z": 365.4,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 69188,
+    "Name": "The End of a World",
+    "InternalName": "LucKmf109_03652",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Investigate the imposing doors.",
+        "Places": [
+          {
+            "Row": 7954611,
+            "ObjectName": "",
+            "Territory": 818,
+            "Map": 496,
+            "X": -621.6,
+            "Y": 39.8,
+            "Z": 55.2,
+            "Radius": 105
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Alisaie.",
+        "Places": [
+          {
+            "Row": 7952514,
+            "ObjectId": 1030546,
+            "ObjectName": "Alisaie",
+            "Territory": 818,
+            "Map": 496,
+            "X": -593,
+            "Y": -288.1,
+            "Z": 151.2,
+            "Radius": 1
+          },
+          {
+            "Row": 8051508,
+            "ObjectId": 2010764,
+            "IsObject": true,
+            "ObjectName": "lift to ground floor",
+            "Territory": 818,
+            "Map": 496,
+            "X": -610.6,
+            "Y": 46.4,
+            "Z": 94,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 3,
+        "Words": "Gather information in Amaurot.",
+        "Places": [
+          {
+            "Row": 7952522,
+            "ObjectName": "",
+            "Territory": 818,
+            "Map": 496,
+            "X": -680.7,
+            "Y": -256.2,
+            "Z": 493.3,
+            "Radius": 205
+          },
+          {
+            "Row": 7952524,
+            "ObjectName": "",
+            "Territory": 818,
+            "Map": 496,
+            "X": -487.9,
+            "Y": -258.3,
+            "Z": 393.8,
+            "Radius": 204
+          },
+          {
+            "Row": 7952526,
+            "ObjectName": "",
+            "Territory": 818,
+            "Map": 496,
+            "X": -387.4,
+            "Y": -270.1,
+            "Z": 288.5,
+            "Radius": 204
+          },
+          {
+            "Row": 8051508,
+            "ObjectId": 2010764,
+            "IsObject": true,
+            "ObjectName": "lift to ground floor",
+            "Territory": 818,
+            "Map": 496,
+            "X": -610.6,
+            "Y": 46.4,
+            "Z": 94,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Alphinaud.",
+        "Places": [
+          {
+            "Row": 7952527,
+            "ObjectId": 1030554,
+            "ObjectName": "Alphinaud",
+            "Territory": 818,
+            "Map": 496,
+            "X": -634,
+            "Y": -288.1,
+            "Z": 251.6,
+            "Radius": 1
+          },
+          {
+            "Row": 8051508,
+            "ObjectId": 2010764,
+            "IsObject": true,
+            "ObjectName": "lift to ground floor",
+            "Territory": 818,
+            "Map": 496,
+            "X": -610.6,
+            "Y": 46.4,
+            "Z": 94,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 69965,
+    "Name": "Travelers at the Crossroads",
+    "InternalName": "AktKme111_04429",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with Hythlodaeus.",
+        "Places": [
+          {
+            "Row": 8962090,
+            "ObjectId": 1040102,
+            "ObjectName": "Hythlodaeus",
+            "Territory": 961,
+            "Map": 700,
+            "X": -106.6,
+            "Y": -10.3,
+            "Z": 236.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Hythlodaeus again.",
+        "Places": [
+          {
+            "Row": 8962096,
+            "ObjectId": 1040104,
+            "ObjectName": "Hythlodaeus",
+            "Territory": 961,
+            "Map": 700,
+            "X": -182.2,
+            "Y": 12.5,
+            "Z": -11,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Speak with Venat.",
+        "Places": [
+          {
+            "Row": 8962110,
+            "ObjectId": 1040106,
+            "ObjectName": "Venat",
+            "Territory": 961,
+            "Map": 700,
+            "X": -350.2,
+            "Y": 161.8,
+            "Z": 26.1,
+            "Radius": 1
+          },
+          {
+            "Row": 8962108,
+            "ObjectId": 2012147,
+            "IsObject": true,
+            "ObjectName": "passage to Kallimelios Zephyros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -192,
+            "Y": 12.6,
+            "Z": -13.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Search for the concept crystal.",
+        "Places": [
+          {
+            "Row": 8962116,
+            "ObjectName": "",
+            "Territory": 961,
+            "Map": 700,
+            "X": -518.8,
+            "Y": 135.4,
+            "Z": 93.5,
+            "Radius": 405
+          },
+          {
+            "Row": 8962108,
+            "ObjectId": 2012147,
+            "IsObject": true,
+            "ObjectName": "passage to Kallimelios Zephyros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -192,
+            "Y": 12.6,
+            "Z": -13.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Deliver the concept crystal to Venat.",
+        "Places": [
+          {
+            "Row": 8962117,
+            "ObjectId": 1040109,
+            "ObjectName": "Venat",
+            "Territory": 961,
+            "Map": 700,
+            "X": -491.1,
+            "Y": 140.4,
+            "Z": -113.8,
+            "Radius": 1
+          },
+          {
+            "Row": 8962108,
+            "ObjectId": 2012147,
+            "IsObject": true,
+            "ObjectName": "passage to Kallimelios Zephyros",
+            "Territory": 961,
+            "Map": 700,
+            "X": -192,
+            "Y": 12.6,
+            "Z": -13.2,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 66811,
+    "Name": "Perilous Pumpkins",
+    "InternalName": "BanSyl209_01275",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Words": "Pick up pumpkin bombs near the entrance to the Sylphlands.",
+        "Places": [
+          {
+            "Row": 4540212,
+            "ObjectId": 2003307,
+            "IsObject": true,
+            "ObjectName": "pumpkin bomb",
+            "Territory": 152,
+            "Map": 5,
+            "X": 261.8,
+            "Y": -9.3,
+            "Z": -72.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Words": "Place pumpkin bombs at the specified location.",
+        "Places": [
+          {
+            "Row": 4540213,
+            "ObjectId": 2003310,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 152,
+            "Map": 5,
+            "X": 551.8,
+            "Y": -22.5,
+            "Z": -352.1,
+            "Radius": 1
+          },
+          {
+            "Row": 4540212,
+            "ObjectId": 2003307,
+            "IsObject": true,
+            "ObjectName": "pumpkin bomb",
+            "Territory": 152,
+            "Map": 5,
+            "X": 261.8,
+            "Y": -9.3,
+            "Z": -72.8,
+            "Radius": 1
+          },
+          {
+            "Row": 4546867,
+            "ObjectId": 2003260,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 152,
+            "Map": 5,
+            "X": 375.1,
+            "Y": -25.6,
+            "Z": -469.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 255,
+        "Words": "Report to Ponnixia.",
+        "Places": [
+          {
+            "Row": 4494853,
+            "ObjectId": 1005562,
+            "ObjectName": "Ponnixia",
+            "Territory": 152,
+            "Map": 5,
+            "X": 36.9,
+            "Y": -4.9,
+            "Z": 249.2,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 68395,
+    "Name": "Boots Made for Walking",
+    "InternalName": "StmBdz903_02859",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Pick up the earthenware vase.",
+        "Places": [
+          {
+            "Row": 6951268,
+            "ObjectId": 2008750,
+            "IsObject": true,
+            "ObjectName": "earthenware vase",
+            "Territory": 620,
+            "Map": 368,
+            "X": 279.5,
+            "Y": 323.7,
+            "Z": 708.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Deliver the earthenware vase to the Midlander merchant.",
+        "Places": [
+          {
+            "Row": 6951264,
+            "ObjectId": 1023136,
+            "ObjectName": "Midlander merchant",
+            "Territory": 620,
+            "Map": 368,
+            "X": -207.8,
+            "Y": 257.2,
+            "Z": 705.9,
+            "Radius": 1
+          },
+          {
+            "Row": 6951268,
+            "ObjectId": 2008750,
+            "IsObject": true,
+            "ObjectName": "earthenware vase",
+            "Territory": 620,
+            "Map": 368,
+            "X": 279.5,
+            "Y": 323.7,
+            "Z": 708.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Report to Rawkin.",
+        "Places": [
+          {
+            "Row": 6843916,
+            "ObjectId": 1020896,
+            "ObjectName": "Rawkin",
+            "Territory": 620,
+            "Map": 368,
+            "X": 279.5,
+            "Y": 322.8,
+            "Z": 710.9,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 65773,
+    "Name": "A Plague of Pumpkins",
+    "InternalName": "FesHlw102_00237",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with the untrustworthy illusionist.",
+        "Places": [
+          {
+            "Row": 5070382,
+            "ObjectId": 1010173,
+            "ObjectName": "untrustworthy illusionist",
+            "Territory": 128,
+            "Map": 11,
+            "X": 12.3,
+            "Y": 44.5,
+            "Z": 119.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "While transfigured, place a pumpkin lantern inside the Drowning Wench.",
+        "Places": [
+          {
+            "Row": 5070670,
+            "ObjectId": 2004871,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 128,
+            "Map": 11,
+            "X": 18.8,
+            "Y": 41.4,
+            "Z": -5.7,
+            "Radius": 1
+          },
+          {
+            "Row": 5070382,
+            "ObjectId": 1010173,
+            "ObjectName": "untrustworthy illusionist",
+            "Territory": 128,
+            "Map": 11,
+            "X": 12.3,
+            "Y": 44.5,
+            "Z": 119.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "While transfigured, place a pumpkin lantern inside the Coral Tower.",
+        "Places": [
+          {
+            "Row": 5070690,
+            "ObjectId": 2004872,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 128,
+            "Map": 11,
+            "X": -2.7,
+            "Y": 49.5,
+            "Z": -260.4,
+            "Radius": 1
+          },
+          {
+            "Row": 5070382,
+            "ObjectId": 1010173,
+            "ObjectName": "untrustworthy illusionist",
+            "Territory": 128,
+            "Map": 11,
+            "X": 12.3,
+            "Y": 44.5,
+            "Z": 119.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "While transfigured, place a pumpkin lantern inside Maelstrom Command.",
+        "Places": [
+          {
+            "Row": 5070862,
+            "ObjectId": 2004873,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 128,
+            "Map": 11,
+            "X": 96.9,
+            "Y": 40.7,
+            "Z": 82.7,
+            "Radius": 1
+          },
+          {
+            "Row": 5070382,
+            "ObjectId": 1010173,
+            "ObjectName": "untrustworthy illusionist",
+            "Territory": 128,
+            "Map": 11,
+            "X": 12.3,
+            "Y": 44.5,
+            "Z": 119.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Report to the untrustworthy illusionist.",
+        "Places": [
+          {
+            "Row": 5070382,
+            "ObjectId": 1010173,
+            "ObjectName": "untrustworthy illusionist",
+            "Territory": 128,
+            "Map": 11,
+            "X": 12.3,
+            "Y": 44.5,
+            "Z": 119.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 6,
+        "Qty": 1,
+        "Words": "Report to Godriquelain.",
+        "Places": [
+          {
+            "Row": 5126072,
+            "ObjectId": 1010549,
+            "ObjectName": "Godriquelain",
+            "Territory": 128,
+            "Map": 11,
+            "X": -9.7,
+            "Y": 40,
+            "Z": 80.3,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 6,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Godriquelain in Ul\u0027dah.",
+        "Places": [
+          {
+            "Row": 5126206,
+            "ObjectId": 1010550,
+            "ObjectName": "Godriquelain",
+            "Territory": 130,
+            "Map": 13,
+            "X": -24.1,
+            "Y": 4.2,
+            "Z": -153.3,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 65774,
+    "Name": "Yes We Cant",
+    "InternalName": "FesHlw103_00238",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with the unsavory illusionist.",
+        "Places": [
+          {
+            "Row": 5041159,
+            "ObjectId": 1010174,
+            "ObjectName": "unsavory illusionist",
+            "Territory": 130,
+            "Map": 13,
+            "X": -34.2,
+            "Y": 5,
+            "Z": -132.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 3,
+        "Words": "While transfigured, distribute parade flyers in the Quicksand.",
+        "Places": [
+          {
+            "Row": 5101528,
+            "ObjectName": "",
+            "Territory": 130,
+            "Map": 13,
+            "X": 26,
+            "Y": 10.2,
+            "Z": -98.6,
+            "Radius": 3
+          },
+          {
+            "Row": 5101528,
+            "ObjectName": "",
+            "Territory": 130,
+            "Map": 13,
+            "X": 26,
+            "Y": 10.2,
+            "Z": -98.6,
+            "Radius": 3
+          },
+          {
+            "Row": 5101528,
+            "ObjectName": "",
+            "Territory": 130,
+            "Map": 13,
+            "X": 26,
+            "Y": 10.2,
+            "Z": -98.6,
+            "Radius": 3
+          },
+          {
+            "Row": 5041159,
+            "ObjectId": 1010174,
+            "ObjectName": "unsavory illusionist",
+            "Territory": 130,
+            "Map": 13,
+            "X": -34.2,
+            "Y": 5,
+            "Z": -132.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Report to the unsavory illusionist.",
+        "Places": [
+          {
+            "Row": 5041159,
+            "ObjectId": 1010174,
+            "ObjectName": "unsavory illusionist",
+            "Territory": 130,
+            "Map": 13,
+            "X": -34.2,
+            "Y": 5,
+            "Z": -132.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Complete the FATE \u201CMain Street Spectral Parade\u201D on Emerald Avenue.",
+        "Places": [
+          {
+            "Row": 5101793,
+            "ObjectName": "",
+            "Territory": 130,
+            "Map": 13,
+            "X": -30.6,
+            "Y": 13.3,
+            "Z": -143.7,
+            "Radius": 3
+          },
+          {
+            "Row": 5041165,
+            "ObjectId": 1010183,
+            "ObjectName": "unusual illusionist",
+            "Territory": 130,
+            "Map": 13,
+            "X": -40.7,
+            "Y": 4,
+            "Z": -152.3,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Report to the unsavory illusionist.",
+        "Places": [
+          {
+            "Row": 5041159,
+            "ObjectId": 1010174,
+            "ObjectName": "unsavory illusionist",
+            "Territory": 130,
+            "Map": 13,
+            "X": -34.2,
+            "Y": 5,
+            "Z": -132.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 6,
+        "Qty": 1,
+        "Words": "Lie in wait at the Gold Court.",
+        "Places": [
+          {
+            "Row": 5127439,
+            "ObjectId": 2004924,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 131,
+            "Map": 14,
+            "X": 72.4,
+            "Y": 22.5,
+            "Z": 4.3,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 6,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Report to Godriquelain in front of the Quicksand.",
+        "Places": [
+          {
+            "Row": 5137045,
+            "ObjectId": 1010556,
+            "ObjectName": "Godriquelain",
+            "Territory": 130,
+            "Map": 13,
+            "X": 35.9,
+            "Y": 4.1,
+            "Z": -134.6,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 66806,
+    "Name": "Milkroot in Moderation",
+    "InternalName": "BanSyl204_01270",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Words": "Search Little Solace for tipsy sylphs, and splash water on them after weakening them.",
+        "Places": [
+          {
+            "Row": 4588493,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": 79.8,
+            "Y": -4.1,
+            "Z": 181.3,
+            "Radius": 204
+          },
+          {
+            "Row": 4588492,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": -20.3,
+            "Y": -9.3,
+            "Z": 191.6,
+            "Radius": 204
+          },
+          {
+            "Row": 4588494,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": 50.3,
+            "Y": -8.8,
+            "Z": 244.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4588491,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": -23.8,
+            "Y": -11.8,
+            "Z": 305.2,
+            "Radius": 204
+          },
+          {
+            "Row": 4588492,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": -20.3,
+            "Y": -9.3,
+            "Z": 191.6,
+            "Radius": 204
+          },
+          {
+            "Row": 4588493,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": 79.8,
+            "Y": -4.1,
+            "Z": 181.3,
+            "Radius": 204
+          },
+          {
+            "Row": 4588491,
+            "ObjectName": "",
+            "Territory": 152,
+            "Map": 5,
+            "X": -23.8,
+            "Y": -11.8,
+            "Z": 305.2,
+            "Radius": 204
+          },
+          {
+            "Row": 4572993,
+            "ObjectId": 2003380,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 152,
+            "Map": 5,
+            "X": 62.7,
+            "Y": 3.9,
+            "Z": 159,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 255,
+        "Words": "Report to Ponnixia.",
+        "Places": [
+          {
+            "Row": 4494853,
+            "ObjectId": 1005562,
+            "ObjectName": "Ponnixia",
+            "Territory": 152,
+            "Map": 5,
+            "X": 36.9,
+            "Y": -4.9,
+            "Z": 249.2,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 66879,
+    "Name": "Brain Buster",
+    "InternalName": "BanKob209_01343",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 6,
+        "Words": "Speak with, then slay 13th Order alchemists and scholars in the 13th Order workshop.",
+        "Places": [
+          {
+            "Row": 4627431,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 229.5,
+            "Y": 19.9,
+            "Z": -602.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4627431,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 229.5,
+            "Y": 19.9,
+            "Z": -602.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4627431,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 229.5,
+            "Y": 19.9,
+            "Z": -602.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4627431,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 229.5,
+            "Y": 19.9,
+            "Z": -602.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4627431,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 229.5,
+            "Y": 19.9,
+            "Z": -602.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4627431,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 229.5,
+            "Y": 19.9,
+            "Z": -602.4,
+            "Radius": 203
+          },
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Report to 789th Order Craftsman Bo Gu.",
+        "Places": [
+          {
+            "Row": 4618735,
+            "ObjectId": 1005929,
+            "ObjectName": "789th Order Craftsman Bo Gu",
+            "Territory": 180,
+            "Map": 30,
+            "X": 21.6,
+            "Y": 16.3,
+            "Z": -183.7,
+            "Radius": 1.5
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 69651,
+    "Name": "The Crushing Tide",
+    "InternalName": "AktKba311_04115",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with Merlwyb at South Tidegate and have her accompany you.",
+        "Places": [
+          {
+            "Row": 8928226,
+            "ObjectId": 1040175,
+            "ObjectName": "Merlwyb",
+            "Territory": 138,
+            "Map": 18,
+            "X": -70,
+            "Y": -25.1,
+            "Z": 59.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 2,
+        "Words": "Speak with the Crushing Tide Sahagin while Merlwyb is accompanying you.",
+        "Places": [
+          {
+            "Row": 8928229,
+            "ObjectName": "",
+            "Territory": 138,
+            "Map": 18,
+            "X": -206.5,
+            "Y": -45.6,
+            "Z": -82.8,
+            "Radius": 203
+          },
+          {
+            "Row": 8928229,
+            "ObjectName": "",
+            "Territory": 138,
+            "Map": 18,
+            "X": -206.5,
+            "Y": -45.6,
+            "Z": -82.8,
+            "Radius": 203
+          },
+          {
+            "Row": 8928226,
+            "ObjectId": 1040175,
+            "ObjectName": "Merlwyb",
+            "Territory": 138,
+            "Map": 18,
+            "X": -70,
+            "Y": -25.1,
+            "Z": 59.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Speak with Doww while Merlwyb is accompanying you.",
+        "Places": [
+          {
+            "Row": 8928234,
+            "ObjectId": 1040176,
+            "ObjectName": "Doww",
+            "Territory": 138,
+            "Map": 18,
+            "X": -219.3,
+            "Y": -41.9,
+            "Z": -228.7,
+            "Radius": 1
+          },
+          {
+            "Row": 8928226,
+            "ObjectId": 1040175,
+            "ObjectName": "Merlwyb",
+            "Territory": 138,
+            "Map": 18,
+            "X": -70,
+            "Y": -25.1,
+            "Z": 59.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Speak with Merlwyb.",
+        "Places": [
+          {
+            "Row": 8928226,
+            "ObjectId": 1040175,
+            "ObjectName": "Merlwyb",
+            "Territory": 138,
+            "Map": 18,
+            "X": -70,
+            "Y": -25.1,
+            "Z": 59.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Defeat the beast.",
+        "Places": [
+          {
+            "Row": 8933557,
+            "ObjectName": "",
+            "Territory": 138,
+            "Map": 18,
+            "X": -85.8,
+            "Y": -27.7,
+            "Z": 72.8,
+            "Radius": 103
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 6,
+        "Qty": 1,
+        "Words": "Speak with Noll.",
+        "Places": [
+          {
+            "Row": 8928316,
+            "ObjectId": 1040178,
+            "ObjectName": "Noll",
+            "Territory": 138,
+            "Map": 18,
+            "X": -80.5,
+            "Y": -25.3,
+            "Z": 63.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 6,
+        "Sequence": 7,
+        "Qty": 1,
+        "Words": "Speak with Merlwyb.",
+        "Places": [
+          {
+            "Row": 8928329,
+            "ObjectId": 1040180,
+            "ObjectName": "Merlwyb",
+            "Territory": 138,
+            "Map": 18,
+            "X": 45.6,
+            "Y": -22.4,
+            "Z": 100.6,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 7,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Merlwyb at Maelstrom Command.",
+        "Places": [
+          {
+            "Row": 8928169,
+            "ObjectId": 1040174,
+            "ObjectName": "Merlwyb",
+            "Territory": 128,
+            "Map": 11,
+            "X": 67.3,
+            "Y": 40,
+            "Z": 66.6,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 70006,
+    "Name": "Saintly Inspiration",
+    "InternalName": "FesXms703_04470",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with the Saint of Nymeia and have him accompany you.",
+        "Places": [
+          {
+            "Row": 8995948,
+            "ObjectId": 1040625,
+            "ObjectName": "Saint of Nymeia",
+            "Territory": 133,
+            "Map": 3,
+            "X": -46.9,
+            "Y": 7,
+            "Z": -139.3,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Accompany the Saint of Nymeia to the designated locations and then speak with him.",
+        "Places": [
+          {
+            "Row": 8995948,
+            "ObjectId": 1040625,
+            "ObjectName": "Saint of Nymeia",
+            "Territory": 133,
+            "Map": 3,
+            "X": -46.9,
+            "Y": 7,
+            "Z": -139.3,
+            "Radius": 1
+          },
+          {
+            "Row": 9006907,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 59.3,
+            "Y": 4.6,
+            "Z": -158.4,
+            "Radius": 101
+          },
+          {
+            "Row": 9006925,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -251.5,
+            "Z": -191.2,
+            "Radius": 101
+          },
+          {
+            "Row": 9006923,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 172.6,
+            "Y": 11.5,
+            "Z": -113.8,
+            "Radius": 101
+          },
+          {
+            "Row": 9006901,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -22.8,
+            "Y": 6.4,
+            "Z": -242.3,
+            "Radius": 101
+          },
+          {
+            "Row": 9006926,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 152.9,
+            "Y": 10.3,
+            "Z": -279.3,
+            "Radius": 101
+          },
+          {
+            "Row": 9006917,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -116.2,
+            "Y": 1.5,
+            "Z": -163.6,
+            "Radius": 101
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Accompany the Saint of Nymeia at Nophica\u0027s Altar and then speak with him.",
+        "Places": [
+          {
+            "Row": 8995948,
+            "ObjectId": 1040625,
+            "ObjectName": "Saint of Nymeia",
+            "Territory": 133,
+            "Map": 3,
+            "X": -46.9,
+            "Y": 7,
+            "Z": -139.3,
+            "Radius": 1
+          },
+          {
+            "Row": 8996732,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -161.7,
+            "Y": -2.9,
+            "Z": -33.4,
+            "Radius": 101
+          },
+          {
+            "Row": 8995949,
+            "ObjectId": 2012043,
+            "IsObject": true,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -21.2,
+            "Y": 10.1,
+            "Z": -242.5,
+            "Radius": 0.7
+          },
+          {
+            "Row": 8995950,
+            "ObjectId": 2012044,
+            "IsObject": true,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 60.3,
+            "Y": 8.2,
+            "Z": -160.1,
+            "Radius": 0.7
+          },
+          {
+            "Row": 8995951,
+            "ObjectId": 2012045,
+            "IsObject": true,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -116.2,
+            "Y": 5,
+            "Z": -163.6,
+            "Radius": 0.7
+          },
+          {
+            "Row": 8995954,
+            "ObjectId": 2012047,
+            "IsObject": true,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -250.4,
+            "Z": -192.1,
+            "Radius": 0.7
+          },
+          {
+            "Row": 8995965,
+            "ObjectId": 2012541,
+            "IsObject": true,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 155.7,
+            "Y": 16.2,
+            "Z": -280.1,
+            "Radius": 0.7
+          },
+          {
+            "Row": 8995952,
+            "ObjectId": 2012046,
+            "IsObject": true,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 172.9,
+            "Y": 15.7,
+            "Z": -113.3,
+            "Radius": 0.7
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Amh Garanjy.",
+        "Places": [
+          {
+            "Row": 8995905,
+            "ObjectId": 1040593,
+            "ObjectName": "Amh Garanjy",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 6.5,
+            "Z": -89.6,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 65825,
+    "Name": "Sleepless in the Stable",
+    "InternalName": "FesNyr103_00289",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "While wearing the hitsuji kabuto, speak with the golden hitsuji yoriki in Gridania.",
+        "Places": [
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "With the tender lamb minion summoned, speak with the traveling trader in Bentbranch Meadows.",
+        "Places": [
+          {
+            "Row": 5390850,
+            "ObjectId": 1010719,
+            "ObjectName": "traveling trader",
+            "Territory": 148,
+            "Map": 4,
+            "X": 7.2,
+            "Y": -8,
+            "Z": 98.8,
+            "Radius": 1
+          },
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "With the tender lamb minion summoned, search for the object of interest outside the gates.",
+        "Places": [
+          {
+            "Row": 5392664,
+            "ObjectId": 2005000,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 148,
+            "Map": 4,
+            "X": 12.5,
+            "Y": -8.2,
+            "Z": 103.5,
+            "Radius": 1
+          },
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "With the tender lamb minion summoned, show the chocobo tailfeather to the traveling trader.",
+        "Places": [
+          {
+            "Row": 5390850,
+            "ObjectId": 1010719,
+            "ObjectName": "traveling trader",
+            "Territory": 148,
+            "Map": 4,
+            "X": 7.2,
+            "Y": -8,
+            "Z": 98.8,
+            "Radius": 1
+          },
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "With the tender lamb minion summoned, /cheer for the pack chocobo.",
+        "Places": [
+          {
+            "Row": 5390854,
+            "ObjectId": 1010720,
+            "ObjectName": "pack chocobo",
+            "Territory": 148,
+            "Map": 4,
+            "X": 6.4,
+            "Y": -8,
+            "Z": 98.4,
+            "Radius": 1
+          },
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 6,
+        "Qty": 1,
+        "Words": "With the tender lamb minion summoned, speak with Keitha.",
+        "Places": [
+          {
+            "Row": 1145876,
+            "ObjectId": 1000470,
+            "ObjectName": "Keitha",
+            "Territory": 148,
+            "Map": 4,
+            "X": -59,
+            "Z": 26.4,
+            "Radius": 1
+          },
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 6,
+        "Sequence": 7,
+        "Qty": 1,
+        "Words": "With the tender lamb minion summoned, report to the traveling trader.",
+        "Places": [
+          {
+            "Row": 5390850,
+            "ObjectId": 1010719,
+            "ObjectName": "traveling trader",
+            "Territory": 148,
+            "Map": 4,
+            "X": 7.2,
+            "Y": -8,
+            "Z": 98.8,
+            "Radius": 1
+          },
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 7,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Report to the golden hitsuji yoriki.",
+        "Places": [
+          {
+            "Row": 5390704,
+            "ObjectId": 1010716,
+            "ObjectName": "golden hitsuji yoriki",
+            "Territory": 133,
+            "Map": 3,
+            "X": -50,
+            "Y": 5.6,
+            "Z": -97,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 66912,
+    "Name": "The Scarlet Bloodletter",
+    "InternalName": "BanSah003_01376",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with Pahh.",
+        "Places": [
+          {
+            "Row": 4618960,
+            "ObjectId": 1005946,
+            "ObjectName": "Pahh",
+            "Territory": 138,
+            "Map": 18,
+            "X": -239.3,
+            "Y": -42.1,
+            "Z": 15.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with the captain of the Swallow.",
+        "Places": [
+          {
+            "Row": 4667197,
+            "ObjectId": 1008917,
+            "ObjectName": "Swallow captain",
+            "Territory": 138,
+            "Map": 18,
+            "X": -889.1,
+            "Y": -27.5,
+            "Z": 929.7,
+            "Radius": 1
+          },
+          {
+            "Row": 4618960,
+            "ObjectId": 1005946,
+            "ObjectName": "Pahh",
+            "Territory": 138,
+            "Map": 18,
+            "X": -239.3,
+            "Y": -42.1,
+            "Z": 15.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 5,
+        "Words": "Defeat Coral Trident raiders aboard the Swallow.",
+        "Places": [
+          {
+            "Row": 4667144,
+            "ObjectName": "",
+            "Territory": 138,
+            "Map": 18,
+            "X": -884.9,
+            "Y": -33.9,
+            "Z": 929.4,
+            "Radius": 204
+          },
+          {
+            "Row": 4667144,
+            "ObjectName": "",
+            "Territory": 138,
+            "Map": 18,
+            "X": -884.9,
+            "Y": -33.9,
+            "Z": 929.4,
+            "Radius": 204
+          },
+          {
+            "Row": 4618960,
+            "ObjectId": 1005946,
+            "ObjectName": "Pahh",
+            "Territory": 138,
+            "Map": 18,
+            "X": -239.3,
+            "Y": -42.1,
+            "Z": 15.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Speak with the captain of the Swallow.",
+        "Places": [
+          {
+            "Row": 4667197,
+            "ObjectId": 1008917,
+            "ObjectName": "Swallow captain",
+            "Territory": 138,
+            "Map": 18,
+            "X": -889.1,
+            "Y": -27.5,
+            "Z": 929.7,
+            "Radius": 1
+          },
+          {
+            "Row": 4618960,
+            "ObjectId": 1005946,
+            "ObjectName": "Pahh",
+            "Territory": 138,
+            "Map": 18,
+            "X": -239.3,
+            "Y": -42.1,
+            "Z": 15.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Speak with the captain of the Swallow in Aleport.",
+        "Places": [
+          {
+            "Row": 4667200,
+            "ObjectId": 1008918,
+            "ObjectName": "Swallow captain",
+            "Territory": 138,
+            "Map": 18,
+            "X": 317.2,
+            "Y": -31.8,
+            "Z": 273.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Share the oranges with Novv at Novv\u0027s Nursery.",
+        "Places": [
+          {
+            "Row": 4618737,
+            "ObjectId": 1005937,
+            "ObjectName": "Novv",
+            "Territory": 138,
+            "Map": 18,
+            "X": -238,
+            "Y": -40.8,
+            "Z": 68.3,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 66858,
+    "Name": "No-good Zo Ga\u0027s Ambition",
+    "InternalName": "BanKob003_01322",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with Skaetswys at Camp Overlook.",
+        "Places": [
+          {
+            "Row": 4627248,
+            "ObjectId": 1007936,
+            "ObjectName": "Skaetswys",
+            "Territory": 180,
+            "Map": 30,
+            "X": -89.1,
+            "Y": 64.2,
+            "Z": -246.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with 789th Order Pickman Gi Gu at the 789th Order Dig.",
+        "Places": [
+          {
+            "Row": 4618729,
+            "ObjectId": 1005927,
+            "ObjectName": "789th Order Pickman Gi Gu",
+            "Territory": 180,
+            "Map": 30,
+            "X": -2.9,
+            "Y": 16,
+            "Z": -172.5,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Speak with 789th Order Acolyte Ba Go.",
+        "Places": [
+          {
+            "Row": 4618733,
+            "ObjectId": 1005932,
+            "ObjectName": "789th Order Acolyte Ba Go",
+            "Territory": 180,
+            "Map": 30,
+            "X": -1.2,
+            "Y": 33.4,
+            "Z": -244.2,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Speak with 13th Order Alchemist Ga Zi in northern Iron Lake.",
+        "Places": [
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Speak with 789th Order Acolyte Ba Go at the 13th Order workshop.",
+        "Places": [
+          {
+            "Row": 4627251,
+            "ObjectId": 1007937,
+            "ObjectName": "789th Order Acolyte Ba Go",
+            "Territory": 180,
+            "Map": 30,
+            "X": 221.8,
+            "Y": 21.5,
+            "Z": -580.6,
+            "Radius": 1.5
+          },
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 6,
+        "Qty": 2,
+        "Words": "Keep watch at the specified location and dispatch 13th Order kobolds.",
+        "Places": [
+          {
+            "Row": 4629013,
+            "ObjectName": "",
+            "Territory": 180,
+            "Map": 30,
+            "X": 175.9,
+            "Y": 15.2,
+            "Z": -626.3,
+            "Radius": 203
+          },
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 6,
+        "Sequence": 7,
+        "Qty": 1,
+        "Words": "Speak with 789th Order Acolyte Ba Go.",
+        "Places": [
+          {
+            "Row": 4627251,
+            "ObjectId": 1007937,
+            "ObjectName": "789th Order Acolyte Ba Go",
+            "Territory": 180,
+            "Map": 30,
+            "X": 221.8,
+            "Y": 21.5,
+            "Z": -580.6,
+            "Radius": 1.5
+          },
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 7,
+        "Sequence": 8,
+        "Qty": 1,
+        "Words": "Use the smart bombs on the prototype furnace.",
+        "Places": [
+          {
+            "Row": 4627256,
+            "ObjectId": 2003720,
+            "IsObject": true,
+            "ObjectName": "prototype furnace",
+            "Territory": 180,
+            "Map": 30,
+            "X": 224.8,
+            "Y": 23.9,
+            "Z": -580.9,
+            "Radius": 1
+          },
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 8,
+        "Sequence": 9,
+        "Qty": 1,
+        "Words": "Speak with 789th Order Acolyte Ba Go.",
+        "Places": [
+          {
+            "Row": 4634810,
+            "ObjectId": 1008883,
+            "ObjectName": "789th Order Acolyte Ba Go",
+            "Territory": 180,
+            "Map": 30,
+            "X": 150.2,
+            "Y": 26.5,
+            "Z": -555.1,
+            "Radius": 1.5
+          },
+          {
+            "Row": 4618992,
+            "ObjectId": 1005960,
+            "ObjectName": "13th Order Alchemist Ga Zi",
+            "Territory": 180,
+            "Map": 30,
+            "X": 97.4,
+            "Y": 56.8,
+            "Z": -502,
+            "Radius": 1.5
+          }
+        ]
+      },
+      {
+        "Index": 9,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with 789th Order Pickman Gi Gu at the 789th Order Dig.",
+        "Places": [
+          {
+            "Row": 4618729,
+            "ObjectId": 1005927,
+            "ObjectName": "789th Order Pickman Gi Gu",
+            "Territory": 180,
+            "Map": 30,
+            "X": -2.9,
+            "Y": 16,
+            "Z": -172.5,
+            "Radius": 1.5
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 68610,
+    "Name": "The Primary Agreement",
+    "InternalName": "StmBdd105_03074",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with the Confederate skipper in the Glittering Basin.",
+        "Places": [
+          {
+            "Row": 7343497,
+            "ObjectId": 1025523,
+            "ObjectName": "Confederate skipper",
+            "Territory": 614,
+            "Map": 354,
+            "X": 239.1,
+            "Y": 0.9,
+            "Z": 754.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with the Confederate skipper in the Glittering Basin.",
+        "Places": [
+          {
+            "Row": 7396274,
+            "ObjectName": "",
+            "Territory": 786,
+            "Map": 479,
+            "X": 0.1,
+            "Y": -8,
+            "Z": 39.1,
+            "Radius": 3
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Confront Tsukuyomi in Castrum Fluminis.",
+        "Places": [
+          {
+            "Row": 7396261,
+            "ObjectName": "",
+            "Territory": 778,
+            "Map": 476,
+            "X": 100,
+            "Z": 100,
+            "Radius": 2
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Confront Tsukuyomi in Castrum Fluminis.",
+        "Places": [
+          {
+            "Row": 7396274,
+            "ObjectName": "",
+            "Territory": 786,
+            "Map": 479,
+            "X": 0.1,
+            "Y": -8,
+            "Z": 39.1,
+            "Radius": 3
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Speak with Hien.",
+        "Places": [
+          {
+            "Row": 7394028,
+            "ObjectId": 1025528,
+            "ObjectName": "Hien",
+            "Territory": 786,
+            "Map": 479,
+            "X": 4.3,
+            "Y": -8,
+            "Z": 44.4,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 6,
+        "Qty": 1,
+        "Words": "Speak with Hien.",
+        "Places": [
+          {
+            "Row": 7370785,
+            "ObjectName": "",
+            "Territory": 759,
+            "Map": 463,
+            "X": 8.3,
+            "Z": 17.6,
+            "Radius": 2
+          },
+          {
+            "Row": 7394028,
+            "ObjectId": 1025528,
+            "ObjectName": "Hien",
+            "Territory": 786,
+            "Map": 479,
+            "X": 4.3,
+            "Y": -8,
+            "Z": 44.4,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 6,
+        "Sequence": 7,
+        "Qty": 1,
+        "Words": "Speak with Hien at the Doman Enclave.",
+        "Places": [
+          {
+            "Row": 7348672,
+            "ObjectId": 1025538,
+            "ObjectName": "Hien",
+            "Territory": 759,
+            "Map": 463,
+            "X": 4.8,
+            "Z": 16.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 7,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Hien.",
+        "Places": [
+          {
+            "Row": 7350474,
+            "ObjectId": 1025597,
+            "ObjectName": "Hien",
+            "Territory": 744,
+            "Map": 461,
+            "X": 0.2,
+            "Z": -3,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 68791,
+    "Name": "In the Middle of Nowhere",
+    "InternalName": "LucKra101_03255",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Speak with Ryne near the Derrick.",
+        "Places": [
+          {
+            "Row": 7931768,
+            "ObjectId": 1030091,
+            "ObjectName": "Ryne",
+            "Territory": 815,
+            "Map": 493,
+            "X": 381,
+            "Y": -64.3,
+            "Z": 511.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Ryne.",
+        "Places": [
+          {
+            "Row": 7935301,
+            "ObjectName": "",
+            "Territory": 878,
+            "Map": 565,
+            "X": 37,
+            "Y": 4.8,
+            "Z": -6.2,
+            "Radius": 1
+          },
+          {
+            "Row": 7931768,
+            "ObjectId": 1030091,
+            "ObjectName": "Ryne",
+            "Territory": 815,
+            "Map": 493,
+            "X": 381,
+            "Y": -64.3,
+            "Z": 511.2,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Ryne again.",
+        "Places": [
+          {
+            "Row": 7932068,
+            "ObjectId": 1030095,
+            "ObjectName": "Ryne",
+            "Territory": 878,
+            "Map": 565,
+            "X": -0.6,
+            "Y": -2,
+            "Z": -17.8,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 68598,
+    "Name": "\uE0BE Up Sheet Creek",
+    "InternalName": "BanAna505_03062",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Wash the bedsheet at Mirage Creek.",
+        "Places": [
+          {
+            "Row": 7233008,
+            "ObjectId": 2009353,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 612,
+            "Map": 367,
+            "X": 269.1,
+            "Y": 39.8,
+            "Z": -202,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Wash the bedsheet again.",
+        "Places": [
+          {
+            "Row": 7233008,
+            "ObjectId": 2009353,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 612,
+            "Map": 367,
+            "X": 269.1,
+            "Y": 39.8,
+            "Z": -202,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Wash the bedsheet yet again.",
+        "Places": [
+          {
+            "Row": 7233008,
+            "ObjectId": 2009353,
+            "IsObject": true,
+            "ObjectName": "destination",
+            "Territory": 612,
+            "Map": 367,
+            "X": 269.1,
+            "Y": 39.8,
+            "Z": -202,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Deliver the clean bedsheet to Eshana.",
+        "Places": [
+          {
+            "Row": 7186922,
+            "ObjectId": 1024773,
+            "ObjectName": "Eshana",
+            "Territory": 612,
+            "Map": 367,
+            "X": -28.3,
+            "Y": 56,
+            "Z": 236.3,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 69117,
+    "Name": "\uE0BE Strange Stew",
+    "InternalName": "LucKzj018_03581",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Place the trilobite meat into the cookpot.",
+        "Places": [
+          {
+            "Row": 7942759,
+            "ObjectId": 2010111,
+            "IsObject": true,
+            "ObjectName": "cookpot",
+            "Territory": 818,
+            "Map": 496,
+            "X": 638,
+            "Y": 359.3,
+            "Z": -192.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Let the stew simmer.",
+        "Places": [
+          {
+            "Row": 7942759,
+            "ObjectId": 2010111,
+            "IsObject": true,
+            "ObjectName": "cookpot",
+            "Territory": 818,
+            "Map": 496,
+            "X": 638,
+            "Y": 359.3,
+            "Z": -192.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Take the stew from the cookfire.",
+        "Places": [
+          {
+            "Row": 7942759,
+            "ObjectId": 2010111,
+            "IsObject": true,
+            "ObjectName": "cookpot",
+            "Territory": 818,
+            "Map": 496,
+            "X": 638,
+            "Y": 359.3,
+            "Z": -192.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Offer the stew to the Ondo culinarian.",
+        "Places": [
+          {
+            "Row": 7942755,
+            "ObjectId": 1030445,
+            "ObjectName": "Ondo culinarian",
+            "Territory": 818,
+            "Map": 496,
+            "X": 640.4,
+            "Y": 358.7,
+            "Z": -192.1,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Deliver the stew to Pulshs Ooan.",
+        "Places": [
+          {
+            "Row": 8009773,
+            "ObjectId": 1028060,
+            "ObjectName": "Pulshs Ooan",
+            "Territory": 818,
+            "Map": 496,
+            "X": 509.2,
+            "Y": 356.9,
+            "Z": -258.7,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 70143,
+    "Name": "\uE0BE Signs of the Past",
+    "InternalName": "BanOmi101_04607",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "",
+        "Places": [
+          {
+            "Row": 9396926,
+            "ObjectId": 1044042,
+            "ObjectName": "Karellian quartermaster",
+            "Territory": 960,
+            "Map": 699,
+            "X": 507.1,
+            "Y": 437,
+            "Z": 340.1,
+            "Radius": 1
+          },
+          {
+            "Row": 9406560,
+            "ObjectName": "",
+            "Territory": 1073,
+            "Map": 795,
+            "X": 11.3,
+            "Y": 481.8,
+            "Z": 16.7,
+            "Radius": 303
+          },
+          {
+            "Row": 9406562,
+            "ObjectName": "",
+            "Territory": 1073,
+            "Map": 795,
+            "X": -26.6,
+            "Y": 484.4,
+            "Z": 23.6,
+            "Radius": 303
+          },
+          {
+            "Row": 9406563,
+            "ObjectName": "",
+            "Territory": 1073,
+            "Map": 795,
+            "X": -19.9,
+            "Y": 481.3,
+            "Z": -7.3,
+            "Radius": 303
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Report to Stigma-4.",
+        "Places": [
+          {
+            "Row": 9308276,
+            "ObjectId": 1043417,
+            "ObjectName": "Stigma-4",
+            "Territory": 960,
+            "Map": 699,
+            "X": 314.9,
+            "Y": 482,
+            "Z": 148.1,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 66841,
+    "Name": "A Peach by Any Other Name",
+    "InternalName": "FesPdy004_01305",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Words": "With the Edvya doll minion summoned, offer blossoms to gossiping girls in Gridania.",
+        "Places": [
+          {
+            "Row": 4613970,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -49.4,
+            "Y": 19.5,
+            "Z": -105.5,
+            "Radius": 3
+          },
+          {
+            "Row": 4613971,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": 32.2,
+            "Y": 25.4,
+            "Z": -334.7,
+            "Radius": 3
+          },
+          {
+            "Row": 4613972,
+            "ObjectName": "",
+            "Territory": 133,
+            "Map": 3,
+            "X": -160.6,
+            "Y": 4.6,
+            "Z": -17.3,
+            "Radius": 3
+          },
+          {
+            "Row": 3985683,
+            "ObjectId": 1004093,
+            "ObjectName": "Serendipity",
+            "Territory": 131,
+            "Map": 14,
+            "X": -25.2,
+            "Y": 12.2,
+            "Z": 110.8,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 255,
+        "Words": "Report to Serendipity at the Goldsmiths\u0027 Guild.",
+        "Places": [
+          {
+            "Row": 3985683,
+            "ObjectId": 1004093,
+            "ObjectName": "Serendipity",
+            "Territory": 131,
+            "Map": 14,
+            "X": -25.2,
+            "Y": 12.2,
+            "Z": 110.8,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 65621,
+    "Name": "Close to Home",
+    "InternalName": "ManFst002_00085",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Attune yourself to the aetheryte found inside the city.",
+        "Places": [
+          {
+            "Row": 3693652,
+            "ObjectId": 2,
+            "ObjectName": "",
+            "Territory": 132,
+            "Map": 2,
+            "X": 32.9,
+            "Y": 2.7,
+            "Z": 30,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Visit the Lancers\u0027 Guild.",
+        "Places": [
+          {
+            "Row": 1141271,
+            "ObjectId": 1000251,
+            "ObjectName": "Jillian",
+            "Territory": 133,
+            "Map": 3,
+            "X": 147.1,
+            "Y": 15.5,
+            "Z": -268,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Listen to Parsemontret\u0027s explanation of the markets.",
+        "Places": [
+          {
+            "Row": 1332324,
+            "ObjectId": 1000768,
+            "ObjectName": "Parsemontret",
+            "Territory": 133,
+            "Map": 3,
+            "X": 172.4,
+            "Y": 15.5,
+            "Z": -89.9,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Report to Miounne at the Carline Canopy.",
+        "Places": [
+          {
+            "Row": 1140490,
+            "ObjectId": 1000100,
+            "ObjectName": "Mother Miounne",
+            "Territory": 132,
+            "Map": 2,
+            "X": 23.8,
+            "Y": -8,
+            "Z": 115.9,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "QuestRow": 67651,
+    "Name": "The Diabolical Bismarck",
+    "InternalName": "HeaVny202_02115",
+    "Steps": [
+      {
+        "Sequence": 1,
+        "Qty": 1,
+        "Words": "Present the Weeping Eye of the Manukmanai to Sonu Vanu in the Sea of Clouds.",
+        "Places": [
+          {
+            "Row": 5814369,
+            "ObjectId": 1012064,
+            "ObjectName": "Sonu Vanu",
+            "Territory": 401,
+            "Map": 215,
+            "X": -542.8,
+            "Y": -37.1,
+            "Z": -386.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 1,
+        "Sequence": 2,
+        "Qty": 1,
+        "Words": "Speak with Cid.",
+        "Places": [
+          {
+            "Row": 5938129,
+            "ObjectId": 1014623,
+            "ObjectName": "Cid",
+            "Territory": 401,
+            "Map": 215,
+            "X": -808.9,
+            "Y": -57.8,
+            "Z": 159.6,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "Sequence": 3,
+        "Qty": 1,
+        "Words": "Attune to the aetheryte at the Whale\u0027s Crown.",
+        "Places": [
+          {
+            "Row": 5921846,
+            "ObjectName": "",
+            "Territory": 401,
+            "Map": 215,
+            "X": 358,
+            "Y": 129.2,
+            "Z": 255.7,
+            "Radius": 203
+          }
+        ]
+      },
+      {
+        "Index": 3,
+        "Sequence": 4,
+        "Qty": 1,
+        "Words": "Confront Bismarck in the Limitless Blue (Extreme).",
+        "Places": [
+          {
+            "Row": 5921913,
+            "ObjectName": "",
+            "Territory": 447,
+            "Map": 407,
+            "X": -14.8,
+            "Z": 0.1,
+            "Radius": 2
+          }
+        ]
+      },
+      {
+        "Index": 4,
+        "Sequence": 5,
+        "Qty": 1,
+        "Words": "Speak with Sonu Vanu.",
+        "Places": [
+          {
+            "Row": 5814369,
+            "ObjectId": 1012064,
+            "ObjectName": "Sonu Vanu",
+            "Territory": 401,
+            "Map": 215,
+            "X": -542.8,
+            "Y": -37.1,
+            "Z": -386.7,
+            "Radius": 1
+          }
+        ]
+      },
+      {
+        "Index": 5,
+        "Sequence": 255,
+        "Qty": 1,
+        "Words": "Speak with Unukalhai in the Rising Stones.",
+        "Places": [
+          {
+            "Row": 5921043,
+            "ObjectId": 1014565,
+            "ObjectName": "Unukalhai",
+            "Territory": 351,
+            "Map": 136,
+            "X": 0.5,
+            "Y": -2,
+            "Z": -43.2,
+            "Radius": 1
+          }
+        ]
+      }
+    ]
+  }
+]

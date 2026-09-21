@@ -19,14 +19,20 @@ internal static partial class QuestTodoActions
     public static EntryAction? From(
         string todoText,
         QuestItem? item,
-        IReadOnlyDictionary<string, EmoteCommand> emotes)
+        IReadOnlyDictionary<string, EmoteCommand> emotes,
+        IReadOnlyList<QuestItem>? questItems = null)
     {
         ArgumentNullException.ThrowIfNull(todoText);
         ArgumentNullException.ThrowIfNull(emotes);
 
-        if (item is { } used)
+        // Only an item the game gives something to do is offered for use. The rest are carried
+        // and handed over, and a step that says to deliver one is not a step that uses it.
+        //
+        // What is named is the words the step itself used, not the sheet's title for the item, so
+        // the press is about words the player can see in front of them.
+        if ((item ?? Named(todoText, questItems)) is { Usable: true } used)
         {
-            return new EntryAction.UseItem(used.Id, used.Name, used.IconId, KeyItem: true);
+            return new EntryAction.UseItem(used.Id, used.NamedIn(todoText) ?? used.Name, KeyItem: true);
         }
 
         if (SayPhrase().Match(todoText) is { Success: true } say)
@@ -36,11 +42,25 @@ internal static partial class QuestTodoActions
 
         if (SlashCommand().Match(todoText) is { Success: true } command && emotes.TryGetValue(command.Value, out var emote))
         {
-            return new EntryAction.Emote(emote.Id, emote.Command, emote.IconId);
+            return new EntryAction.Emote(emote.Id, emote.Command);
         }
 
         return null;
     }
+
+    /// <summary>The quest's own key item a ToDo's words name, or null when they name none.
+    ///
+    /// <para>The event handler says which item a step is for when it is asked, and for a good many
+    /// steps it says nothing. The quest still lists its items, and a step that wants one says so in
+    /// its own words: "Use burlap sacks on weakened teleoceroses". The longest name that appears
+    /// wins, so a large burlap sack is not mistaken for a burlap sack.</para></summary>
+    private static QuestItem? Named(string todoText, IReadOnlyList<QuestItem>? questItems) =>
+        questItems?
+            .Select(item => (Item: item, Called: item.NamedIn(todoText)))
+            .Where(found => found.Called is not null)
+            .OrderByDescending(found => found.Called!.Length)
+            .Select(found => found.Item)
+            .FirstOrDefault();
 
     [GeneratedRegex("enter “(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
     private static partial Regex SayPhrase();

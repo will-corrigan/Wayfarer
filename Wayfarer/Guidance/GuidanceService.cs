@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Wayfarer.Routing;
@@ -15,16 +16,18 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// that walking does not start a search every frame.</summary>
     private const float RouteRethinkYalms = 10f;
 
+    /// <summary>How long a frame of guidance has to take before it is worth saying so. The game
+    /// draws at sixty a second, so anything near this has already been seen as a stutter.</summary>
+    private static readonly TimeSpan SlowFrame = TimeSpan.FromMilliseconds(20);
+
     private readonly IFramework framework;
     private readonly IClientState clientState;
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
-    private readonly IInteractions interactions;
     private readonly IPluginLog log;
 
     private bool broken;
     private ObjectiveEntry? routedTo;
-    private string? guiding;
     private Place? routedFrom;
     private Route? route;
 
@@ -33,14 +36,12 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         IClientState clientState,
         IObjectTable objects,
         RouteGraph graph,
-        IInteractions interactions,
         IPluginLog log)
     {
         this.framework = framework;
         this.clientState = clientState;
         this.objects = objects;
         this.graph = graph;
-        this.interactions = interactions;
         this.log = log;
         framework.Update += OnUpdate;
     }
@@ -80,6 +81,15 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;
 
+    /// <summary>Everywhere a destination could end, for routing to choose between. A duty and a
+    /// gate end nowhere on the map; a thing the module picked out ends where it stood.</summary>
+    private static IReadOnlyList<Place> Ends(Destination where) => where switch
+    {
+        Destination.Reachable reachable => reachable.Places,
+        Destination.AtObject thing => [thing.At],
+        _ => [],
+    };
+
     /// <summary>Whether the player has stayed put enough that the last search still answers: the
     /// same zone, and not far enough from where they were standing for a different aetheryte or
     /// door to have become the nearer one.</summary>
@@ -113,29 +123,36 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
     private PublishedGuidance? Compute()
     {
+        var started = Stopwatch.GetTimestamp();
         if (Holder is not { } source || source.Current is not { } objective)
         {
             return null;
         }
 
+        var asked = Stopwatch.GetTimestamp();
         var target = objective.Guided();
-        Rethink(target);
-        return new PublishedGuidance(source, objective, target, RouteTo(target));
+        var way = RouteTo(target);
+        Slow(started, asked, Stopwatch.GetTimestamp());
+
+        return new PublishedGuidance(source, objective, target, way);
     }
 
-    /// <summary>What the player has already tried belongs to the step they tried it for. When the
-    /// guidance moves on to something else, the slate is wiped: the same thing standing in the next
-    /// step's area is a thing they have not tried for that step.</summary>
-    private void Rethink(ObjectiveEntry? target)
+    /// <summary>Notes where a slow frame went, for whoever is working on this. A frame of
+    /// guidance is two things — asking whoever holds it what it is about, and working out the way
+    /// there — and which of them cost the frame cannot be told from outside. Nothing a player can
+    /// do anything about, so it is said quietly and only when a frame was slow.</summary>
+    private void Slow(long started, long asked, long done)
     {
-        // Only a step of its own wipes the slate. Guidance can be without a target for a frame —
-        // between zones, or while a route is thought about again — and that is not the player
-        // moving on to something else.
-        if (target?.Text is { } now && !string.Equals(now, guiding, StringComparison.Ordinal))
+        var whole = Stopwatch.GetElapsedTime(started, done);
+        if (whole < SlowFrame)
         {
-            guiding = now;
-            interactions.Forget();
+            return;
         }
+
+        log.Debug(
+            $"a frame of guidance took {whole.TotalMilliseconds:F0}ms: " +
+            $"{Stopwatch.GetElapsedTime(started, asked).TotalMilliseconds:F0}ms asking {Holder?.Name ?? "nobody"} what it is about, " +
+            $"{Stopwatch.GetElapsedTime(asked, done).TotalMilliseconds:F0}ms working out the way there.");
     }
 
     /// <summary>The way to the target, searched again only when the target changed or the player
@@ -144,7 +161,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// thing sixty times.</summary>
     private Route? RouteTo(ObjectiveEntry? target)
     {
-        if (target?.Where is not Destination.Reachable reachable || Standing() is not { } from)
+        if (target is null || Ends(target.Where) is not { Count: > 0 } ends || Standing() is not { } from)
         {
             routedTo = null;
             routedFrom = null;
@@ -158,7 +175,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
         routedTo = target;
         routedFrom = from;
-        return route = graph.FindRoute(from, reachable.Places, PlayerState.IsAttuned);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>

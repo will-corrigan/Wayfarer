@@ -16,19 +16,8 @@ public static class Compass
     /// <summary>The angle to draw the needle at, given a bearing and the camera's yaw.</summary>
     public static float NeedleAngle(float bearing, float cameraYaw) => Normalize(bearing + cameraYaw);
 
-    /// <summary>Wraps an angle into (-π, π].</summary>
-    public static float Normalize(float angle)
-    {
-        while (angle > MathF.PI)
-        {
-            angle -= 2f * MathF.PI;
-        }
-
-        while (angle < -MathF.PI)
-        {
-            angle += 2f * MathF.PI;
-        }
-
-        return angle;
-    }
+    /// <summary>Wraps an angle into [-π, π]. The remainder of a turn is what this is, and the
+    /// runtime does it in one call and to the nearest whole turn rather than by walking one turn
+    /// at a time.</summary>
+    public static float Normalize(float angle) => float.Ieee754Remainder(angle, 2f * MathF.PI);
 }

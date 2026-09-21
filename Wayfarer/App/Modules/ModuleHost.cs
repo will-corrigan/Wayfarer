@@ -1,100 +1,67 @@
 using Dalamud.Plugin.Services;
-using Wayfarer.App.Config;
 
 namespace Wayfarer.App.Modules;
 
-/// <summary>Owns the enabled set and the modules' up/down state. Brings the enabled modules up on
-/// <see cref="StartAsync"/> and takes every module that is up down when disposed.
+/// <summary>Keeps every module in line with its own settings. Nothing here remembers which modules
+/// are on, because nothing needs to: a module is on while any of what it offers is switched on,
+/// and each module saves its own switches. An enabled set kept beside them would be a second
+/// answer to the same question, free to disagree with the first.
 ///
 /// <para>A module that needs the framework thread marshals there itself, as the toolkit's calls
 /// do; the host awaits each module plainly so an unload never waits on a tick. A module that
-/// throws while coming up is logged and left down; one that throws while going down is logged and
-/// treated as down. Neither stops the other modules.</para></summary>
-internal sealed class ModuleHost(IEnumerable<IModule> modules, IConfigStore configs, IPluginLog log) : IModuleHost, IAsyncDisposable
+/// throws while coming into line is logged and left as it was. One module's failure never stops
+/// the others.</para></summary>
+internal sealed class ModuleHost(IEnumerable<IModule> modules, IPluginLog log) : IModuleHost, IAsyncDisposable
 {
-    private const string ConfigName = "app";
-
     private readonly List<IModule> modules = [.. modules];
-    private readonly HashSet<IModule> up = [];
-    private AppConfig config = new();
 
     /// <inheritdoc/>
     public IReadOnlyList<IModule> Modules => modules;
 
     /// <inheritdoc/>
-    public bool IsEnabled(IModule module) => up.Contains(module);
+    public bool IsOn(IModule module)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        return module.Settings.Any(setting => setting.Read());
+    }
 
-    /// <summary>Loads the enabled set and brings those modules up. On a first run every module is
-    /// on, so a fresh install guides from the moment it loads.</summary>
+    /// <summary>Brings every module into line with what the player last left switched on.</summary>
     public async Task StartAsync()
     {
-        config = configs.Load<AppConfig>(ConfigName);
-        if (!config.Initialised)
+        foreach (var module in modules)
         {
-            config.Initialised = true;
-            config.EnabledModules = new HashSet<string>(modules.Select(m => m.Name), StringComparer.Ordinal);
-            configs.Save(ConfigName, config);
-        }
-
-        foreach (var module in modules.Where(m => config.EnabledModules.Contains(m.Name)))
-        {
-            await BringUpAsync(module).ConfigureAwait(false);
+            await RefreshAsync(module).ConfigureAwait(false);
         }
     }
 
     /// <inheritdoc/>
-    public async Task SetEnabledAsync(IModule module, bool enabled)
+    public async Task RefreshAsync(IModule module)
     {
         ArgumentNullException.ThrowIfNull(module);
 
-        var changed = enabled ? config.EnabledModules.Add(module.Name) : config.EnabledModules.Remove(module.Name);
-        if (changed)
+        try
         {
-            configs.Save(ConfigName, config);
+            await module.ApplyAsync().ConfigureAwait(false);
         }
-
-        if (enabled && !up.Contains(module))
+        catch (Exception ex)
         {
-            await BringUpAsync(module).ConfigureAwait(false);
-        }
-        else if (!enabled && up.Contains(module))
-        {
-            await TakeDownAsync(module).ConfigureAwait(false);
+            log.Error(ex, $"the {module.Name} module could not be brought into line with its settings.");
         }
     }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        foreach (var module in modules.Where(up.Contains).ToList())
+        foreach (var module in modules)
         {
-            await TakeDownAsync(module).ConfigureAwait(false);
-        }
-    }
-
-    private async Task BringUpAsync(IModule module)
-    {
-        try
-        {
-            await module.EnableAsync().ConfigureAwait(false);
-            up.Add(module);
-        }
-        catch (Exception ex)
-        {
-            log.Error(ex, $"the {module.Name} module failed to start and is off for this session.");
-        }
-    }
-
-    private async Task TakeDownAsync(IModule module)
-    {
-        up.Remove(module);
-        try
-        {
-            await module.DisableAsync().ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            log.Error(ex, $"the {module.Name} module failed to stop cleanly.");
+            try
+            {
+                await module.StopAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, $"the {module.Name} module failed to stop cleanly.");
+            }
         }
     }
 }

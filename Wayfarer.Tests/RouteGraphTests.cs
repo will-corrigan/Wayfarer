@@ -187,6 +187,32 @@ public class RouteGraphTests
         Assert.Equal(0f, walk.Yalms, 0.01f);
     }
 
+    [Fact]
+    public void An_area_already_stood_in_beats_a_point_a_few_yalms_off()
+    {
+        // The shape every "search here" step really has: one wide circle to be somewhere in, and a
+        // precise point beside it that the sheet repeats on every step of the quest.
+        Place circle = new(Field, 1, 200f, 0f, 0f, 103f);
+        Place point = new(Field, 1, 115f, 0f, 0f);
+
+        var route = World().FindRoute(At(Field, 1, 100f), [circle, point], AllAttuned);
+
+        var walk = Assert.IsType<Leg.Walk>(Assert.Single(route!.Legs));
+        Assert.Equal(circle, walk.To);
+        Assert.Equal(0f, walk.Yalms, 0.01f);
+    }
+
+    [Fact]
+    public void An_area_not_yet_reached_costs_the_walk_to_its_edge()
+    {
+        Place circle = new(Field, 1, 200f, 0f, 0f, 20f);
+
+        var route = World().FindRoute(At(Field, 1, 100f), [circle], AllAttuned);
+
+        var walk = Assert.IsType<Leg.Walk>(Assert.Single(route!.Legs));
+        Assert.Equal(80f, walk.Yalms, 0.01f);
+    }
+
     private static RouteGraph World() => new([FieldAetheryte, CityAetheryte, NearShard, FarShard], []);
 
     private static Place At(uint territory, uint map, float x) => new(territory, map, x, 0f, 0f);

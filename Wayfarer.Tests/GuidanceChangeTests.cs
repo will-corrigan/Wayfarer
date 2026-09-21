@@ -8,7 +8,6 @@ namespace Wayfarer.Tests;
 public class GuidanceChangeTests
 {
     private static readonly FakeSource Quests = new("Quests");
-    private static readonly Place Here = new(1, 1, 0f, 0f, 0f);
     private static readonly Place There = new(1, 1, 100f, 0f, 0f);
 
     [Fact]

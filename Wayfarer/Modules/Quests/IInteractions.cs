@@ -1,4 +1,4 @@
-namespace Wayfarer.Guidance;
+namespace Wayfarer.Modules.Quests;
 
 /// <summary>What the player has already tried. A step that sends them to search an area often has
 /// several of the same thing standing in it and only one that answers; the game says nothing about

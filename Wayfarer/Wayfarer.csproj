@@ -24,7 +24,7 @@
     <!-- The native UI toolkit, as the package its author publishes. See THIRD_PARTY_NOTICES.md.
          The version is written here rather than in Directory.Packages.props because the Dalamud SDK
          brings its own versioned packages, which central version management forbids. -->
-    <PackageReference Include="KamiToolKit" Version="2.2.45"/>
+    <PackageReference Include="KamiToolKit" Version="2.2.49"/>
   </ItemGroup>
   <!-- The routing data the generator wrote (tools/Wayfarer.RoutingGen), shipped beside the DLL. -->
   <ItemGroup>
@@ -33,9 +33,9 @@
   <!-- CPM is disabled above, so the analyzer references from Directory.Build.props
        need explicit versions here (kept in sync with Directory.Packages.props). -->
   <ItemGroup>
-    <PackageReference Include="Autofac" Version="9.3.2"/>
+    <PackageReference Include="Autofac" Version="9.3.4"/>
     <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.556"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="3.0.177"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="3.0.264"/>
   </ItemGroup>
 
   <!-- Re-installs the Husky.Net git hooks on restore, since .husky/_ is gitignored
