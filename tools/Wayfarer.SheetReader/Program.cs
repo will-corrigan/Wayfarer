@@ -10,6 +10,23 @@ if (args.Length == 0)
     return 1;
 }
 
+// Which rows anywhere point at a given one. The joins the sheets do not write down are found by
+// looking at every sheet rather than by picking one and hoping.
+if (args[0] == "--refs")
+{
+    Wayfarer.SheetReader.Refs.Find(new GameData(Sqpack()), uint.Parse(args[1]), args.Length > 2 ? args[2] : null);
+    return 0;
+}
+
+// How much of a kind of thing the sheets can account for.
+if (args[0] == "--sources")
+{
+    var data = new GameData(Sqpack());
+    if (args.Length > 1 && args[1] == "minions") Wayfarer.SheetReader.Sources.Minions(data);
+    else Wayfarer.SheetReader.Sources.Mounts(data);
+    return 0;
+}
+
 var sheetName = args[0];
 string? find = null, cols = null;
 uint? row = null;
