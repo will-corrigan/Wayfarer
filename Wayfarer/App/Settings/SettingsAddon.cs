@@ -75,10 +75,14 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// <summary>How many of the thing a search area holds, in the sample: one, so the preview does
     /// not show a count the player would only see while searching.</summary>
 
+    /// <summary>The one page that is not a module's: what the guide itself looks like. Every other
+    /// page is a module, named by the module, so a new module brings its own page with it.</summary>
+    private const string GuideBlockPage = "Guide Block";
+
     /// <summary>The dark the game fills its own framed panels with.</summary>
     private static readonly Vector4 PanelColor = new(0f, 0f, 0f, 0.35f);
 
-    private readonly Dictionary<Page, ListButtonNode> pageButtons = [];
+    private readonly Dictionary<string, ListButtonNode> pageButtons = [];
     private readonly List<ComponentNode> controls = [];
     private ScrollingNode<VerticalListNode>? pane;
     private ListBoxNode? pages;
@@ -86,13 +90,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private GuidanceBlockNode? preview;
     private NineGridNode? previewFrame;
     private DropDownNode<CompassPlacement>? placement;
-    private Page? wanted;
-
-    private enum Page
-    {
-        GuideBlock,
-        Modules,
-    }
+    private string? wanted;
 
     /// <summary>The pages list down the left.</summary>
     private float PagesWidth => ContentSize.X * PagesShare;
@@ -126,11 +124,15 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
             FirstItemSpacing = PanelPadding,
         };
         pages.AttachNode(this);
-        AddPageButton(Page.GuideBlock);
-        AddPageButton(Page.Modules);
+        AddPageButton(GuideBlockPage);
+        foreach (var module in host.Modules)
+        {
+            AddPageButton(module.Name);
+        }
+
         pages.RecalculateLayout();
 
-        Show(Page.GuideBlock);
+        Show(GuideBlockPage);
     }
 
     /// <inheritdoc/>
@@ -155,13 +157,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         pages = null;
         pageButtons.Clear();
     }
-
-    /// <summary>What a page is called in its button and in its own title.</summary>
-    private static string PageTitle(Page page) => page switch
-    {
-        Page.GuideBlock => "Guide Block",
-        _ => "Modules",
-    };
 
     /// <summary>What each place for the compass is called, in the dropdown and on its list.</summary>
     private static string PlacementLabel(CompassPlacement placement) => placement switch
@@ -200,7 +195,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// <summary>Chains the cursor through the pages and then through the page's own controls: down
     /// and up within each column, right from a page into its controls, left from a control back to
     /// the page it belongs to.</summary>
-    private void ChainForTheCursor(Page page)
+    private void ChainForTheCursor(string page)
     {
         var buttons = pageButtons.Values.ToList();
         var here = FirstPageStop + pageButtons.Keys.ToList().IndexOf(page);
@@ -251,12 +246,12 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         return paragraph;
     }
 
-    private void AddPageButton(Page page)
+    private void AddPageButton(string page)
     {
         var button = new ListButtonNode
         {
             Size = new Vector2(PagesWidth - (2f * PanelPadding), PageButtonHeight),
-            String = PageTitle(page),
+            String = page,
             OnClick = () => wanted = page,
         };
         pageButtons[page] = button;
@@ -277,11 +272,11 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     }
 
     /// <summary>Rebuilds the right-hand pane for a page and marks its button as the chosen one.</summary>
-    private void Show(Page page)
+    private void Show(string page)
     {
         foreach (var (kind, button) in pageButtons)
         {
-            button.Selected = kind == page;
+            button.Selected = string.Equals(kind, page, StringComparison.Ordinal);
         }
 
         ForgetPage();
@@ -301,16 +296,15 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         pane.AttachNode(this);
 
         var body = pane.ContentNode;
-        body.AddNode(new UnderlinedTextNode { String = PageTitle(page), Size = new Vector2(PageWidth, TitleHeight) });
+        body.AddNode(new UnderlinedTextNode { String = page, Size = new Vector2(PageWidth, TitleHeight) });
 
-        switch (page)
+        if (host.Modules.FirstOrDefault(module => string.Equals(module.Name, page, StringComparison.Ordinal)) is { } chosen)
         {
-            case Page.GuideBlock:
-                BuildGuideBlockPage(body);
-                break;
-            default:
-                BuildModulesPage(body);
-                break;
+            BuildModulePage(body, chosen);
+        }
+        else
+        {
+            BuildGuideBlockPage(body);
         }
 
         ChainForTheCursor(page);
@@ -368,24 +362,30 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         reset.OnClick = () =>
         {
             styles.Reset();
-            wanted = Page.GuideBlock;
+            wanted = GuideBlockPage;
         };
         body.AddNode(Row(string.Empty, Control(reset)));
     }
 
-    /// <summary>One game checkbox per module with its description under it, and under that whatever
-    /// the module itself lets the player switch.</summary>
-    private void BuildModulesPage(VerticalListNode body)
+    /// <summary>What one module is for, then a checkbox for each thing it offers.
+    ///
+    /// <para>The module itself has no checkbox. It is on while any of what it offers is on, so the
+    /// player switches the thing they want rather than a thing called a module — and the module is
+    /// told to come into line with its switches each time one of them moves.</para></summary>
+    private void BuildModulePage(VerticalListNode body, IModule module)
     {
-        foreach (var module in host.Modules)
+        body.AddNode(Words(module.Description));
+
+        foreach (var setting in module.Settings)
         {
-            body.AddNode(Control(Switch(module.Name, module.Description, PageWidth, () => host.IsEnabled(module), on => _ = host.SetEnabledAsync(module, on))));
-            body.AddNode(Words(module.Description));
-            foreach (var setting in module.Settings)
+            var moved = (bool on) =>
             {
-                body.AddNode(Indented(Control(Switch(setting.Name, setting.Description, PageWidth - SettingIndent, setting.Read, setting.Write))));
-                body.AddNode(Indented(Words(setting.Description, PageWidth - SettingIndent)));
-            }
+                setting.Write(on);
+                _ = host.RefreshAsync(module);
+            };
+
+            body.AddNode(Control(Switch(setting.Name, setting.Description, PageWidth, setting.Read, moved)));
+            body.AddNode(Indented(Words(setting.Description, PageWidth - SettingIndent)));
         }
     }
 

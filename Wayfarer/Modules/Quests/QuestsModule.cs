@@ -4,9 +4,9 @@ using Wayfarer.Guidance;
 
 namespace Wayfarer.Modules.Quests;
 
-/// <summary>The quests module: what the settings checkbox switches. Up means
-/// <see cref="QuestObjectives"/> holds guidance focus and the journal offers its follow button;
-/// down means both have let go.</summary>
+/// <summary>The quests module: everything Wayfarer does about the quest you are on. Each part is
+/// a switch of its own — the guiding itself, the journal's button, the Duty Finder's marks — and
+/// the module is whatever those switches add up to.</summary>
 internal sealed class QuestsModule(
     QuestObjectives objectives,
     QuestFollowing following,
@@ -20,6 +20,11 @@ internal sealed class QuestsModule(
     /// the enabled set saved in <c>app.json</c>, which is keyed by this.</summary>
     public const string ModuleName = "Quests";
 
+    /// <summary>The game's own mark for a quest worth taking.</summary>
+    private const uint QuestMark = 71221;
+
+    private const string GuidingName = "Guide me through my quests";
+    private const string GuidingDescription = "Follows the main scenario, or whichever quest you chose, and shows the way to its next step in the Main Scenario Guide.";
     private const string JournalButtonName = "Follow quests from the journal";
     private const string JournalButtonDescription = "Puts a button in the quest journal that follows the quest on show, so the guide leads to it instead of the main scenario.";
     private const string DutyMarksName = "Mark duties your quests lead to";
@@ -29,34 +34,57 @@ internal sealed class QuestsModule(
     public string Name => ModuleName;
 
     /// <inheritdoc/>
+    /// <remarks>The mark the game itself draws over someone with a quest to give.</remarks>
+    public uint Icon => QuestMark;
+
+    /// <inheritdoc/>
     public string Description => "Follows the main scenario, or any quest you choose from the journal, in the Main Scenario Guide.";
 
     /// <inheritdoc/>
     public IReadOnlyList<ModuleSetting> Settings =>
     [
-        new ModuleSetting(JournalButtonName, JournalButtonDescription, () => following.FromJournal, SetJournalButton),
-        new ModuleSetting(DutyMarksName, DutyMarksDescription, () => following.MarkDuties, SetDutyMarks),
+        new ModuleSetting(GuidingName, GuidingDescription, () => following.Guiding, on => following.Guiding = on),
+        new ModuleSetting(JournalButtonName, JournalButtonDescription, () => following.FromJournal, on => following.FromJournal = on),
+        new ModuleSetting(DutyMarksName, DutyMarksDescription, () => following.MarkDuties, on => following.MarkDuties = on),
     ];
 
     /// <inheritdoc/>
-    public async Task EnableAsync()
+    /// <remarks>Each part is started or stopped on its own, and each is safe to start again while
+    /// it is already running, so this says what the module should look like rather than what has
+    /// changed since last time.</remarks>
+    public async Task ApplyAsync()
     {
-        await WarmAsync().ConfigureAwait(false);
+        if (following.Guiding)
+        {
+            await WarmAsync().ConfigureAwait(false);
+            guidance.Claim(objectives);
+        }
+        else
+        {
+            guidance.Yield(objectives);
+        }
 
-        guidance.Claim(objectives);
         if (following.FromJournal)
         {
             followButton.Start();
+        }
+        else
+        {
+            await followButton.StopAsync().ConfigureAwait(false);
         }
 
         if (following.MarkDuties)
         {
             dutyMarks.Start();
         }
+        else
+        {
+            await dutyMarks.StopAsync().ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc/>
-    public async Task DisableAsync()
+    public async Task StopAsync()
     {
         guidance.Yield(objectives);
         await dutyMarks.StopAsync().ConfigureAwait(false);
@@ -79,36 +107,6 @@ internal sealed class QuestsModule(
         if (guided is { } questId)
         {
             reader.Warm(questId);
-        }
-    }
-
-    /// <summary>Switches the Duty Finder's marks, and puts them there or takes them away at once.
-    /// </summary>
-    private void SetDutyMarks(bool wanted)
-    {
-        following.MarkDuties = wanted;
-        if (wanted)
-        {
-            dutyMarks.Start();
-        }
-        else
-        {
-            _ = dutyMarks.StopAsync();
-        }
-    }
-
-    /// <summary>Switches the journal's button, and puts it there or takes it away at once rather
-    /// than waiting for the module to come round again.</summary>
-    private void SetJournalButton(bool wanted)
-    {
-        following.FromJournal = wanted;
-        if (wanted)
-        {
-            followButton.Start();
-        }
-        else
-        {
-            _ = followButton.StopAsync();
         }
     }
 }

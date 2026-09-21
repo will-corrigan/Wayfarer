@@ -1,31 +1,39 @@
 namespace Wayfarer.App.Modules;
 
-/// <summary>A feature the player can switch on and off: quests, hunting, unlocks. The app knows a
-/// module only by this — its name, and how to start and stop it — never by type. Which modules
-/// are on is the app's setting, kept by name; what a module does when on is its own business.
+/// <summary>A part of what Wayfarer does: quests, hunting, unlocks. The app knows a module only by
+/// this — its name, its picture, and how to bring itself into line with its own settings — never
+/// by type.
 ///
-/// <para>Starting and stopping are live: the settings window flips a module without a reload, so
-/// <see cref="EnableAsync"/> has to bring the module fully up from nothing and
-/// <see cref="DisableAsync"/> has to take it fully down, releasing focus, subscriptions and
-/// anything on screen.</para></summary>
+/// <para>A module is not something the player switches. It is on while any of what it offers is
+/// switched on, and off when none of it is, so nobody has to know what a module is to use one:
+/// they switch the thing they want and the module follows.</para></summary>
 internal interface IModule
 {
-    /// <summary>The name the settings window shows and the enabled set is keyed by. Stable: renaming
-    /// it silently switches the module off for everyone who had it on.</summary>
+    /// <summary>The name the settings window shows. Stable: it is what the player learns the part
+    /// of the plugin by.</summary>
     string Name { get; }
+
+    /// <summary>The game's own picture for what this module is about, shown beside its name. The
+    /// module chooses it, because the module is the only thing that knows what it is about; a list
+    /// of pictures kept by the settings window would be a second place to remember a new module
+    /// in.</summary>
+    uint Icon { get; }
 
     /// <summary>One line under the name in the settings window saying what the module does.</summary>
     string Description { get; }
 
-    /// <summary>What the player can switch about the module itself, shown under its own switch.
-    /// A module with nothing to configure says nothing.</summary>
+    /// <summary>What the player can switch. Everything a module offers is one of these, including
+    /// the thing the module is chiefly for: a module is on while any of them is, so a module whose
+    /// main work had no switch could never be turned off, and one with no switches at all would
+    /// never come on.</summary>
     IReadOnlyList<ModuleSetting> Settings => [];
 
-    /// <summary>Brings the module up. Called once when the plugin loads if the module is on, and
-    /// again each time the player switches it on.</summary>
-    Task EnableAsync();
+    /// <summary>Brings every part of the module into line with its own settings: what is switched
+    /// on runs, what is switched off does not. Called once on load and again after each switch, so
+    /// it has to be safe to call on a module that is already exactly as it should be.</summary>
+    Task ApplyAsync();
 
-    /// <summary>Takes the module down. Called each time the player switches it off, and on unload
-    /// for every module that is up.</summary>
-    Task DisableAsync();
+    /// <summary>Takes the whole module down whatever its settings say, releasing focus,
+    /// subscriptions and anything it put on screen. Called on unload.</summary>
+    Task StopAsync();
 }
