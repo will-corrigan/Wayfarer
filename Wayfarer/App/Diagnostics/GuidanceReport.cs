@@ -27,6 +27,40 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
     /// a report long enough to be useful is too long to read as it scrolls past.</summary>
     public void Print()
     {
+        // Every line of this reads the game's own memory while the player is standing in it, and a
+        // report is asked for precisely when something is already not as expected. Nothing it finds
+        // is worth taking the session down for, and the command that asks for it cannot catch
+        // anything itself: it hands the work to the framework thread and lets go of it.
+        try
+        {
+            Report();
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "the report could not be written.");
+        }
+    }
+
+    private static string Num(float value) => value.ToString("F1", CultureInfo.InvariantCulture);
+
+    /// <summary>How far across the ground, which is how a circle is judged.</summary>
+    private static float Flat(Vector3 from, float toX, float toZ) =>
+        Vector2.Distance(new Vector2(from.X, from.Z), new Vector2(toX, toZ));
+
+    private static string Spell(Place place) =>
+        $"terr {place.Territory} map {place.Map} ({Num(place.X)}, {Num(place.Y)}, {Num(place.Z)}) r={Num(place.Radius)}";
+
+    private static string Spell(Leg leg) => leg switch
+    {
+        Leg.Walk walk => $"walk {Num(walk.Yalms)}y to ({Num(walk.To.X)}, {Num(walk.To.Z)}) r={Num(walk.To.Radius)}",
+        Leg.Teleport teleport => $"teleport to {teleport.AetheryteName}",
+        Leg.ShardHop hop => $"shard {hop.EntryShard} -> {hop.ExitShard}",
+        Leg.Door door => $"door {door.Name}",
+        _ => "?",
+    };
+
+    private void Report()
+    {
         Say("--- why ---");
         Markers();
         chat.Print("[Wayfarer] report written to the Dalamud log.");
@@ -70,24 +104,6 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
                 break;
         }
     }
-
-    private static string Num(float value) => value.ToString("F1", CultureInfo.InvariantCulture);
-
-    /// <summary>How far across the ground, which is how a circle is judged.</summary>
-    private static float Flat(Vector3 from, float toX, float toZ) =>
-        Vector2.Distance(new Vector2(from.X, from.Z), new Vector2(toX, toZ));
-
-    private static string Spell(Place place) =>
-        $"terr {place.Territory} map {place.Map} ({Num(place.X)}, {Num(place.Y)}, {Num(place.Z)}) r={Num(place.Radius)}";
-
-    private static string Spell(Leg leg) => leg switch
-    {
-        Leg.Walk walk => $"walk {Num(walk.Yalms)}y to ({Num(walk.To.X)}, {Num(walk.To.Z)}) r={Num(walk.To.Radius)}",
-        Leg.Teleport teleport => $"teleport to {teleport.AetheryteName}",
-        Leg.ShardHop hop => $"shard {hop.EntryShard} -> {hop.ExitShard}",
-        Leg.Door door => $"door {door.Name}",
-        _ => "?",
-    };
 
     /// <summary>Everything standing in the place being walked to, with what the finder asks of
     /// each: the id the world gives it, the event the game says spawned it, and whether the player

@@ -47,6 +47,7 @@ internal sealed class GuidanceBlockNode : ResNode
 
     public GuidanceBlockNode(ITextureProvider textures, IPluginLog log, Action onEntryPressed, Action onRoutePressed)
     {
+        // The guide's own width, until somebody gives it another.
         Width = RootWidth;
 
         entry = new PressableLine(GameColors.Body, onEntryPressed);
@@ -88,8 +89,12 @@ internal sealed class GuidanceBlockNode : ResNode
         ArgumentNullException.ThrowIfNull(style);
         this.style = style;
 
+        // Laid out against whatever width this node has been given rather than the guide's own, so
+        // the block fills what it is put in. In the game it is put in the guide and given the
+        // guide's width, which is what it was measured against before; the settings page gives it
+        // the width of the page instead, and the words wrap to that.
         columns.Position = new Vector2(style.ContentLeft, RowTextTop);
-        columns.Width = RootWidth - RightInset - style.ContentLeft;
+        columns.Width = Width - RightInset - style.ContentLeft;
         words.ItemSpacing = style.LineGap;
 
         SizeCompassColumn();

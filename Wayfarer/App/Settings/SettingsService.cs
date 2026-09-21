@@ -22,6 +22,7 @@ internal sealed class SettingsService : ISettingsWindow, IAsyncDisposable
     private readonly IFramework framework;
     private readonly SettingsAddon window;
     private readonly GuidanceReport report;
+    private readonly IPluginLog log;
 
     public SettingsService(IDalamudPluginInterface pluginInterface, ICommandManager commands, IFramework framework, IModuleHost host, ScenarioTreeStyleStore styles, ITextureProvider textures, IPluginLog log, GuidanceReport report)
     {
@@ -29,6 +30,7 @@ internal sealed class SettingsService : ISettingsWindow, IAsyncDisposable
         this.commands = commands;
         this.framework = framework;
         this.report = report;
+        this.log = log;
 
         window = new SettingsAddon(host, styles, textures, log)
         {
@@ -54,7 +56,7 @@ internal sealed class SettingsService : ISettingsWindow, IAsyncDisposable
     }
 
     /// <inheritdoc/>
-    public void Toggle() => _ = framework.RunOnFrameworkThread(window.Toggle);
+    public void Toggle() => framework.Hand(window.Toggle, log, "open the settings window");
 
     /// <summary>What <c>/wayfarer</c> does: the report when asked for it, the window otherwise.
     /// Both run on the framework thread, the report because it reads the object table and the
@@ -65,6 +67,6 @@ internal sealed class SettingsService : ISettingsWindow, IAsyncDisposable
             ? report.Print
             : window.Toggle;
 
-        _ = framework.RunOnFrameworkThread(work);
+        framework.Hand(work, log, "answer /wayfarer");
     }
 }

@@ -66,7 +66,7 @@ internal sealed class QuestsModule(
 
         if (following.FromJournal)
         {
-            followButton.Start();
+            await followButton.StartAsync().ConfigureAwait(false);
         }
         else
         {
@@ -75,7 +75,7 @@ internal sealed class QuestsModule(
 
         if (following.MarkDuties)
         {
-            dutyMarks.Start();
+            await dutyMarks.StartAsync().ConfigureAwait(false);
         }
         else
         {

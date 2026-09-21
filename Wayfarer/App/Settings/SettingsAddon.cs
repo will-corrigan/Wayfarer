@@ -50,6 +50,21 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
 
     private const float SectionGap = 10f;
 
+    /// <summary>The gap between a switch and the sentence under it, which is much smaller than the
+    /// gap between one switch and the next: what belongs together has to sit together, or a page of
+    /// evenly spaced lines reads as one list of unrelated things.</summary>
+    private const float AsideGap = 1f;
+
+    /// <summary>The gap between one settings row and the next. They are a block of one kind of
+    /// thing, so they sit closer together than the blocks of the page do.</summary>
+    private const float RowGap = 2f;
+
+    /// <summary>How thick the game draws the line it separates one thing from another with.</summary>
+    private const float RuleHeight = 4f;
+
+    /// <summary>How far back an aside is written from what it is about.</summary>
+    private const float AsideText = 0.7f;
+
     /// <summary>How far a module's own settings are stepped in from the module itself.</summary>
     private const float SettingIndent = 24f;
 
@@ -64,7 +79,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private const float PanelPadding = 8f;
 
     /// <summary>What the preview block shows: a step, a route with a press, and a compass reading.</summary>
-    private const string PreviewLabel = "Preview:";
     private const string SampleEntry = "Speak with Minfilia at the Waking Sands.";
     private const string SampleRoute = "Teleport to Limsa Lominsa Lower Decks, then Aethernet to Arcanists' Guild";
     private const string SampleRouteKeyword = "Teleport to Limsa Lominsa Lower Decks";
@@ -77,7 +91,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
 
     /// <summary>The one page that is not a module's: what the guide itself looks like. Every other
     /// page is a module, named by the module, so a new module brings its own page with it.</summary>
-    private const string GuideBlockPage = "Guide Block";
+    private const string MainPage = "Main";
 
     /// <summary>The dark the game fills its own framed panels with.</summary>
     private static readonly Vector4 PanelColor = new(0f, 0f, 0f, 0.35f);
@@ -86,9 +100,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     private readonly List<ComponentNode> controls = [];
     private ScrollingNode<VerticalListNode>? pane;
     private ListBoxNode? pages;
-    private ResNode? previewStage;
     private GuidanceBlockNode? preview;
-    private NineGridNode? previewFrame;
     private DropDownNode<CompassPlacement>? placement;
     private string? wanted;
 
@@ -124,7 +136,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
             FirstItemSpacing = PanelPadding,
         };
         pages.AttachNode(this);
-        AddPageButton(GuideBlockPage);
+        AddPageButton(MainPage);
         foreach (var module in host.Modules)
         {
             AddPageButton(module.Name);
@@ -132,7 +144,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
 
         pages.RecalculateLayout();
 
-        Show(GuideBlockPage);
+        Show(MainPage);
     }
 
     /// <inheritdoc/>
@@ -165,14 +177,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         CompassPlacement.Left => "Left of the words",
         _ => "Hidden",
     };
-
-    /// <summary>Steps a node in from the left, to show it belongs to the one above it.</summary>
-    private static T Indented<T>(T node)
-        where T : NodeBase
-    {
-        node.Position = new Vector2(SettingIndent, node.Position.Y);
-        return node;
-    }
 
     /// <summary>A game checkbox over something that is on or off.</summary>
     private static CheckboxNode Switch(string name, string description, float width, Func<bool> read, Action<bool> write) => new()
@@ -235,13 +239,25 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     {
         var row = new HorizontalListNode { Height = height };
         row.AddNode(new LabelTextNode { String = label, Size = new Vector2(RowLabelWidth, height) });
-        row.AddNode(control);
+        row.AddNode(Inset.Middle(control, height));
         return row;
     }
 
-    private Paragraph Words(string words, float? width = null)
+    /// <summary>A block of words wrapped to a width.</summary>
+    /// <param name="words">What to write.</param>
+    /// <param name="width">How wide to wrap it, or the whole page.</param>
+    /// <param name="aside">Whether this is a remark about something else rather than a thing in its
+    /// own right. An aside is set leaning and dropped back, so a switch and the sentence explaining
+    /// it are told apart at a glance instead of reading as two switches.</param>
+    private Paragraph Words(string words, float? width = null, bool aside = false)
     {
         var paragraph = new Paragraph();
+        if (aside)
+        {
+            paragraph.TextFlags |= TextFlags.Italic;
+            paragraph.TextColor = GameColors.ListText with { W = AsideText };
+        }
+
         paragraph.Set(words, width ?? PageWidth);
         return paragraph;
     }
@@ -267,8 +283,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         pane?.Dispose();
         pane = null;
         preview = null;
-        previewFrame = null;
-        previewStage = null;
     }
 
     /// <summary>Rebuilds the right-hand pane for a page and marks its button as the chosen one.</summary>
@@ -304,43 +318,56 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         }
         else
         {
-            BuildGuideBlockPage(body);
+            BuildMainPage(body);
         }
 
         ChainForTheCursor(page);
         Refit();
     }
 
-    /// <summary>The preview block in a frame, then one row per style value, then a reset.</summary>
-    private void BuildGuideBlockPage(VerticalListNode body)
+    /// <summary>The block itself, with nothing else around it: on the page's own left margin, in
+    /// line with the settings under it, and as wide as the page rather than the width the game
+    /// happens to give it.
+    ///
+    /// <para>Put on the page directly, so the list measures it. The block is as tall as the style
+    /// makes it and does not know how tall that is until it has been styled; anything holding it
+    /// would have to be told that height by hand, which is what had the sliders drawn over it.</para>
+    /// </summary>
+    private void Preview(VerticalListNode body)
     {
-        body.AddNode(Words(PreviewLabel));
-        previewStage = new ResNode();
-        previewFrame = new BorderNineGridNode();
-        previewFrame.AttachNode(previewStage);
-
-        // The frame is a nine-grid: its border art is drawn inside its own offsets, so anything
-        // placed nearer an edge than that is drawn over the border rather than within it. The
-        // block is inset by the frame's own measurements, whatever art the frame is made of.
-        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Position = new Vector2(previewFrame.LeftOffset, previewFrame.TopOffset) };
-        preview.AttachNode(previewStage);
+        preview = new GuidanceBlockNode(textures, log, () => { }, () => { }) { Width = PageWidth };
+        body.AddNode(preview);
         preview.SetWords(
             new LineContent(SampleEntry),
             new LineContent(SampleRoute, SampleRouteKeyword, Glyph: BitmapFontIcon.Aetheryte, Pressable: true));
         preview.SetHeading(SampleNeedle, SampleYalms, SampleRise);
-        body.AddNode(previewStage);
+    }
+
+    /// <summary>The game's own guide with ours under it, then one row per style value, then a
+    /// reset. The block is shown where it actually appears -- beneath the window's title and the
+    /// quest being followed -- rather than alone in a frame, because how it reads depends entirely
+    /// on what it sits under.</summary>
+    private void BuildMainPage(VerticalListNode body)
+    {
+        Preview(body);
 
         // Styled only once the block is part of the window's own tree. A style applied before then
         // is laid out against nothing and lost when the tree is joined, which is why the preview
         // showed the defaults until a slider moved and restyled it in place.
-        preview.Restyle(styles.Current);
+        preview!.Restyle(styles.Current);
+
+        // The block is what the settings under it change. The rule says so: above it is the thing,
+        // below it is what it is made of.
+        body.AddNode(new HorizontalLineNode { Width = PageWidth, Height = RuleHeight });
 
         var style = styles.Current;
-        body.AddNode(Row("Entry text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size)))));
-        body.AddNode(Row("Route text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size)))));
-        body.AddNode(Row("Line spacing", Control(Slider(ScenarioTreeStyle.SmallestLineGap, ScenarioTreeStyle.LargestLineGap, style.LineGap, gap => Change(s => s.LineGap = gap)))));
-        body.AddNode(Row("Text left edge", Control(Slider(ScenarioTreeStyle.SmallestInset, ScenarioTreeStyle.LargestInset, style.ContentLeft, left => Change(s => s.ContentLeft = left)))));
-        body.AddNode(Row("Compass size", Control(Slider(ScenarioTreeStyle.SmallestCompass, ScenarioTreeStyle.LargestCompass, style.CompassSize, size => Change(s => s.CompassSize = size)))));
+
+        var rows = new VerticalListNode { Width = PageWidth, FitContents = true, ItemSpacing = RowGap };
+        rows.AddNode(Row("Entry text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.EntryFontSize, size => Change(s => s.EntryFontSize = (uint)size)))));
+        rows.AddNode(Row("Route text size", Control(Slider(ScenarioTreeStyle.SmallestFont, ScenarioTreeStyle.LargestFont, style.RouteFontSize, size => Change(s => s.RouteFontSize = (uint)size)))));
+        rows.AddNode(Row("Line spacing", Control(Slider(ScenarioTreeStyle.SmallestLineGap, ScenarioTreeStyle.LargestLineGap, style.LineGap, gap => Change(s => s.LineGap = gap)))));
+        rows.AddNode(Row("Text left edge", Control(Slider(ScenarioTreeStyle.SmallestInset, ScenarioTreeStyle.LargestInset, style.ContentLeft, left => Change(s => s.ContentLeft = left)))));
+        rows.AddNode(Row("Compass size", Control(Slider(ScenarioTreeStyle.SmallestCompass, ScenarioTreeStyle.LargestCompass, style.CompassSize, size => Change(s => s.CompassSize = size)))));
 
         var places = Enum.GetValues<CompassPlacement>();
         placement = new DropDownNode<CompassPlacement>
@@ -352,7 +379,9 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
             SelectedOption = style.Compass,
             OnOptionSelected = place => Change(s => s.Compass = place),
         };
-        body.AddNode(Row("Compass", Control(placement)));
+        rows.AddNode(Row("Compass", Control(placement)));
+        rows.RecalculateLayout();
+        body.AddNode(rows);
 
         var reset = new TextButtonNode
         {
@@ -362,7 +391,7 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
         reset.OnClick = () =>
         {
             styles.Reset();
-            wanted = GuideBlockPage;
+            wanted = MainPage;
         };
         body.AddNode(Row(string.Empty, Control(reset)));
     }
@@ -374,18 +403,29 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// told to come into line with its switches each time one of them moves.</para></summary>
     private void BuildModulePage(VerticalListNode body, IModule module)
     {
-        body.AddNode(Words(module.Description));
+        body.AddNode(Words(module.Description, aside: true));
 
         foreach (var setting in module.Settings)
         {
             var moved = (bool on) =>
             {
                 setting.Write(on);
-                _ = host.RefreshAsync(module);
+                GameThread.Let(() => host.RefreshAsync(module), log, $"bring {module.Name} into line with its settings");
             };
 
-            body.AddNode(Control(Switch(setting.Name, setting.Description, PageWidth, setting.Read, moved)));
-            body.AddNode(Indented(Words(setting.Description, PageWidth - SettingIndent)));
+            // Each switch and its sentence are one thing on the page rather than two, so the page's
+            // own spacing falls between settings and not between a setting and what it means.
+            var together = new VerticalListNode
+            {
+                Width = PageWidth,
+                FitContents = true,
+                ItemSpacing = AsideGap,
+            };
+
+            together.AddNode(Control(Switch(setting.Name, setting.Description, PageWidth, setting.Read, moved)));
+            together.AddNode(Inset.From(Words(setting.Description, PageWidth - SettingIndent, aside: true), SettingIndent));
+            together.RecalculateLayout();
+            body.AddNode(together);
         }
     }
 
@@ -403,14 +443,6 @@ internal sealed class SettingsAddon(IModuleHost host, ScenarioTreeStyleStore sty
     /// style, then re-lays the page and its scroll bar around it.</summary>
     private void Refit()
     {
-        if (preview is not null && previewFrame is not null && previewStage is not null)
-        {
-            previewStage.Size = new Vector2(
-                preview.Width + previewFrame.LeftOffset + previewFrame.RightOffset,
-                preview.Height + previewFrame.TopOffset + previewFrame.BottomOffset);
-            previewFrame.Size = previewStage.Size;
-        }
-
         pane?.ContentNode.RecalculateLayout();
         pane?.RecalculateSizes();
     }

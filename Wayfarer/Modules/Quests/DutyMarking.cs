@@ -16,8 +16,11 @@ internal sealed class DutyMarking(QuestDuties duties, IFramework framework) : IA
 {
     private DutyFinderMarks? marks;
 
-    /// <summary>Starts marking, or does nothing when already marking.</summary>
-    public void Start() => _ = framework.RunOnFrameworkThread(Hook);
+    /// <summary>Starts marking, or does nothing when already marking. Hooking the window has to
+    /// happen on the game's own thread, so the caller is handed back the wait for it: a caller that
+    /// dropped it could ask to stop before the hook had been made, and the hook would then be made
+    /// on a window nobody was watching any more, holding nodes nothing would ever let go of.</summary>
+    public Task StartAsync() => framework.RunOnFrameworkThread(Hook);
 
     /// <summary>Stops marking and lets go of everything hung on the window.</summary>
     public Task StopAsync()

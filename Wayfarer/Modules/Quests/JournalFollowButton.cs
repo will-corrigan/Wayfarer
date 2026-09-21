@@ -64,8 +64,9 @@ internal sealed class JournalFollowButton(QuestFollowing following, IGameGui gam
     private byte mapRightBefore;
     private byte abandonLeftBefore;
 
-    /// <summary>Starts watching the journal. Safe to call off the framework thread.</summary>
-    public void Start() => _ = framework.RunOnFrameworkThread(Enable);
+    /// <summary>Starts watching the journal. Safe to call off the framework thread, and the wait is
+    /// handed back so that a stop asked for straight afterwards cannot overtake it.</summary>
+    public Task StartAsync() => framework.RunOnFrameworkThread(Enable);
 
     /// <summary>Stops watching the journal and frees the button if the pane is open.</summary>
     public async Task StopAsync()
