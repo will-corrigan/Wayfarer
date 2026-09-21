@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/will-corrigan/Wayfarer/compare/v1.5.0...v1.6.0) (2026-09-21)
+
+
+### New
+
+* **quests:** mark the duties a quest leads to, and settle where it is sending you ([#81](https://github.com/will-corrigan/Wayfarer/issues/81)) ([3b76a2c](https://github.com/will-corrigan/Wayfarer/commit/3b76a2c8149b55255db682a56fb57b0c98e42962))
+
 ## [1.5.0](https://github.com/will-corrigan/Wayfarer/compare/v1.4.0...v1.5.0) (2026-09-20)
 
 
