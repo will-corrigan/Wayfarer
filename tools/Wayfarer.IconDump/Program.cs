@@ -4,8 +4,27 @@ using Lumina.Data.Files;
 // Writes game icons out as PNG so they can be looked at. usage: icondump <first> [count] [outDir]
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("usage: icondump <firstIconId> [count] [outDir]");
+    Console.Error.WriteLine("usage: icondump <firstIconId> [count] [outDir]  |  icondump --path <ui/uld/Name.tex> [outDir]");
     return 1;
+}
+
+// A named picture rather than a numbered icon, for looking at what a window is built from.
+if (string.Equals(args[0], "--path", StringComparison.Ordinal))
+{
+    var only = args[1];
+    var into = args.Length > 2 ? args[2] : ".";
+    Directory.CreateDirectory(into);
+    var named = new GameData(Sqpack()).GetFile<TexFile>(only);
+    if (named is null)
+    {
+        Console.WriteLine($"{only}: no such picture");
+        return 1;
+    }
+
+    var made = Path.Combine(into, Path.GetFileNameWithoutExtension(only) + ".png");
+    WritePng(made, named.Header.Width, named.Header.Height, Straighten(named.ImageData));
+    Console.WriteLine($"{only}  {named.Header.Width}x{named.Header.Height}  -> {made}");
+    return 0;
 }
 
 var first = uint.Parse(args[0]);
@@ -24,14 +43,7 @@ for (var id = first; id < first + count; id++)
         continue;
     }
 
-    // The game stores its pictures blue first. Reading them as though red came first is how a
-    // gold star comes out blue, so the two ends of each pixel are swapped on the way out.
-    var pixels = tex.ImageData;
-    var rgba = new byte[pixels.Length];
-    for (var i = 0; i < pixels.Length; i += 4)
-    {
-        (rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) = (pixels[i + 2], pixels[i + 1], pixels[i], pixels[i + 3]);
-    }
+    var rgba = Straighten(tex.ImageData);
     var file = Path.Combine(outDir, $"{id}.png");
     WritePng(file, tex.Header.Width, tex.Header.Height, rgba);
     Console.WriteLine($"{id}  {tex.Header.Width}x{tex.Header.Height}  -> {file}");
@@ -84,6 +96,19 @@ static void Chunk(Stream stream, string kind, ReadOnlySpan<byte> body)
     Span<byte> sum = stackalloc byte[4];
     System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(sum, System.IO.Hashing.Crc32.HashToUInt32(named));
     stream.Write(sum);
+}
+
+// The game stores its pictures blue first. Reading them as though red came first is how a gold
+// star comes out blue, so the two ends of each pixel are swapped on the way out.
+static byte[] Straighten(ReadOnlySpan<byte> pixels)
+{
+    var rgba = new byte[pixels.Length];
+    for (var i = 0; i < pixels.Length; i += 4)
+    {
+        (rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) = (pixels[i + 2], pixels[i + 1], pixels[i], pixels[i + 3]);
+    }
+
+    return rgba;
 }
 
 static string Sqpack() =>
