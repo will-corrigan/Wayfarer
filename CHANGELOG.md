@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/will-corrigan/Wayfarer/compare/v1.6.0...v1.6.1) (2026-09-21)
+
+
+### Fixed
+
+* **guidance:** the nearest line of a step, not the first the sheet wrote ([#84](https://github.com/will-corrigan/Wayfarer/issues/84)) ([ba21c20](https://github.com/will-corrigan/Wayfarer/commit/ba21c203afc269928aa7a714a82bc35a936df104))
+
 ## [1.6.0](https://github.com/will-corrigan/Wayfarer/compare/v1.5.0...v1.6.0) (2026-09-21)
 
 
