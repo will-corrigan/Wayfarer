@@ -89,7 +89,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         // quest the player chose to follow retitles the heading above it: the guide already says
         // what it is about when the main scenario is the one being guided.
         var followed = following.Followed is not null;
-        var duty = reader.Duty(questId);
+        var duties = reader.Duties(questId);
         return cached = QuestObjectiveBuilder.Build(
             reader.Name(questId),
             sequence,
@@ -98,7 +98,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             markers,
             reader.Emotes(),
             true,
-            duty,
+            duties,
             reader.Items(questId),
             reader.Marks(questId),
             QuestIds.Event(questId),

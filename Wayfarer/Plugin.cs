@@ -36,6 +36,10 @@ public sealed class Plugin(IDalamudPluginInterface pluginInterface) : IAsyncDala
         // Required before any KamiToolKit type (native windows, nodes) is touched.
         await KamiToolKitLibrary.InitializeAsync(pluginInterface, "Wayfarer").ConfigureAwait(false);
 
+        // Dalamud gives up on a load after a while and asks it to stop; a load that stops here is
+        // one Dalamud knows did not finish, and DisposeAsync tolerates the container not being built.
+        cancellationToken.ThrowIfCancellationRequested();
+
         var builder = new ContainerBuilder();
 
         builder.RegisterInstance(pluginInterface).ExternallyOwned();
@@ -45,6 +49,7 @@ public sealed class Plugin(IDalamudPluginInterface pluginInterface) : IAsyncDala
         builder.RegisterModule<QuestsRegistrations>();
 
         container = builder.Build();
+        cancellationToken.ThrowIfCancellationRequested();
         await container.Resolve<ModuleHost>().StartAsync().ConfigureAwait(false);
 
         // The version belongs in this line: it is the first question asked of every pasted log.
