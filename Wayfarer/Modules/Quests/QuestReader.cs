@@ -73,6 +73,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
+    private readonly Dictionary<ushort, IReadOnlyList<QuestDuty>> dutiesByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, ContentFinderCondition>? dutiesByContent;
 
@@ -178,36 +179,20 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         _ = Lairs(questId);
         _ = Items(questId);
         _ = Name(questId);
-        _ = Duty(questId);
+        _ = Duties(questId);
     }
 
     /// <summary>Every emote by each of its chat commands, "/bow".</summary>
     public IReadOnlyDictionary<string, EmoteCommand> Emotes() => emotesByCommand ??= ReadEmotes();
 
-    /// <summary>The duty a quest sends the player into, or null when it sends them nowhere
-    /// instanced. A quest names the duty among its own script parameters, the same list that names
-    /// its actors and its items, under <c>INSTANCEDUNGEON</c>. The Finder row it names carries the
-    /// instance's own territory, so both halves of the answer come off the one row.</summary>
-    public QuestDuty? Duty(ushort questId)
-    {
-        if (QuestRow(questId) is not { } quest)
-        {
-            return null;
-        }
-
-        dutiesByContent ??= ReadDuties();
-        foreach (var parameter in quest.QuestParams)
-        {
-            if (parameter.ScriptInstruction.ExtractText().StartsWith(DutyParameter, StringComparison.Ordinal)
-                && Finder(parameter.ScriptArg) is { } duty)
-            {
-                var territory = duty.TerritoryType.RowId;
-                return new QuestDuty(duty.RowId, territory != 0 ? territory : null);
-            }
-        }
-
-        return null;
-    }
+    /// <summary>The duties a quest sends the player into, in the order it names them, or none when
+    /// it sends them nowhere instanced. A quest names its duties among its own script parameters,
+    /// the same list that names its actors and its items, under <c>INSTANCEDUNGEON</c>; the finale
+    /// of every expansion names its dungeon and its trial both. The Finder row each names carries
+    /// the instance's own territory, so both halves of the answer come off the one row. A duty a
+    /// quest names twice is kept once.</summary>
+    public IReadOnlyList<QuestDuty> Duties(ushort questId) =>
+        dutiesByQuest.TryGetValue(questId, out var duties) ? duties : dutiesByQuest[questId] = ReadDutiesOf(questId);
 
     /// <summary>The mark the game itself puts on a quest, which is the one it draws on the map
     /// where the quest is offered: blue for a quest that unlocks something, and its own for the
@@ -476,6 +461,29 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         }
 
         return lairs;
+    }
+
+    private List<QuestDuty> ReadDutiesOf(ushort questId)
+    {
+        if (QuestRow(questId) is not { } quest)
+        {
+            return [];
+        }
+
+        dutiesByContent ??= ReadDuties();
+        var duties = new List<QuestDuty>();
+        foreach (var parameter in quest.QuestParams)
+        {
+            if (parameter.ScriptInstruction.ExtractText().StartsWith(DutyParameter, StringComparison.Ordinal)
+                && Finder(parameter.ScriptArg) is { } duty
+                && !duties.Any(known => known.Finder == duty.RowId))
+            {
+                var territory = duty.TerritoryType.RowId;
+                duties.Add(new QuestDuty(duty.RowId, territory != 0 ? territory : null));
+            }
+        }
+
+        return duties;
     }
 
     /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>

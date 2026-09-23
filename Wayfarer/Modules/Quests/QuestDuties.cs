@@ -34,14 +34,15 @@ internal sealed unsafe class QuestDuties(QuestReader reader)
 
         foreach (ref var accepted in quests->NormalQuests)
         {
-            if (accepted.QuestId == 0 || reader.Duty(accepted.QuestId) is not { } duty)
+            if (accepted.QuestId == 0 || reader.QuestIcon(accepted.QuestId) is not { } icon)
             {
                 continue;
             }
 
-            // Several quests can lead to one duty. The first is as good an answer as any: the mark
-            // says a quest is waiting, and pressing it opens that one.
-            if (reader.QuestIcon(accepted.QuestId) is { } icon)
+            // A quest marks every duty it leads to: the finale of an expansion marks its dungeon
+            // and its trial both. Several quests can lead to one duty, and the first is as good an
+            // answer as any: the mark says a quest is waiting, and pressing it opens that one.
+            foreach (var duty in reader.Duties(accepted.QuestId))
             {
                 byFinder.TryAdd(duty.Finder, new QuestBehind(accepted.QuestId, icon));
             }

@@ -10,9 +10,10 @@ namespace Wayfarer.Modules.Quests;
 /// the game is showing them and at its positions from the data otherwise. A ToDo that has the
 /// player use an item, emote or say something carries that as its action.
 ///
-/// <para>A step is inside the quest's duty when the data puts it in the duty's own territory,
-/// which is the game saying the step happens in there rather than anywhere a player can walk to.
-/// A step with nowhere on a map to go at all is treated the same way. There is nothing to walk to
+/// <para>A step is inside one of the quest's duties when the data puts it in that duty's own
+/// territory, which is the game saying the step happens in there rather than anywhere a player can
+/// walk to. A step with nowhere on a map to go at all is treated the same way when the quest has
+/// one duty. There is nothing to walk to
 /// in either case, so the guidance is to queue for it.</para></summary>
 internal static class QuestObjectiveBuilder
 {
@@ -34,7 +35,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand>? emotes = null,
         bool headlinePressable = false,
-        QuestDuty? duty = null,
+        IReadOnlyList<QuestDuty>? duties = null,
         IReadOnlyList<QuestItem>? items = null,
         IReadOnlyList<Mark>? marks = null,
         EventId? owner = null,
@@ -49,8 +50,8 @@ internal static class QuestObjectiveBuilder
 
         var step = todos.Where(todo => todo.Sequence == sequence).ToList();
         var entries = step.Count > 0
-            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duty, items, marks, owner, lairs, target))]
-            : DescribedByMarkers(questName, markers, duty);
+            ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duties ?? [], items, marks, owner, lairs, target))]
+            : DescribedByMarkers(questName, markers, duties ?? []);
 
         return entries.Count > 0 ? new Objective(questName, entries, headlinePressable, kind) : null;
     }
@@ -63,7 +64,7 @@ internal static class QuestObjectiveBuilder
         IReadOnlyList<QuestTodoProgress> progress,
         IReadOnlyList<QuestMarker> markers,
         IReadOnlyDictionary<string, EmoteCommand> emotes,
-        QuestDuty? duty,
+        IReadOnlyList<QuestDuty> duties,
         IReadOnlyList<QuestItem>? items,
         IReadOnlyList<Mark>? marks,
         EventId? owner,
@@ -71,7 +72,8 @@ internal static class QuestObjectiveBuilder
         QuestTarget? target)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
-        Destination where = Enters(todo, duty) || todo.Positions.Count == 0 ? Nowhere(duty)
+        Destination where = Entered(todo, duties) is { } entered ? new Destination.InDuty(entered.Finder)
+            : todo.Positions.Count == 0 ? Nowhere(duties)
             : Somewhere(target, markersAtThisTodo.Count > 0 ? Places(markersAtThisTodo) : todo.Positions, marks, owner, lairs);
 
         var reported = progress.FirstOrDefault(p => p.Index == todo.Index);
@@ -87,23 +89,36 @@ internal static class QuestObjectiveBuilder
         return needed > 1 ? new Progress(reported?.Have ?? 0, needed) : null;
     }
 
-    /// <summary>Whether this step happens inside the quest's duty: the data puts it in the duty's
-    /// own territory, which is not a place the player can be walked to. A step named anywhere else
-    /// is an ordinary place, even for a quest that has a duty, because most of a duty quest happens
-    /// outside it.</summary>
-    private static bool Enters(QuestTodo todo, QuestDuty? duty) =>
-        duty?.Territory is { } territory && todo.Positions.Any(position => position.Territory == territory);
+    /// <summary>The duty this step happens inside, or null when it happens outside all of them. The
+    /// data puts such a step in the duty's own territory, which is not a place the player can be
+    /// walked to, and no two duties a quest names share a territory. A step named anywhere else is
+    /// an ordinary place, even for a quest that has duties, because most of a duty quest happens
+    /// outside them.</summary>
+    private static QuestDuty? Entered(QuestTodo todo, IReadOnlyList<QuestDuty> duties)
+    {
+        foreach (var duty in duties)
+        {
+            if (duty.Territory is { } territory && todo.Positions.Any(position => position.Territory == territory))
+            {
+                return duty;
+            }
+        }
 
-    /// <summary>Where a step with nothing on a map to go to is: inside the quest's duty, or
-    /// nowhere the app can help with.</summary>
-    private static Destination Nowhere(QuestDuty? duty) =>
-        duty is { } instance ? new Destination.InDuty(instance.Finder) : new Destination.Blocked(NoLocation);
+        return null;
+    }
+
+    /// <summary>Where a step with nothing on a map to go to is: inside the quest's one duty, or
+    /// nowhere the app can help with. A quest that names several duties and positions a step
+    /// nowhere is not saying which -- the one live case lists three dungeons as examples for a
+    /// roulette -- so none is guessed at.</summary>
+    private static Destination Nowhere(IReadOnlyList<QuestDuty> duties) =>
+        duties is [var only] ? new Destination.InDuty(only.Finder) : new Destination.Blocked(NoLocation);
 
     /// <summary>What a quest with no to-do list for this step is about: wherever its markers are,
     /// or its duty when it has neither.</summary>
-    private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers, QuestDuty? duty) =>
+    private static List<ObjectiveEntry> DescribedByMarkers(string questName, IReadOnlyList<QuestMarker> markers, IReadOnlyList<QuestDuty> duties) =>
         markers.Count > 0 ? [new ObjectiveEntry(FirstLabel(markers) ?? questName, null, new Destination.Reachable(Places(markers)))]
-            : duty is { } instance ? [new ObjectiveEntry(questName, null, new Destination.InDuty(instance.Finder))]
+            : duties is [var only] ? [new ObjectiveEntry(questName, null, new Destination.InDuty(only.Finder))]
             : [];
 
     private static string? FirstLabel(IEnumerable<QuestMarker> markers) =>

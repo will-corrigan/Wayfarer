@@ -56,7 +56,13 @@ internal sealed class QuestsModule(
     {
         if (following.Guiding)
         {
-            await WarmAsync().ConfigureAwait(false);
+            // Warmed only on the way to holding guidance. Once held, the frame loop is reading what
+            // the warm-up writes, and it has already read it.
+            if (!ReferenceEquals(guidance.Holder, objectives))
+            {
+                await WarmAsync().ConfigureAwait(false);
+            }
+
             guidance.Claim(objectives);
         }
         else
@@ -94,19 +100,34 @@ internal sealed class QuestsModule(
     /// <summary>Reads what the first frame of guidance would otherwise read, away from that frame.
     ///
     /// <para>Which quest is being guided is the game's own answer and has to be asked for on its
-    /// thread; everything read about that quest is sheets, and is read off it. A quest that cannot
-    /// be named yet -- the player is not in the world -- is no reason to hold the module up, and
-    /// the frame that wants it will read it as it always did.</para></summary>
+    /// thread; everything read about that quest is sheets, and is read off it -- even when the
+    /// switch was thrown from the settings window, which is on the game's thread, so the sheets are
+    /// handed to a pool thread rather than read inside the click. A quest that cannot be named yet
+    /// -- the player is not in the world -- is no reason to hold the module up, and the frame that
+    /// wants it will read it as it always did.</para></summary>
     private async Task WarmAsync()
     {
-        reader.Warm();
+        await OffTheGameThread(reader.Warm).ConfigureAwait(false);
 
         var guided = await framework.RunOnFrameworkThread(
             () => following.Followed ?? reader.CurrentMainScenarioQuest()).ConfigureAwait(false);
 
         if (guided is { } questId)
         {
-            reader.Warm(questId);
+            await OffTheGameThread(() => reader.Warm(questId)).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>Runs sheet reading where it cannot cost a frame: here when already off the game's
+    /// thread, on the pool when on it.</summary>
+    private Task OffTheGameThread(Action read)
+    {
+        if (framework.IsInFrameworkUpdateThread)
+        {
+            return Task.Run(read);
+        }
+
+        read();
+        return Task.CompletedTask;
     }
 }
