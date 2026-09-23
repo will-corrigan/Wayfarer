@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/will-corrigan/Wayfarer/compare/v1.6.1...v1.6.2) (2026-09-23)
+
+
+### Fixed
+
+* **quests:** every duty a quest names, not the first the sheet wrote ([#86](https://github.com/will-corrigan/Wayfarer/issues/86)) ([f209589](https://github.com/will-corrigan/Wayfarer/commit/f2095895350d5f026167a94c298825d48a465b08))
+
 ## [1.6.1](https://github.com/will-corrigan/Wayfarer/compare/v1.6.0...v1.6.1) (2026-09-21)
 
 
