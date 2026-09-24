@@ -22,6 +22,12 @@ namespace Wayfarer.Routing;
 /// comparison as everything else.</para></summary>
 public sealed class RouteGraph
 {
+    /// <summary>How much a yalm climbed costs against a yalm walked across. A floor above is
+    /// reached by stairs, ramps and switchbacks, never straight up, so a place one floor over is
+    /// much further to walk than the straight line says. Without it, a shard on the very floor a
+    /// step is on loses to walking straight up through the ceiling.</summary>
+    private const float ClimbCost = 3f;
+
     private readonly RouteNode[] nodes;
     private readonly List<StaticEdge>[] edges;
     private readonly DoorEnd[] doorEnds;
@@ -55,10 +61,10 @@ public sealed class RouteGraph
             var b = a + 1;
             doorEnds[i * 2] = new DoorEnd(door.Name, door.From);
             doorEnds[(i * 2) + 1] = new DoorEnd(door.Name, door.To);
-            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name)));
+            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name, door.Npc), door.Quests));
             if (!door.OneWay)
             {
-                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name)));
+                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name, door.Npc), door.Quests));
             }
         }
 
@@ -86,7 +92,9 @@ public sealed class RouteGraph
     /// <param name="from">Where the player stands.</param>
     /// <param name="targets">The places on offer. The route ends at whichever is cheapest to reach.</param>
     /// <param name="attuned">Whether the player can use the aetheryte or shard with this id.</param>
-    public Route? FindRoute(Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned)
+    /// <param name="questDone">Whether the player has completed the quest with this id, for doors
+    /// kept until one is done. Null treats every such door as open.</param>
+    public Route? FindRoute(Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool>? questDone = null)
     {
         ArgumentNullException.ThrowIfNull(from);
         ArgumentNullException.ThrowIfNull(targets);
@@ -97,12 +105,12 @@ public sealed class RouteGraph
             return null;
         }
 
-        var search = new Search(this, from, targets, attuned);
+        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true));
         return search.Run();
     }
 
-    private static float Distance(Place a, Place b) =>
-        Vector3.Distance(new Vector3(a.X, a.Y, a.Z), new Vector3(b.X, b.Y, b.Z));
+    private static float Across(Place a, Place b) =>
+        Vector2.Distance(new Vector2(a.X, a.Z), new Vector2(b.X, b.Z));
 
     /// <summary>What walking somewhere really costs: the distance to it, less the room it has to
     /// stand in. A step often gives a wide circle to search and a precise point beside it, and the
@@ -110,12 +118,22 @@ public sealed class RouteGraph
     /// middle, a circle the player is already standing in loses to a point a few yalms away and
     /// the route turns them round and walks them out of the very area the step is about. Nought
     /// for a place already stood in, so it wins as it should. Everything the graph itself holds is
-    /// a point, so this only ever changes which of a step's own places is chosen.</summary>
-    private static float Reach(Place from, Place to) => MathF.Max(0f, Distance(from, to) - to.Radius);
+    /// a point, so this only ever changes which of a step's own places is chosen.
+    ///
+    /// <para>Height is charged apart from ground, at <see cref="ClimbCost"/> a yalm: see there.</para></summary>
+    private static float Reach(Place from, Place to) => MathF.Max(0f, Across(from, to) - to.Radius) + Climb(from, to);
+
+    /// <summary>What the height between two places costs, or nothing when either height is not
+    /// known: a stretch of ground named on a map has no height to climb to.</summary>
+    private static float Climb(Place from, Place to) =>
+        float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
-    private readonly record struct StaticEdge(int To, Leg Leg);
+    /// <param name="To">The node it leads to.</param>
+    /// <param name="Leg">How it is travelled.</param>
+    /// <param name="Needs">Quests that must be complete to take it, or null.</param>
+    private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null);
 
     private readonly record struct DoorEnd(string Name, Place At);
 
@@ -127,6 +145,7 @@ public sealed class RouteGraph
     {
         private readonly RouteGraph graph;
         private readonly Func<uint, bool> attuned;
+        private readonly Func<uint, bool> questDone;
         private readonly Place[] places;
         private readonly int origin;
         private readonly int firstTarget;
@@ -135,10 +154,11 @@ public sealed class RouteGraph
         private readonly Leg?[] cameBy;
         private readonly bool[] settled;
 
-        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned)
+        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone)
         {
             this.graph = graph;
             this.attuned = attuned;
+            this.questDone = questDone;
 
             var fixedCount = graph.edges.Length;
             places = new Place[fixedCount + 1 + targets.Count];
@@ -214,6 +234,11 @@ public sealed class RouteGraph
                 foreach (var edge in graph.edges[node])
                 {
                     if (edge.Leg is Leg.ShardHop && !(IsAttuned(node) && IsAttuned(edge.To)))
+                    {
+                        continue;
+                    }
+
+                    if (edge.Needs is { } needs && !needs.All(questDone))
                     {
                         continue;
                     }

@@ -1,4 +1,5 @@
 using Dalamud.Plugin.Services;
+using Wayfarer.App;
 using Wayfarer.App.Modules;
 using Wayfarer.Guidance;
 
@@ -63,11 +64,15 @@ internal sealed class QuestsModule(
                 await WarmAsync().ConfigureAwait(false);
             }
 
-            guidance.Claim(objectives);
+            // Resumed, not claimed: this runs whenever any setting is applied and whenever a
+            // character logs in, and a hunt the player chose to follow must not lose guidance to
+            // it unless the quest is what this character was last being guided to. When the hunt
+            // ends, the quest being followed is guided again.
+            await framework.OnTheGameThread(() => guidance.Resume(objectives)).ConfigureAwait(false);
         }
         else
         {
-            guidance.Yield(objectives);
+            await framework.OnTheGameThread(() => guidance.Yield(objectives)).ConfigureAwait(false);
         }
 
         if (following.FromJournal)
@@ -92,7 +97,7 @@ internal sealed class QuestsModule(
     /// <inheritdoc/>
     public async Task StopAsync()
     {
-        guidance.Yield(objectives);
+        await framework.OnTheGameThread(() => guidance.Yield(objectives)).ConfigureAwait(false);
         await dutyMarks.StopAsync().ConfigureAwait(false);
         await followButton.StopAsync().ConfigureAwait(false);
     }
@@ -107,27 +112,14 @@ internal sealed class QuestsModule(
     /// wants it will read it as it always did.</para></summary>
     private async Task WarmAsync()
     {
-        await OffTheGameThread(reader.Warm).ConfigureAwait(false);
+        await framework.OffTheGameThread(reader.Warm).ConfigureAwait(false);
 
         var guided = await framework.RunOnFrameworkThread(
             () => following.Followed ?? reader.CurrentMainScenarioQuest()).ConfigureAwait(false);
 
         if (guided is { } questId)
         {
-            await OffTheGameThread(() => reader.Warm(questId)).ConfigureAwait(false);
+            await framework.OffTheGameThread(() => reader.Warm(questId)).ConfigureAwait(false);
         }
-    }
-
-    /// <summary>Runs sheet reading where it cannot cost a frame: here when already off the game's
-    /// thread, on the pool when on it.</summary>
-    private Task OffTheGameThread(Action read)
-    {
-        if (framework.IsInFrameworkUpdateThread)
-        {
-            return Task.Run(read);
-        }
-
-        read();
-        return Task.CompletedTask;
     }
 }

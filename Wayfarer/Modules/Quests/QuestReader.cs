@@ -76,6 +76,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<QuestDuty>> dutiesByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
     private Dictionary<uint, ContentFinderCondition>? dutiesByContent;
+    private List<(string Name, byte Id)>? roulettesByName;
 
     public static byte Sequence(ushort questId) => QuestManager.GetQuestSequence(questId);
 
@@ -166,6 +167,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     {
         _ = Emotes();
         dutiesByContent ??= ReadDuties();
+        roulettesByName ??= ReadRoulettes();
     }
 
     /// <summary>Reads everything this keeps about one quest, so the first frame that guides it
@@ -237,12 +239,14 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         foreach (var template in templates)
         {
             var reported = progress.FirstOrDefault(entry => entry.Index == template.Index);
+            var words = Words(template.Words, reported?.Have ?? 0, Needed(reported, template));
             todos.Add(new QuestTodo(
                 template.Index,
                 template.Sequence,
-                Words(template.Words, reported?.Have ?? 0, Needed(reported, template)),
+                words,
                 template.Needed,
-                template.Positions));
+                template.Positions,
+                Roulette(words)));
         }
 
         return todos;
@@ -484,6 +488,49 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         }
 
         return duties;
+    }
+
+    /// <summary>The duty roulette a line asks the player to clear a duty through, or null.
+    ///
+    /// <para>Nothing in the sheets joins a quest to a roulette. Every row that names one of the
+    /// three quests that ask for one was checked, with the key item it hands out and the listener
+    /// it waits on: none leads to <c>ContentRoulette</c>. What the line says is the only link, and
+    /// it says it in the roulette's own words, "Duty Roulette: High-level Dungeons", as the
+    /// roulette sheet writes its name. A quest can also name a duty of its own for the same step,
+    /// as Morbid Motivation names the Lost City of Amdapor, and queueing for that duty alone would
+    /// not count.</para>
+    ///
+    /// <para>The longest name the line holds wins, so a roulette whose name begins another's
+    /// cannot be taken for it.</para></summary>
+    private byte? Roulette(string words)
+    {
+        roulettesByName ??= ReadRoulettes();
+        foreach (var (name, id) in roulettesByName)
+        {
+            if (words.Contains(name, StringComparison.Ordinal))
+            {
+                return id;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Every roulette by its name, longest first, keeping the first row of any name two
+    /// rows share.</summary>
+    private List<(string Name, byte Id)> ReadRoulettes()
+    {
+        var roulettes = new Dictionary<string, byte>(StringComparer.Ordinal);
+        foreach (var roulette in dataManager.GetExcelSheet<ContentRoulette>())
+        {
+            var name = roulette.Name.ExtractText();
+            if (name.Length > 0 && roulette.RowId <= byte.MaxValue)
+            {
+                roulettes.TryAdd(name, (byte)roulette.RowId);
+            }
+        }
+
+        return [.. roulettes.OrderByDescending(pair => pair.Key.Length).Select(pair => (pair.Key, pair.Value))];
     }
 
     /// <summary>Every duty the Duty Finder can queue for, by the instanced content it runs.</summary>

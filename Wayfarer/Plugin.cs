@@ -4,6 +4,7 @@ using Dalamud.Plugin.Services;
 using KamiToolKit;
 using Wayfarer.App;
 using Wayfarer.App.Modules;
+using Wayfarer.Modules.Hunting;
 using Wayfarer.Modules.Quests;
 
 namespace Wayfarer;
@@ -47,6 +48,7 @@ public sealed class Plugin(IDalamudPluginInterface pluginInterface) : IAsyncDala
 
         builder.RegisterModule<AppRegistrations>();
         builder.RegisterModule<QuestsRegistrations>();
+        builder.RegisterModule<HuntingRegistrations>();
 
         container = builder.Build();
         cancellationToken.ThrowIfCancellationRequested();

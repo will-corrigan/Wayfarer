@@ -60,6 +60,7 @@ public static class GuidanceChange
         (Destination.Reachable x, Destination.Reachable y) => x.Places.SequenceEqual(y.Places),
         (Destination.AtObject x, Destination.AtObject y) => x.Id == y.Id && x.At == y.At,
         (Destination.InDuty x, Destination.InDuty y) => x.DutyId == y.DutyId,
+        (Destination.InRoulette x, Destination.InRoulette y) => x.RouletteId == y.RouletteId,
         (Destination.Blocked x, Destination.Blocked y) => string.Equals(x.Reason, y.Reason, StringComparison.Ordinal),
         _ => false,
     };

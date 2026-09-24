@@ -44,6 +44,7 @@
   <!-- The shipped routing data, so its validator can read it. -->
   <ItemGroup>
     <Content Include="../data/routing-graph.json" Link="routing-graph.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../data/monster-positions.json" Link="monster-positions.json" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
 
 </Project>

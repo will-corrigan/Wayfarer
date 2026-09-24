@@ -1,3 +1,4 @@
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
 namespace Wayfarer.Guidance;
@@ -14,4 +15,9 @@ internal static unsafe class PlayerState
         var state = UIState.Instance();
         return state != null && state->IsAetheryteUnlocked(aetheryteId);
     }
+
+    /// <summary>Whether the player has completed a quest, which is what decides whether a door kept
+    /// until one is done may be taken. Not done is the answer while the game has no state yet.</summary>
+    public static bool IsQuestComplete(uint questId) =>
+        QuestManager.Instance() != null && QuestManager.IsQuestComplete(questId);
 }

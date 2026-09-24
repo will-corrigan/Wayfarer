@@ -213,6 +213,49 @@ public class RouteGraphTests
         Assert.Equal(80f, walk.Yalms, 0.01f);
     }
 
+    [Fact]
+    public void A_shard_on_the_floor_above_beats_walking_straight_up_to_it()
+    {
+        // The Gold Saucer is one map for every floor. From the ground-floor Nanamo, the one
+        // upstairs is 39 yalms across and 21 up: the Wonder Square West shard stands on her floor.
+        const uint saucer = 144;
+        var entrance = new RouteNode(63, "Entrance & Card Squares", RouteNodeKind.Shard, 5, new Place(saucer, 196, -61.5f, 0f, 50.9f));
+        var west = new RouteNode(65, "Wonder Square West", RouteNodeKind.Shard, 5, new Place(saucer, 196, 1.6f, 21f, 57f));
+        var graph = new RouteGraph([entrance, west], []);
+
+        var route = graph.FindRoute(new Place(saucer, 196, -51.7f, 0f, 53.9f), [new Place(saucer, 196, -12.8f, 21f, 47.9f)], AllAttuned);
+
+        Assert.Contains(route!.Legs, leg => leg is Leg.ShardHop { ExitShard: "Wonder Square West" });
+    }
+
+    [Fact]
+    public void A_lift_up_to_a_landing_beats_the_long_way_round()
+    {
+        // Ul'dah: the lift attendant on the Hustings Strip takes you straight up to the airship
+        // landing, which otherwise is a long walk round through the city.
+        var lift = new DoorLink("Ride Lift to the Airship Landing", At(Field, 1, 5f), At(Field, 9, 0f), OneWay: true, Npc: "Lolomaya");
+        var stairs = new DoorLink("Hustings Strip", At(Field, 1, 400f), At(Field, 9, 400f));
+        var graph = new RouteGraph([], [lift, stairs]);
+
+        var route = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned);
+
+        Assert.Contains(route!.Legs, leg => leg is Leg.Door { Npc: "Lolomaya" });
+    }
+
+    [Fact]
+    public void A_door_kept_until_a_quest_is_done_is_not_taken_before_it()
+    {
+        var airship = new DoorLink("Purchase Passage to Gridania", At(Field, 1, 5f), At(Field, 9, 0f), OneWay: true, Npc: "Elyenora", Quests: [66000u]);
+        var stairs = new DoorLink("The long way", At(Field, 1, 400f), At(Field, 9, 400f));
+        var graph = new RouteGraph([], [airship, stairs]);
+
+        var before = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: _ => false);
+        var after = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: quest => quest == 66000u);
+
+        Assert.DoesNotContain(before!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
+        Assert.Contains(after!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
+    }
+
     private static RouteGraph World() => new([FieldAetheryte, CityAetheryte, NearShard, FarShard], []);
 
     private static Place At(uint territory, uint map, float x) => new(territory, map, x, 0f, 0f);

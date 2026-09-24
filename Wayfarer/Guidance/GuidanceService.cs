@@ -24,7 +24,11 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     private readonly IClientState clientState;
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
+    private readonly HolderMemory memory;
     private readonly IPluginLog log;
+
+    /// <summary>Who holds guidance and who waits to have it back.</summary>
+    private readonly Focus focus = new();
 
     private bool broken;
     private ObjectiveEntry? routedTo;
@@ -36,12 +40,14 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         IClientState clientState,
         IObjectTable objects,
         RouteGraph graph,
+        HolderMemory memory,
         IPluginLog log)
     {
         this.framework = framework;
         this.clientState = clientState;
         this.objects = objects;
         this.graph = graph;
+        this.memory = memory;
         this.log = log;
         framework.Update += OnUpdate;
     }
@@ -50,7 +56,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     public event EventHandler<GuidanceChangedEventArgs>? OnChanged;
 
     /// <inheritdoc/>
-    public IObjectiveSource? Holder { get; private set; }
+    public IObjectiveSource? Holder => focus.Holder;
 
     /// <inheritdoc/>
     public PublishedGuidance? Current { get; private set; }
@@ -59,24 +65,21 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     public void Claim(IObjectiveSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (ReferenceEquals(Holder, source))
-        {
-            return;
-        }
-
-        var displaced = Holder;
-        Holder = source;
-        displaced?.Displaced();
+        Remembered(() => focus.Claim(source)?.Displaced());
     }
 
     /// <inheritdoc/>
-    public void Yield(IObjectiveSource source)
+    public void Offer(IObjectiveSource source) => Remembered(() => focus.Offer(source));
+
+    /// <inheritdoc/>
+    public void Resume(IObjectiveSource source)
     {
-        if (ReferenceEquals(Holder, source))
-        {
-            Holder = null;
-        }
+        ArgumentNullException.ThrowIfNull(source);
+        Remembered(() => focus.Resume(source, memory.Last)?.Displaced());
     }
+
+    /// <inheritdoc/>
+    public void Yield(IObjectiveSource source) => Remembered(() => focus.Yield(source));
 
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;
@@ -98,6 +101,19 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         var (dx, dy, dz) = (last.X - now.X, last.Y - now.Y, last.Z - now.Z);
         return last.Territory == now.Territory
             && (dx * dx) + (dy * dy) + (dz * dz) < RouteRethinkYalms * RouteRethinkYalms;
+    }
+
+    /// <summary>Changes who holds focus, and notes the new holder for the character playing when it
+    /// changed. Only a change is noted: a character just logged in still has the last one's holder
+    /// until a source resumes or lets go, and that holder was not this character's choice.</summary>
+    private void Remembered(Action change)
+    {
+        var before = focus.Holder;
+        change();
+        if (!ReferenceEquals(before, focus.Holder))
+        {
+            memory.Remember(focus.Holder);
+        }
     }
 
     private void OnUpdate(IFramework tick)
@@ -175,7 +191,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
         routedTo = target;
         routedFrom = from;
-        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>

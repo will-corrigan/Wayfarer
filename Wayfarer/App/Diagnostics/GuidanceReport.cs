@@ -99,6 +99,9 @@ internal sealed unsafe class GuidanceReport(IGuidance guidance, IObjectTable obj
             case Destination.InDuty duty:
                 Say($"where: inside duty {duty.DutyId}");
                 break;
+            case Destination.InRoulette roulette:
+                Say($"where: inside whatever roulette {roulette.RouletteId} picks");
+                break;
             case Destination.Blocked blocked:
                 Say($"where: blocked - {blocked.Reason}");
                 break;

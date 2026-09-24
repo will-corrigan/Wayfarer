@@ -19,4 +19,8 @@ public abstract record RoutePress
     /// <summary>Open the Duty Finder at this duty: the target is inside it.</summary>
     /// <param name="DutyId">The duty's content finder condition id.</param>
     public sealed record OpenDuty(uint DutyId) : RoutePress;
+
+    /// <summary>Open the Duty Finder at this roulette: the target is whichever duty it picks.</summary>
+    /// <param name="RouletteId">The roulette's row in <c>ContentRoulette</c>.</param>
+    public sealed record OpenRoulette(byte RouletteId) : RoutePress;
 }

@@ -2,9 +2,10 @@ using Wayfarer.Routing;
 
 namespace Wayfarer.Guidance;
 
-/// <summary>Where an entry's target is. Exactly four kinds, because routing treats exactly four
+/// <summary>Where an entry's target is. Exactly five kinds, because routing treats exactly five
 /// things differently: it runs the graph over places, it follows one thing standing in the world,
-/// it offers the Duty Finder for a duty, and it does nothing for something that cannot be reached.
+/// it offers the Duty Finder at a duty or at a roulette, and it does nothing for something that
+/// cannot be reached.
 ///
 /// <para>Each kind carries only its own fields, so a module cannot produce a duty with a radius or
 /// a place with a queue id. Nothing here says how a module decided any of it: which of a step's
@@ -32,6 +33,12 @@ public abstract record Destination
 
     /// <summary>Inside instanced content. Nothing to walk to; the only guidance is to queue.</summary>
     public sealed record InDuty(uint DutyId) : Destination;
+
+    /// <summary>Inside whichever duty a roulette picks. Nothing to walk to, and no one duty to
+    /// queue for: the step asks for the roulette itself, and a duty queued on its own would not
+    /// count.</summary>
+    /// <param name="RouletteId">The roulette's row in <c>ContentRoulette</c>.</param>
+    public sealed record InRoulette(byte RouletteId) : Destination;
 
     /// <summary>Cannot be reached now, and here is why: a gate the player has not passed, or a
     /// gap in the data. Routing does nothing; the words say the reason.</summary>

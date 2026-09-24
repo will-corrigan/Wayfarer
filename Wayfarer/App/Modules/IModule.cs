@@ -29,8 +29,9 @@ internal interface IModule
     IReadOnlyList<ModuleSetting> Settings => [];
 
     /// <summary>Brings every part of the module into line with its own settings: what is switched
-    /// on runs, what is switched off does not. Called once on load and again after each switch, so
-    /// it has to be safe to call on a module that is already exactly as it should be.</summary>
+    /// on runs, what is switched off does not. Called once on load, again after each switch and
+    /// again when a character logs in, so it has to be safe to call on a module that is already
+    /// exactly as it should be. A module that guides resumes its source here.</summary>
     Task ApplyAsync();
 
     /// <summary>Takes the whole module down whatever its settings say, releasing focus,
