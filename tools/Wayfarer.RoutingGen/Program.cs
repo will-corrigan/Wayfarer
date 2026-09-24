@@ -33,7 +33,7 @@ nodes = Heights.Nodes(game, layouts, nodes);
 doors = Heights.Mirrored(game, layouts, maps, doors);
 doors = Heights.Doors(layouts, doors);
 doors.AddRange(WarpDoors.Read(game, maps, layouts, routable));
-Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones");
+Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones, {layouts.Mirrored} files from the mirror");
 
 File.WriteAllText(output, new RoutingGraphFile(nodes, doors).ToJson());
 Console.Error.WriteLine($"{nodes.Count} nodes ({nodes.Count(n => n.Kind == RouteNodeKind.Aetheryte)} aetherytes), {doors.Count} doors -> {output}");

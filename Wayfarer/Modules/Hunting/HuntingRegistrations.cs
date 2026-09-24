@@ -10,6 +10,7 @@ internal sealed class HuntingRegistrations : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
+        builder.RegisterType<MonsterPositions>().SingleInstance();
         builder.RegisterType<HuntReader>().SingleInstance();
         builder.RegisterType<HuntFollowing>().SingleInstance();
         builder.RegisterType<HuntObjectives>().SingleInstance();

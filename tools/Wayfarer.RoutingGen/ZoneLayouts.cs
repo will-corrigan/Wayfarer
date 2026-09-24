@@ -6,7 +6,7 @@ namespace Wayfarer.RoutingGen;
 /// <summary>Every zone's layout, read once each when first asked for.</summary>
 internal sealed class ZoneLayouts
 {
-    private readonly GameData game;
+    private readonly LayoutFiles files;
     private readonly Lumina.Excel.ExcelSheet<TerritoryType> territories;
     private readonly Lumina.Excel.ExcelSheet<ENpcBase> people;
     private readonly Lumina.Excel.ExcelSheet<EObj> objects;
@@ -15,12 +15,15 @@ internal sealed class ZoneLayouts
 
     public ZoneLayouts(GameData game)
     {
-        this.game = game;
+        files = new LayoutFiles(game);
         territories = game.Excel.GetSheet<TerritoryType>();
         people = game.Excel.GetSheet<ENpcBase>();
         objects = game.Excel.GetSheet<EObj>();
         warps = game.Excel.GetSheet<Warp>();
     }
+
+    /// <summary>How many layout files came from the mirror because the install does not have them.</summary>
+    public int Mirrored => files.Mirrored;
 
     /// <summary>How many zones have been read.</summary>
     public int Count => read.Count;
@@ -30,7 +33,7 @@ internal sealed class ZoneLayouts
     {
         if (!read.TryGetValue(territory, out var layout))
         {
-            read[territory] = layout = ZoneLayout.Read(game, territories.GetRowOrDefault(territory), WarpsOf, ObjectWarp);
+            read[territory] = layout = ZoneLayout.Read(files, territories.GetRowOrDefault(territory), WarpsOf, ObjectWarp);
         }
 
         return layout;

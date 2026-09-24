@@ -20,7 +20,7 @@ namespace Wayfarer.Modules.Hunting;
 /// hunt and kept. How many have been killed, whether one is standing in sight and whether a FATE
 /// is up are this character's and this moment's, and are read from the game every time, on its own
 /// thread.</para></summary>
-internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects, IClientState clientState, IFateTable fates)
+internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects, IClientState clientState, IFateTable fates, MonsterPositions positions)
 {
     /// <summary>How many monster entries a hunting log page has.</summary>
     private const int EntriesPerPage = 10;
@@ -252,7 +252,8 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
                     continue;
                 }
 
-                var (places, duty) = WhereTargetLives(target);
+                var (named, duty) = WhereTargetLives(target);
+                var places = Sighted(target.BNpcName.RowId, named);
                 quarries.Add(new HuntQuarry(
                     Shown(target.BNpcName.ValueNullable?.Singular.ExtractText() ?? string.Empty),
                     target.BNpcName.RowId,
@@ -295,7 +296,7 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
                 Shown(target.Name.ValueNullable?.Singular.ExtractText() ?? string.Empty),
                 target.Name.RowId,
                 line.NeededKills,
-                BillPlaces(target),
+                Sighted(target.Name.RowId, BillPlaces(target)),
                 null,
                 fate,
                 page,
@@ -343,6 +344,16 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
         }
 
         return (places, null);
+    }
+
+    /// <summary>Where a monster has been seen in the zones a hunt names for it, when anyone has
+    /// reported it there; otherwise the parts of the map the hunt names. A bill or a log only ever
+    /// names a stretch of map by its label, which is not where anything stands.</summary>
+    private IReadOnlyList<Place> Sighted(uint nameId, IReadOnlyList<Place> named)
+    {
+        var zones = named.Select(place => place.Territory).ToHashSet();
+        var seen = positions.In(nameId, zones);
+        return seen.Count > 0 ? seen : named;
     }
 
     /// <summary>Where a bill's target lives: the part of its map the bill names, or when the bill

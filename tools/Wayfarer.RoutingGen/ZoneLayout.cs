@@ -39,7 +39,7 @@ internal sealed class ZoneLayout
     /// <param name="territory">The zone, or null for none.</param>
     /// <param name="warpsOf">The warps a person offers, by who they are.</param>
     /// <param name="objectWarp">The warp an object sends you through, or zero.</param>
-    public static ZoneLayout Read(GameData game, TerritoryType? territory, Func<uint, IEnumerable<uint>> warpsOf, Func<uint, uint> objectWarp)
+    public static ZoneLayout Read(LayoutFiles game, TerritoryType? territory, Func<uint, IEnumerable<uint>> warpsOf, Func<uint, uint> objectWarp)
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(warpsOf);
@@ -58,9 +58,9 @@ internal sealed class ZoneLayout
             LgbFile? lgb;
             try
             {
-                lgb = game.GetFile<LgbFile>($"{folder}/{file}.lgb");
+                lgb = game.Get($"{folder}/{file}.lgb");
             }
-            catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or NotSupportedException or OutOfMemoryException or IndexOutOfRangeException or EndOfStreamException)
+            catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or NotSupportedException or OutOfMemoryException or IndexOutOfRangeException or EndOfStreamException or HttpRequestException or TaskCanceledException)
             {
                 // Lumina cannot read every layout: a few ask for an impossible amount of memory
                 // part-way through. Such a file is left out and named, not the whole run lost.
