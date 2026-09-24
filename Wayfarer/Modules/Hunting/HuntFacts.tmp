@@ -1,0 +1,9 @@
+using Wayfarer.Routing;
+
+namespace Wayfarer.Modules.Hunting;
+
+/// <summary>What the sheets say about a hunt: its name, its sort, and what it asks for in order.</summary>
+/// <param name="Headline">What the hunt is called.</param>
+/// <param name="Kind">What sort of hunt it is, as the guide heads it.</param>
+/// <param name="Quarries">Every monster it asks for, in the order the game lists them.</param>
+internal sealed record HuntFacts(string Headline, string Kind, IReadOnlyList<HuntQuarry> Quarries);
