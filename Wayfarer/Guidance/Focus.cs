@@ -11,7 +11,10 @@ namespace Wayfarer.Guidance;
 /// <para>Claiming is taking over: what the player just chose to follow. Offering is being there
 /// for when nobody else wants it: what a module that always has something to say does whenever
 /// its settings are applied, which must never take guidance from something the player
-/// chose.</para></summary>
+/// chose.</para>
+///
+/// <para>Resuming is either of those, chosen by who held focus last: the source a character was
+/// last guided to claims it back when they log in, and every other source offers.</para></summary>
 internal sealed class Focus
 {
     /// <summary>Sources waiting to hold focus again, the one to have it back first at the front.</summary>
@@ -61,6 +64,23 @@ internal sealed class Focus
         {
             waiting.Add(source);
         }
+    }
+
+    /// <summary>Takes focus back when this source is the one last held, and otherwise offers it:
+    /// what a character logging in, or a module coming up, does to pick up where it left off.</summary>
+    /// <param name="source">The source resuming.</param>
+    /// <param name="last">The name of the source last held, or null when none is known.</param>
+    /// <returns>The source pushed aside, which now waits to have it back, or null.</returns>
+    public IObjectiveSource? Resume(IObjectiveSource source, string? last)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (string.Equals(source.Name, last, StringComparison.Ordinal))
+        {
+            return Claim(source);
+        }
+
+        Offer(source);
+        return null;
     }
 
     /// <summary>Gives focus up, or stops waiting for it. When the holder gives it up, the source

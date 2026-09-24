@@ -1,4 +1,5 @@
 using Dalamud.Plugin.Services;
+using Wayfarer.App;
 using Wayfarer.App.Config;
 
 namespace Wayfarer.Modules.Hunting;
@@ -15,7 +16,7 @@ internal sealed class HuntFollowing(IConfigStore configs, IPlayerState player)
     private readonly HuntingConfig config = configs.Load<HuntingConfig>(ConfigName);
 
     /// <summary>The hunt this character is following, or null. Null too while nobody is logged in.</summary>
-    public Hunt? Followed => Character() is { } id && config.Followed.TryGetValue(id, out var hunt) ? hunt : null;
+    public Hunt? Followed => player.LoggedIn() is { } id && config.Followed.TryGetValue(id, out var hunt) ? hunt : null;
 
     /// <summary>Whether the Hunting Log's pages get a Follow button.</summary>
     public bool FromLog
@@ -52,7 +53,7 @@ internal sealed class HuntFollowing(IConfigStore configs, IPlayerState player)
     /// while nobody is logged in, since there is nobody to remember it for.</summary>
     public void Follow(Hunt hunt)
     {
-        if (Character() is not { } id || (config.Followed.TryGetValue(id, out var was) && was == hunt))
+        if (player.LoggedIn() is not { } id || (config.Followed.TryGetValue(id, out var was) && was == hunt))
         {
             return;
         }
@@ -64,11 +65,9 @@ internal sealed class HuntFollowing(IConfigStore configs, IPlayerState player)
     /// <summary>Stops following, for this character.</summary>
     public void Unfollow()
     {
-        if (Character() is { } id && config.Followed.Remove(id))
+        if (player.LoggedIn() is { } id && config.Followed.Remove(id))
         {
             configs.Save(ConfigName, config);
         }
     }
-
-    private ulong? Character() => player.ContentId is var id and not 0 ? id : null;
 }

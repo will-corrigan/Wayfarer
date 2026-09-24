@@ -1,5 +1,6 @@
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
+using Wayfarer.App;
 using Wayfarer.Guidance;
 
 namespace Wayfarer.Modules.Hunting;
@@ -32,7 +33,7 @@ internal sealed class MarkBillButtons : IAsyncDisposable
     }
 
     /// <summary>Starts watching every bill window, on the game's thread.</summary>
-    public Task StartAsync() => framework.RunOnFrameworkThread(() =>
+    public Task StartAsync() => framework.OnTheGameThread(() =>
     {
         foreach (var button in buttons)
         {

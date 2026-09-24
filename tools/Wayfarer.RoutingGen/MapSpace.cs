@@ -60,12 +60,13 @@ internal sealed class MapSpace
     /// <summary>The map row, or null when there is none.</summary>
     public Map? Row(uint mapId) => maps.GetRowOrDefault(mapId);
 
-    /// <summary>A marker's place in the world. Markers carry no height, so Y is zero.</summary>
+    /// <summary>A marker's place in the world. Markers carry no height, so Y is unknown until the
+    /// layouts say: a zero would be taken for a real floor.</summary>
     public Place Place(Map map, MapMarker marker)
     {
         var scale = map.SizeFactor / ScalePercent;
         var x = ((marker.X - CentrePixel) / scale) - map.OffsetX;
         var z = ((marker.Y - CentrePixel) / scale) - map.OffsetY;
-        return new Place(TerritoryOf(map.RowId), map.RowId, x, 0f, z);
+        return new Place(TerritoryOf(map.RowId), map.RowId, x, float.NaN, z);
     }
 }

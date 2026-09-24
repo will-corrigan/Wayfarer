@@ -3428,7 +3428,7 @@
         "Territory": 962,
         "Map": 693,
         "X": 159.5,
-        "Y": "NaN",
+        "Y": -16.14699,
         "Z": 179,
         "Radius": 0
       },
@@ -4806,7 +4806,7 @@
         "Territory": 962,
         "Map": 693,
         "X": -54,
-        "Y": "NaN",
+        "Y": 18.16035,
         "Z": -324.5,
         "Radius": 0
       },
@@ -4823,12 +4823,34 @@
       "Quests": null
     },
     {
+      "Name": "Thavnair",
+      "From": {
+        "Territory": 962,
+        "Map": 693,
+        "X": -83.5,
+        "Y": 6.617,
+        "Z": -39.5,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 957,
+        "Map": 696,
+        "X": 196.0426,
+        "Y": 5.801895,
+        "Z": 635.3066,
+        "Radius": 0
+      },
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
+    },
+    {
       "Name": "Tuliyollal",
       "From": {
         "Territory": 962,
         "Map": 693,
         "X": 135.5,
-        "Y": "NaN",
+        "Y": -16.147,
         "Z": 221,
         "Radius": 0
       },
@@ -4849,20 +4871,20 @@
       "From": {
         "Territory": 956,
         "Map": 695,
-        "X": -335,
-        "Y": -224.2009,
-        "Z": 312,
+        "X": -334.894,
+        "Y": -224.1977,
+        "Z": 309.0448,
         "Radius": 0
       },
       "To": {
         "Territory": 960,
         "Map": 699,
-        "X": -375,
-        "Y": "NaN",
-        "Z": 615,
+        "X": -374.8073,
+        "Y": 81.82481,
+        "Z": 615.9901,
         "Radius": 0
       },
-      "OneWay": false,
+      "OneWay": true,
       "Npc": null,
       "Quests": null
     },
@@ -4889,24 +4911,24 @@
       "Quests": null
     },
     {
-      "Name": "The Nethergate",
+      "Name": "Mare Lamentorum",
       "From": {
-        "Territory": 959,
-        "Map": 698,
-        "X": -664,
-        "Y": "NaN",
-        "Z": 728,
+        "Territory": 1024,
+        "Map": 747,
+        "X": 0.0325378,
+        "Y": 5.568934,
+        "Z": 1.88633,
         "Radius": 0
       },
       "To": {
-        "Territory": 1024,
-        "Map": 747,
-        "X": 0,
-        "Y": 6.6208,
-        "Z": 0,
+        "Territory": 959,
+        "Map": 698,
+        "X": -663.283,
+        "Y": 132.6546,
+        "Z": 728.9899,
         "Radius": 0
       },
-      "OneWay": false,
+      "OneWay": true,
       "Npc": null,
       "Quests": null
     },
@@ -4926,6 +4948,28 @@
         "X": 99.99952,
         "Y": -0.314474,
         "Z": 169.9933,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Main Hall",
+      "From": {
+        "Territory": 962,
+        "Map": 693,
+        "X": -105.7098,
+        "Y": 3.898939,
+        "Z": 8.747293,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 987,
+        "Map": 742,
+        "X": -0.009068698,
+        "Y": 1.151502,
+        "Z": 14.81335,
         "Radius": 0
       },
       "OneWay": true,
@@ -4970,6 +5014,28 @@
         "X": 99.9981,
         "Y": 1.1515,
         "Z": 120.2372,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Ultima Thule",
+      "From": {
+        "Territory": 956,
+        "Map": 695,
+        "X": -334.894,
+        "Y": -224.1977,
+        "Z": 309.0448,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1027,
+        "Map": 751,
+        "X": -374.8073,
+        "Y": 81.82481,
+        "Z": 615.9901,
         "Radius": 0
       },
       "OneWay": true,
@@ -5197,6 +5263,50 @@
       "Quests": null
     },
     {
+      "Name": "Estinien\u0027s Chambers",
+      "From": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -354.7936,
+        "Y": 55,
+        "Z": -76.47082,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1161,
+        "Map": 840,
+        "X": -0.01163792,
+        "Y": 1.25,
+        "Z": 5.968202,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "The Red Moon",
+      "From": {
+        "Territory": 959,
+        "Map": 698,
+        "X": -106.7309,
+        "Y": 52.19632,
+        "Z": 393.9213,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1162,
+        "Map": 842,
+        "X": -44.87475,
+        "Y": 113.9794,
+        "Z": 770.0728,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
       "Name": "Urqopacha",
       "From": {
         "Territory": 1185,
@@ -5413,6 +5523,50 @@
         "Radius": 0
       },
       "OneWay": false,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "The Maiden\u0027s Home",
+      "From": {
+        "Territory": 962,
+        "Map": 693,
+        "X": 174.8708,
+        "Y": 4.58709,
+        "Z": -4.911951,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1337,
+        "Map": 1124,
+        "X": -7.780531,
+        "Y": 1.058224,
+        "Z": -0.9188803,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "The Red Moon",
+      "From": {
+        "Territory": 959,
+        "Map": 698,
+        "X": -106.7309,
+        "Y": 52.19632,
+        "Z": 393.9213,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1162,
+        "Map": 842,
+        "X": -44.87475,
+        "Y": 113.9794,
+        "Z": 770.0728,
+        "Radius": 0
+      },
+      "OneWay": true,
       "Npc": null,
       "Quests": null
     },
@@ -9213,6 +9367,30 @@
       ]
     },
     {
+      "Name": "Purchase Passage to Radz-at-Han",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -25.92511,
+        "Y": 92.0024,
+        "Z": -3.677429,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -138.7585,
+        "Y": 28.08,
+        "Z": 223.0718,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "L\u0027nophlo",
+      "Quests": [
+        70000
+      ]
+    },
+    {
       "Name": "Ride Lift to the Drowning Wench",
       "From": {
         "Territory": 128,
@@ -9537,6 +9715,30 @@
       ]
     },
     {
+      "Name": "Purchase Passage to Radz-at-Han",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -23.59064,
+        "Y": 83.19997,
+        "Z": -2.274539,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -138.7585,
+        "Y": 28.08,
+        "Z": 223.0718,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Elyenora",
+      "Quests": [
+        70000
+      ]
+    },
+    {
       "Name": "Ride Lift to the Hustings Strip",
       "From": {
         "Territory": 130,
@@ -9838,6 +10040,30 @@
       "Npc": "Lionnellais",
       "Quests": [
         65970
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Radz-at-Han",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 29.03787,
+        "Y": -19.02805,
+        "Z": 105.4856,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -138.7585,
+        "Y": 28.08,
+        "Z": 223.0718,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lionnellais",
+      "Quests": [
+        70000
       ]
     },
     {
@@ -11294,6 +11520,30 @@
       "Quests": null
     },
     {
+      "Name": "Purchase Passage to Radz-at-Han",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 149.7367,
+        "Y": -12.28351,
+        "Z": -7.858459,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -138.7585,
+        "Y": 28.08,
+        "Z": 223.0718,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": [
+        70000
+      ]
+    },
+    {
       "Name": "Seek Passage to Azys Lla",
       "From": {
         "Territory": 419,
@@ -11644,6 +11894,30 @@
       "OneWay": true,
       "Npc": "Uguisu",
       "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Radz-at-Han",
+      "From": {
+        "Territory": 628,
+        "Map": 370,
+        "X": -63.58791,
+        "Y": 79.40909,
+        "Z": 44.26858,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -138.7585,
+        "Y": 28.08,
+        "Z": 223.0718,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Chihaya",
+      "Quests": [
+        70000
+      ]
     },
     {
       "Name": "Enter the Ruby Bazaar Offices",
@@ -12838,6 +13112,94 @@
       "Quests": null
     },
     {
+      "Name": "The Nethergate",
+      "From": {
+        "Territory": 959,
+        "Map": 698,
+        "X": -663.283,
+        "Y": 132.6546,
+        "Z": 728.9899,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 1024,
+        "Map": 747,
+        "X": 0.0325378,
+        "Y": 5.568934,
+        "Z": 1.88633,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Labyrinthos",
+      "From": {
+        "Territory": 960,
+        "Map": 699,
+        "X": -374.8073,
+        "Y": 81.82481,
+        "Z": 615.9901,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 956,
+        "Map": 695,
+        "X": -334.894,
+        "Y": -224.1977,
+        "Z": 309.0448,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Travel to A-4 Research",
+      "From": {
+        "Territory": 960,
+        "Map": 699,
+        "X": 244.841,
+        "Y": 564.8191,
+        "Z": 261.7767,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 960,
+        "Map": 699,
+        "X": 304.9543,
+        "Y": 482.1364,
+        "Z": 162.5933,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "N-2174",
+      "Quests": null
+    },
+    {
+      "Name": "Travel to the Last Dregs",
+      "From": {
+        "Territory": 960,
+        "Map": 699,
+        "X": 301.8081,
+        "Y": 482.1088,
+        "Z": 165.0262,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 960,
+        "Map": 699,
+        "X": 239.4544,
+        "Y": 565.4588,
+        "Z": 263.4709,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "M-101",
+      "Quests": null
+    },
+    {
       "Name": "The Ocular",
       "From": {
         "Territory": 961,
@@ -12970,6 +13332,126 @@
       "Quests": null
     },
     {
+      "Name": "Purchase Passage to Ul\u0027dah",
+      "From": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -147.1138,
+        "Y": 28.03076,
+        "Z": 229.1945,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -17.53673,
+        "Y": 82.99998,
+        "Z": 3.712338,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Imshayra",
+      "Quests": [
+        70000
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Gridania",
+      "From": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -147.1138,
+        "Y": 28.03076,
+        "Z": 229.1945,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 35.11322,
+        "Y": -19,
+        "Z": 104.5712,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Imshayra",
+      "Quests": [
+        70000
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -147.1138,
+        "Y": 28.03076,
+        "Z": 229.1945,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -12.69166,
+        "Y": 91.49994,
+        "Z": -7.602967,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Imshayra",
+      "Quests": [
+        70000
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Ishgard",
+      "From": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -147.1138,
+        "Y": 28.03076,
+        "Z": 229.1945,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 159.8424,
+        "Y": -12.5463,
+        "Z": -16.81555,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Imshayra",
+      "Quests": [
+        70000
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Kugane",
+      "From": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -147.1138,
+        "Y": 28.03076,
+        "Z": 229.1945,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 628,
+        "Map": 370,
+        "X": -58.88625,
+        "Y": 79.05602,
+        "Z": 48.69147,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Imshayra",
+      "Quests": [
+        70000
+      ]
+    },
+    {
       "Name": "Amh Araeng",
       "From": {
         "Territory": 965,
@@ -13007,6 +13489,28 @@
         "X": 113.3135,
         "Y": 7.999978,
         "Z": 15.83572,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Old Sharlayan",
+      "From": {
+        "Territory": 987,
+        "Map": 742,
+        "X": -0.009068698,
+        "Y": 1.151502,
+        "Z": 14.81335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 962,
+        "Map": 693,
+        "X": -105.7098,
+        "Y": 3.898939,
+        "Z": 8.747293,
         "Radius": 0
       },
       "OneWay": true,
@@ -13077,6 +13581,72 @@
       },
       "OneWay": true,
       "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Labyrinthos",
+      "From": {
+        "Territory": 1027,
+        "Map": 751,
+        "X": -374.8073,
+        "Y": 81.82481,
+        "Z": 615.9901,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 956,
+        "Map": 695,
+        "X": -334.894,
+        "Y": -224.1977,
+        "Z": 309.0448,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Travel to A-4 Research",
+      "From": {
+        "Territory": 1027,
+        "Map": 751,
+        "X": 244.841,
+        "Y": 564.8191,
+        "Z": 261.7767,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 960,
+        "Map": 699,
+        "X": 304.9543,
+        "Y": 482.1364,
+        "Z": 162.5933,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "N-2174",
+      "Quests": null
+    },
+    {
+      "Name": "Travel to the Last Dregs",
+      "From": {
+        "Territory": 1027,
+        "Map": 751,
+        "X": 301.8081,
+        "Y": 482.1088,
+        "Z": 165.0262,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 960,
+        "Map": 699,
+        "X": 239.4544,
+        "Y": 565.4588,
+        "Z": 263.4709,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "M-101",
       "Quests": null
     },
     {
@@ -13454,6 +14024,72 @@
       "Quests": null
     },
     {
+      "Name": "Radz-at-Han",
+      "From": {
+        "Territory": 1161,
+        "Map": 840,
+        "X": -0.01163792,
+        "Y": 1.25,
+        "Z": 5.968202,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 963,
+        "Map": 694,
+        "X": -354.7936,
+        "Y": 55,
+        "Z": -76.47082,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Mare Lamentorum",
+      "From": {
+        "Territory": 1162,
+        "Map": 842,
+        "X": -44.87475,
+        "Y": 113.9794,
+        "Z": 770.0728,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 959,
+        "Map": 698,
+        "X": -106.7309,
+        "Y": 52.19632,
+        "Z": 393.9213,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Mare Lamentorum",
+      "From": {
+        "Territory": 1162,
+        "Map": 842,
+        "X": 18,
+        "Y": 58.4496,
+        "Z": 505,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 959,
+        "Map": 698,
+        "X": -173.8912,
+        "Y": 56.0859,
+        "Z": 407.5175,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
       "Name": "Heritage Found",
       "From": {
         "Territory": 1171,
@@ -13645,6 +14281,28 @@
         "X": -51.85411,
         "Y": 6.47992,
         "Z": -107.184,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Old Sharlayan",
+      "From": {
+        "Territory": 1337,
+        "Map": 1124,
+        "X": -7.780531,
+        "Y": 1.058224,
+        "Z": -0.9188803,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 962,
+        "Map": 693,
+        "X": 174.8708,
+        "Y": 4.58709,
+        "Z": -4.911951,
         "Radius": 0
       },
       "OneWay": true,

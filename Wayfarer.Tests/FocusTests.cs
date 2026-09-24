@@ -117,6 +117,60 @@ public class FocusTests
     }
 
     [Fact]
+    public void Resuming_what_was_last_held_takes_it_back()
+    {
+        var focus = new Focus();
+        focus.Offer(quests);
+
+        var displaced = focus.Resume(hunting, "Hunting");
+
+        Assert.Same(hunting, focus.Holder);
+        Assert.Same(quests, displaced);
+    }
+
+    [Fact]
+    public void Resuming_what_was_not_last_held_waits_without_pushing_anyone_aside()
+    {
+        var focus = new Focus();
+        focus.Offer(quests);
+
+        Assert.Null(focus.Resume(hunting, "Quests"));
+        Assert.Same(quests, focus.Holder);
+        focus.Yield(quests);
+        Assert.Same(hunting, focus.Holder);
+    }
+
+    [Fact]
+    public void Resuming_with_nothing_remembered_holds_when_nobody_does()
+    {
+        var focus = new Focus();
+
+        focus.Resume(hunting, null);
+
+        Assert.Same(hunting, focus.Holder);
+    }
+
+    [Fact]
+    public void Each_character_picks_up_where_they_left_off()
+    {
+        // One character was hunting, another was on a quest they chose over their hunt. Logging
+        // in brings every module back, each resuming, in whatever order the modules come.
+        var focus = new Focus();
+        focus.Offer(quests);
+        focus.Claim(hunting);
+
+        focus.Resume(hunting, "Quests");
+        focus.Resume(quests, "Quests");
+        Assert.Same(quests, focus.Holder);
+
+        focus.Resume(quests, "Hunting");
+        focus.Resume(hunting, "Hunting");
+        Assert.Same(hunting, focus.Holder);
+        focus.Yield(hunting);
+        Assert.Same(quests, focus.Holder);
+    }
+
+    [Fact]
     public void Claiming_what_is_already_held_pushes_nobody_aside()
     {
         var focus = new Focus();

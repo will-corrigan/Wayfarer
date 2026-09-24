@@ -6,6 +6,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Controllers;
 using KamiToolKit.Nodes;
 using Wayfarer.App;
+using Wayfarer.Guidance;
 
 using static Wayfarer.GameNodes;
 
@@ -19,7 +20,13 @@ namespace Wayfarer.Modules.Quests;
 /// sits whatever the game does with it. It lives only while the quests module is up: the controller
 /// is enabled and disabled with the module, and the button is made when the pane opens and freed
 /// when it closes, the way every node added to a game window is.</para></summary>
-internal sealed class JournalFollowButton(QuestFollowing following, IGameGui gameGui, IFramework framework, IPluginLog log) : IAsyncDisposable
+internal sealed class JournalFollowButton(
+    QuestFollowing following,
+    QuestObjectives objectives,
+    IGuidance guidance,
+    IGameGui gameGui,
+    IFramework framework,
+    IPluginLog log) : IAsyncDisposable
 {
     /// <summary>The row of wide buttons at the foot of the pane, node 49, and the two the game
     /// puts in it: Map at one end and Abandon at the other. Ours goes in the space between them,
@@ -301,6 +308,13 @@ internal sealed class JournalFollowButton(QuestFollowing following, IGameGui gam
         else
         {
             following.Follow(quest);
+
+            // What the player just chose is what they are guided to, over a hunt they chose
+            // earlier, which waits to have guidance back.
+            if (following.Guiding)
+            {
+                guidance.Claim(objectives);
+            }
         }
     }
 }

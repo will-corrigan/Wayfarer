@@ -1,6 +1,5 @@
 using Dalamud.Plugin.Services;
 using Wayfarer.Guidance;
-using Wayfarer.Routing;
 
 namespace Wayfarer.Modules.Hunting;
 
@@ -28,17 +27,6 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
     {
     }
 
-    private static int Fingerprint(IEnumerable<int> kills)
-    {
-        var hash = default(HashCode);
-        foreach (var kill in kills)
-        {
-            hash.Add(kill);
-        }
-
-        return hash.ToHashCode();
-    }
-
     private Objective? Refresh()
     {
         if (following.Followed is not { } hunt)
@@ -48,10 +36,15 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
             return Stop(unfollow: false);
         }
 
-        if (reader.Facts(hunt) is not { } facts || HuntReader.Kills(hunt, facts) is not { } kills)
+        if (reader.Facts(hunt) is not { } facts)
         {
-            // No such hunt in the sheets, or the bill has been handed in.
-            log.Debug($"hunting: stopped following {hunt}: {(reader.Facts(hunt) is null ? "the sheets have no such hunt" : "the bill is no longer held")}.");
+            log.Debug($"hunting: stopped following {hunt}: the sheets have no such hunt.");
+            return Stop(unfollow: true);
+        }
+
+        if (HuntReader.Kills(hunt, facts) is not { } kills)
+        {
+            log.Debug($"hunting: stopped following {hunt}: the bill is no longer held.");
             return Stop(unfollow: true);
         }
 
@@ -69,7 +62,7 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
         var seen = reader.Seen(now.NameId);
         var fate = now.Fate is { } during ? reader.FateAt(during.Id) : null;
         var here = now.Places.Any(place => place.Territory == clientState.TerritoryType);
-        var signature = new Signature(hunt, Fingerprint(kills), seen?.Id ?? 0uL, fate is not null, here);
+        var signature = new Signature(hunt, Fingerprint.Of(kills), seen?.Id ?? 0uL, fate is not null, here);
         if (signature == last)
         {
             return cached;

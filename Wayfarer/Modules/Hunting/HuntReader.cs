@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Globalization;
+using System.Numerics;
 using Dalamud.Game.ClientState.Fates;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -47,9 +49,12 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
     /// arriving anywhere in it is arriving, and from there the monster itself is looked for.</summary>
     private const float AreaRadius = 40f;
 
-    private readonly Dictionary<Hunt, HuntFacts> facts = [];
-    private Dictionary<uint, List<Map>>? mapsByZone;
-    private Dictionary<string, uint>? dutiesByName;
+    /// <summary>Every hunt read so far, including the ones the sheets have nothing for, which the
+    /// buttons ask about every frame their window is open.</summary>
+    private readonly ConcurrentDictionary<Hunt, HuntFacts?> facts = [];
+
+    private readonly Lazy<Dictionary<uint, List<Map>>> mapsByZone = new(() => ReadMaps(data));
+    private readonly Lazy<Dictionary<string, uint>> dutiesByName = new(() => ReadDuties(data));
 
     /// <summary>How many of each target have been killed, in the order <see cref="Facts"/> lists
     /// them, or null when the game has nothing to say: the bill is no longer held. Game thread
@@ -88,30 +93,20 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
 
     /// <summary>Everything the sheets say about a hunt: what it is called, and every monster it
     /// asks for in order, with how many and where. Null when the sheets have no such hunt.
-    /// Read once per hunt; safe off the game's thread.</summary>
+    /// Read once per hunt, whatever the answer; safe off the game's thread.</summary>
     public HuntFacts? Facts(Hunt hunt)
     {
         ArgumentNullException.ThrowIfNull(hunt);
-        if (facts.TryGetValue(hunt, out var known))
-        {
-            return known;
-        }
-
-        var read = hunt.Kind == HuntKind.LogPage ? ReadPage(hunt) : ReadBill(hunt);
-        if (read is not null)
-        {
-            facts[hunt] = read;
-        }
-
-        return read;
+        return facts.GetOrAdd(hunt, asked => asked.Kind == HuntKind.LogPage ? ReadPage(asked) : ReadBill(asked));
     }
 
-    /// <summary>Reads the whole-game tables the hunts are looked up in, so the first frame that
-    /// guides one does not pay for them. Safe off the game's thread.</summary>
+    /// <summary>Reads the whole-game tables and the file the hunts are looked up in, so the first
+    /// frame that guides one does not pay for them. Safe off the game's thread.</summary>
     public void Warm()
     {
-        mapsByZone ??= ReadMaps();
-        dutiesByName ??= ReadDuties();
+        _ = mapsByZone.Value;
+        _ = dutiesByName.Value;
+        positions.Warm();
     }
 
     /// <summary>The nearest monster standing in sight with this name, alive and attackable, or
@@ -136,7 +131,7 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
                 continue;
             }
 
-            var far = Vector3Distance(npc.Position, player.Position);
+            var far = Vector3.Distance(npc.Position, player.Position);
             if (far < shortest)
             {
                 shortest = far;
@@ -189,8 +184,6 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
     private static string Shown(string name) =>
         string.Join(' ', name.Split(' ').Select(word => word.Length == 0 ? word : char.ToUpperInvariant(word[0]) + word[1..]));
 
-    private static float Vector3Distance(System.Numerics.Vector3 a, System.Numerics.Vector3 b) => System.Numerics.Vector3.Distance(a, b);
-
     private static List<int> PageKills(Hunt hunt, HuntFacts known)
     {
         var manager = MonsterNoteManager.Instance();
@@ -225,6 +218,50 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
         return [.. known.Quarries.Select(quarry => mobHunt->GetKillCount(markIndex, (byte)quarry.Entry))];
     }
 
+    /// <summary>The zone a bill names for its target: its map's.</summary>
+    private static HashSet<uint> BillZones(MobHuntTarget target) =>
+        target.Map.ValueNullable is { } map ? [map.TerritoryType.RowId] : [];
+
+    /// <summary>Every map a zone has, by the zone's name, for finding where a sheet's place names are.</summary>
+    private static Dictionary<uint, List<Map>> ReadMaps(IDataManager data)
+    {
+        var byZone = new Dictionary<uint, List<Map>>();
+        foreach (var map in data.GetExcelSheet<Map>())
+        {
+            if (map.PlaceName.RowId == 0 || map.TerritoryType.RowId == 0)
+            {
+                continue;
+            }
+
+            if (!byZone.TryGetValue(map.PlaceName.RowId, out var list))
+            {
+                byZone[map.PlaceName.RowId] = list = [];
+            }
+
+            list.Add(map);
+        }
+
+        return byZone;
+    }
+
+    /// <summary>The Duty Finder entry for each piece of instanced content, by the words naming the
+    /// ground it is fought on, for monsters that live nowhere a player can walk. The first entry
+    /// for a name wins, which is the ordinary difficulty: the sheet lists it first.</summary>
+    private static Dictionary<string, uint> ReadDuties(IDataManager data)
+    {
+        var byName = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        foreach (var condition in data.GetExcelSheet<ContentFinderCondition>())
+        {
+            if (condition.Content.Is<InstanceContent>()
+                && condition.TerritoryType.ValueNullable?.PlaceName.ValueNullable?.Name.ExtractText() is { Length: > 0 } words)
+            {
+                byName.TryAdd(words, condition.RowId);
+            }
+        }
+
+        return byName;
+    }
+
     private HuntFacts? ReadPage(Hunt hunt)
     {
         var (id, logBase) = hunt.Log >= GrandCompanyBase ? (hunt.Log / GrandCompanyBase, GrandCompanyBase) : (hunt.Log / ClassBase, ClassBase);
@@ -252,13 +289,14 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
                     continue;
                 }
 
+                // A monster inside a duty is guided to the duty, so where it has been seen is not
+                // asked: none of it is ground a player can walk to.
                 var (named, duty) = WhereTargetLives(target);
-                var places = Sighted(target.BNpcName.RowId, named);
                 quarries.Add(new HuntQuarry(
                     Shown(target.BNpcName.ValueNullable?.Singular.ExtractText() ?? string.Empty),
                     target.BNpcName.RowId,
                     note.Count[slot],
-                    places,
+                    duty is null ? Sighted(target.BNpcName.RowId, Zones(target), named) : named,
                     duty,
                     null,
                     entry,
@@ -296,7 +334,7 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
                 Shown(target.Name.ValueNullable?.Singular.ExtractText() ?? string.Empty),
                 target.Name.RowId,
                 line.NeededKills,
-                Sighted(target.Name.RowId, BillPlaces(target)),
+                Sighted(target.Name.RowId, BillZones(target), BillPlaces(target)),
                 null,
                 fate,
                 page,
@@ -311,7 +349,6 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
     /// duty it lives in when the part it names is inside one.</summary>
     private (IReadOnlyList<Place> Places, uint? Duty) WhereTargetLives(MonsterNoteTarget target)
     {
-        Warm();
         var places = new List<Place>();
         for (var i = 0; i < target.PlaceNameZone.Count; i++)
         {
@@ -337,7 +374,7 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
         // they are matched by their words.
         foreach (var name in target.PlaceNameLocation.Concat(target.PlaceNameZone))
         {
-            if (name.ValueNullable?.Name.ExtractText() is { Length: > 0 } words && dutiesByName!.TryGetValue(words, out var duty))
+            if (name.ValueNullable?.Name.ExtractText() is { Length: > 0 } words && dutiesByName.Value.TryGetValue(words, out var duty))
             {
                 return ([], duty);
             }
@@ -348,13 +385,22 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
 
     /// <summary>Where a monster has been seen in the zones a hunt names for it, when anyone has
     /// reported it there; otherwise the parts of the map the hunt names. A bill or a log only ever
-    /// names a stretch of map by its label, which is not where anything stands.</summary>
-    private IReadOnlyList<Place> Sighted(uint nameId, IReadOnlyList<Place> named)
+    /// names a stretch of map by its label, which is not where anything stands.
+    ///
+    /// <para>The zones are the hunt's own, not the ones its labels could be found in: a label the
+    /// map does not draw still names a zone the monster has been seen in.</para></summary>
+    private IReadOnlyList<Place> Sighted(uint nameId, IReadOnlySet<uint> zones, IReadOnlyList<Place> named)
     {
-        var zones = named.Select(place => place.Territory).ToHashSet();
         var seen = positions.In(nameId, zones);
         return seen.Count > 0 ? seen : named;
     }
+
+    /// <summary>Every zone a hunting log names for a monster, as the territories its maps cover.</summary>
+    private HashSet<uint> Zones(MonsterNoteTarget target) =>
+        [.. target.PlaceNameZone
+            .Where(zone => zone.RowId != 0)
+            .SelectMany(zone => mapsByZone.Value.GetValueOrDefault(zone.RowId) ?? [])
+            .Select(map => map.TerritoryType.RowId)];
 
     /// <summary>Where a bill's target lives: the part of its map the bill names, or when the bill
     /// names only the map, which is how an elite mark is named, the map's own aetheryte, to arrive
@@ -377,7 +423,7 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
     /// <summary>The parts of every map of a zone that the game labels with this name.</summary>
     private IEnumerable<Place> Marked(uint zone, uint location)
     {
-        if (!mapsByZone!.TryGetValue(zone, out var maps))
+        if (!mapsByZone.Value.TryGetValue(zone, out var maps))
         {
             yield break;
         }
@@ -433,45 +479,5 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
         }
 
         return null;
-    }
-
-    /// <summary>Every map a zone has, by the zone's name, for finding where a sheet's place names are.</summary>
-    private Dictionary<uint, List<Map>> ReadMaps()
-    {
-        var byZone = new Dictionary<uint, List<Map>>();
-        foreach (var map in data.GetExcelSheet<Map>())
-        {
-            if (map.PlaceName.RowId == 0 || map.TerritoryType.RowId == 0)
-            {
-                continue;
-            }
-
-            if (!byZone.TryGetValue(map.PlaceName.RowId, out var list))
-            {
-                byZone[map.PlaceName.RowId] = list = [];
-            }
-
-            list.Add(map);
-        }
-
-        return byZone;
-    }
-
-    /// <summary>The Duty Finder entry for each piece of instanced content, by the words naming the
-    /// ground it is fought on, for monsters that live nowhere a player can walk. The first entry
-    /// for a name wins, which is the ordinary difficulty: the sheet lists it first.</summary>
-    private Dictionary<string, uint> ReadDuties()
-    {
-        var byName = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
-        foreach (var condition in data.GetExcelSheet<ContentFinderCondition>())
-        {
-            if (condition.Content.Is<InstanceContent>()
-                && condition.TerritoryType.ValueNullable?.PlaceName.ValueNullable?.Name.ExtractText() is { Length: > 0 } words)
-            {
-                byName.TryAdd(words, condition.RowId);
-            }
-        }
-
-        return byName;
     }
 }

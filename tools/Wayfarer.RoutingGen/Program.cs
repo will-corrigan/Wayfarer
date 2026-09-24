@@ -34,7 +34,7 @@ Console.Error.WriteLine($"  {intoDuties} drawn links into duties left out");
 // The layouts of every zone the graph reaches give its stops and doors their real heights, and
 // hold the doors taken by asking someone.
 var routable = nodes.Select(node => node.At.Territory).Concat(doors.SelectMany(door => new[] { door.From.Territory, door.To.Territory })).Where(territory => territory != 0).ToHashSet();
-var layouts = new ZoneLayouts(game);
+using var layouts = new ZoneLayouts(game);
 
 // Walking from zone to zone is read off the zones' exits, and going through a door, a lift or a
 // ferry off the warps behind them, both ends placed. The drawn doors are kept only where neither

@@ -4,7 +4,7 @@ using Lumina.Excel.Sheets;
 namespace Wayfarer.RoutingGen;
 
 /// <summary>Every zone's layout, read once each when first asked for.</summary>
-internal sealed class ZoneLayouts
+internal sealed class ZoneLayouts : IDisposable
 {
     private readonly LayoutFiles files;
     private readonly Lumina.Excel.ExcelSheet<TerritoryType> territories;
@@ -27,6 +27,9 @@ internal sealed class ZoneLayouts
 
     /// <summary>How many zones have been read.</summary>
     public int Count => read.Count;
+
+    /// <inheritdoc/>
+    public void Dispose() => files.Dispose();
 
     /// <summary>One zone's layout.</summary>
     public ZoneLayout Of(uint territory)

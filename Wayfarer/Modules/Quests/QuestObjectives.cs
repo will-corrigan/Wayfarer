@@ -43,17 +43,6 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
     {
     }
 
-    private static int Fingerprint<T>(IEnumerable<T> items)
-    {
-        var hash = default(HashCode);
-        foreach (var item in items)
-        {
-            hash.Add(item);
-        }
-
-        return hash.ToHashCode();
-    }
-
     private Objective? Refresh()
     {
         if (QuestToFollow() is not { } questId)
@@ -68,7 +57,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         var sequence = QuestReader.Sequence(questId);
         var progress = reader.Progress(questId, sequence);
         var markers = QuestReader.Markers(questId);
-        var signature = new Signature(questId, sequence, Fingerprint(progress), Fingerprint(markers), target.Aim());
+        var signature = new Signature(questId, sequence, Fingerprint.Of(progress), Fingerprint.Of(markers), target.Aim());
         if (signature == last)
         {
             return cached;

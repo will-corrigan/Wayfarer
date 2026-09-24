@@ -1,7 +1,10 @@
 namespace Wayfarer.Guidance;
 
 /// <summary>The one thing between modules and surfaces. Modules claim it to guide; surfaces read
-/// what it publishes. It never writes words and never draws.</summary>
+/// what it publishes. It never writes words and never draws.
+///
+/// <para>Claiming, offering, resuming and yielding are game thread only: the frame loop reads who
+/// holds guidance on that thread, and who holds it is remembered for the character playing.</para></summary>
 internal interface IGuidance
 {
     /// <summary>Raised after <see cref="Current"/> changes.</summary>
@@ -24,6 +27,11 @@ internal interface IGuidance
     /// offers itself whenever its settings are applied and must not take guidance from something
     /// the player chose.</summary>
     void Offer(IObjectiveSource source);
+
+    /// <summary>Take focus back when this source is the one the character playing last had
+    /// guidance from, and otherwise offer it. For a module coming up or a character logging in, so
+    /// each character picks up where they left off rather than where the last one to play did.</summary>
+    void Resume(IObjectiveSource source);
 
     /// <summary>Give focus up, or stop waiting for it. When the holder gives it up, whichever
     /// source it pushed aside most recently has focus back.</summary>

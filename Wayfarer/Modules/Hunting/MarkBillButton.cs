@@ -1,24 +1,22 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using KamiToolKit.Controllers;
 using KamiToolKit.Nodes;
 using Wayfarer.Guidance;
-
-using static Wayfarer.GameNodes;
 
 namespace Wayfarer.Modules.Hunting;
 
 /// <summary>A button on one expansion's mark bill window that follows the bill on show, or stops
 /// following it. It stands beside the game's own Close button.
 ///
-/// <para>The window says which bill it shows only in its words, so the bill is found by asking
-/// which of the bills the character holds for that expansion has the monster on show on that
-/// page. When the character holds only one of them, that one is it.</para>
-///
-/// <para>Made when the window opens and freed when it closes, handing the pad's cursor back
-/// before it goes.</para></summary>
+/// <para>Which bill the window shows is asked of the game's mark bill agent, which keeps a record
+/// of it while the window is open: whether it is a bill the character holds or one a board is
+/// offering, which kind of bill, and which bill. The button is offered only for a held bill of one
+/// of this window's kinds, and only when the record names the very bill the character holds, so a
+/// record that is not what it seems shows no button rather than follows a bill that is not on
+/// show.</para></summary>
 internal sealed class MarkBillButton(
     string window,
     IReadOnlyList<byte> markIndexes,
@@ -26,13 +24,10 @@ internal sealed class MarkBillButton(
     HuntReader reader,
     HuntObjectives objectives,
     IGuidance guidance,
-    IPluginLog log) : IAsyncDisposable
+    IPluginLog log) : FollowButton(following, reader, objectives, guidance, log)
 {
     /// <summary>The panel under the bill that holds its words and buttons.</summary>
     private const uint PanelNodeId = 2;
-
-    /// <summary>The text naming the monster on show.</summary>
-    private const uint NameNodeId = 7;
 
     /// <summary>The game's own button in the panel: Close, for a bill already held.</summary>
     private const uint CloseNodeId = 21;
@@ -40,200 +35,77 @@ internal sealed class MarkBillButton(
     /// <summary>Air between the game's button and ours.</summary>
     private const float Gap = 8f;
 
-    /// <summary>Our stop in the window's cursor chain, well clear of the game's own.</summary>
-    private const int FollowNavIndex = 120;
+    /// <summary>Where the agent keeps its pointer to the record of the bill on show: the first
+    /// field after the common agent header, null while the window is hidden. The game's own code
+    /// reads it there to choose which of the six windows to open.</summary>
+    private const int ShownBillOffset = 0x28;
 
-    private const string FollowLabel = "Follow";
-    private const string UnfollowLabel = "Unfollow";
-    private const string FollowTooltip = "Guide to this bill's marks with Wayfarer, one at a time, in order.";
-    private const string UnfollowTooltip = "Stop guiding to this bill.";
+    /// <summary>The record's mode for a bill the character holds; a board's offer is another.</summary>
+    private const uint HeldMode = 0;
 
-    private AddonController? controller;
-    private TextButtonNode? button;
-    private Hunt? shownBill;
-    private bool shownAsFollowed;
-    private bool linked;
-    private byte closeRightBefore;
+    /// <inheritdoc/>
+    protected override string Window => window;
 
-    /// <summary>Starts watching the window. Game thread only.</summary>
-    public unsafe void Start()
+    /// <inheritdoc/>
+    protected override uint AnchorNodeId => CloseNodeId;
+
+    /// <inheritdoc/>
+    protected override Side Stands => Side.Right;
+
+    /// <inheritdoc/>
+    protected override string FollowTooltip => "Guide to this bill's marks with Wayfarer, one at a time, in order.";
+
+    /// <inheritdoc/>
+    protected override string UnfollowTooltip => "Stop guiding to this bill.";
+
+    /// <inheritdoc/>
+    protected override unsafe AtkResNode* Parent(AtkUnitBase* addon) => addon->GetNodeById(PanelNodeId);
+
+    /// <inheritdoc/>
+    /// <remarks>The bill on show, when the character holds it.</remarks>
+    protected override unsafe Hunt? OnShow(AtkUnitBase* addon)
     {
-        controller ??= new AddonController
+        var agents = AgentModule.Instance();
+        var agent = agents == null ? null : agents->GetAgentByInternalId(AgentId.MobHunt);
+        var record = agent == null ? null : *(ShownBill**)((byte*)agent + ShownBillOffset);
+        if (record == null || record->Mode != HeldMode || record->MarkIndex > byte.MaxValue)
         {
-            AddonName = window,
-            OnSetup = Attach,
-            OnFinalize = Detach,
-            OnUpdate = Refresh,
-        };
-        controller.Enable();
-    }
-
-    /// <summary>Stops watching and frees the button if the window is open.</summary>
-    public async Task StopAsync()
-    {
-        if (controller is { } owned)
-        {
-            controller = null;
-            await owned.DisposeAsync().ConfigureAwait(false);
+            return null;
         }
+
+        var markIndex = (byte)record->MarkIndex;
+        if (!markIndexes.Contains(markIndex))
+        {
+            return null;
+        }
+
+        var held = HuntReader.HeldBill(markIndex);
+        return held != 0 && held == record->OrderRowId ? Hunt.Bill(markIndex, held) : null;
     }
 
     /// <inheritdoc/>
-    public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
-
-    private unsafe void Attach(AtkUnitBase* addon)
+    protected override unsafe void Arrange(AtkResNode* anchor, TextButtonNode shownButton)
     {
-        Detach(addon);
-        var panel = addon == null ? null : addon->GetNodeById(PanelNodeId);
-        if (panel == null)
-        {
-            return;
-        }
-
-        try
-        {
-            button = new TextButtonNode
-            {
-                OnClick = Toggle,
-                IsVisible = false,
-            };
-            button.AttachNode(panel);
-            shownBill = null;
-        }
-        catch (Exception ex)
-        {
-            button = null;
-            log.Error(ex, $"the follow button could not be added to {window}, so its bills cannot be followed from it this session.");
-        }
+        shownButton.Position = new Vector2(anchor->X + anchor->Width + Gap, anchor->Y);
+        shownButton.Size = new Vector2(anchor->Width, anchor->Height);
     }
 
-    private unsafe void Detach(AtkUnitBase* addon)
+    /// <summary>The mark bill agent's record of the bill on show. The game's headers have no
+    /// shape for it; these three were read off the game's own code, which picks the window from
+    /// the kind and looks the bill up by its row.</summary>
+    [StructLayout(LayoutKind.Explicit, Size = 0x14)]
+    private struct ShownBill
     {
-        if (button is null)
-        {
-            return;
-        }
+        /// <summary>Whether the bill is held or offered by a board.</summary>
+        [FieldOffset(0x4)]
+        public uint Mode;
 
-        Unlink(addon);
-        HandFocusBack(addon, (AtkResNode*)button.CollisionNode.Node, addon == null ? null : addon->GetNodeById(CloseNodeId));
-        button.Dispose();
-        button = null;
-    }
+        /// <summary>Which of the game's kinds of bill it is.</summary>
+        [FieldOffset(0x8)]
+        public uint MarkIndex;
 
-    /// <summary>The bill on show, when the character holds it, or null.</summary>
-    private unsafe Hunt? BillOnShow(AtkUnitBase* addon)
-    {
-        var page = ((AddonMobHunt*)addon)->CurrentPage;
-        var name = Text(addon, NameNodeId) is var text && text != null ? text->NodeText.ToString() : string.Empty;
-
-        Hunt? only = null;
-        var held = 0;
-        foreach (var markIndex in markIndexes)
-        {
-            var order = HuntReader.HeldBill(markIndex);
-            if (order == 0)
-            {
-                continue;
-            }
-
-            var bill = Hunt.Bill(markIndex, order);
-            held++;
-            only = bill;
-            if (reader.Facts(bill)?.Quarries.FirstOrDefault(quarry => quarry.Entry == page) is { } shown
-                && string.Equals(shown.Name, name, StringComparison.OrdinalIgnoreCase))
-            {
-                return bill;
-            }
-        }
-
-        return held == 1 ? only : null;
-    }
-
-    /// <summary>Shows the button beside Close for a bill the character holds, saying what a press
-    /// will do. Nothing is written while neither has changed.</summary>
-    private unsafe void Refresh(AtkUnitBase* addon)
-    {
-        if (button is null || addon == null)
-        {
-            return;
-        }
-
-        var close = addon->GetNodeById(CloseNodeId);
-        var bill = close == null ? null : BillOnShow(addon);
-        var followed = bill is not null && following.IsFollowing(bill);
-        if (bill == shownBill && followed == shownAsFollowed)
-        {
-            return;
-        }
-
-        shownBill = bill;
-        shownAsFollowed = followed;
-        button.IsVisible = bill is not null;
-        if (bill is null)
-        {
-            Unlink(addon);
-            HandFocusBack(addon, (AtkResNode*)button.CollisionNode.Node, close);
-            return;
-        }
-
-        button.Position = new Vector2(close->X + close->Width + Gap, close->Y);
-        button.Size = new Vector2(close->Width, close->Height);
-        button.String = followed ? UnfollowLabel : FollowLabel;
-        button.TextTooltip = followed ? UnfollowTooltip : FollowTooltip;
-        Link(addon);
-    }
-
-    /// <summary>Puts the button beside Close in the pad's cursor chain.</summary>
-    private unsafe void Link(AtkUnitBase* addon)
-    {
-        var close = Component(addon, CloseNodeId);
-        if (button is null || close == null || linked)
-        {
-            return;
-        }
-
-        linked = true;
-        closeRightBefore = close->CursorNavigationInfo.RightIndex;
-        close->CursorNavigationInfo.RightIndex = FollowNavIndex;
-        button.NavIndex = FollowNavIndex;
-        button.NavLeft = close->CursorNavigationInfo.Index;
-        button.NavRight = closeRightBefore;
-        button.NavUp = close->CursorNavigationInfo.UpIndex;
-        button.NavDown = close->CursorNavigationInfo.DownIndex;
-    }
-
-    /// <summary>Puts Close's record back as it was, found again rather than kept.</summary>
-    private unsafe void Unlink(AtkUnitBase* addon)
-    {
-        if (!linked)
-        {
-            return;
-        }
-
-        linked = false;
-        if (Component(addon, CloseNodeId) is var close && close != null)
-        {
-            close->CursorNavigationInfo.RightIndex = closeRightBefore;
-        }
-    }
-
-    private void Toggle()
-    {
-        if (shownBill is not { } bill)
-        {
-            return;
-        }
-
-        if (following.IsFollowing(bill))
-        {
-            following.Unfollow();
-            guidance.Yield(objectives);
-        }
-        else
-        {
-            following.Follow(bill);
-            HuntLog.Followed(log, bill, reader.Facts(bill));
-            guidance.Claim(objectives);
-        }
+        /// <summary>Which bill of that kind, as its row in the bills sheet.</summary>
+        [FieldOffset(0x10)]
+        public uint OrderRowId;
     }
 }

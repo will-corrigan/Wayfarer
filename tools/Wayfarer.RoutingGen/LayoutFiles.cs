@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Net;
 using Lumina;
 using Lumina.Data.Files;
 
@@ -11,11 +13,17 @@ namespace Wayfarer.RoutingGen;
 /// aetherytes but none of their heights. The mirror serves any game file by its path.</para>
 ///
 /// <para>The cache lives in <c>WAYFARER_LAYOUT_CACHE</c>, or <c>~/.cache/wayfarer/layouts</c>. A file
-/// the mirror does not have is remembered as missing, so it is asked for once.</para></summary>
+/// the mirror says it does not have is remembered as missing, so it is asked for once. Any other
+/// failure stops the run: a mirror having a bad minute is not a file that does not exist, and a
+/// graph built through one would quietly lose that zone's doors and heights.</para></summary>
 internal sealed class LayoutFiles : IDisposable
 {
     private const string Mirror = "https://xiviewer.app/api/global/latest/file/";
     private const string MissingSuffix = ".missing";
+
+    /// <summary>What a missing marker holds when the mirror really said it has no such file. An
+    /// older run also wrote markers for failures that were not that, which are asked again.</summary>
+    private static readonly string NotFound = ((int)HttpStatusCode.NotFound).ToString(CultureInfo.InvariantCulture);
 
     private readonly GameData game;
     private readonly string cache;
@@ -44,9 +52,15 @@ internal sealed class LayoutFiles : IDisposable
         }
 
         var local = Path.Combine(cache, path);
-        if (File.Exists(local + MissingSuffix))
+        var missing = local + MissingSuffix;
+        if (File.Exists(missing))
         {
-            return null;
+            if (string.Equals(File.ReadAllText(missing).Trim(), NotFound, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            File.Delete(missing);
         }
 
         if (!File.Exists(local) && !Fetch(path, local))
@@ -62,10 +76,15 @@ internal sealed class LayoutFiles : IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(local)!);
         using var response = http.GetAsync(new Uri(Mirror + path + "/")).GetAwaiter().GetResult();
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            File.WriteAllText(local + MissingSuffix, NotFound);
+            return false;
+        }
+
         if (!response.IsSuccessStatusCode)
         {
-            File.WriteAllText(local + MissingSuffix, ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture));
-            return false;
+            throw new HttpRequestException($"the mirror answered {(int)response.StatusCode} for {path}; run again once it is back, so the graph does not ship without that zone's layout.", null, response.StatusCode);
         }
 
         File.WriteAllBytes(local, response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult());

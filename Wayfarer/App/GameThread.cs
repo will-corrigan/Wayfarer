@@ -2,7 +2,8 @@ using Dalamud.Plugin.Services;
 
 namespace Wayfarer.App;
 
-/// <summary>Handing work to the game's own thread from somewhere that cannot wait for it.
+/// <summary>Handing work to the game's own thread and away from it, most of all from somewhere that
+/// cannot wait for it.
 ///
 /// <para>Most of what Wayfarer does to the game has to happen on the game's thread, and a good deal
 /// of it is asked for from somewhere that has nobody to answer to: a button's press, an event
@@ -24,6 +25,29 @@ internal static class GameThread
     /// says which of these failed and not merely that one did.</param>
     public static void Hand(this IFramework framework, Action work, IPluginLog log, string what) =>
         Let(() => framework.RunOnFrameworkThread(work), log, what);
+
+    /// <summary>Runs work that has to be on the game's thread, and hands the wait back. Once the
+    /// game is shutting down no frame will come to run it, so it is let go of rather than waited on
+    /// for ever: nothing a module does to guidance or its own state matters by then.</summary>
+    /// <param name="framework">The game's own thread.</param>
+    /// <param name="work">What to do on it.</param>
+    public static Task OnTheGameThread(this IFramework framework, Action work) =>
+        framework.IsFrameworkUnloading ? Task.CompletedTask : framework.RunOnFrameworkThread(work);
+
+    /// <summary>Runs work where it cannot cost a frame, such as reading sheets: here when already
+    /// off the game's thread, on the pool when on it.</summary>
+    /// <param name="framework">The game's own thread.</param>
+    /// <param name="work">What to do off it.</param>
+    public static Task OffTheGameThread(this IFramework framework, Action work)
+    {
+        if (framework.IsInFrameworkUpdateThread)
+        {
+            return Task.Run(work);
+        }
+
+        work();
+        return Task.CompletedTask;
+    }
 
     /// <summary>Starts work that is already being done elsewhere and lets go of it.</summary>
     /// <inheritdoc cref="Hand(IFramework, Action, IPluginLog, string)"/>

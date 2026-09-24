@@ -1,4 +1,5 @@
 using Dalamud.Plugin.Services;
+using Wayfarer.App;
 using Wayfarer.App.Modules;
 using Wayfarer.Guidance;
 
@@ -50,11 +51,11 @@ internal sealed class HuntingModule(
     /// <inheritdoc/>
     public async Task ApplyAsync()
     {
-        await OffTheGameThread(reader.Warm).ConfigureAwait(false);
+        await framework.OffTheGameThread(reader.Warm).ConfigureAwait(false);
 
         if (following.FromLog)
         {
-            await logButton.StartAsync().ConfigureAwait(false);
+            await framework.OnTheGameThread(logButton.Start).ConfigureAwait(false);
         }
         else
         {
@@ -70,37 +71,29 @@ internal sealed class HuntingModule(
             await billButtons.StopAsync().ConfigureAwait(false);
         }
 
-        // A hunt followed before the plugin was last unloaded is taken up again. Who is following
-        // what is the character's, so it is asked on the game's thread.
-        var followed = await framework.RunOnFrameworkThread(() => following.Followed).ConfigureAwait(false);
-        if (followed is not null && (following.FromLog || following.FromBills))
-        {
-            guidance.Claim(objectives);
-        }
-        else if (!following.FromLog && !following.FromBills)
-        {
-            guidance.Yield(objectives);
-        }
+        await framework.OnTheGameThread(Resume).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task StopAsync()
     {
-        guidance.Yield(objectives);
+        await framework.OnTheGameThread(() => guidance.Yield(objectives)).ConfigureAwait(false);
         await billButtons.StopAsync().ConfigureAwait(false);
         await logButton.StopAsync().ConfigureAwait(false);
     }
 
-    /// <summary>Runs sheet reading where it cannot cost a frame: here when already off the game's
-    /// thread, on the pool when on it.</summary>
-    private Task OffTheGameThread(Action read)
+    /// <summary>Takes up again a hunt this character was following: ahead of the quest when the
+    /// hunt is what they were last guided to, and behind it otherwise. With nowhere left to follow
+    /// from, lets go. Who is following what is the character's, so this is game thread only.</summary>
+    private void Resume()
     {
-        if (framework.IsInFrameworkUpdateThread)
+        if (!following.FromLog && !following.FromBills)
         {
-            return Task.Run(read);
+            guidance.Yield(objectives);
         }
-
-        read();
-        return Task.CompletedTask;
+        else if (following.Followed is not null)
+        {
+            guidance.Resume(objectives);
+        }
     }
 }

@@ -63,10 +63,15 @@ internal sealed class ZoneLayout
             {
                 lgb = game.Get($"{folder}/{file}.lgb");
             }
-            catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or NotSupportedException or OutOfMemoryException or IndexOutOfRangeException or EndOfStreamException or HttpRequestException or TaskCanceledException)
+            catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or NotSupportedException or OutOfMemoryException or IndexOutOfRangeException or EndOfStreamException)
             {
-                // Lumina cannot read every layout: a few ask for an impossible amount of memory
-                // part-way through. Such a file is left out and named, not the whole run lost.
+                // Lumina cannot read every layout. Twelve A Realm Reborn planner.lgb files carry a
+                // longer header and layer group than it expects, so it reads a layer count from the
+                // wrong bytes and asks for an impossible amount of memory. Seven of them hold no
+                // layers; the other five hold only level-design layers (positions, a navmesh, the
+                // benchmark's stand-ins) with no warp landing and no warp-giving person, so leaving
+                // them out loses nothing the graph uses. Such a file is named, not the run lost. A
+                // mirror failure is not caught here: it stops the run, as LayoutFiles explains.
                 Console.Error.WriteLine($"  {folder}/{file}.lgb could not be read: {ex.GetType().Name}");
                 continue;
             }

@@ -4,9 +4,14 @@ namespace Wayfarer.Modules.Quests;
 internal sealed class QuestsConfig
 {
     /// <summary>Bumped when the shape changes, so an old file can be recognised and migrated.</summary>
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
-    /// <summary>The quest the player chose to follow instead of the main scenario, or null.</summary>
+    /// <summary>The quest each character chose to follow instead of the main scenario, by the
+    /// character's content id.</summary>
+    public Dictionary<ulong, ushort> Followed { get; set; } = [];
+
+    /// <summary>The one quest followed before quests were remembered per character, in a file of
+    /// version 1. Handed to the first character to log in, then cleared.</summary>
     public ushort? FollowedQuestId { get; set; }
 
     /// <summary>Whether Wayfarer guides the player through the quest they are on at all. This is

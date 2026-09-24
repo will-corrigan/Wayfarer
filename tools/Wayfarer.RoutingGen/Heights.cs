@@ -141,13 +141,14 @@ internal static class Heights
         return result;
     }
 
-    /// <summary>A door end at the height of the ground beside the exit that leads where the door
-    /// does, or of the map's floor there, or of the nearest spot, or at a height marked unknown.</summary>
+    /// <summary>A door end at the height of the ground beside the nearest exit that leads where the
+    /// door does, or failing that of the nearest exit of any kind, or of the map's floor there, or
+    /// of the nearest spot, or at a height marked unknown.</summary>
     private static Place Raise(ZoneLayouts layouts, Place end, uint leadsTo, ref int raised)
     {
-        if (end.Y != 0f)
+        if (!float.IsNaN(end.Y))
         {
-            // Already placed from the layouts.
+            // Already placed from the layouts; a marker's end has no height yet.
             raised++;
             return end;
         }
@@ -155,16 +156,32 @@ internal static class Heights
         var layout = layouts.Of(end.Territory);
         var ground = new Vector2(end.X, end.Z);
 
+        // An exit leading where the door does is its own exit however many others stand nearer.
         float? height = null;
+        float? anyHeight = null;
         var nearest = float.MaxValue;
+        var nearestAny = float.MaxValue;
         foreach (var (at, leads, _, returns) in layout.Exits)
         {
             var far = Vector2.Distance(ground, new Vector2(at.X, at.Z));
-            if (far <= ExitReach && far < nearest && (leads == leadsTo || height is null) && layout.GroundBeside(at, returns, end.Map, FloorReach) is { } beside)
+            var better = far < nearestAny || (leads == leadsTo && far < nearest);
+            if (far > ExitReach || !better || layout.GroundBeside(at, returns, end.Map, FloorReach) is not { } beside)
+            {
+                continue;
+            }
+
+            if (leads == leadsTo && far < nearest)
             {
                 (nearest, height) = (far, beside);
             }
+
+            if (far < nearestAny)
+            {
+                (nearestAny, anyHeight) = (far, beside);
+            }
         }
+
+        height ??= anyHeight;
 
         // Between two maps of one zone there is no exit: the door is where one map's range meets
         // the other's, and each side is as high as its own map's floor there.
