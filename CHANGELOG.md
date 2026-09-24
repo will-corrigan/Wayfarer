@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.3](https://github.com/will-corrigan/Wayfarer/compare/v1.6.2...v1.6.3) (2026-09-24)
+
+
+### Fixed
+
+* **quests:** pass over a decoy already tried, even one the game spawned for the quest ([#88](https://github.com/will-corrigan/Wayfarer/issues/88)) ([d2e3a15](https://github.com/will-corrigan/Wayfarer/commit/d2e3a1521bf2e2b4df4b49baf844f547c617ed8c))
+
 ## [1.6.2](https://github.com/will-corrigan/Wayfarer/compare/v1.6.1...v1.6.2) (2026-09-23)
 
 
