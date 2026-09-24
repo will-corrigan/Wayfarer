@@ -72,6 +72,8 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
         }
 
         last = signature;
+        var (named, battle) = reader.Census(now.NameId);
+        log.Information($"hunting: after {now.Name} (name {now.NameId}), {now.Have}/{now.Need}: {(seen is { } s ? $"one in sight, object {s.Id}" : "none in sight")}; the game has {named} of that name loaded among {battle} battle monsters.");
         return cached = HuntObjectiveBuilder.Build(
             facts.Headline,
             facts.Kind,

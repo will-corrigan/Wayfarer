@@ -20,8 +20,10 @@ internal sealed unsafe class Heading(IGuidance guidance, IObjectTable objects) :
     public float? Needle => Offset() is var (dx, _, dz, _) ? Compass.NeedleAngle(Compass.Bearing(dx, dz), CameraYaw()) : null;
 
     /// <inheritdoc/>
+    /// <remarks>A place whose height is not known is measured across the ground only: a stretch of
+    /// ground named on a map has no height to measure to.</remarks>
     public float? DistanceYalms => Offset() is var (dx, dy, dz, slack)
-        ? MathF.Max(0f, MathF.Sqrt((dx * dx) + (dy * dy) + (dz * dz)) - slack)
+        ? MathF.Max(0f, MathF.Sqrt((dx * dx) + (float.IsNaN(dy) ? 0f : dy * dy) + (dz * dz)) - slack)
         : null;
 
     /// <inheritdoc/>
