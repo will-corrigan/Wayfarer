@@ -213,6 +213,34 @@ public class RouteGraphTests
         Assert.Equal(80f, walk.Yalms, 0.01f);
     }
 
+    [Fact]
+    public void A_lift_up_to_a_landing_beats_the_long_way_round()
+    {
+        // Ul'dah: the lift attendant on the Hustings Strip takes you straight up to the airship
+        // landing, which otherwise is a long walk round through the city.
+        var lift = new DoorLink("Ride Lift to the Airship Landing", At(Field, 1, 5f), At(Field, 9, 0f), OneWay: true, Npc: "Lolomaya");
+        var stairs = new DoorLink("Hustings Strip", At(Field, 1, 400f), At(Field, 9, 400f));
+        var graph = new RouteGraph([], [lift, stairs]);
+
+        var route = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned);
+
+        Assert.Contains(route!.Legs, leg => leg is Leg.Door { Npc: "Lolomaya" });
+    }
+
+    [Fact]
+    public void A_door_kept_until_a_quest_is_done_is_not_taken_before_it()
+    {
+        var airship = new DoorLink("Purchase Passage to Gridania", At(Field, 1, 5f), At(Field, 9, 0f), OneWay: true, Npc: "Elyenora", Quests: [66000u]);
+        var stairs = new DoorLink("The long way", At(Field, 1, 400f), At(Field, 9, 400f));
+        var graph = new RouteGraph([], [airship, stairs]);
+
+        var before = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: _ => false);
+        var after = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: quest => quest == 66000u);
+
+        Assert.DoesNotContain(before!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
+        Assert.Contains(after!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
+    }
+
     private static RouteGraph World() => new([FieldAetheryte, CityAetheryte, NearShard, FarShard], []);
 
     private static Place At(uint territory, uint map, float x) => new(territory, map, x, 0f, 0f);

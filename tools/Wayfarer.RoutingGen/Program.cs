@@ -20,10 +20,15 @@ if (!Directory.Exists(sqpack))
     return 3;
 }
 
-var game = new GameData(sqpack);
+// Files are not cached: every zone's layouts are read once, and keeping them all runs out of memory.
+var game = new GameData(sqpack, new LuminaOptions { CacheFileResources = false });
 var maps = new MapSpace(game);
 var nodes = AetheryteNodes.Read(game, maps);
 var doors = DoorLinks.Read(game, maps);
+
+// Doors taken by asking someone are read from the layouts of every zone the graph already reaches.
+var routable = nodes.Select(node => node.At.Territory).Concat(doors.SelectMany(door => new[] { door.From.Territory, door.To.Territory })).Where(territory => territory != 0).ToHashSet();
+doors.AddRange(WarpDoors.Read(game, maps, routable));
 
 File.WriteAllText(output, new RoutingGraphFile(nodes, doors).ToJson());
 Console.Error.WriteLine($"{nodes.Count} nodes ({nodes.Count(n => n.Kind == RouteNodeKind.Aetheryte)} aetherytes), {doors.Count} doors -> {output}");

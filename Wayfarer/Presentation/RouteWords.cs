@@ -63,6 +63,7 @@ public static class RouteWords
             {
                 Leg.Teleport teleport => TeleportPhrase + teleport.AetheryteName,
                 Leg.ShardHop hop => ShardHopPhrase + hop.ExitShard,
+                Leg.Door { Npc: { } npc } asked => $"{asked.Name} ({npc})",
                 Leg.Door door => DoorPhrase + door.Name,
                 _ => null,
             };

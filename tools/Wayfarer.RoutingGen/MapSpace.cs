@@ -20,6 +20,7 @@ internal sealed class MapSpace
 
     private readonly ExcelSheet<Map> maps;
     private readonly Dictionary<uint, uint> territoryByMap = [];
+    private readonly Dictionary<uint, uint> mapByTerritory = [];
 
     public MapSpace(GameData game)
     {
@@ -39,6 +40,8 @@ internal sealed class MapSpace
                 continue;
             }
 
+            mapByTerritory[territory.RowId] = map;
+
             if (homed.Contains(territory.RowId) || !territoryByMap.ContainsKey(map))
             {
                 territoryByMap[map] = territory.RowId;
@@ -50,6 +53,9 @@ internal sealed class MapSpace
     /// its own, else the territory the map row itself names (a city's sub-maps do this), else 0.</summary>
     public uint TerritoryOf(uint mapId) =>
         territoryByMap.TryGetValue(mapId, out var territory) ? territory : Row(mapId)?.TerritoryType.RowId ?? 0;
+
+    /// <summary>A territory's own map, the one it names, or 0.</summary>
+    public uint MapOf(uint territoryId) => mapByTerritory.GetValueOrDefault(territoryId);
 
     /// <summary>The map row, or null when there is none.</summary>
     public Map? Row(uint mapId) => maps.GetRowOrDefault(mapId);

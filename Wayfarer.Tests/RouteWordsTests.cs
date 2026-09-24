@@ -53,6 +53,14 @@ public class RouteWordsTests
     }
 
     [Fact]
+    public void A_lift_taken_by_asking_says_what_to_ask_and_who()
+    {
+        var route = new Route([new Leg.Door("Ride Lift to the Airship Landing", "Lolomaya"), new Leg.Walk(End, 5f)], 5f, End);
+
+        Assert.Equal("Ride Lift to the Airship Landing (Lolomaya)", RouteWords.Describe(route));
+    }
+
+    [Fact]
     public void No_route_to_a_known_target_says_so()
     {
         Assert.Equal(new RouteLine(RouteGlyph.None, RouteWords.NoRoute, null), RouteWords.Compose(Guide(null)));

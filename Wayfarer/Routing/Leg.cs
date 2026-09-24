@@ -49,10 +49,14 @@ public abstract record Leg
     }
 
     /// <summary>Pass through a door between two maps: a building's entrance, a staircase between
-    /// floors.</summary>
-    public sealed record Door(string Name) : Leg
+    /// floors, or a lift or airship taken by asking someone.</summary>
+    /// <param name="Name">What the door is called, or for one taken by asking, what is asked for.</param>
+    /// <param name="Npc">Who to ask, or null for a door walked through.</param>
+    public sealed record Door(string Name, string? Npc = null) : Leg
     {
         /// <inheritdoc/>
-        public override float Cost => 0f;
+        /// <remarks>A door walked through costs nothing of its own. One taken by asking costs the
+        /// talk and the loading pause that follows, as much as a shard hop.</remarks>
+        public override float Cost => Npc is null ? 0f : ShardHopCost;
     }
 }

@@ -55,10 +55,10 @@ public sealed class RouteGraph
             var b = a + 1;
             doorEnds[i * 2] = new DoorEnd(door.Name, door.From);
             doorEnds[(i * 2) + 1] = new DoorEnd(door.Name, door.To);
-            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name)));
+            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name, door.Npc), door.Quests));
             if (!door.OneWay)
             {
-                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name)));
+                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name, door.Npc), door.Quests));
             }
         }
 
@@ -86,7 +86,9 @@ public sealed class RouteGraph
     /// <param name="from">Where the player stands.</param>
     /// <param name="targets">The places on offer. The route ends at whichever is cheapest to reach.</param>
     /// <param name="attuned">Whether the player can use the aetheryte or shard with this id.</param>
-    public Route? FindRoute(Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned)
+    /// <param name="questDone">Whether the player has completed the quest with this id, for doors
+    /// kept until one is done. Null treats every such door as open.</param>
+    public Route? FindRoute(Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool>? questDone = null)
     {
         ArgumentNullException.ThrowIfNull(from);
         ArgumentNullException.ThrowIfNull(targets);
@@ -97,7 +99,7 @@ public sealed class RouteGraph
             return null;
         }
 
-        var search = new Search(this, from, targets, attuned);
+        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true));
         return search.Run();
     }
 
@@ -115,7 +117,10 @@ public sealed class RouteGraph
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
-    private readonly record struct StaticEdge(int To, Leg Leg);
+    /// <param name="To">The node it leads to.</param>
+    /// <param name="Leg">How it is travelled.</param>
+    /// <param name="Needs">Quests that must be complete to take it, or null.</param>
+    private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null);
 
     private readonly record struct DoorEnd(string Name, Place At);
 
@@ -127,6 +132,7 @@ public sealed class RouteGraph
     {
         private readonly RouteGraph graph;
         private readonly Func<uint, bool> attuned;
+        private readonly Func<uint, bool> questDone;
         private readonly Place[] places;
         private readonly int origin;
         private readonly int firstTarget;
@@ -135,10 +141,11 @@ public sealed class RouteGraph
         private readonly Leg?[] cameBy;
         private readonly bool[] settled;
 
-        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned)
+        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone)
         {
             this.graph = graph;
             this.attuned = attuned;
+            this.questDone = questDone;
 
             var fixedCount = graph.edges.Length;
             places = new Place[fixedCount + 1 + targets.Count];
@@ -214,6 +221,11 @@ public sealed class RouteGraph
                 foreach (var edge in graph.edges[node])
                 {
                     if (edge.Leg is Leg.ShardHop && !(IsAttuned(node) && IsAttuned(edge.To)))
+                    {
+                        continue;
+                    }
+
+                    if (edge.Needs is { } needs && !needs.All(questDone))
                     {
                         continue;
                     }
