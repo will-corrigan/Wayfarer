@@ -52,8 +52,21 @@ public class RoutingGraphFileTests
             Assert.False(string.IsNullOrWhiteSpace(d.Name));
             Assert.NotEqual(0u, d.From.Map);
             Assert.NotEqual(0u, d.To.Map);
-            Assert.NotEqual(d.From.Map, d.To.Map);
+
+            // A warp someone offers can move you across one map: over a gap, up a ledge. Only a
+            // door walked through has to join two maps, since walking already joins one to itself.
+            if (d.Npc is null)
+            {
+                Assert.NotEqual(d.From.Map, d.To.Map);
+            }
         });
+    }
+
+    [Fact]
+    public void The_lift_to_ul_dahs_airship_landing_is_a_door()
+    {
+        // Reported in game: the route went round through the Hustings Strip, past the lift.
+        Assert.Contains(Shipped.Doors, d => string.Equals(d.Npc, "Lolomaya", StringComparison.Ordinal) && d.To.Territory == 130 && d.To.Map == 70);
     }
 
     [Fact]

@@ -20,8 +20,7 @@ if (!Directory.Exists(sqpack))
     return 3;
 }
 
-// Files are not cached: every zone's layouts are read once, and keeping them all runs out of memory.
-var game = new GameData(sqpack, new LuminaOptions { CacheFileResources = false });
+var game = new GameData(sqpack);
 var maps = new MapSpace(game);
 var nodes = AetheryteNodes.Read(game, maps);
 var doors = DoorLinks.Read(game, maps);

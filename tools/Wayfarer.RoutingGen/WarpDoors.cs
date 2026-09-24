@@ -135,14 +135,21 @@ internal static class WarpDoors
             var folder = "bg/" + bg[..bg.LastIndexOf('/')];
             foreach (var file in LayoutFiles)
             {
+                if (Environment.GetEnvironmentVariable("WARP_TRACE") is not null)
+                {
+                    Console.Error.WriteLine($"  reading {folder}/{file}.lgb (territory {territory?.RowId})");
+                }
+
                 LgbFile? lgb;
                 try
                 {
                     lgb = game.GetFile<LgbFile>($"{folder}/{file}.lgb");
                 }
-                catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or NotSupportedException)
+                catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or NotSupportedException or OutOfMemoryException or IndexOutOfRangeException or EndOfStreamException)
                 {
-                    Console.Error.WriteLine($"  {folder}/{file}.lgb could not be read: {ex.Message}");
+                    // Lumina cannot read every layout: a few ask for an impossible amount of memory
+                    // part-way through. Such a file is left out and named, not the whole run lost.
+                    Console.Error.WriteLine($"  {folder}/{file}.lgb could not be read: {ex.GetType().Name}");
                     continue;
                 }
 

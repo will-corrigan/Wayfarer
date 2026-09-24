@@ -3212,7 +3212,9 @@
         "Z": -21.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Gridania",
@@ -3232,7 +3234,9 @@
         "Z": -87.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Gridania",
@@ -3252,7 +3256,9 @@
         "Z": -36,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Central Shroud",
@@ -3272,7 +3278,9 @@
         "Z": -299,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Central Shroud",
@@ -3292,7 +3300,9 @@
         "Z": -306,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Roost",
@@ -3312,7 +3322,9 @@
         "Z": 99,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Twin Adder Barracks",
@@ -3332,7 +3344,9 @@
         "Z": -7.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "North Shroud",
@@ -3352,7 +3366,9 @@
         "Z": 196,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "East Shroud",
@@ -3372,7 +3388,9 @@
         "Z": 91,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lavender Beds",
@@ -3392,7 +3410,9 @@
         "Z": 223,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Haunted Manor",
@@ -3412,7 +3432,9 @@
         "Z": -109,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Haunted Manor",
@@ -3432,7 +3454,9 @@
         "Z": -109,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Haunted Manor",
@@ -3452,7 +3476,9 @@
         "Z": -109,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "East Shroud",
@@ -3472,7 +3498,9 @@
         "Z": 290,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "South Shroud",
@@ -3492,7 +3520,9 @@
         "Z": -244,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "North Shroud",
@@ -3512,7 +3542,9 @@
         "Z": 519,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lavender Beds",
@@ -3532,7 +3564,9 @@
         "Z": 213,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "South Shroud",
@@ -3552,7 +3586,9 @@
         "Z": -260,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Fringes",
@@ -3572,7 +3608,9 @@
         "Z": -529,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eastern Thanalan",
@@ -3592,7 +3630,9 @@
         "Z": -296,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lost City of Amdapor",
@@ -3612,7 +3652,9 @@
         "Z": 456,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Coerthas Central Highlands",
@@ -3632,7 +3674,9 @@
         "Z": 582,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower La Noscea",
@@ -3652,7 +3696,9 @@
         "Z": 116,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -3672,7 +3718,9 @@
         "Z": 28,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -3692,7 +3740,9 @@
         "Z": -31,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -3712,7 +3762,9 @@
         "Z": 110,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -3732,7 +3784,9 @@
         "Z": 25.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mizzenmast Inn",
@@ -3752,7 +3806,9 @@
         "Z": 12.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Maelstrom Barracks",
@@ -3772,7 +3828,9 @@
         "Z": 62,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Middle La Noscea",
@@ -3792,7 +3850,9 @@
         "Z": 162,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eastern La Noscea",
@@ -3812,7 +3872,9 @@
         "Z": 392,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western La Noscea",
@@ -3832,7 +3894,9 @@
         "Z": 380,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western Thanalan",
@@ -3852,7 +3916,9 @@
         "Z": -304,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mist",
@@ -3872,7 +3938,9 @@
         "Z": 119.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kugane",
@@ -3892,7 +3960,9 @@
         "Z": -91,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Sharlayan",
@@ -3912,7 +3982,9 @@
         "Z": 179,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Central Thanalan",
@@ -3932,7 +4004,9 @@
         "Z": 344,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western Thanalan",
@@ -3952,7 +4026,9 @@
         "Z": 163,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -3972,7 +4048,9 @@
         "Z": -115,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -3992,7 +4070,9 @@
         "Z": -84,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -4012,7 +4092,9 @@
         "Z": -34.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -4032,7 +4114,9 @@
         "Z": -9,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -4052,7 +4136,9 @@
         "Z": 9.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hustings Strip",
@@ -4072,7 +4158,9 @@
         "Z": -38,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Hourglass",
@@ -4092,7 +4180,9 @@
         "Z": -81,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Flame Barracks",
@@ -4112,7 +4202,9 @@
         "Z": -100,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Central Thanalan",
@@ -4132,7 +4224,9 @@
         "Z": 560,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hustings Strip",
@@ -4152,7 +4246,9 @@
         "Z": 18.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hustings Strip",
@@ -4172,7 +4268,9 @@
         "Z": -5.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Goblet",
@@ -4192,7 +4290,9 @@
         "Z": -238,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower La Noscea",
@@ -4212,7 +4312,9 @@
         "Z": -346,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eastern La Noscea",
@@ -4232,7 +4334,9 @@
         "Z": 47,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western La Noscea",
@@ -4252,7 +4356,9 @@
         "Z": 390,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eastern La Noscea",
@@ -4272,7 +4378,9 @@
         "Z": 740,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eastern La Noscea",
@@ -4292,7 +4400,9 @@
         "Z": 844,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western La Noscea",
@@ -4312,7 +4422,9 @@
         "Z": 400,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mist",
@@ -4332,7 +4444,9 @@
         "Z": -171,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Wolves\u0027 Den Docks",
@@ -4352,7 +4466,9 @@
         "Z": 41.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper La Noscea",
@@ -4372,7 +4488,9 @@
         "Z": 212,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper La Noscea",
@@ -4392,7 +4510,9 @@
         "Z": 287,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Outer La Noscea",
@@ -4412,7 +4532,9 @@
         "Z": -84,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Outer La Noscea",
@@ -4432,7 +4554,9 @@
         "Z": -249,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Central Thanalan",
@@ -4452,7 +4576,9 @@
         "Z": 100,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Goblet",
@@ -4472,7 +4598,9 @@
         "Z": -199,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mordion Gaol",
@@ -4492,7 +4620,9 @@
         "Z": 71,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Northern Thanalan",
@@ -4512,7 +4642,9 @@
         "Z": 517,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eastern Thanalan",
@@ -4532,7 +4664,9 @@
         "Z": 342,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Southern Thanalan",
@@ -4552,7 +4686,9 @@
         "Z": -430,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Cutter\u0027s Cry",
@@ -4572,7 +4708,9 @@
         "Z": -379,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Southern Thanalan",
@@ -4592,7 +4730,9 @@
         "Z": -766,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Sunken Temple of Qarn",
@@ -4612,7 +4752,9 @@
         "Z": -451,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mor Dhona",
@@ -4632,7 +4774,9 @@
         "Z": -100,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Coerthas Central Highlands",
@@ -4652,7 +4796,9 @@
         "Z": 708,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Omphalos",
@@ -4672,7 +4818,9 @@
         "Z": -61.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "First Drop",
@@ -4692,7 +4840,9 @@
         "Z": -206.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "B2",
@@ -4712,7 +4862,9 @@
         "Z": 6.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Inner Sanctum",
@@ -4732,7 +4884,9 @@
         "Z": 26.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower Sanctum",
@@ -4752,7 +4906,9 @@
         "Z": -78,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower Sanctum",
@@ -4772,7 +4928,9 @@
         "Z": 74,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Cellarage",
@@ -4792,7 +4950,9 @@
         "Z": -13,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -4812,7 +4972,9 @@
         "Z": -9,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -4832,7 +4994,9 @@
         "Z": 11.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Foundation",
@@ -4852,7 +5016,9 @@
         "Z": 155,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Steps of Faith",
@@ -4872,7 +5038,9 @@
         "Z": -331,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Castrum Control",
@@ -4892,7 +5060,9 @@
         "Z": 4.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -4912,7 +5082,9 @@
         "Z": -110,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -4932,7 +5104,9 @@
         "Z": -70,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -4952,7 +5126,9 @@
         "Z": -31,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -4972,7 +5148,9 @@
         "Z": 12,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -4992,7 +5170,9 @@
         "Z": -110,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -5012,7 +5192,9 @@
         "Z": -70,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -5032,7 +5214,9 @@
         "Z": -31,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Decks",
@@ -5052,7 +5236,9 @@
         "Z": 12,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5072,7 +5258,9 @@
         "Z": -98,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5092,7 +5280,9 @@
         "Z": -54,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5112,7 +5302,9 @@
         "Z": -17,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5132,7 +5324,9 @@
         "Z": 22,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5152,7 +5346,9 @@
         "Z": -98,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5172,7 +5368,9 @@
         "Z": -54,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5192,7 +5390,9 @@
         "Z": -17,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Decks",
@@ -5212,7 +5412,9 @@
         "Z": 22,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "New Gridania",
@@ -5232,7 +5434,9 @@
         "Z": 10.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Gridania",
@@ -5252,7 +5456,9 @@
         "Z": 50,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hustings Strip",
@@ -5272,7 +5478,9 @@
         "Z": -25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Nald",
@@ -5292,7 +5500,9 @@
         "Z": -17.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Topmast Apartment Lobby",
@@ -5312,7 +5522,9 @@
         "Z": -47.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Upper Decks",
@@ -5332,7 +5544,9 @@
         "Z": -13.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5352,7 +5566,9 @@
         "Z": -6,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5372,7 +5588,9 @@
         "Z": 11,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hustings Strip",
@@ -5392,7 +5610,9 @@
         "Z": 12,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western Thanalan",
@@ -5412,7 +5632,9 @@
         "Z": -0.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lily Hills Apartment Lobby",
@@ -5432,7 +5654,9 @@
         "Z": -114.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sultana\u0027s Breath Apartment Lobby",
@@ -5452,7 +5676,9 @@
         "Z": 87.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western Thanalan",
@@ -5472,7 +5698,9 @@
         "Z": -0.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Level",
@@ -5492,7 +5720,9 @@
         "Z": 1,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Level",
@@ -5512,7 +5742,9 @@
         "Z": 1,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Level",
@@ -5532,7 +5764,9 @@
         "Z": -87,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Research Level",
@@ -5552,7 +5786,9 @@
         "Z": 16,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Level",
@@ -5572,7 +5808,9 @@
         "Z": 54,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Main Level",
@@ -5592,7 +5830,9 @@
         "Z": 1,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Research Level",
@@ -5612,7 +5852,9 @@
         "Z": 1,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Castrum Defense",
@@ -5632,7 +5874,9 @@
         "Z": -31,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western Thanalan",
@@ -5652,7 +5896,9 @@
         "Z": -0.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ground Floor",
@@ -5672,7 +5918,9 @@
         "Z": 25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -5692,7 +5940,9 @@
         "Z": -27,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Third Floor",
@@ -5712,7 +5962,9 @@
         "Z": -41,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fourth Floor",
@@ -5732,7 +5984,9 @@
         "Z": -43,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fifth Floor",
@@ -5752,7 +6006,9 @@
         "Z": -35,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mor Dhona",
@@ -5772,7 +6028,9 @@
         "Z": 29,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -5792,7 +6050,9 @@
         "Z": -9,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "First Drop",
@@ -5812,7 +6072,9 @@
         "Z": -206.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "B2",
@@ -5832,7 +6094,9 @@
         "Z": 6.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Monitoring Station ",
@@ -5852,7 +6116,9 @@
         "Z": 16,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sanctum of Dreams",
@@ -5872,7 +6138,9 @@
         "Z": -86,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Lower Ring",
@@ -5892,7 +6160,9 @@
         "Z": 170,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Lower Ring",
@@ -5912,7 +6182,9 @@
         "Z": 170,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Third Lower Ring",
@@ -5932,7 +6204,9 @@
         "Z": -82,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Third Lower Ring",
@@ -5952,7 +6226,9 @@
         "Z": -82,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "First Central Ring",
@@ -5972,7 +6248,9 @@
         "Z": -133.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Central Ring",
@@ -5992,7 +6270,9 @@
         "Z": -161,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Third Central Ring",
@@ -6012,7 +6292,9 @@
         "Z": -243.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Ring",
@@ -6032,7 +6314,9 @@
         "Z": -193.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower Sanctum",
@@ -6052,7 +6336,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower Sanctum",
@@ -6072,7 +6358,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Third Floor",
@@ -6092,7 +6380,9 @@
         "Z": 25.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower La Noscea",
@@ -6112,7 +6402,9 @@
         "Z": -714.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -6132,7 +6424,9 @@
         "Z": -768.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Central Shroud",
@@ -6152,7 +6446,9 @@
         "Z": -681.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Gridania",
@@ -6172,7 +6468,9 @@
         "Z": -671.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Western Thanalan",
@@ -6192,7 +6490,9 @@
         "Z": -719,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -6212,7 +6512,9 @@
         "Z": -660.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Chocobo Square",
@@ -6232,7 +6534,9 @@
         "Z": 20,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Quarterdeck",
@@ -6252,7 +6556,9 @@
         "Z": -88,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Stern",
@@ -6272,7 +6578,9 @@
         "Z": -112.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Dravanian Forelands",
@@ -6292,7 +6600,9 @@
         "Z": 349.4737,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Dravanian Hinterlands",
@@ -6312,7 +6622,9 @@
         "Z": 513.6842,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Foundation",
@@ -6332,7 +6644,9 @@
         "Z": -69.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Sea of Clouds",
@@ -6352,7 +6666,9 @@
         "Z": -890.5263,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Dravanian Hinterlands",
@@ -6372,7 +6688,9 @@
         "Z": 191.57895,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Churning Mists",
@@ -6392,7 +6710,9 @@
         "Z": 703.1579,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Idyllshire",
@@ -6412,7 +6732,9 @@
         "Z": 152,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Idyllshire",
@@ -6432,7 +6754,9 @@
         "Z": 123,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6452,7 +6776,9 @@
         "Z": 43,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6472,7 +6798,9 @@
         "Z": 50.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6492,7 +6820,9 @@
         "Z": -8.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6512,7 +6842,9 @@
         "Z": -12,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6532,7 +6864,9 @@
         "Z": 48.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6552,7 +6886,9 @@
         "Z": -66.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6572,7 +6908,9 @@
         "Z": -64.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6592,7 +6930,9 @@
         "Z": -64.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Pillars",
@@ -6612,7 +6952,9 @@
         "Z": -103.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Firmament",
@@ -6632,7 +6974,9 @@
         "Z": 64,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Firmament",
@@ -6652,7 +6996,9 @@
         "Z": 64,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Firmament",
@@ -6672,7 +7018,9 @@
         "Z": 64,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Firmament",
@@ -6692,7 +7040,9 @@
         "Z": 64,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Firmament",
@@ -6712,7 +7062,9 @@
         "Z": 64,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ruling Chamber",
@@ -6732,7 +7084,9 @@
         "Z": -158,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Veins",
@@ -6752,7 +7106,9 @@
         "Z": 103,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Betrayal",
@@ -6772,7 +7128,9 @@
         "Z": -188.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Bioweapon Research",
@@ -6792,7 +7150,9 @@
         "Z": 3.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Autolift",
@@ -6812,7 +7172,9 @@
         "Z": -250.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Triad Control",
@@ -6832,7 +7194,9 @@
         "Z": 288.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Chantry Cloister",
@@ -6852,7 +7216,9 @@
         "Z": -102,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Inner Sanctum",
@@ -6872,7 +7238,9 @@
         "Z": 0.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hall of the Spear",
@@ -6892,7 +7260,9 @@
         "Z": 0.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Autolift",
@@ -6912,7 +7282,9 @@
         "Z": 548.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Third Level",
@@ -6932,7 +7304,9 @@
         "Z": -24.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Level",
@@ -6952,7 +7326,9 @@
         "Z": -54.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "First Level",
@@ -6972,7 +7348,9 @@
         "Z": -8,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Weight Chamber",
@@ -6992,7 +7370,9 @@
         "Z": -54.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Hold",
@@ -7012,7 +7392,9 @@
         "Z": 260,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Midship Deck",
@@ -7032,7 +7414,9 @@
         "Z": 97.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fo\u0027c\u0027sle",
@@ -7052,7 +7436,9 @@
         "Z": 382,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lower Reaches",
@@ -7072,7 +7458,9 @@
         "Z": -280.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Upper Reaches",
@@ -7092,7 +7480,9 @@
         "Z": 137,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sanctum of Dreams",
@@ -7112,7 +7502,9 @@
         "Z": -433.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "An Answer of Silence",
@@ -7132,7 +7524,9 @@
         "Z": -194.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "An Answer of Shame",
@@ -7152,7 +7546,9 @@
         "Z": 75.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Pyramid Base",
@@ -7172,7 +7568,9 @@
         "Z": 461,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Gloriole",
@@ -7192,7 +7590,9 @@
         "Z": -227.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Sea of Clouds",
@@ -7212,7 +7612,9 @@
         "Z": 17.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Parrock",
@@ -7232,7 +7634,9 @@
         "Z": 10.125,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Floors",
@@ -7252,7 +7656,9 @@
         "Z": -96.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Cellarage",
@@ -7272,7 +7678,9 @@
         "Z": -13,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -7292,7 +7700,9 @@
         "Z": -9,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -7312,7 +7722,9 @@
         "Z": 11.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hustings Strip",
@@ -7332,7 +7744,9 @@
         "Z": 11.375,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Outer Reaches",
@@ -7352,7 +7766,9 @@
         "Z": 73.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Inner Reaches",
@@ -7372,7 +7788,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Walk",
@@ -7392,7 +7810,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Dun Scaith Ruins",
@@ -7412,7 +7832,9 @@
         "Z": 398,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Crumbling Hold",
@@ -7432,7 +7854,9 @@
         "Z": -257,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Veins",
@@ -7452,7 +7876,9 @@
         "Z": 175.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Heart",
@@ -7472,7 +7898,9 @@
         "Z": -63,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Azim Steppe",
@@ -7492,7 +7920,9 @@
         "Z": 868,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Ruby Sea",
@@ -7512,7 +7942,9 @@
         "Z": -250,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Doman Enclave",
@@ -7532,7 +7964,9 @@
         "Z": 543,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Bozjan Southern Front",
@@ -7552,7 +7986,9 @@
         "Z": 543,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zadnor",
@@ -7572,7 +8008,9 @@
         "Z": 543,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hon-maru",
@@ -7592,7 +8030,9 @@
         "Z": -268,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Way of Enlightenment",
@@ -7612,7 +8052,9 @@
         "Z": 204.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kugane",
@@ -7632,7 +8074,9 @@
         "Z": -15,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kugane",
@@ -7652,7 +8096,9 @@
         "Z": -833,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Peaks",
@@ -7672,7 +8118,9 @@
         "Z": -794,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Fringes",
@@ -7692,7 +8140,9 @@
         "Z": -551,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Peaks",
@@ -7712,7 +8162,9 @@
         "Z": 241,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Interdimensional Rift",
@@ -7732,7 +8184,9 @@
         "Z": 525,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lochs",
@@ -7752,7 +8206,9 @@
         "Z": -19,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Resonatorium",
@@ -7772,7 +8228,9 @@
         "Z": 423,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Garlemald",
@@ -7792,7 +8250,9 @@
         "Z": 637,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Ruby Sea",
@@ -7812,7 +8272,9 @@
         "Z": 896,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Azim Steppe",
@@ -7832,7 +8294,9 @@
         "Z": 700,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Royal Palace",
@@ -7852,7 +8316,9 @@
         "Z": 71.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kugane",
@@ -7872,7 +8338,9 @@
         "Z": 13,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lochs",
@@ -7892,7 +8360,9 @@
         "Z": -127.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Depths",
@@ -7912,7 +8382,9 @@
         "Z": 5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kugane",
@@ -7932,7 +8404,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Prima Vista Bridge",
@@ -7952,7 +8426,9 @@
         "Z": -1.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Garamsythe Waterway",
@@ -7972,7 +8448,9 @@
         "Z": 303.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Royal City of Lesalia",
@@ -7992,7 +8470,9 @@
         "Z": 3,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Rear Complex",
@@ -8012,7 +8492,9 @@
         "Z": 168,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Doman Enclave",
@@ -8032,7 +8514,9 @@
         "Z": 18.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Bozjan Southern Front",
@@ -8052,7 +8536,9 @@
         "Z": 98.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zadnor",
@@ -8072,7 +8558,9 @@
         "Z": 98.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The One River",
@@ -8092,7 +8580,9 @@
         "Z": -26,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Dairyu Chain",
@@ -8112,7 +8602,9 @@
         "Z": -184,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lower Lighthouse",
@@ -8132,7 +8624,9 @@
         "Z": -358.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Upper Lighthouse",
@@ -8152,7 +8646,9 @@
         "Z": -522,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Clockwork City of Goug",
@@ -8172,7 +8668,9 @@
         "Z": 49.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Yanxia",
@@ -8192,7 +8690,9 @@
         "Z": 53.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Il Mheg",
@@ -8212,7 +8712,9 @@
         "Z": 839,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Amh Araeng",
@@ -8232,7 +8734,9 @@
         "Z": -684,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Rak\u0027tika Greatwood",
@@ -8252,7 +8756,9 @@
         "Z": 751,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Crystarium",
@@ -8272,7 +8778,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Crystarium",
@@ -8292,7 +8800,9 @@
         "Z": 276,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Eulmore",
@@ -8312,7 +8822,9 @@
         "Z": -162,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Tempest",
@@ -8332,7 +8844,9 @@
         "Z": -883,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Crystarium",
@@ -8352,7 +8866,9 @@
         "Z": -659,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Empty",
@@ -8372,7 +8888,9 @@
         "Z": -6.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Understory",
@@ -8392,7 +8910,9 @@
         "Z": -32,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Cellarage",
@@ -8412,7 +8932,9 @@
         "Z": -13,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -8432,7 +8954,9 @@
         "Z": -9,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -8452,7 +8976,9 @@
         "Z": 11.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Leap of Ox\u0027Charl",
@@ -8472,7 +8998,9 @@
         "Z": -167.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lochs",
@@ -8492,7 +9020,9 @@
         "Z": 14.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lochs",
@@ -8512,7 +9042,9 @@
         "Z": 172.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Dohn Mheg",
@@ -8532,7 +9064,9 @@
         "Z": 96,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fading Hearth",
@@ -8552,7 +9086,9 @@
         "Z": 326,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Cant Below",
@@ -8572,7 +9108,9 @@
         "Z": -197,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Rooftop",
@@ -8592,7 +9130,9 @@
         "Z": -281,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Jade Paths",
@@ -8612,7 +9152,9 @@
         "Z": 263.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mor Dhona",
@@ -8632,7 +9174,9 @@
         "Z": 81,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Crystarium",
@@ -8652,7 +9196,9 @@
         "Z": 14,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Syrcus Trench",
@@ -8672,7 +9218,9 @@
         "Z": -18.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Elpis",
@@ -8692,7 +9240,9 @@
         "Z": 833,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Canopy",
@@ -8712,7 +9262,9 @@
         "Z": -4.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Deep Stratum",
@@ -8732,7 +9284,9 @@
         "Z": 936,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kholusia",
@@ -8752,7 +9306,9 @@
         "Z": 2.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Anogg\u0027s Lair",
@@ -8772,7 +9328,9 @@
         "Z": -109,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zone 4",
@@ -8792,7 +9350,9 @@
         "Z": 646,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zone 5",
@@ -8812,7 +9372,9 @@
         "Z": 930.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Noesis",
@@ -8832,7 +9394,9 @@
         "Z": -377,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lakeland",
@@ -8852,7 +9416,9 @@
         "Z": 435,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Bozjan Southern Front",
@@ -8872,7 +9438,9 @@
         "Z": -34,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zadnor",
@@ -8892,7 +9460,9 @@
         "Z": -34,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Bunker",
@@ -8912,7 +9482,9 @@
         "Z": 12.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Alien Ship",
@@ -8932,7 +9504,9 @@
         "Z": -287,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Delubrum Reginae",
@@ -8952,7 +9526,9 @@
         "Z": 38,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Amh Araeng",
@@ -8972,7 +9548,9 @@
         "Z": -6.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Monorail System",
@@ -8992,7 +9570,9 @@
         "Z": 842,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Section",
@@ -9012,7 +9592,9 @@
         "Z": 696,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Labyrinthos",
@@ -9032,7 +9614,9 @@
         "Z": -827,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Thavnair",
@@ -9052,7 +9636,9 @@
         "Z": -39.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Tuliyollal",
@@ -9072,7 +9658,9 @@
         "Z": 141.11111,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Thavnair",
@@ -9092,7 +9680,9 @@
         "Z": -680,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ultima Thule",
@@ -9112,7 +9702,9 @@
         "Z": 615,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Nethergate",
@@ -9132,7 +9724,9 @@
         "Z": 52,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Senatus",
@@ -9152,7 +9746,9 @@
         "Z": 80,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Nethergate",
@@ -9172,7 +9768,9 @@
         "Z": 0,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Gates of Pand\u00E6monium",
@@ -9192,7 +9790,9 @@
         "Z": 169,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Inculcation Channel",
@@ -9212,7 +9812,9 @@
         "Z": 263,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fervor Enhancement",
@@ -9232,7 +9834,9 @@
         "Z": 63,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Block of Dreams",
@@ -9252,7 +9856,9 @@
         "Z": 183,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Under Construction (Sorry!)",
@@ -9272,7 +9878,9 @@
         "Z": 223.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Experimental Artifice",
@@ -9292,7 +9900,9 @@
         "Z": -12,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower Aerial Artifice",
@@ -9312,7 +9922,9 @@
         "Z": 71,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Abyssal Plane",
@@ -9332,7 +9944,9 @@
         "Z": 470.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Aetherostatic Peak",
@@ -9352,7 +9966,9 @@
         "Z": 85.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Conveyance Sector",
@@ -9372,7 +9988,9 @@
         "Z": -7,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Auxiliary Sector",
@@ -9392,7 +10010,9 @@
         "Z": 173,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ostrakon Okto",
@@ -9412,7 +10032,9 @@
         "Z": -221,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ostrakon Deka-hepta",
@@ -9432,7 +10054,9 @@
         "Z": -288.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Temple Stones",
@@ -9452,7 +10076,9 @@
         "Z": 187.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -9472,7 +10098,9 @@
         "Z": 10,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Sharlayan",
@@ -9492,7 +10120,9 @@
         "Z": 14.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Foundation",
@@ -9512,7 +10142,9 @@
         "Z": 9.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Stygian Insenescence Cells",
@@ -9532,7 +10164,9 @@
         "Z": 120,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Nethergate",
@@ -9552,7 +10186,9 @@
         "Z": -692,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lochs",
@@ -9572,7 +10208,9 @@
         "Z": 637,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Senatus",
@@ -9592,7 +10230,9 @@
         "Z": -624,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Labyrinthos",
@@ -9612,7 +10252,9 @@
         "Z": 615,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Zhayolm Remnants",
@@ -9632,7 +10274,9 @@
         "Z": 88,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Twin Halls",
@@ -9652,7 +10296,9 @@
         "Z": -903,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Troia Keep",
@@ -9672,7 +10318,9 @@
         "Z": 133,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hydromantic Terraces",
@@ -9692,7 +10340,9 @@
         "Z": 15.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Troia Keep",
@@ -9712,7 +10362,9 @@
         "Z": 133,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Weaver\u0027s Warding",
@@ -9732,7 +10384,9 @@
         "Z": 130.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Hydromantic Terraces",
@@ -9752,7 +10406,9 @@
         "Z": 15.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zero\u0027s Domain",
@@ -9772,7 +10428,9 @@
         "Z": -87.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Thavnair",
@@ -9792,7 +10450,9 @@
         "Z": -45.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Labyrinthos",
@@ -9812,7 +10472,9 @@
         "Z": 621.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Arete",
@@ -9832,7 +10494,9 @@
         "Z": 114,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Vicus Messorum",
@@ -9852,7 +10516,9 @@
         "Z": -84,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Thavnair",
@@ -9872,7 +10538,9 @@
         "Z": 46,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Vicus Messorum",
@@ -9892,7 +10560,9 @@
         "Z": -108,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Garlemald",
@@ -9912,7 +10582,9 @@
         "Z": -585.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fons Manalis",
@@ -9932,7 +10604,9 @@
         "Z": 375.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Radz-at-Han",
@@ -9952,7 +10626,9 @@
         "Z": 5.875,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mare Lamentorum",
@@ -9972,7 +10648,9 @@
         "Z": 770,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Lower Pagoda",
@@ -9992,7 +10670,9 @@
         "Z": -34,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Upper Pagoda",
@@ -10012,7 +10692,9 @@
         "Z": 663,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fifth Story",
@@ -10032,7 +10714,9 @@
         "Z": 577,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fifth Story",
@@ -10052,7 +10736,9 @@
         "Z": 577,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Urqopacha",
@@ -10072,7 +10758,9 @@
         "Z": -453,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kozama\u0027uka",
@@ -10092,7 +10780,9 @@
         "Z": -850,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kozama\u0027uka",
@@ -10112,7 +10802,9 @@
         "Z": 565,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Shaaloani",
@@ -10132,7 +10824,9 @@
         "Z": 799,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Yak T\u0027el",
@@ -10152,7 +10846,9 @@
         "Z": -667,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Heritage Found",
@@ -10172,7 +10868,9 @@
         "Z": -861,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Kozama\u0027uka",
@@ -10192,7 +10890,9 @@
         "Z": 474,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Heritage Found",
@@ -10212,7 +10912,9 @@
         "Z": 747,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Island Coastline",
@@ -10232,7 +10934,9 @@
         "Z": 461,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Incalculable Approach",
@@ -10252,7 +10956,9 @@
         "Z": 197,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Island Interior",
@@ -10272,7 +10978,9 @@
         "Z": 306.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Swiftstep Beach",
@@ -10292,7 +11000,9 @@
         "Z": 73,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Incalculable",
@@ -10312,7 +11022,9 @@
         "Z": -575,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Thatchroot",
@@ -10332,7 +11044,9 @@
         "Z": -498,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Forgotten Footfalls",
@@ -10352,7 +11066,9 @@
         "Z": -764,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mind\u0027s Libation",
@@ -10372,7 +11088,9 @@
         "Z": -942.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Heritage Found",
@@ -10392,7 +11110,9 @@
         "Z": 17.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Yak T\u0027el",
@@ -10412,7 +11132,9 @@
         "Z": -8.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Living Memory",
@@ -10432,7 +11154,9 @@
         "Z": -88,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Urqopacha",
@@ -10452,7 +11176,9 @@
         "Z": -89.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Non-volatile Memory",
@@ -10472,7 +11198,9 @@
         "Z": 128,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Cellarage",
@@ -10492,7 +11220,9 @@
         "Z": -13,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -10512,7 +11242,9 @@
         "Z": -9,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Second Floor",
@@ -10532,7 +11264,9 @@
         "Z": 11.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Urqopacha",
@@ -10552,7 +11286,9 @@
         "Z": -89.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Urqopacha",
@@ -10572,7 +11308,9 @@
         "Z": -89.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Urqopacha",
@@ -10592,7 +11330,9 @@
         "Z": -89.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Urqopacha",
@@ -10612,7 +11352,9 @@
         "Z": -89.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Land of Eternal Harvest",
@@ -10632,7 +11374,9 @@
         "Z": -216,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Cove of Countless Colors",
@@ -10652,7 +11396,9 @@
         "Z": 778.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Valley of Living Stone",
@@ -10672,7 +11418,9 @@
         "Z": -330,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Living Memory",
@@ -10692,7 +11440,9 @@
         "Z": -17.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Old Sharlayan",
@@ -10712,7 +11462,9 @@
         "Z": -1,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Mare Lamentorum",
@@ -10732,7 +11484,9 @@
         "Z": 504.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Gold Saucer",
@@ -10752,7 +11506,9 @@
         "Z": -1.25,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sanctum of the Twelve",
@@ -10772,7 +11528,9 @@
         "Z": -233,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sanctum of the Twelve",
@@ -10792,7 +11550,9 @@
         "Z": -233,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Intercessory",
@@ -10812,7 +11572,9 @@
         "Z": -234,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Amdapor Keep",
@@ -10832,7 +11594,9 @@
         "Z": 168,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Saint Endalim\u0027s Scholasticate",
@@ -10852,7 +11616,9 @@
         "Z": -131,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Fortemps Manor",
@@ -10872,7 +11638,9 @@
         "Z": -6,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Lightfeather Proving Grounds",
@@ -10892,7 +11660,9 @@
         "Z": -40.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Twin Adder Barracks",
@@ -10912,7 +11682,9 @@
         "Z": -7.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Flame Barracks",
@@ -10932,7 +11704,9 @@
         "Z": -100,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Maelstrom Barracks",
@@ -10952,7 +11726,9 @@
         "Z": 62,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Steps of Faith",
@@ -10972,7 +11748,9 @@
         "Z": -352,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Steps of Faith",
@@ -10992,7 +11770,9 @@
         "Z": -352,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Steps of Faith",
@@ -11012,7 +11792,9 @@
         "Z": -352,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sanctum of the Twelve",
@@ -11032,7 +11814,9 @@
         "Z": -233,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Burn",
@@ -11052,7 +11836,9 @@
         "Z": -535,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Heaven-on-High",
@@ -11072,7 +11858,9 @@
         "Z": -674,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Reisen Temple Road",
@@ -11092,7 +11880,9 @@
         "Z": -236,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Ridorana Cataract",
@@ -11112,7 +11902,9 @@
         "Z": -42.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Core",
@@ -11132,7 +11924,9 @@
         "Z": 23.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Core",
@@ -11152,7 +11946,9 @@
         "Z": 23.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Core",
@@ -11172,7 +11968,9 @@
         "Z": 23.75,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Last Trace",
@@ -11192,7 +11990,9 @@
         "Z": 122,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Last Trace",
@@ -11212,7 +12012,9 @@
         "Z": 122,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Propylaion",
@@ -11232,7 +12034,9 @@
         "Z": 816,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Porta Decumana",
@@ -11252,7 +12056,9 @@
         "Z": 1,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Backroom",
@@ -11272,7 +12078,9 @@
         "Z": 205,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Tritails Training",
@@ -11292,7 +12100,9 @@
         "Z": 128.8889,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Greenroom",
@@ -11312,7 +12122,9 @@
         "Z": 356.6667,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Sphere of Naught",
@@ -11332,7 +12144,9 @@
         "Z": -448.5,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Zorgor the Boundless",
@@ -11352,7 +12166,9 @@
         "Z": -461.11115,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Windward Wilds",
@@ -11372,7 +12188,9 @@
         "Z": -758,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Windward Wilds",
@@ -11392,7 +12210,9 @@
         "Z": -758,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "The Windward Wilds",
@@ -11412,7 +12232,9 @@
         "Z": -758,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
     },
     {
       "Name": "Tritails Training",
@@ -11432,7 +12254,1732 @@
         "Z": 128.8889,
         "Radius": 0
       },
-      "OneWay": false
+      "OneWay": false,
+      "Npc": null,
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to the Airship Landing",
+      "From": {
+        "Territory": 128,
+        "Map": 11,
+        "X": 8.219373,
+        "Y": 39.99996,
+        "Z": 17.77156,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -10.46961,
+        "Y": 91.49963,
+        "Z": -16.41872,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Skaenrael",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to Bulwark Hall",
+      "From": {
+        "Territory": 128,
+        "Map": 11,
+        "X": 8.219373,
+        "Y": 39.99996,
+        "Z": 17.77156,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 129,
+        "Map": 12,
+        "X": 11.02734,
+        "Y": 20.99929,
+        "Z": 13.29201,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Skaenrael",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Ul\u0027dah",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -25.92511,
+        "Y": 92.0024,
+        "Z": -3.677429,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -17.53673,
+        "Y": 82.99998,
+        "Z": 3.712338,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "L\u0027nophlo",
+      "Quests": [
+        66043,
+        66064,
+        66082
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Gridania",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -25.92511,
+        "Y": 92.0024,
+        "Z": -3.677429,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 35.11322,
+        "Y": -19,
+        "Z": 104.5712,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "L\u0027nophlo",
+      "Quests": [
+        66043,
+        66064,
+        66082
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Ishgard",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -25.92511,
+        "Y": 92.0024,
+        "Z": -3.677429,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 159.8424,
+        "Y": -12.5463,
+        "Z": -16.81555,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "L\u0027nophlo",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Seek Passage to the Gold Saucer",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -25.92511,
+        "Y": 92.0024,
+        "Z": -3.677429,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.71321,
+        "Y": 0.02503908,
+        "Z": 99.99944,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "L\u0027nophlo",
+      "Quests": [
+        65970
+      ]
+    },
+    {
+      "Name": "Ride Lift to the Drowning Wench",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -7.236142,
+        "Y": 91.49999,
+        "Z": -16.10603,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 11,
+        "X": 9.099986,
+        "Y": 40.00024,
+        "Z": 15.17017,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Blanmhas",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to Bulwark Hall",
+      "From": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -7.236142,
+        "Y": 91.49999,
+        "Z": -16.10603,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 129,
+        "Map": 12,
+        "X": 11.02734,
+        "Y": 20.99929,
+        "Z": 13.29201,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Blanmhas",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Kugane",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -357.3086,
+        "Y": 8.000008,
+        "Z": 45.81573,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 628,
+        "Map": 370,
+        "X": -127.2189,
+        "Y": -6.999999,
+        "Z": -58.83956,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "East Aldenard Trading Company sailor",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Aleport",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -191.9738,
+        "Y": 0.9999908,
+        "Z": 211.6884,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 138,
+        "Map": 18,
+        "X": 320.234,
+        "Y": -40.425,
+        "Z": 373.1137,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Rerenasu",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Costa del Sol",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -191.9738,
+        "Y": 0.9999908,
+        "Z": 211.6884,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 611.0837,
+        "Y": 11.62379,
+        "Z": 393.1127,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Rerenasu",
+      "Quests": null
+    },
+    {
+      "Name": "Seek Passage to Mist",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -191.9738,
+        "Y": 0.9999908,
+        "Z": 211.6884,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 339,
+        "Map": 72,
+        "X": -64.06637,
+        "Y": 2.066447,
+        "Z": 93.60965,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Rerenasu",
+      "Quests": [
+        66750
+      ]
+    },
+    {
+      "Name": "Ride Lift to the Airship Landing",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": 9.784633,
+        "Y": 20.99987,
+        "Z": 15.11835,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -10.46961,
+        "Y": 91.49963,
+        "Z": -16.41872,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Grehfarr",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to the Drowning Wench",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": 9.784633,
+        "Y": 20.99987,
+        "Z": 15.11835,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 11,
+        "X": 9.099986,
+        "Y": 40.00024,
+        "Z": 15.17017,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Grehfarr",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the Rogues\u0027 Guild",
+      "From": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -152.6555,
+        "Y": 2.856241,
+        "Z": 243.1875,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 129,
+        "Map": 548,
+        "X": -151.8593,
+        "Y": -129.4397,
+        "Z": 259.5668,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lonwoerd",
+      "Quests": [
+        65638
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Gridania",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -23.59064,
+        "Y": 83.19997,
+        "Z": -2.274539,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 35.11322,
+        "Y": -19,
+        "Z": 104.5712,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Elyenora",
+      "Quests": [
+        66043,
+        66064,
+        66082
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -23.59064,
+        "Y": 83.19997,
+        "Z": -2.274539,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -12.69166,
+        "Y": 91.49994,
+        "Z": -7.602967,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Elyenora",
+      "Quests": [
+        66043,
+        66064,
+        66082
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Ishgard",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -23.59064,
+        "Y": 83.19997,
+        "Z": -2.274539,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 159.8424,
+        "Y": -12.5463,
+        "Z": -16.81555,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Elyenora",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Seek Passage to the Gold Saucer",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -23.59064,
+        "Y": 83.19997,
+        "Z": -2.274539,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.71321,
+        "Y": 0.02503908,
+        "Z": 99.99944,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Elyenora",
+      "Quests": [
+        65970
+      ]
+    },
+    {
+      "Name": "Ride Lift to the Hustings Strip",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -25.97968,
+        "Y": 81.8,
+        "Z": -31.99823,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 131,
+        "Map": 73,
+        "X": -20.85954,
+        "Y": 34,
+        "Z": -44.04982,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Nanahomi",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to the Ruby Road Exchange",
+      "From": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -25.97968,
+        "Y": 81.8,
+        "Z": -31.99823,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 13,
+        "X": -20.80843,
+        "Y": 10,
+        "Z": -43.89702,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Nanahomi",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to the Airship Landing",
+      "From": {
+        "Territory": 130,
+        "Map": 13,
+        "X": -23.33112,
+        "Y": 9.994568,
+        "Z": -43.44244,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -24.54714,
+        "Y": 81.8,
+        "Z": -30.04834,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Willahelm",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to the Hustings Strip",
+      "From": {
+        "Territory": 130,
+        "Map": 13,
+        "X": -23.33112,
+        "Y": 9.994568,
+        "Z": -43.44244,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 131,
+        "Map": 73,
+        "X": -20.85954,
+        "Y": 34,
+        "Z": -44.04982,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Willahelm",
+      "Quests": null
+    },
+    {
+      "Name": "Enter Lemures Headquarters",
+      "From": {
+        "Territory": 131,
+        "Map": 14,
+        "X": 115.11,
+        "Y": 8,
+        "Z": 15.40517,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 971,
+        "Map": 741,
+        "X": 7.338437E-14,
+        "Y": -0.2000003,
+        "Z": 7.943932,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Loyal Lemure",
+      "Quests": [
+        69609
+      ]
+    },
+    {
+      "Name": "Ride Lift to the Airship Landing",
+      "From": {
+        "Territory": 131,
+        "Map": 73,
+        "X": -19.36374,
+        "Y": 33.98179,
+        "Z": -42.58797,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -24.54714,
+        "Y": 81.8,
+        "Z": -30.04834,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lolomaya",
+      "Quests": null
+    },
+    {
+      "Name": "Ride Lift to the Ruby Road Exchange",
+      "From": {
+        "Territory": 131,
+        "Map": 73,
+        "X": -19.36374,
+        "Y": 33.98179,
+        "Z": -42.58797,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 13,
+        "X": -20.80843,
+        "Y": 10,
+        "Z": -43.89702,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lolomaya",
+      "Quests": null
+    },
+    {
+      "Name": "Inquire Within",
+      "From": {
+        "Territory": 131,
+        "Map": 73,
+        "X": -83.63995,
+        "Y": 39.9939,
+        "Z": 109.5361,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 611,
+        "Map": 335,
+        "X": 7.555878,
+        "Y": 5.960464E-08,
+        "Z": 8.359568,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Phrontistery alchemist",
+      "Quests": [
+        67913
+      ]
+    },
+    {
+      "Name": "Travel Beyond the White Wolf Gate",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": -114.3664,
+        "Y": -7.370183,
+        "Z": 94.54504,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 148,
+        "Map": 4,
+        "X": -304.0262,
+        "Y": 63.44862,
+        "Z": -281.1893,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Franchemontiaux",
+      "Quests": [
+        66338
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Ul\u0027dah",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 29.03787,
+        "Y": -19.02805,
+        "Z": 105.4856,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -17.53673,
+        "Y": 82.99998,
+        "Z": 3.712338,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lionnellais",
+      "Quests": [
+        66043,
+        66064,
+        66082
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 29.03787,
+        "Y": -19.02805,
+        "Z": 105.4856,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -12.69166,
+        "Y": 91.49994,
+        "Z": -7.602967,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lionnellais",
+      "Quests": [
+        66043,
+        66064,
+        66082
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Ishgard",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 29.03787,
+        "Y": -19.02805,
+        "Z": 105.4856,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 159.8424,
+        "Y": -12.5463,
+        "Z": -16.81555,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lionnellais",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Seek Passage to the Gold Saucer",
+      "From": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 29.03787,
+        "Y": -19.02805,
+        "Z": 105.4856,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.71321,
+        "Y": 0.02503908,
+        "Z": 99.99944,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lionnellais",
+      "Quests": [
+        65970
+      ]
+    },
+    {
+      "Name": "Passage to the Haunted Manor",
+      "From": {
+        "Territory": 133,
+        "Map": 3,
+        "X": -55.65656,
+        "Y": 6.28137,
+        "Z": -106.0025,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 809,
+        "Map": 317,
+        "X": 73.43659,
+        "Y": 0,
+        "Z": 0.06682843,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Genial guiser",
+      "Quests": null
+    },
+    {
+      "Name": "Seek Passage to Sweetbloom Pier",
+      "From": {
+        "Territory": 133,
+        "Map": 3,
+        "X": 181.4145,
+        "Y": -2.352318,
+        "Z": -240.4059,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 152,
+        "Map": 5,
+        "X": -568.5201,
+        "Y": 9.042874,
+        "Z": 77.10869,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Romarique",
+      "Quests": null
+    },
+    {
+      "Name": "Seek Passage to the Lavender Beds",
+      "From": {
+        "Territory": 133,
+        "Map": 3,
+        "X": 181.4145,
+        "Y": -2.352318,
+        "Z": -240.4059,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 340,
+        "Map": 82,
+        "X": 10.39536,
+        "Y": 2.610901,
+        "Z": 204.643,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Romarique",
+      "Quests": [
+        66748
+      ]
+    },
+    {
+      "Name": "Seek Passage to the Wolves\u0027 Den",
+      "From": {
+        "Territory": 135,
+        "Map": 16,
+        "X": 270.7407,
+        "Y": 4.403121,
+        "Z": 719.9968,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 250,
+        "Map": 51,
+        "X": 93.27802,
+        "Y": 2.624569,
+        "Z": 36.34073,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Aleport",
+      "From": {
+        "Territory": 135,
+        "Map": 16,
+        "X": -43.93653,
+        "Y": 9.033939,
+        "Z": 848.1338,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 138,
+        "Map": 18,
+        "X": 320.234,
+        "Y": -40.425,
+        "Z": 373.1137,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "O\u0027nolosi",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Raincatcher Gully",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 344.6899,
+        "Y": 31.88947,
+        "Z": 89.38899,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 21.61848,
+        "Y": 34.07887,
+        "Z": 224.382,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Hidden Falls",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 20.48174,
+        "Y": 34.07887,
+        "Z": 222.1594,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 346.2426,
+        "Y": 32.76953,
+        "Z": 94.81311,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 607.8126,
+        "Y": 11.62379,
+        "Z": 391.8668,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -189.6475,
+        "Y": 0.9999907,
+        "Z": 207.8125,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Board the Rhotano Privateer",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 607.8126,
+        "Y": 11.62379,
+        "Z": 391.8668,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 883.3936,
+        "Y": 20.74015,
+        "Z": 138.6634,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Return to Costa del Sol",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 887.0202,
+        "Y": 21.40931,
+        "Z": 134.2571,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 611.0837,
+        "Y": 11.62379,
+        "Z": 393.1127,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Saltworn captain",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the dock storehouse",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": -14.74308,
+        "Y": 41.39178,
+        "Z": 258.1444,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 549,
+        "X": -17.36745,
+        "Y": -24.77328,
+        "Z": 258.1562,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Byakubu",
+      "Quests": [
+        65748
+      ]
+    },
+    {
+      "Name": "Close Your Eyes",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 774.0538,
+        "Y": 9,
+        "Z": 344.3854,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 763.5888,
+        "Y": 23.09679,
+        "Z": 442.6799,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Faire adventurer",
+      "Quests": [
+        70077
+      ]
+    },
+    {
+      "Name": "Close Your Eyes",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 755.4592,
+        "Y": 9.445313,
+        "Z": 467.2673,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 761.9263,
+        "Y": 30.4288,
+        "Z": 472.5261,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Faire adventurer",
+      "Quests": [
+        70077
+      ]
+    },
+    {
+      "Name": "Close Your Eyes",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 774.0443,
+        "Y": 9.016849,
+        "Z": 344.3807,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 763.5888,
+        "Y": 23.09679,
+        "Z": 442.6799,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Faire adventurer",
+      "Quests": null
+    },
+    {
+      "Name": "Close Your Eyes",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 755.4589,
+        "Y": 9.4453,
+        "Z": 467.2463,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 761.199,
+        "Y": 30.4288,
+        "Z": 475.4354,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Faire adventurer",
+      "Quests": null
+    },
+    {
+      "Name": "Close Your Eyes",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 774.065,
+        "Y": 9.021781,
+        "Z": 344.3438,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 763.5888,
+        "Y": 23.0968,
+        "Z": 442.6799,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Faire adventurer",
+      "Quests": null
+    },
+    {
+      "Name": "Close Your Eyes",
+      "From": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 755.4589,
+        "Y": 9.414734,
+        "Z": 467.1548,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 137,
+        "Map": 17,
+        "X": 761.199,
+        "Y": 30.4288,
+        "Z": 475.4354,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Faire adventurer",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 138,
+        "Map": 18,
+        "X": 317.4456,
+        "Y": -36.325,
+        "Z": 352.8839,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -189.6475,
+        "Y": 0.9999907,
+        "Z": 207.8125,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Candlekeep Quay",
+      "From": {
+        "Territory": 138,
+        "Map": 18,
+        "X": 317.4456,
+        "Y": -36.325,
+        "Z": 352.8839,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 135,
+        "Map": 16,
+        "X": -32.38482,
+        "Y": 8.921356,
+        "Z": 852.996,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to the Isles of Umbra",
+      "From": {
+        "Territory": 138,
+        "Map": 18,
+        "X": 317.4456,
+        "Y": -36.325,
+        "Z": 352.8839,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 138,
+        "Map": 18,
+        "X": -290.1668,
+        "Y": -40.98714,
+        "Z": 413.8002,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": [
+        66498
+      ]
+    },
+    {
+      "Name": "Seek Passage to Aleport",
+      "From": {
+        "Territory": 138,
+        "Map": 18,
+        "X": -289.8757,
+        "Y": -41.2757,
+        "Z": 406.5156,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 138,
+        "Map": 18,
+        "X": 320.234,
+        "Y": -40.425,
+        "Z": 373.1137,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Jijiroon\u0027s Trading Post",
+      "From": {
+        "Territory": 139,
+        "Map": 19,
+        "X": -342.1197,
+        "Y": -1.024988,
+        "Z": 111.4694,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 139,
+        "Map": 19,
+        "X": 222.3569,
+        "Y": -0.9591978,
+        "Z": 258.9733,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Memeroon\u0027s Trading Post",
+      "From": {
+        "Territory": 139,
+        "Map": 19,
+        "X": 220.9328,
+        "Y": -0.9591975,
+        "Z": 257.4158,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 139,
+        "Map": 19,
+        "X": -336.9754,
+        "Y": -1.025002,
+        "Z": 114.78,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Seek Passage to Ul\u0027dah",
+      "From": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.89101,
+        "Y": -5.662441E-06,
+        "Z": 97.3551,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -17.53673,
+        "Y": 82.99998,
+        "Z": 3.712338,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Gridania",
+      "From": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.89101,
+        "Y": -5.662441E-06,
+        "Z": 97.3551,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 35.11322,
+        "Y": -19,
+        "Z": 104.5712,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.89101,
+        "Y": -5.662441E-06,
+        "Z": 97.3551,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -12.69166,
+        "Y": 91.49994,
+        "Z": -7.602967,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Ishgard",
+      "From": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.89101,
+        "Y": -5.662441E-06,
+        "Z": 97.3551,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 159.8424,
+        "Y": -12.5463,
+        "Z": -16.81555,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Seek Passage to the Moraby Drydocks",
+      "From": {
+        "Territory": 250,
+        "Map": 51,
+        "X": 101.3502,
+        "Y": 2.557453,
+        "Z": 36.91325,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 135,
+        "Map": 16,
+        "X": 256.4711,
+        "Y": 4.403121,
+        "Z": 712.5724,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Ferry skipper",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the Proving Grounds",
+      "From": {
+        "Territory": 418,
+        "Map": 218,
+        "X": 94.59986,
+        "Y": 24.08186,
+        "Z": -32.29747,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 439,
+        "Map": 224,
+        "X": 27.29562,
+        "Y": 6.514107,
+        "Z": -19.07278,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Proving grounds guard",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the Firmament",
+      "From": {
+        "Territory": 418,
+        "Map": 218,
+        "X": 152.9987,
+        "Y": -20.00464,
+        "Z": 63.78442,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 9.982139,
+        "Y": -15.2,
+        "Z": 180.8038,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Thomelin",
+      "Quests": [
+        69208
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Ul\u0027dah",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 149.7367,
+        "Y": -12.28351,
+        "Z": -7.858459,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 130,
+        "Map": 70,
+        "X": -17.53673,
+        "Y": 82.99998,
+        "Z": 3.712338,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Gridania",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 149.7367,
+        "Y": -12.28351,
+        "Z": -7.858459,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 132,
+        "Map": 2,
+        "X": 35.11322,
+        "Y": -19,
+        "Z": 104.5712,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 149.7367,
+        "Y": -12.28351,
+        "Z": -7.858459,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 128,
+        "Map": 74,
+        "X": -12.69166,
+        "Y": 91.49994,
+        "Z": -7.602967,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": [
+        67783
+      ]
+    },
+    {
+      "Name": "Seek Passage to the Gold Saucer",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 149.7367,
+        "Y": -12.28351,
+        "Z": -7.858459,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 144,
+        "Map": 196,
+        "X": -38.71321,
+        "Y": 0.02503908,
+        "Z": 99.99944,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": [
+        67783,
+        65970
+      ]
+    },
+    {
+      "Name": "Seek Passage to Cloudtop",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 149.7367,
+        "Y": -12.28351,
+        "Z": -7.858459,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 401,
+        "Map": 215,
+        "X": -738.3898,
+        "Y": -105.0891,
+        "Z": 463.7454,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Airship ticketer",
+      "Quests": null
+    },
+    {
+      "Name": "Seek Passage to Azys Lla",
+      "From": {
+        "Territory": 419,
+        "Map": 219,
+        "X": 168.4521,
+        "Y": -14.34896,
+        "Z": 49.59553,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 402,
+        "Map": 216,
+        "X": -874.1564,
+        "Y": -184.293,
+        "Z": -663.1979,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Notrelchamps",
+      "Quests": null
+    },
+    {
+      "Name": "Purchase Passage to Limsa Lominsa",
+      "From": {
+        "Territory": 628,
+        "Map": 370,
+        "X": -101.1147,
+        "Y": -7,
+        "Z": -65.7991,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 129,
+        "Map": 12,
+        "X": -356.3138,
+        "Y": 8.000004,
+        "Z": 48.82052,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Uguisu",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the Ruby Bazaar Offices",
+      "From": {
+        "Territory": 628,
+        "Map": 370,
+        "X": 151.227,
+        "Y": 14.77572,
+        "Z": 95.78796,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 639,
+        "Map": 377,
+        "X": -0.005231351,
+        "Y": 0,
+        "Z": 10.54939,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "East Aldenard Trading Company aide",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the Crystarium",
+      "From": {
+        "Territory": 814,
+        "Map": 492,
+        "X": 802.2191,
+        "Y": 1.272016,
+        "Z": 253.0309,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 819,
+        "Map": 497,
+        "X": 45.65862,
+        "Y": 36.238,
+        "Z": -180.3178,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Szem Djenmai",
+      "Quests": null
+    },
+    {
+      "Name": "Enter Kholusia",
+      "From": {
+        "Territory": 819,
+        "Map": 497,
+        "X": 61.93207,
+        "Y": 36.24769,
+        "Z": -169.1687,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 814,
+        "Map": 492,
+        "X": 796.9238,
+        "Y": 1.828788,
+        "Z": 258.4388,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aspiring amaro tamer",
+      "Quests": null
+    },
+    {
+      "Name": "Enter Eulmore",
+      "From": {
+        "Territory": 819,
+        "Map": 497,
+        "X": 61.93207,
+        "Y": 36.24769,
+        "Z": -169.1687,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 820,
+        "Map": 555,
+        "X": -0.168961,
+        "Y": 84.81702,
+        "Z": -74.4993,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aspiring amaro tamer",
+      "Quests": [
+        69267
+      ]
+    },
+    {
+      "Name": "Enter the Buttress",
+      "From": {
+        "Territory": 820,
+        "Map": 555,
+        "X": 2.029419,
+        "Y": 83.21284,
+        "Z": 57.84692,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 820,
+        "Map": 498,
+        "X": 0.02484216,
+        "Y": 6.836818,
+        "Z": 55.52282,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Chadden",
+      "Quests": null
+    },
+    {
+      "Name": "Enter the Crystarium",
+      "From": {
+        "Territory": 820,
+        "Map": 555,
+        "X": -2.3017,
+        "Y": 85.5337,
+        "Z": -82.6493,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 819,
+        "Map": 497,
+        "X": 45.65862,
+        "Y": 36.238,
+        "Z": -180.3178,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Lereberd",
+      "Quests": [
+        69267
+      ]
     }
   ]
 }
