@@ -43,6 +43,10 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
     /// <summary>A map's scale is stored as a percentage.</summary>
     private const float ScalePercent = 100f;
 
+    /// <summary>How much ground around a map's label for a part of the map counts as that part:
+    /// arriving anywhere in it is arriving, and from there the monster itself is looked for.</summary>
+    private const float AreaRadius = 40f;
+
     private readonly Dictionary<Hunt, HuntFacts> facts = [];
     private Dictionary<uint, List<Map>>? mapsByZone;
     private Dictionary<string, uint>? dutiesByName;
@@ -141,6 +145,28 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
         }
 
         return nearest;
+    }
+
+    /// <summary>How many monsters of this name the game has loaded near the player, of any kind
+    /// and state, and how many battle monsters it has loaded in all: for the log, to tell "none
+    /// loaded" from "loaded but not recognised". Game thread only.</summary>
+    public (int Named, int Battle) Census(uint nameId)
+    {
+        var named = 0;
+        var battle = 0;
+        foreach (var thing in objects)
+        {
+            if (thing is IBattleNpc npc)
+            {
+                battle++;
+                if (npc.NameId == nameId)
+                {
+                    named++;
+                }
+            }
+        }
+
+        return (named, battle);
     }
 
     /// <summary>Where a FATE is being fought right now, with its edge, or null when it is not up.
@@ -369,7 +395,10 @@ internal sealed unsafe class HuntReader(IDataManager data, IObjectTable objects,
                 var scale = map.SizeFactor / ScalePercent;
                 var x = ((marker.X - CentrePixel) / scale) - map.OffsetX;
                 var z = ((marker.Y - CentrePixel) / scale) - map.OffsetY;
-                return new Place(map.TerritoryType.RowId, map.RowId, x, 0f, z);
+
+                // A label names a whole stretch of ground, not a spot, and says nothing of how high it
+                // is: an area to search, with its height unknown rather than nought.
+                return new Place(map.TerritoryType.RowId, map.RowId, x, float.NaN, z, AreaRadius);
             }
         }
 

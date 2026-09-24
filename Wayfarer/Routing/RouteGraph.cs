@@ -101,8 +101,12 @@ public sealed class RouteGraph
         return search.Run();
     }
 
+    /// <summary>How far apart two places are. Across the ground only when either height is not
+    /// known, since there is then no height to count.</summary>
     private static float Distance(Place a, Place b) =>
-        Vector3.Distance(new Vector3(a.X, a.Y, a.Z), new Vector3(b.X, b.Y, b.Z));
+        float.IsNaN(a.Y) || float.IsNaN(b.Y)
+            ? Vector2.Distance(new Vector2(a.X, a.Z), new Vector2(b.X, b.Z))
+            : Vector3.Distance(new Vector3(a.X, a.Y, a.Z), new Vector3(b.X, b.Y, b.Z));
 
     /// <summary>What walking somewhere really costs: the distance to it, less the room it has to
     /// stand in. A step often gives a wide circle to search and a precise point beside it, and the
