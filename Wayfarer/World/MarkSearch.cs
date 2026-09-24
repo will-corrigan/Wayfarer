@@ -29,12 +29,18 @@ public static class MarkSearch
     /// <param name="marks">What the step names, by id and sort.</param>
     /// <param name="owner">The event whose own spawns count as things to act on, or zero.</param>
     /// <param name="from">Where the player stands, which decides which of several is nearest.</param>
+    /// <param name="passedOver">Kinds of thing the player has already tried for this step, by the
+    /// id the world gives them, which are never the answer however they came to be wanted: named
+    /// by the step, or stamped by the game as the event's own. A decoy the game spawned for the
+    /// quest is still stamped as its own after the player has read it, so leaving it out of the
+    /// names alone would keep sending them back to it. Null when nothing has been tried.</param>
     public static Found? Choose(
         IReadOnlyList<Place> areas,
         IReadOnlyList<Candidate> standing,
         IReadOnlyList<Mark>? marks,
         uint owner,
-        Place from)
+        Place from,
+        Func<uint, bool>? passedOver = null)
     {
         ArgumentNullException.ThrowIfNull(areas);
         ArgumentNullException.ThrowIfNull(standing);
@@ -46,9 +52,10 @@ public static class MarkSearch
             return null;
         }
 
+        var untried = passedOver is null ? standing : [.. standing.Where(candidate => !passedOver(candidate.BaseId))];
         foreach (var sort in Sorts)
         {
-            if (Sort(ground, standing, marks, owner, from, sort) is { } nearest)
+            if (Sort(ground, untried, marks, owner, from, sort) is { } nearest)
             {
                 return nearest;
             }

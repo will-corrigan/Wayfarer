@@ -222,6 +222,20 @@ public class MarkSearchTests
     }
 
     [Fact]
+    public void Something_already_tried_is_passed_over_even_though_the_game_spawned_it_for_the_event()
+    {
+        // "Echoes of an Echo": two scraps of parchment spawned for the quest, one of them a decoy.
+        // The game stamps both as the quest's own, so the stamp alone would keep sending the
+        // player back to the decoy they have just read.
+        var decoy = new Candidate(1, 2009058, Quest, true, 0, Near(2009058, 0, true, 2f).At);
+        var other = new Candidate(2, 2009059, Quest, true, 0, Near(2009059, 0, true, 20f).At);
+
+        var chosen = MarkSearch.Choose([Circle], [decoy, other], [], Quest, Standing, passedOver: baseId => baseId == 2009058);
+
+        Assert.Equal(other.At, chosen?.At);
+    }
+
+    [Fact]
     public void Nobody_is_taken_for_someone_the_quest_named_by_accident()
     {
         // An adventurer, their cat and a wild beast, all standing in it, none of them the step.

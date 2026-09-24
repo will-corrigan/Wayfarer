@@ -28,7 +28,7 @@ namespace Wayfarer.World;
 internal sealed unsafe class ObjectFinder(IObjectTable objects, IClientState clientState) : IObjectFinder
 {
     /// <inheritdoc/>
-    public Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner)
+    public Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner, Func<uint, bool>? passedOver = null)
     {
         ArgumentNullException.ThrowIfNull(areas);
 
@@ -41,7 +41,7 @@ internal sealed unsafe class ObjectFinder(IObjectTable objects, IClientState cli
         }
 
         var from = new Place(clientState.TerritoryType, clientState.MapId, player.Position.X, player.Position.Y, player.Position.Z);
-        return MarkSearch.Choose(here, Standing(), marks, owner is { } known ? (uint)known : 0u, from);
+        return MarkSearch.Choose(here, Standing(), marks, owner is { } known ? (uint)known : 0u, from, passedOver);
     }
 
     /// <summary>Everything the world holds that could be what a module is looking for, read once so
