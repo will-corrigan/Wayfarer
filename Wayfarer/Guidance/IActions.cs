@@ -12,6 +12,9 @@ internal interface IActions
     /// <summary>Opens the game's Duty Finder at this duty, ready to queue.</summary>
     void OpenDutyFinder(uint dutyId);
 
+    /// <summary>Opens the game's Duty Finder at this roulette, ready to queue.</summary>
+    void OpenRoulette(byte rouletteId);
+
     /// <summary>Uses a key item on the player's current target.</summary>
     void UseItem(uint itemId, bool keyItem);
 

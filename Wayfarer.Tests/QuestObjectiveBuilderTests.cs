@@ -217,6 +217,21 @@ public class QuestObjectiveBuilderTests
         Assert.Null(QuestObjectiveBuilder.Build("Seeking Inspiration", 7, roulette, [], [], duties: examples));
     }
 
+    /// <summary>"Morbid Motivation" names the Lost City of Amdapor as its one duty and asks for a
+    /// dungeon cleared through the High-level roulette, positioned nowhere. Queueing for Amdapor on
+    /// its own would not count, so the roulette is what the step is inside.</summary>
+    [Fact]
+    public void A_step_that_asks_for_a_roulette_is_inside_the_roulette_even_beside_a_duty()
+    {
+        const byte HighLevel = 2;
+        QuestTodo[] effects = [new(0, 1, "Obtain a sack of adventurer's effects by clearing a dungeon via Duty Roulette: High-level Dungeons.", 1, [], HighLevel)];
+
+        var objective = QuestObjectiveBuilder.Build("Morbid Motivation", 1, effects, [], [], duties: [new QuestDuty(22, 363)]);
+
+        var entry = Assert.Single(objective!.Entries);
+        Assert.Equal(HighLevel, Assert.IsType<Destination.InRoulette>(entry.Where).RouletteId);
+    }
+
     [Fact]
     public void A_step_outside_the_duty_is_a_place_even_when_the_quest_has_one()
     {

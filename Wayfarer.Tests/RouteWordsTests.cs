@@ -76,6 +76,15 @@ public class RouteWordsTests
     }
 
     [Fact]
+    public void A_roulette_target_opens_the_duty_finder_at_the_roulette()
+    {
+        var entry = new ObjectiveEntry("Clear a dungeon via Duty Roulette: High-level Dungeons.", null, new Destination.InRoulette(2));
+        var guidance = new PublishedGuidance(Quests, new Objective("Morbid Motivation", [entry]), entry, null);
+
+        Assert.Equal(new RouteLine(RouteGlyph.Duty, RouteWords.DutyWords, new RoutePress.OpenRoulette(2), RouteWords.DutyWords), RouteWords.Compose(guidance));
+    }
+
+    [Fact]
     public void Nothing_guided_is_no_line()
     {
         Assert.Null(RouteWords.Compose(null));

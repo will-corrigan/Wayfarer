@@ -46,7 +46,7 @@ public sealed record Objective(string Headline, IReadOnlyList<ObjectiveEntry> En
 
         foreach (var entry in Entries)
         {
-            if (entry.Where is not (Destination.Reachable or Destination.AtObject or Destination.InDuty))
+            if (entry.Where is not (Destination.Reachable or Destination.AtObject or Destination.InDuty or Destination.InRoulette))
             {
                 continue;
             }

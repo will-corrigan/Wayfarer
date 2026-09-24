@@ -9,9 +9,12 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="Text">The line's words, resolved.</param>
 /// <param name="Needed">How many of the thing this line wants.</param>
 /// <param name="Positions">Where the quest data puts it: one per Level row, possibly none.</param>
+/// <param name="Roulette">The duty roulette the line asks the player to clear a duty through, or
+/// null when it asks for none.</param>
 internal sealed record QuestTodo(
     int Index,
     byte Sequence,
     string Text,
     int Needed,
-    IReadOnlyList<Place> Positions);
+    IReadOnlyList<Place> Positions,
+    byte? Roulette = null);

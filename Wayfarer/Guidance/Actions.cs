@@ -63,6 +63,16 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
     }
 
     /// <inheritdoc/>
+    public void OpenRoulette(byte rouletteId)
+    {
+        var finder = AgentContentsFinder.Instance();
+        if (!Missing(finder, "Duty Finder"))
+        {
+            finder->OpenRouletteDuty(rouletteId, false);
+        }
+    }
+
+    /// <inheritdoc/>
     public void UseItem(uint itemId, bool keyItem)
     {
         var actionManager = ActionManager.Instance();

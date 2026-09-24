@@ -72,7 +72,8 @@ internal static class QuestObjectiveBuilder
         QuestTarget? target)
     {
         var markersAtThisTodo = markers.Where(marker => todo.Positions.Any(position => Near(position, marker.At))).ToList();
-        Destination where = Entered(todo, duties) is { } entered ? new Destination.InDuty(entered.Finder)
+        Destination where = todo.Roulette is { } roulette ? new Destination.InRoulette(roulette)
+            : Entered(todo, duties) is { } entered ? new Destination.InDuty(entered.Finder)
             : todo.Positions.Count == 0 ? Nowhere(duties)
             : Somewhere(target, markersAtThisTodo.Count > 0 ? Places(markersAtThisTodo) : todo.Positions, marks, owner, lairs);
 

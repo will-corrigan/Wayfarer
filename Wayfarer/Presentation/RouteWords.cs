@@ -36,6 +36,11 @@ public static class RouteWords
             return new RouteLine(RouteGlyph.Duty, DutyWords, new RoutePress.OpenDuty(duty.DutyId), DutyWords);
         }
 
+        if (target.Where is Destination.InRoulette roulette)
+        {
+            return new RouteLine(RouteGlyph.Duty, DutyWords, new RoutePress.OpenRoulette(roulette.RouletteId), DutyWords);
+        }
+
         if (guidance.Route is not { } route)
         {
             return new RouteLine(RouteGlyph.None, NoRoute, null);

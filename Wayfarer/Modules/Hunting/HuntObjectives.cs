@@ -58,7 +58,11 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
         var quarries = facts.Quarries.Select((quarry, i) => quarry.With(i < kills.Count ? kills[i] : 0)).ToList();
         if (quarries.FirstOrDefault(quarry => !quarry.Done) is not { } now)
         {
-            log.Debug($"hunting: {facts.Headline} is done, so following it ends.");
+            // What the game said, so an ending nobody expected can be told apart from a finished
+            // page: every count against its need, and for a page the rank the log is working.
+            var counts = string.Join(", ", quarries.Select(quarry => $"{quarry.Have}/{quarry.Need}"));
+            var rank = hunt.Kind == HuntKind.LogPage ? $"; the log is working rank {HuntReader.RankWorked(hunt.Slot) + 1}" : string.Empty;
+            log.Debug($"hunting: {facts.Headline} is done ({counts}{rank}), so following it ends.");
             return Stop(unfollow: true);
         }
 

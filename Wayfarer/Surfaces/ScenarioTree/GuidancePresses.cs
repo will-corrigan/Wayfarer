@@ -37,7 +37,8 @@ internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
         }
     }
 
-    /// <summary>The route's press: cast the teleport, or open the Duty Finder at the duty.</summary>
+    /// <summary>The route's press: cast the teleport, or open the Duty Finder at the duty or the
+    /// roulette.</summary>
     public void Route()
     {
         switch (RouteWords.Compose(guidance.Current)?.Press)
@@ -47,6 +48,9 @@ internal sealed class GuidancePresses(IGuidance guidance, IActions actions)
                 break;
             case RoutePress.OpenDuty duty:
                 actions.OpenDutyFinder(duty.DutyId);
+                break;
+            case RoutePress.OpenRoulette roulette:
+                actions.OpenRoulette(roulette.RouletteId);
                 break;
             case RoutePress.Own:
                 guidance.Current?.Source.PressRoute();
