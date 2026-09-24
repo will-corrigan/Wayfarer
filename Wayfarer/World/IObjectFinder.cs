@@ -17,5 +17,7 @@ internal interface IObjectFinder
     /// rather than the first. A place with no room in it is not searched.</param>
     /// <param name="marks">What is being looked for, by the id the world gives it and its sort.</param>
     /// <param name="owner">The game event whose own spawns count, or null.</param>
-    Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner);
+    /// <param name="passedOver">Kinds of thing already tried, by the id the world gives them, never
+    /// the answer whichever way they came to be wanted; null when nothing has been tried.</param>
+    Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner, Func<uint, bool>? passedOver = null);
 }

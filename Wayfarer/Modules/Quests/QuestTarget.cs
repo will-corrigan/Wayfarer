@@ -88,5 +88,5 @@ internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
     /// order the sheet wrote them, and walking to the first of those rather than the nearest sends
     /// the player past two of them to reach the third.</summary>
     private Found? Look(IReadOnlyList<Place> places, IReadOnlyList<Mark>? marks, EventId? owner) =>
-        finder.Inside(places, marks, owner);
+        finder.Inside(places, marks, owner, dealtWith.Tried);
 }

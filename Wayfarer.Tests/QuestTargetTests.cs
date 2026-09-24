@@ -49,6 +49,22 @@ public class QuestTargetTests
     }
 
     [Fact]
+    public void What_was_already_tried_is_passed_over_even_when_the_game_spawned_it()
+    {
+        // The finder also answers with what the game stamped as the quest's own, which the names
+        // never reach, so what was tried has to go to the finder itself.
+        var finder = new Finder();
+        var memory = new Memory();
+        var target = new QuestTarget(finder, memory);
+
+        memory.Dug(2009058);
+        target.Where([Circle], [], null);
+
+        Assert.True(finder.PassedOver?.Invoke(2009058));
+        Assert.False(finder.PassedOver?.Invoke(2009059));
+    }
+
+    [Fact]
     public void Beginning_a_step_forgets_what_the_last_one_dealt_with()
     {
         var memory = new Memory();
@@ -97,9 +113,12 @@ public class QuestTargetTests
 
         public IReadOnlyList<Mark> Asked { get; private set; } = [];
 
-        public Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner)
+        public Func<uint, bool>? PassedOver { get; private set; }
+
+        public Found? Inside(IReadOnlyList<Place> areas, IReadOnlyList<Mark>? marks, EventId? owner, Func<uint, bool>? passedOver = null)
         {
             Asked = marks ?? [];
+            PassedOver = passedOver;
             return Answer;
         }
     }
