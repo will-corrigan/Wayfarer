@@ -17,6 +17,10 @@ public sealed record RoutingGraphFile(IReadOnlyList<RouteNode> Nodes, IReadOnlyL
     {
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter() },
+
+        // A height nothing could place is NaN, not zero, so routing and the compass know it is
+        // unknown rather than take it for a floor.
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
     };
 
     /// <summary>The file's contents as a graph.</summary>

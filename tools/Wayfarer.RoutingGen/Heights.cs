@@ -54,7 +54,7 @@ internal static class Heights
             }
             else
             {
-                result.Add(node);
+                result.Add(node with { At = node.At with { Y = float.NaN } });
             }
         }
 
@@ -66,12 +66,14 @@ internal static class Heights
     /// marker into an interior, the interior's own marker is all there is, and its far side was
     /// taken to be the same coordinates on the city's map, which in the city mean nothing: the Ruby
     /// Bazaar Offices' door came out in the middle of Kugane. The interior's exit is a warp whose
-    /// landing spot is where the door really is, so that is taken instead, wherever there is one.</summary>
+    /// landing spot is where the door really is, so that is taken instead, wherever there is one.
+    /// A door with no such landing is left out rather than kept with a far side that is a guess.</summary>
     public static List<DoorLink> Mirrored(GameData game, ZoneLayouts layouts, MapSpace maps, IReadOnlyList<DoorLink> doors)
     {
         var warps = game.Excel.GetSheet<Warp>();
         var fixedCount = 0;
         var mirrored = 0;
+        var left = new List<string>();
         var result = new List<DoorLink>(doors.Count);
         foreach (var door in doors)
         {
@@ -96,7 +98,9 @@ internal static class Heights
 
             if (landing is not { } at)
             {
-                result.Add(door);
+                // Its far side would be a guess, and a guess is a spot that is not there: a route
+                // back out would walk to it. Left out, and named, so what is missing is known.
+                left.Add($"{door.From.Territory}->{door.To.Territory} {door.Name}");
                 continue;
             }
 
@@ -104,7 +108,12 @@ internal static class Heights
             result.Add(door with { To = new Place(door.To.Territory, into.MapAt(at) ?? maps.MapOf(door.To.Territory), at.X, at.Y, at.Z) });
         }
 
-        Console.Error.WriteLine($"  {fixedCount} of {mirrored} doors with a copied far side put where the door really is");
+        Console.Error.WriteLine($"  {fixedCount} of {mirrored} doors with a copied far side put where the door really is; {left.Count} left out, their far side unknown:");
+        foreach (var door in left)
+        {
+            Console.Error.WriteLine($"    {door}");
+        }
+
         return result;
     }
 
@@ -132,8 +141,8 @@ internal static class Heights
         return result;
     }
 
-    /// <summary>A door end at the height of the exit beside it that leads where the door does, or
-    /// the nearest spot, or as it was.</summary>
+    /// <summary>A door end at the height of the ground beside the exit that leads where the door
+    /// does, or of the map's floor there, or of the nearest spot, or at a height marked unknown.</summary>
     private static Place Raise(ZoneLayouts layouts, Place end, uint leadsTo, ref int raised)
     {
         if (end.Y != 0f)
@@ -148,12 +157,12 @@ internal static class Heights
 
         float? height = null;
         var nearest = float.MaxValue;
-        foreach (var (at, leads) in layout.Exits)
+        foreach (var (at, leads, _, returns) in layout.Exits)
         {
             var far = Vector2.Distance(ground, new Vector2(at.X, at.Z));
-            if (far <= ExitReach && far < nearest && (leads == leadsTo || height is null))
+            if (far <= ExitReach && far < nearest && (leads == leadsTo || height is null) && layout.GroundBeside(at, returns, end.Map, FloorReach) is { } beside)
             {
-                (nearest, height) = (far, at.Y);
+                (nearest, height) = (far, beside);
             }
         }
 
@@ -176,7 +185,9 @@ internal static class Heights
 
         if (height is not { } y)
         {
-            return end;
+            // Unknown, and said so: a zero would be taken for a real floor, and the compass would
+            // call a door on a raised street far below.
+            return end with { Y = float.NaN };
         }
 
         raised++;

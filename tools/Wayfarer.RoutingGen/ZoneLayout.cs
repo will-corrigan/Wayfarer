@@ -27,8 +27,11 @@ internal sealed class ZoneLayout
     /// <summary>Spots something drops you on, by instance: warp landings, aetherytes, shards.</summary>
     public Dictionary<uint, Vector3> Spots { get; } = [];
 
-    /// <summary>Where the zone's exits are, and which zone each leads to.</summary>
-    public List<(Vector3 At, uint Leads)> Exits { get; } = [];
+    /// <summary>Where the zone's exits are, which zone each leads to, the spot in that zone it
+    /// lands on, and the spot in this zone that coming back lands on: pop ranges, by instance, or
+    /// zero when the exit names none. An exit is a box, and where it is placed is the box's middle,
+    /// which can be well above the ground; the spot coming back lands on is on the ground beside it.</summary>
+    public List<(Vector3 At, uint Leads, uint Lands, uint Returns)> Exits { get; } = [];
 
     /// <summary>Where things stand on the zone's floors: people, objects and landing spots. Each
     /// says how high the floor is where it stands, which nothing on a map does.</summary>
@@ -113,6 +116,17 @@ internal sealed class ZoneLayout
         return floor;
     }
 
+    /// <summary>How high the ground is beside an exit, or null when nothing says: where coming back
+    /// through it lands, when that is within reach across the ground, or else the floor of the map
+    /// the exit is on. Never the exit's own height, which is its box's middle.</summary>
+    public float? GroundBeside(Vector3 box, uint returns, uint map, float reach)
+    {
+        var ground = new Vector2(box.X, box.Z);
+        return returns != 0 && Spots.TryGetValue(returns, out var back) && Vector2.Distance(ground, new Vector2(back.X, back.Z)) <= reach
+            ? back.Y
+            : FloorOf(map, ground, reach);
+    }
+
     /// <summary>The map a point is on: the highest-priority range it stands in, or null when it
     /// stands in none.</summary>
     public uint? MapAt(Vector3 at) =>
@@ -132,7 +146,7 @@ internal sealed class ZoneLayout
                 Spots.TryAdd(thing.InstanceId, at);
                 break;
             case LayerCommon.ExitRangeInstanceObject exit when exit.TerritoryType != 0:
-                Exits.Add((at, exit.TerritoryType));
+                Exits.Add((at, exit.TerritoryType, exit.DestInstanceId, exit.ReturnInstanceId));
                 break;
             case LayerCommon.ENPCInstanceObject person when person.ParentData.ParentData.BaseId != 0:
                 foreach (var warp in warpsOf(person.ParentData.ParentData.BaseId))
