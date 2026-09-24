@@ -53,9 +53,10 @@ public class RoutingGraphFileTests
             Assert.NotEqual(0u, d.From.Map);
             Assert.NotEqual(0u, d.To.Map);
 
-            // A warp someone offers can move you across one map: over a gap, up a ledge. Only a
-            // door walked through has to join two maps, since walking already joins one to itself.
-            if (d.Npc is null)
+            // A warp, whether someone offers it or a door object hides it, can move you across one
+            // map: over a gap, up a ledge. Warps are one way. Only a door walked both ways has to
+            // join two maps, since walking already joins one to itself.
+            if (!d.OneWay)
             {
                 Assert.NotEqual(d.From.Map, d.To.Map);
             }
@@ -67,6 +68,15 @@ public class RoutingGraphFileTests
     {
         // Reported in game: the route went round through the Hustings Strip, past the lift.
         Assert.Contains(Shipped.Doors, d => string.Equals(d.Npc, "Lolomaya", StringComparison.Ordinal) && d.To.Territory == 130 && d.To.Map == 70);
+    }
+
+    [Fact]
+    public void The_ruby_bazaar_offices_door_is_at_the_ruby_bazaar()
+    {
+        // Reported in game: its Kugane side was a copy of the interior's own coordinates, which
+        // put it in the middle of town. The offices' exit lands east, at the Ruby Bazaar.
+        Assert.Contains(Shipped.Doors, d => d.From.Territory == 639 && d.To.Territory == 628 && d.To.X > 100f);
+        Assert.DoesNotContain(Shipped.Doors, d => d.From.Territory == 639 && d.To.Territory == 628 && d.To.X == 0f && d.To.Z == 13f);
     }
 
     [Fact]

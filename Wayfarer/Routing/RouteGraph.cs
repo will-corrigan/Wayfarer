@@ -22,6 +22,12 @@ namespace Wayfarer.Routing;
 /// comparison as everything else.</para></summary>
 public sealed class RouteGraph
 {
+    /// <summary>How much a yalm climbed costs against a yalm walked across. A floor above is
+    /// reached by stairs, ramps and switchbacks, never straight up, so a place one floor over is
+    /// much further to walk than the straight line says. Without it, a shard on the very floor a
+    /// step is on loses to walking straight up through the ceiling.</summary>
+    private const float ClimbCost = 3f;
+
     private readonly RouteNode[] nodes;
     private readonly List<StaticEdge>[] edges;
     private readonly DoorEnd[] doorEnds;
@@ -103,8 +109,8 @@ public sealed class RouteGraph
         return search.Run();
     }
 
-    private static float Distance(Place a, Place b) =>
-        Vector3.Distance(new Vector3(a.X, a.Y, a.Z), new Vector3(b.X, b.Y, b.Z));
+    private static float Across(Place a, Place b) =>
+        Vector2.Distance(new Vector2(a.X, a.Z), new Vector2(b.X, b.Z));
 
     /// <summary>What walking somewhere really costs: the distance to it, less the room it has to
     /// stand in. A step often gives a wide circle to search and a precise point beside it, and the
@@ -112,8 +118,10 @@ public sealed class RouteGraph
     /// middle, a circle the player is already standing in loses to a point a few yalms away and
     /// the route turns them round and walks them out of the very area the step is about. Nought
     /// for a place already stood in, so it wins as it should. Everything the graph itself holds is
-    /// a point, so this only ever changes which of a step's own places is chosen.</summary>
-    private static float Reach(Place from, Place to) => MathF.Max(0f, Distance(from, to) - to.Radius);
+    /// a point, so this only ever changes which of a step's own places is chosen.
+    ///
+    /// <para>Height is charged apart from ground, at <see cref="ClimbCost"/> a yalm: see there.</para></summary>
+    private static float Reach(Place from, Place to) => MathF.Max(0f, Across(from, to) - to.Radius) + (ClimbCost * MathF.Abs(to.Y - from.Y));
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
