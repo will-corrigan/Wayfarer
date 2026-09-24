@@ -25,9 +25,15 @@ var maps = new MapSpace(game);
 var nodes = AetheryteNodes.Read(game, maps);
 var doors = DoorLinks.Read(game, maps);
 
-// Doors taken by asking someone are read from the layouts of every zone the graph already reaches.
+// The layouts of every zone the graph reaches give its stops and doors their real heights, and
+// hold the doors taken by asking someone.
 var routable = nodes.Select(node => node.At.Territory).Concat(doors.SelectMany(door => new[] { door.From.Territory, door.To.Territory })).Where(territory => territory != 0).ToHashSet();
-doors.AddRange(WarpDoors.Read(game, maps, routable));
+var layouts = new ZoneLayouts(game);
+nodes = Heights.Nodes(game, layouts, nodes);
+doors = Heights.Mirrored(game, layouts, maps, doors);
+doors = Heights.Doors(layouts, doors);
+doors.AddRange(WarpDoors.Read(game, maps, layouts, routable));
+Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones");
 
 File.WriteAllText(output, new RoutingGraphFile(nodes, doors).ToJson());
 Console.Error.WriteLine($"{nodes.Count} nodes ({nodes.Count(n => n.Kind == RouteNodeKind.Aetheryte)} aetherytes), {doors.Count} doors -> {output}");

@@ -214,6 +214,21 @@ public class RouteGraphTests
     }
 
     [Fact]
+    public void A_shard_on_the_floor_above_beats_walking_straight_up_to_it()
+    {
+        // The Gold Saucer is one map for every floor. From the ground-floor Nanamo, the one
+        // upstairs is 39 yalms across and 21 up: the Wonder Square West shard stands on her floor.
+        const uint saucer = 144;
+        var entrance = new RouteNode(63, "Entrance & Card Squares", RouteNodeKind.Shard, 5, new Place(saucer, 196, -61.5f, 0f, 50.9f));
+        var west = new RouteNode(65, "Wonder Square West", RouteNodeKind.Shard, 5, new Place(saucer, 196, 1.6f, 21f, 57f));
+        var graph = new RouteGraph([entrance, west], []);
+
+        var route = graph.FindRoute(new Place(saucer, 196, -51.7f, 0f, 53.9f), [new Place(saucer, 196, -12.8f, 21f, 47.9f)], AllAttuned);
+
+        Assert.Contains(route!.Legs, leg => leg is Leg.ShardHop { ExitShard: "Wonder Square West" });
+    }
+
+    [Fact]
     public void A_lift_up_to_a_landing_beats_the_long_way_round()
     {
         // Ul'dah: the lift attendant on the Hustings Strip takes you straight up to the airship
