@@ -15,7 +15,7 @@ internal static class HuntLog
         ArgumentNullException.ThrowIfNull(log);
         if (facts is null)
         {
-            log.Warning($"hunting: followed {hunt}, but the sheets say nothing about it.");
+            log.Debug($"hunting: followed {hunt}, but the sheets say nothing about it.");
             return;
         }
 
@@ -29,6 +29,6 @@ internal static class HuntLog
             lines.Append(CultureInfo.InvariantCulture, $"\n  [{quarry.Entry}.{quarry.Target}] {quarry.Name} (name {quarry.NameId}) x{quarry.Need} at {where}{fate}");
         }
 
-        log.Information(lines.ToString());
+        log.Debug(lines.ToString());
     }
 }

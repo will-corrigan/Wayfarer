@@ -51,14 +51,14 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
         if (reader.Facts(hunt) is not { } facts || HuntReader.Kills(hunt, facts) is not { } kills)
         {
             // No such hunt in the sheets, or the bill has been handed in.
-            log.Information($"hunting: stopped following {hunt}: {(reader.Facts(hunt) is null ? "the sheets have no such hunt" : "the bill is no longer held")}.");
+            log.Debug($"hunting: stopped following {hunt}: {(reader.Facts(hunt) is null ? "the sheets have no such hunt" : "the bill is no longer held")}.");
             return Stop(unfollow: true);
         }
 
         var quarries = facts.Quarries.Select((quarry, i) => quarry.With(i < kills.Count ? kills[i] : 0)).ToList();
         if (quarries.FirstOrDefault(quarry => !quarry.Done) is not { } now)
         {
-            log.Information($"hunting: {facts.Headline} is done, so following it ends.");
+            log.Debug($"hunting: {facts.Headline} is done, so following it ends.");
             return Stop(unfollow: true);
         }
 
@@ -73,7 +73,7 @@ internal sealed class HuntObjectives(HuntReader reader, HuntFollowing following,
 
         last = signature;
         var (named, battle) = reader.Census(now.NameId);
-        log.Information($"hunting: after {now.Name} (name {now.NameId}), {now.Have}/{now.Need}: {(seen is { } s ? $"one in sight, object {s.Id}" : "none in sight")}; the game has {named} of that name loaded among {battle} battle monsters.");
+        log.Debug($"hunting: after {now.Name} (name {now.NameId}), {now.Have}/{now.Need}: {(seen is { } s ? $"one in sight, object {s.Id}" : "none in sight")}; the game has {named} of that name loaded among {battle} battle monsters.");
         return cached = HuntObjectiveBuilder.Build(
             facts.Headline,
             facts.Kind,
