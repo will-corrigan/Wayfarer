@@ -25,6 +25,10 @@ internal static class Heights
     /// <summary>How far a spot may be from a door's marker and still say how high the door is.</summary>
     private const float SpotReach = 12f;
 
+    /// <summary>How far across the ground something standing on a map's floor may be from a point
+    /// and still say how high that floor is there.</summary>
+    private const float FloorReach = 40f;
+
     public static List<RouteNode> Nodes(GameData game, ZoneLayouts layouts, IReadOnlyList<RouteNode> nodes)
     {
         var rows = game.Excel.GetSheet<Aetheryte>();
@@ -41,6 +45,11 @@ internal static class Heights
             {
                 var at = layout.Spots[spot];
                 result.Add(node with { At = node.At with { X = at.X, Y = at.Y, Z = at.Z } });
+                placed++;
+            }
+            else if (layout.FloorOf(node.At.Map, new Vector2(node.At.X, node.At.Z), FloorReach) is { } floor)
+            {
+                result.Add(node with { At = node.At with { Y = floor } });
                 placed++;
             }
             else
@@ -147,6 +156,10 @@ internal static class Heights
                 (nearest, height) = (far, at.Y);
             }
         }
+
+        // Between two maps of one zone there is no exit: the door is where one map's range meets
+        // the other's, and each side is as high as its own map's floor there.
+        height ??= layout.FloorOf(end.Map, ground, FloorReach);
 
         if (height is null)
         {
