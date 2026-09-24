@@ -30,6 +30,10 @@ internal sealed class ZoneLayout
     /// <summary>Where the zone's exits are, and which zone each leads to.</summary>
     public List<(Vector3 At, uint Leads)> Exits { get; } = [];
 
+    /// <summary>Where things stand on the zone's floors: people, objects and landing spots. Each
+    /// says how high the floor is where it stands, which nothing on a map does.</summary>
+    public List<Vector3> Standing { get; } = [];
+
     /// <summary>Reads a zone's layouts. A file Lumina cannot read is named and left out.</summary>
     /// <param name="game">The game's files.</param>
     /// <param name="territory">The zone, or null for none.</param>
@@ -81,6 +85,34 @@ internal sealed class ZoneLayout
         return layout;
     }
 
+    /// <summary>The floor height of a map at a spot on the ground: the height of whatever stands
+    /// nearest that spot inside the map's own range, or null when nothing stands within reach.
+    /// A range says only between which heights a map lies; what stands in it says where its floor
+    /// is.</summary>
+    public float? FloorOf(uint map, Vector2 ground, float reach)
+    {
+        // A zone of one map draws no ranges at all: everything standing in it is on that map.
+        var mine = ranges.Where(range => range.Map == map).ToList();
+        var onlyMap = ranges.Count == 0;
+        if (mine.Count == 0 && !onlyMap)
+        {
+            return null;
+        }
+
+        float? floor = null;
+        var nearest = reach;
+        foreach (var at in Standing)
+        {
+            var far = Vector2.Distance(ground, new Vector2(at.X, at.Z));
+            if (far <= nearest && (onlyMap || (mine.Exists(range => range.Holds(at)) && MapAt(at) == map)))
+            {
+                (nearest, floor) = (far, at.Y);
+            }
+        }
+
+        return floor;
+    }
+
     /// <summary>The map a point is on: the highest-priority range it stands in, or null when it
     /// stands in none.</summary>
     public uint? MapAt(Vector3 at) =>
@@ -89,6 +121,11 @@ internal sealed class ZoneLayout
     private void Take(LayerCommon.InstanceObject thing, Func<uint, IEnumerable<uint>> warpsOf, Func<uint, uint> objectWarp)
     {
         var at = new Vector3(thing.Transform.Translation.X, thing.Transform.Translation.Y, thing.Transform.Translation.Z);
+        if (thing.Object is LayerCommon.PopRangeInstanceObject or LayerCommon.ENPCInstanceObject or LayerCommon.EventInstanceObject)
+        {
+            Standing.Add(at);
+        }
+
         switch (thing.Object)
         {
             case LayerCommon.PopRangeInstanceObject:

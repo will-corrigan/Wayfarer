@@ -121,7 +121,12 @@ public sealed class RouteGraph
     /// a point, so this only ever changes which of a step's own places is chosen.
     ///
     /// <para>Height is charged apart from ground, at <see cref="ClimbCost"/> a yalm: see there.</para></summary>
-    private static float Reach(Place from, Place to) => MathF.Max(0f, Across(from, to) - to.Radius) + (ClimbCost * MathF.Abs(to.Y - from.Y));
+    private static float Reach(Place from, Place to) => MathF.Max(0f, Across(from, to) - to.Radius) + Climb(from, to);
+
+    /// <summary>What the height between two places costs, or nothing when either height is not
+    /// known: a stretch of ground named on a map has no height to climb to.</summary>
+    private static float Climb(Place from, Place to) =>
+        float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
