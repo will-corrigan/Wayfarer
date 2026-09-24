@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/will-corrigan/Wayfarer/compare/v1.6.3...v1.7.0) (2026-09-24)
+
+
+### New
+
+* follow a hunting log page or a mark bill, one monster at a time ([#90](https://github.com/will-corrigan/Wayfarer/issues/90)) ([9ed3920](https://github.com/will-corrigan/Wayfarer/commit/9ed392091446db5c26f633f792bca8c10b8db6ac))
+
 ## [1.6.3](https://github.com/will-corrigan/Wayfarer/compare/v1.6.2...v1.6.3) (2026-09-24)
 
 
