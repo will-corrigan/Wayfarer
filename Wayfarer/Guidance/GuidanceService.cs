@@ -26,6 +26,9 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     private readonly RouteGraph graph;
     private readonly IPluginLog log;
 
+    /// <summary>Who holds guidance and who waits to have it back.</summary>
+    private readonly Focus focus = new();
+
     private bool broken;
     private ObjectiveEntry? routedTo;
     private Place? routedFrom;
@@ -50,7 +53,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     public event EventHandler<GuidanceChangedEventArgs>? OnChanged;
 
     /// <inheritdoc/>
-    public IObjectiveSource? Holder { get; private set; }
+    public IObjectiveSource? Holder => focus.Holder;
 
     /// <inheritdoc/>
     public PublishedGuidance? Current { get; private set; }
@@ -59,24 +62,14 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     public void Claim(IObjectiveSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (ReferenceEquals(Holder, source))
-        {
-            return;
-        }
-
-        var displaced = Holder;
-        Holder = source;
-        displaced?.Displaced();
+        focus.Claim(source)?.Displaced();
     }
 
     /// <inheritdoc/>
-    public void Yield(IObjectiveSource source)
-    {
-        if (ReferenceEquals(Holder, source))
-        {
-            Holder = null;
-        }
-    }
+    public void Offer(IObjectiveSource source) => focus.Offer(source);
+
+    /// <inheritdoc/>
+    public void Yield(IObjectiveSource source) => focus.Yield(source);
 
     /// <inheritdoc/>
     public void Dispose() => framework.Update -= OnUpdate;

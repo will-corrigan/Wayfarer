@@ -63,7 +63,10 @@ internal sealed class QuestsModule(
                 await WarmAsync().ConfigureAwait(false);
             }
 
-            guidance.Claim(objectives);
+            // Offered, not claimed: this runs whenever any setting is applied, and a hunt the
+            // player chose to follow must not lose guidance to it. When the hunt ends, the quest
+            // being followed is guided again.
+            guidance.Offer(objectives);
         }
         else
         {
