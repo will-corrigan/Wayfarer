@@ -18,20 +18,27 @@ internal sealed class ZoneLayout
     /// <summary>The layout files the things routing needs are placed in.</summary>
     private static readonly string[] Files = ["planevent", "planmap", "planlive", "planner", "bg"];
 
+    /// <summary>The developers' label for the layers the game's benchmark stages its scenes on.</summary>
+    private const string BenchmarkLayer = "LVD_benchmark";
+
     private readonly List<MapRange> ranges = [];
 
     /// <summary>Everything that sends you somewhere: people who offer a warp, and doors and exits
     /// that are objects with a warp behind them. Person is zero for an object.</summary>
-    public List<(uint Warp, uint Person, Vector3 At)> Warpers { get; } = [];
+    public List<(uint Warp, uint Person, Vector3 At, ushort Festival, ushort Phase)> Warpers { get; } = [];
 
     /// <summary>Spots something drops you on, by instance: warp landings, aetherytes, shards.</summary>
     public Dictionary<uint, Vector3> Spots { get; } = [];
 
     /// <summary>Where the zone's exits are, which zone each leads to, the spot in that zone it
     /// lands on, and the spot in this zone that coming back lands on: pop ranges, by instance, or
-    /// zero when the exit names none. An exit is a box, and where it is placed is the box's middle,
-    /// which can be well above the ground; the spot coming back lands on is on the ground beside it.</summary>
-    public List<(Vector3 At, uint Leads, uint Lands, uint Returns)> Exits { get; } = [];
+    /// zero when the exit names none. An exit is a box whose middle can be well above the ground; the
+    /// spot coming back lands on is on the ground beside it.</summary>
+    public List<(Trigger Box, uint Leads, uint Lands, uint Returns)> Exits { get; } = [];
+
+    /// <summary>The aetherytes and shards the zone places, by their row: what can be boarded here.
+    /// The aethernet also drops you at spots outside a city's gate with nothing there to board.</summary>
+    public HashSet<uint> Aetherytes { get; } = [];
 
     /// <summary>Where things stand on the zone's floors: people, objects and landing spots. Each
     /// says how high the floor is where it stands, which nothing on a map does.</summary>
@@ -83,9 +90,18 @@ internal sealed class ZoneLayout
 
             foreach (var layer in lgb.Layers)
             {
+                // The benchmark's staging stands people where they never stand in play: four
+                // copies of Gridania's innkeeper in the Central Shroud, offering his inn room. The
+                // layer is known only by the developers' own label for it; which layers are live
+                // is decided by the server, and the client's files do not say.
+                if (layer.Name.StartsWith(BenchmarkLayer, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
                 foreach (var thing in layer.InstanceObjects)
                 {
-                    layout.Take(thing, warpsOf, objectWarp);
+                    layout.Take(thing, layer.FestivalID, layer.FestivalPhaseID, warpsOf, objectWarp);
                 }
             }
         }
@@ -137,10 +153,22 @@ internal sealed class ZoneLayout
     public uint? MapAt(Vector3 at) =>
         ranges.Where(range => range.Holds(at)).OrderByDescending(range => range.Priority).Select(range => (uint?)range.Map).FirstOrDefault();
 
-    private void Take(LayerCommon.InstanceObject thing, Func<uint, IEnumerable<uint>> warpsOf, Func<uint, uint> objectWarp)
+    /// <summary>Keeps what routing needs of one thing a layer places.
+    ///
+    /// <para>A seasonal event's layer, such as the Moonfire Faire's, is only there while the event
+    /// runs. Its warps are kept with the event's id, and a route takes them only while the game
+    /// says that event is on; its landing spots are kept, since only its own warps land on them.
+    /// Nothing else of it is kept: an exit, a map's range or a floor that exists only some weeks of
+    /// the year has no way to be switched off.</para></summary>
+    private void Take(LayerCommon.InstanceObject thing, ushort festival, ushort phase, Func<uint, IEnumerable<uint>> warpsOf, Func<uint, uint> objectWarp)
     {
         var at = new Vector3(thing.Transform.Translation.X, thing.Transform.Translation.Y, thing.Transform.Translation.Z);
-        if (thing.Object is LayerCommon.PopRangeInstanceObject or LayerCommon.ENPCInstanceObject or LayerCommon.EventInstanceObject)
+        if (festival != 0 && thing.Object is not (LayerCommon.PopRangeInstanceObject or LayerCommon.ENPCInstanceObject or LayerCommon.EventInstanceObject))
+        {
+            return;
+        }
+
+        if (festival == 0 && thing.Object is LayerCommon.PopRangeInstanceObject or LayerCommon.ENPCInstanceObject or LayerCommon.EventInstanceObject)
         {
             Standing.Add(at);
         }
@@ -151,44 +179,30 @@ internal sealed class ZoneLayout
                 Spots.TryAdd(thing.InstanceId, at);
                 break;
             case LayerCommon.ExitRangeInstanceObject exit when exit.TerritoryType != 0:
-                Exits.Add((at, exit.TerritoryType, exit.DestInstanceId, exit.ReturnInstanceId));
+                Exits.Add((Trigger.Of(exit.ParentData.TriggerBoxShape, thing), exit.TerritoryType, exit.DestInstanceId, exit.ReturnInstanceId));
                 break;
             case LayerCommon.ENPCInstanceObject person when person.ParentData.ParentData.BaseId != 0:
                 foreach (var warp in warpsOf(person.ParentData.ParentData.BaseId))
                 {
-                    Warpers.Add((warp, person.ParentData.ParentData.BaseId, at));
+                    Warpers.Add((warp, person.ParentData.ParentData.BaseId, at, festival, phase));
                 }
 
                 break;
             case LayerCommon.EventInstanceObject door when objectWarp(door.ParentData.BaseId) is var warp and not 0:
-                Warpers.Add((warp, 0u, at));
+                Warpers.Add((warp, 0u, at, festival, phase));
                 break;
             case LayerCommon.MapRangeInstanceObject range when range.Map != 0:
-                ranges.Add(new MapRange(range.Map, range.ParentData.TriggerBoxShape, range.ParentData.Priority, at, thing.Transform.Rotation.Y, new Vector3(thing.Transform.Scale.X, thing.Transform.Scale.Y, thing.Transform.Scale.Z)));
+                ranges.Add(new MapRange(range.Map, range.ParentData.Priority, Trigger.Of(range.ParentData.TriggerBoxShape, thing)));
+                break;
+            case LayerCommon.AetheryteInstanceObject aetheryte:
+                Aetherytes.Add(aetheryte.ParentData.BaseId);
                 break;
         }
     }
 
-    /// <summary>A box, cylinder or sphere of a zone that says which map a point in it is on. Its
-    /// scale is half its size on each axis.</summary>
-    private sealed record MapRange(uint Map, TriggerBoxShape Shape, short Priority, Vector3 Centre, float Turn, Vector3 Half)
+    /// <summary>A trigger of a zone that says which map a point in it is on.</summary>
+    private sealed record MapRange(uint Map, short Priority, Trigger Box)
     {
-        public bool Holds(Vector3 at)
-        {
-            var offset = at - Centre;
-            switch (Shape)
-            {
-                case TriggerBoxShape.TriggerBoxShapeCylinder:
-                    return MathF.Abs(offset.Y) <= Half.Y && ((offset.X * offset.X) + (offset.Z * offset.Z)) <= Half.X * Half.X;
-                case TriggerBoxShape.TriggerBoxShapeSphere:
-                    return offset.Length() <= Half.X;
-                default:
-                    // Turned back by the box's own turn, so its sides line up with the axes.
-                    var (sin, cos) = MathF.SinCos(-Turn);
-                    var x = (offset.X * cos) - (offset.Z * sin);
-                    var z = (offset.X * sin) + (offset.Z * cos);
-                    return MathF.Abs(x) <= Half.X && MathF.Abs(offset.Y) <= Half.Y && MathF.Abs(z) <= Half.Z;
-            }
-        }
+        public bool Holds(Vector3 at) => Box.Holds(at);
     }
 }

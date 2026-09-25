@@ -20,4 +20,26 @@ internal static unsafe class PlayerState
     /// until one is done may be taken. Not done is the answer while the game has no state yet.</summary>
     public static bool IsQuestComplete(uint questId) =>
         QuestManager.Instance() != null && QuestManager.IsQuestComplete(questId);
+
+    /// <summary>Whether a seasonal event is running, in the given phase or in any when the phase is
+    /// zero, which is what decides whether a door only there during it may be taken. The game
+    /// holds the events it is running itself. Not running is the answer while it has no state yet.</summary>
+    public static bool IsFestivalOn(ushort festival, ushort phase)
+    {
+        var game = GameMain.Instance();
+        if (game == null)
+        {
+            return false;
+        }
+
+        foreach (var running in game->ActiveFestivals)
+        {
+            if (running.Id == festival && (phase == 0 || running.Phase == phase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

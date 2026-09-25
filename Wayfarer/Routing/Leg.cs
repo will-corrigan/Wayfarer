@@ -52,7 +52,10 @@ public abstract record Leg
     /// floors, or a lift or airship taken by asking someone.</summary>
     /// <param name="Name">What the door is called, or for one taken by asking, what is asked for.</param>
     /// <param name="Npc">Who to ask, or null for a door walked through.</param>
-    public sealed record Door(string Name, string? Npc = null) : Leg
+    /// <param name="Warp">The game's Warp row the door sends you through, or zero for a door walked
+    /// through. A warp's name is already what to do ("Purchase Passage to Kugane"); a walked door's
+    /// is only the place it leads.</param>
+    public sealed record Door(string Name, string? Npc = null, uint Warp = 0) : Leg
     {
         /// <inheritdoc/>
         /// <remarks>A door walked through costs nothing of its own. One taken by asking costs the

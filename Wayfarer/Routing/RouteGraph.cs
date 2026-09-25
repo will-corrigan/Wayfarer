@@ -61,18 +61,19 @@ public sealed class RouteGraph
             var b = a + 1;
             doorEnds[i * 2] = new DoorEnd(door.Name, door.From);
             doorEnds[(i * 2) + 1] = new DoorEnd(door.Name, door.To);
-            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name, door.Npc), door.Quests));
+            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name, door.Npc, door.Warp), door.Quests, door.Festival, door.FestivalPhase));
             if (!door.OneWay)
             {
-                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name, door.Npc), door.Quests));
+                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name, door.Npc, door.Warp), door.Quests, door.Festival, door.FestivalPhase));
             }
         }
 
         // Hops: every pair on one network. A city's main aetheryte is on its network, so a route
-        // can teleport in and hop out; attunement of both ends is checked at search time.
+        // can teleport in and hop out; attunement of both ends is checked at search time. A
+        // landing has nothing to board, so hops only ever end there.
         for (var i = 0; i < nodes.Length; i++)
         {
-            if (nodes[i].Network == 0)
+            if (nodes[i].Network == 0 || nodes[i].Kind == RouteNodeKind.Landing)
             {
                 continue;
             }
@@ -94,7 +95,15 @@ public sealed class RouteGraph
     /// <param name="attuned">Whether the player can use the aetheryte or shard with this id.</param>
     /// <param name="questDone">Whether the player has completed the quest with this id, for doors
     /// kept until one is done. Null treats every such door as open.</param>
-    public Route? FindRoute(Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool>? questDone = null)
+    /// <param name="festivalOn">Whether the seasonal event with this id is running, in this phase
+    /// (zero for any), for doors that are only there during one. Null treats every such door as
+    /// open.</param>
+    public Route? FindRoute(
+        Place from,
+        IReadOnlyList<Place> targets,
+        Func<uint, bool> attuned,
+        Func<uint, bool>? questDone = null,
+        Func<ushort, ushort, bool>? festivalOn = null)
     {
         ArgumentNullException.ThrowIfNull(from);
         ArgumentNullException.ThrowIfNull(targets);
@@ -105,7 +114,7 @@ public sealed class RouteGraph
             return null;
         }
 
-        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true));
+        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true));
         return search.Run();
     }
 
@@ -133,7 +142,9 @@ public sealed class RouteGraph
     /// <param name="To">The node it leads to.</param>
     /// <param name="Leg">How it is travelled.</param>
     /// <param name="Needs">Quests that must be complete to take it, or null.</param>
-    private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null);
+    /// <param name="Festival">The seasonal event it is only there during, or zero.</param>
+    /// <param name="Phase">Which phase of that event, or zero for any.</param>
+    private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null, ushort Festival = 0, ushort Phase = 0);
 
     private readonly record struct DoorEnd(string Name, Place At);
 
@@ -146,6 +157,7 @@ public sealed class RouteGraph
         private readonly RouteGraph graph;
         private readonly Func<uint, bool> attuned;
         private readonly Func<uint, bool> questDone;
+        private readonly Func<ushort, ushort, bool> festivalOn;
         private readonly Place[] places;
         private readonly int origin;
         private readonly int firstTarget;
@@ -154,11 +166,12 @@ public sealed class RouteGraph
         private readonly Leg?[] cameBy;
         private readonly bool[] settled;
 
-        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone)
+        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone, Func<ushort, ushort, bool> festivalOn)
         {
             this.graph = graph;
             this.attuned = attuned;
             this.questDone = questDone;
+            this.festivalOn = festivalOn;
 
             var fixedCount = graph.edges.Length;
             places = new Place[fixedCount + 1 + targets.Count];
@@ -239,6 +252,11 @@ public sealed class RouteGraph
                     }
 
                     if (edge.Needs is { } needs && !needs.All(questDone))
+                    {
+                        continue;
+                    }
+
+                    if (edge.Festival != 0 && !festivalOn(edge.Festival, edge.Phase))
                     {
                         continue;
                     }

@@ -191,7 +191,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
         routedTo = target;
         routedFrom = from;
-        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete, PlayerState.IsFestivalOn);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>

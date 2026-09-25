@@ -25,7 +25,7 @@ internal static class DoorLinks
     public static List<DoorLink> Read(GameData game, MapSpace maps)
     {
         var markers = game.Excel.GetSubrowSheet<MapMarker>();
-        var links = new Dictionary<(uint From, uint To), List<(string Name, Place At)>>();
+        var links = new Dictionary<(uint From, uint To), List<(uint Label, string Name, Place At)>>();
         var labels = new Dictionary<uint, List<(string Name, Place At)>>();
 
         foreach (var map in game.Excel.GetSheet<Map>())
@@ -40,10 +40,10 @@ internal static class DoorLinks
                 switch (marker.DataType)
                 {
                     case AdjacentMapMarker or InteriorMapMarker when marker.DataKey.RowId != 0 && marker.DataKey.RowId != map.RowId:
-                        Add(links, (map.RowId, marker.DataKey.RowId), LinkName(marker, maps.Row(marker.DataKey.RowId)), maps.Place(map, marker));
+                        Add(links, (map.RowId, marker.DataKey.RowId), (marker.PlaceNameSubtext.RowId, LinkName(marker, maps.Row(marker.DataKey.RowId)), maps.Place(map, marker)));
                         break;
                     case PlaceNameMarker when marker.PlaceNameSubtext.RowId != 0:
-                        Add(labels, marker.PlaceNameSubtext.RowId, marker.PlaceNameSubtext.Value.Name.ExtractText(), maps.Place(map, marker));
+                        Add(labels, marker.PlaceNameSubtext.RowId, (marker.PlaceNameSubtext.Value.Name.ExtractText(), maps.Place(map, marker)));
                         break;
                 }
             }
@@ -54,7 +54,7 @@ internal static class DoorLinks
         return doors;
     }
 
-    private static void Add<TKey>(Dictionary<TKey, List<(string Name, Place At)>> into, TKey key, string name, Place at)
+    private static void Add<TKey, TSide>(Dictionary<TKey, List<TSide>> into, TKey key, TSide side)
         where TKey : notnull
     {
         if (!into.TryGetValue(key, out var sides))
@@ -62,7 +62,7 @@ internal static class DoorLinks
             into[key] = sides = [];
         }
 
-        sides.Add((name, at));
+        sides.Add(side);
     }
 
     private static string LinkName(MapMarker marker, Map? destination) =>
@@ -70,9 +70,10 @@ internal static class DoorLinks
             ? own
             : destination?.PlaceName.ValueNullable?.Name.ExtractText() is { Length: > 0 } theirs ? theirs : UnnamedDoor;
 
-    /// <summary>Joins each near side with a far side. Each unordered pair of maps is visited once,
-    /// from the lower map id, so a two-way door is one link.</summary>
-    private static List<DoorLink> Pair(Dictionary<(uint From, uint To), List<(string Name, Place At)>> links, MapSpace maps)
+    /// <summary>Joins each near side with a far side: the one the game labels with the same place
+    /// name, by the label's row, or failing that the next one unpaired. Each unordered pair of maps
+    /// is visited once, from the lower map id, so a two-way door is one link.</summary>
+    private static List<DoorLink> Pair(Dictionary<(uint From, uint To), List<(uint Label, string Name, Place At)>> links, MapSpace maps)
     {
         var doors = new List<DoorLink>();
         foreach (var ((from, to), nearSides) in links)
@@ -82,10 +83,10 @@ internal static class DoorLinks
                 continue;
             }
 
-            var unpaired = new List<(string Name, Place At)>(links.GetValueOrDefault((to, from)) ?? []);
-            foreach (var (name, near) in nearSides)
+            var unpaired = new List<(uint Label, string Name, Place At)>(links.GetValueOrDefault((to, from)) ?? []);
+            foreach (var (label, name, near) in nearSides)
             {
-                var farIndex = unpaired.FindIndex(f => string.Equals(f.Name, name, StringComparison.Ordinal));
+                var farIndex = label == 0 ? -1 : unpaired.FindIndex(far => far.Label == label);
                 if (farIndex < 0 && unpaired.Count > 0)
                 {
                     farIndex = 0;

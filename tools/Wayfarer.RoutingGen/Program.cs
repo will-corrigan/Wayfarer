@@ -43,6 +43,7 @@ var exits = ExitDoors.Read(game, maps, layouts, routable, doors);
 var warped = WarpDoors.Read(game, maps, layouts, routable);
 doors = ExitDoors.Unwalked(game, doors, [.. exits, .. warped]);
 nodes = Heights.Nodes(game, layouts, nodes);
+nodes = Landings.Mark(layouts, nodes);
 doors = Heights.Mirrored(game, layouts, maps, doors);
 doors = Heights.Doors(layouts, doors);
 doors.AddRange(exits);

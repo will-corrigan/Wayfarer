@@ -87,7 +87,7 @@ internal static class Heights
             mirrored++;
             var into = layouts.Of(door.To.Territory);
             Vector3? landing = null;
-            foreach (var (id, _, _) in layouts.Of(door.From.Territory).Warpers)
+            foreach (var (id, _, _, _, _) in layouts.Of(door.From.Territory).Warpers)
             {
                 if (warps.GetRowOrDefault(id) is { } warp && warp.TerritoryType.RowId == door.To.Territory && into.Spots.TryGetValue(warp.PopRange.RowId, out var spot))
                 {
@@ -161,11 +161,11 @@ internal static class Heights
         float? anyHeight = null;
         var nearest = float.MaxValue;
         var nearestAny = float.MaxValue;
-        foreach (var (at, leads, _, returns) in layout.Exits)
+        foreach (var (box, leads, _, returns) in layout.Exits)
         {
-            var far = Vector2.Distance(ground, new Vector2(at.X, at.Z));
+            var far = Vector2.Distance(ground, new Vector2(box.Centre.X, box.Centre.Z));
             var better = far < nearestAny || (leads == leadsTo && far < nearest);
-            if (far > ExitReach || !better || layout.GroundBeside(at, returns, end.Map, FloorReach) is not { } beside)
+            if (far > ExitReach || !better || layout.GroundBeside(box.Centre, returns, end.Map, FloorReach) is not { } beside)
             {
                 continue;
             }

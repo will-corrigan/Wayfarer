@@ -44,13 +44,24 @@ internal static class ExitDoors
                     continue;
                 }
 
-                // This side of the exit is where coming back through it lands: on the ground, just
-                // inside the zone. The box's own middle can be fifty yalms up and a hundred across,
-                // as the Heavensward zones' edges are. Without such a spot, the box's middle across
-                // the ground at the floor's height there, or at a height marked unknown.
-                var at = returns != 0 && here.Spots.TryGetValue(returns, out var back)
-                    ? back
-                    : box with { Y = here.FloorOf(here.MapAt(box) ?? maps.MapOf(territory), new Vector2(box.X, box.Z), GroundReach) ?? float.NaN };
+                // This side of the exit is the edge of its box nearest where coming back through it
+                // lands, which is on the ground just inside the zone: that is where someone walking
+                // up to it steps in, and where the arrow should point. The spot itself is a few
+                // yalms short of the gate. The box's own middle can be fifty yalms up and a hundred
+                // across, as the Heavensward zones' edges are, so the height is the spot's. Without
+                // such a spot, the box's middle across the ground at the floor's height there, or
+                // at a height marked unknown.
+                var middle = box.Centre;
+                Vector3 at;
+                if (returns != 0 && here.Spots.TryGetValue(returns, out var back))
+                {
+                    var edge = box.NearestAcross(new Vector2(back.X, back.Z));
+                    at = new Vector3(edge.X, back.Y, edge.Y);
+                }
+                else
+                {
+                    at = middle with { Y = here.FloorOf(here.MapAt(middle) ?? maps.MapOf(territory), new Vector2(middle.X, middle.Z), GroundReach) ?? float.NaN };
+                }
                 if (float.IsNaN(at.Y))
                 {
                     unplaced++;
