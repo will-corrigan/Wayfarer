@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/will-corrigan/Wayfarer/compare/v1.7.1...v1.7.2) (2026-09-25)
+
+
+### Fixed
+
+* flying toward a hunt target no longer turns the route into a teleport ([#96](https://github.com/will-corrigan/Wayfarer/issues/96)) ([d77356b](https://github.com/will-corrigan/Wayfarer/commit/d77356b658ce5ed6cec4a8083cb4ecc1420b310c))
+
 ## [1.7.1](https://github.com/will-corrigan/Wayfarer/compare/v1.7.0...v1.7.1) (2026-09-25)
 
 
