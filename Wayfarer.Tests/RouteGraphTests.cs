@@ -309,6 +309,23 @@ public class RouteGraphTests
         Assert.Equal(150f, walk.Yalms, 0.01f);
     }
 
+    /// <summary>Standing in a city where nobody flies, heading for a zone the player can fly in:
+    /// the height there is flown, not climbed. Frost grenades from Ishgard once walked the whole
+    /// way out through the Pillars, because the sky island's aetheryte stands high above the path
+    /// down and the drop was charged as stairs.</summary>
+    [Fact]
+    public void Height_costs_nothing_in_a_zone_the_player_can_fly_in()
+    {
+        var graph = World();
+        var low = new Place(Field, 1, 150f, -150f, 0f);
+
+        var cannotFly = graph.FindRoute(At(City, 2, 0f), [low], AllAttuned);
+        var canFly = graph.FindRoute(At(City, 2, 0f), [low], AllAttuned, flyable: territory => territory == Field);
+
+        Assert.Equal(Leg.TeleportCost + 150f + (3f * 150f), cannotFly!.Cost, 0.01f);
+        Assert.Equal(Leg.TeleportCost + 150f, canFly!.Cost, 0.01f);
+    }
+
     [Fact]
     public void A_landing_is_never_teleported_to()
     {

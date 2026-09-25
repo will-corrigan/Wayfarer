@@ -27,6 +27,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
     private readonly HolderMemory memory;
+    private readonly Flight flight;
     private readonly IPluginLog log;
 
     /// <summary>Who holds guidance and who waits to have it back.</summary>
@@ -45,6 +46,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         IObjectTable objects,
         RouteGraph graph,
         HolderMemory memory,
+        Flight flight,
         IPluginLog log)
     {
         this.framework = framework;
@@ -53,6 +55,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         this.objects = objects;
         this.graph = graph;
         this.memory = memory;
+        this.flight = flight;
         this.log = log;
         framework.Update += OnUpdate;
     }
@@ -199,7 +202,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         routedTo = target;
         routedFrom = from;
         routedAirborne = airborne;
-        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete, PlayerState.IsFestivalOn, airborne);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete, PlayerState.IsFestivalOn, airborne, flight.CanFly);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>
