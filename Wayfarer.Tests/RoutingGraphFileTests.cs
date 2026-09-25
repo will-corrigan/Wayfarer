@@ -82,6 +82,28 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Mercantile docks skipper" });
     }
 
+    /// <summary>Frost grenades for a mark bill, from Ishgard, by a player who can fly in the Sea of
+    /// Clouds and the Western Highlands: teleport to Ok' Zundu and fly. The route once walked out
+    /// through the Pillars and across the Sea of Clouds, because the drop from the sky island was
+    /// charged as stairs.</summary>
+    [Fact]
+    public void A_player_who_can_fly_takes_the_sky_island_to_the_frost_grenades()
+    {
+        const uint FrostGrenade = 3476;
+        const uint WesternHighlands = 397;
+        const uint SeaOfClouds = 401;
+        const uint FoundationMap = 218;
+        uint[] attuned = [70, 73, 80, 81, 82, 83, 84, 85, 86, 87];
+        var grenades = Wayfarer.Modules.Hunting.MonsterPositionsFile.Parse(File.ReadAllText(Wayfarer.Modules.Hunting.MonsterPositionsFile.FileName))
+            .Monsters[FrostGrenade].Where(spot => spot.Territory == WesternHighlands).Select(spot => new Place(spot.Territory, spot.Map, spot.X, spot.Y, spot.Z, 15f)).ToList();
+
+        var route = Shipped.ToGraph().FindRoute(
+            new Place(418, FoundationMap, -60f, 8f, 40f), grenades, id => attuned.Contains(id), _ => true, flyable: zone => zone is SeaOfClouds or WesternHighlands);
+
+        Assert.NotNull(route);
+        Assert.Equal("Ok' Zundu", Assert.IsType<Leg.Teleport>(route.Legs[0]).AetheryteName);
+    }
+
     /// <summary>Standing at New Gridania's White Wolf Gate, heading for Old Gridania: the route once
     /// went out through the gatekeeper into Central Shroud to hop back in from a shard that is not
     /// there.</summary>

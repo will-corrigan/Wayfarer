@@ -21,6 +21,7 @@ internal sealed class AppRegistrations : Module
         builder.Register(c => ShippedRoutingGraph.Load(c.Resolve<IDalamudPluginInterface>(), c.Resolve<IPluginLog>())).SingleInstance();
 
         builder.RegisterType<HolderMemory>().SingleInstance();
+        builder.RegisterType<Flight>().SingleInstance();
 
         // Auto-activated: the frame loop starts when the container is built, not when something
         // first asks for it, and stops when the container is disposed.

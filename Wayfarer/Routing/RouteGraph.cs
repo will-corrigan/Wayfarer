@@ -100,13 +100,16 @@ public sealed class RouteGraph
     /// open.</param>
     /// <param name="airborne">Whether the player is flying or diving, and so rises and sinks as
     /// freely as they move across: height costs them nothing.</param>
+    /// <param name="flyable">Whether the player can fly in the zone with this id, where height is
+    /// flown rather than climbed. Null treats every zone as walked.</param>
     public Route? FindRoute(
         Place from,
         IReadOnlyList<Place> targets,
         Func<uint, bool> attuned,
         Func<uint, bool>? questDone = null,
         Func<ushort, ushort, bool>? festivalOn = null,
-        bool airborne = false)
+        bool airborne = false,
+        Func<uint, bool>? flyable = null)
     {
         ArgumentNullException.ThrowIfNull(from);
         ArgumentNullException.ThrowIfNull(targets);
@@ -117,7 +120,7 @@ public sealed class RouteGraph
             return null;
         }
 
-        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne);
+        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne, flyable ?? (_ => false));
         return search.Run();
     }
 
@@ -133,14 +136,15 @@ public sealed class RouteGraph
     /// a point, so this only ever changes which of a step's own places is chosen.
     ///
     /// <para>Height is charged apart from ground, at <see cref="ClimbCost"/> a yalm: see there.</para></summary>
-    private static float Reach(Place from, Place to, bool airborne) => MathF.Max(0f, Across(from, to) - to.Radius) + Climb(from, to, airborne);
+    private static float Reach(Place from, Place to, bool flown) => MathF.Max(0f, Across(from, to) - to.Radius) + Climb(from, to, flown);
 
     /// <summary>What the height between two places costs, or nothing when either height is not
-    /// known: a stretch of ground named on a map has no height to climb to. Nothing too for a
-    /// player flying or diving, who goes up or down as directly as across. On foot it is charged
-    /// both ways, since a floor below is reached by the same stairs as a floor above.</summary>
-    private static float Climb(Place from, Place to, bool airborne) =>
-        airborne || float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
+    /// known: a stretch of ground named on a map has no height to climb to. Nothing too where it is
+    /// flown: by a player flying or diving now, or in a zone they can fly in, who goes up or down as
+    /// directly as across. On foot it is charged both ways, since a floor below is reached by the
+    /// same stairs as a floor above.</summary>
+    private static float Climb(Place from, Place to, bool flown) =>
+        flown || float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
@@ -164,6 +168,7 @@ public sealed class RouteGraph
         private readonly Func<uint, bool> questDone;
         private readonly Func<ushort, ushort, bool> festivalOn;
         private readonly bool airborne;
+        private readonly Func<uint, bool> flyable;
         private readonly Place[] places;
         private readonly int origin;
         private readonly int firstTarget;
@@ -172,13 +177,14 @@ public sealed class RouteGraph
         private readonly Leg?[] cameBy;
         private readonly bool[] settled;
 
-        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone, Func<ushort, ushort, bool> festivalOn, bool airborne)
+        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone, Func<ushort, ushort, bool> festivalOn, bool airborne, Func<uint, bool> flyable)
         {
             this.graph = graph;
             this.attuned = attuned;
             this.questDone = questDone;
             this.festivalOn = festivalOn;
             this.airborne = airborne;
+            this.flyable = flyable;
 
             var fixedCount = graph.edges.Length;
             places = new Place[fixedCount + 1 + targets.Count];
@@ -282,7 +288,7 @@ public sealed class RouteGraph
 
                 if (SameMap(here, places[other]))
                 {
-                    yield return (other, new Leg.Walk(places[other], Reach(here, places[other], airborne)));
+                    yield return (other, new Leg.Walk(places[other], Reach(here, places[other], airborne || flyable(here.Territory))));
                 }
             }
 
