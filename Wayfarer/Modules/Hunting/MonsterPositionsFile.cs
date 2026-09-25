@@ -8,8 +8,9 @@ namespace Wayfarer.Modules.Hunting;
 ///
 /// <para>No game file says where an ordinary monster spawns: the server places them, and the only
 /// thing a bill or a hunting log gives is the name of a stretch of map. These spots come from
-/// FFXIV Teamcraft's monster data, which players report as they play. They carry no height, since
-/// the reports do not record one worth trusting.</para></summary>
+/// FFXIV Teamcraft's monster data, which players report as they play, and Hunty's hunting
+/// log data, curated by hand. A Teamcraft report carries its height to the nearest ten yalms;
+/// Hunty's carry none, and a spot without one has a NaN height.</para></summary>
 /// <param name="Monsters">Spots by monster name id.</param>
 internal sealed record MonsterPositionsFile(IReadOnlyDictionary<uint, IReadOnlyList<MonsterSpot>> Monsters)
 {
@@ -19,7 +20,7 @@ internal sealed record MonsterPositionsFile(IReadOnlyDictionary<uint, IReadOnlyL
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = false,
-        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.AllowNamedFloatingPointLiterals,
     };
 
     /// <summary>Reads the file's contents.</summary>

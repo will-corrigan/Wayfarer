@@ -33,11 +33,12 @@ internal sealed class MonsterPositions(IDalamudPluginInterface pluginInterface, 
             return [];
         }
 
-        // Height is not known: the reports carry none worth trusting, and a NaN height is measured
-        // across the ground only.
+        // A player's report gives its height to the nearest ten yalms, enough to tell a monster on
+        // the valley floor from one on the ridge above. A spot with no height is measured across
+        // the ground only.
         return [.. seen
             .Where(spot => territories.Contains(spot.Territory))
-            .Select(spot => new Place(spot.Territory, spot.Map, spot.X, float.NaN, spot.Z, SpotRadius))];
+            .Select(spot => new Place(spot.Territory, spot.Map, spot.X, spot.Y, spot.Z, SpotRadius))];
     }
 
     private static IReadOnlyDictionary<uint, IReadOnlyList<MonsterSpot>> Read(IDalamudPluginInterface pluginInterface, IPluginLog log)

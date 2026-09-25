@@ -48,7 +48,7 @@ var spots = new Dictionary<uint, List<MonsterSpot>>();
 const float Apart = 8f;
 const int MostPerMap = 24;
 
-void Add(uint name, uint mapId, float mapX, float mapY)
+void Add(uint name, uint mapId, float mapX, float mapY, float height)
 {
     if (!wanted.Contains(name) || maps.GetRowOrDefault(mapId) is not { } map || map.TerritoryType.RowId == 0)
     {
@@ -64,12 +64,24 @@ void Add(uint name, uint mapId, float mapX, float mapY)
     }
 
     var onThisMap = list.Count(spot => spot.Map == mapId);
-    if (onThisMap >= MostPerMap || list.Exists(spot => spot.Map == mapId && MathF.Abs(spot.X - x) < Apart && MathF.Abs(spot.Z - z) < Apart))
+    var same = list.FindIndex(spot => spot.Map == mapId && MathF.Abs(spot.X - x) < Apart && MathF.Abs(spot.Z - z) < Apart);
+    if (same >= 0)
+    {
+        // Hunty's spots come first and carry no height; a report of the same spot gives it one.
+        if (float.IsNaN(list[same].Y) && !float.IsNaN(height))
+        {
+            list[same] = list[same] with { Y = height };
+        }
+
+        return;
+    }
+
+    if (onThisMap >= MostPerMap)
     {
         return;
     }
 
-    list.Add(new MonsterSpot(map.TerritoryType.RowId, mapId, x, z));
+    list.Add(new MonsterSpot(map.TerritoryType.RowId, mapId, x, z, height));
 }
 
 var hunty = 0;
@@ -80,13 +92,14 @@ using (var doc = JsonDocument.Parse(File.ReadAllText(huntyFile)))
         var name = monster.GetProperty("Id").GetUInt32();
         foreach (var at in monster.GetProperty("Locations").EnumerateArray())
         {
-            Add(name, at.GetProperty("Map").GetUInt32(), at.GetProperty("xCoord").GetSingle(), at.GetProperty("yCoord").GetSingle());
+            Add(name, at.GetProperty("Map").GetUInt32(), at.GetProperty("xCoord").GetSingle(), at.GetProperty("yCoord").GetSingle(), float.NaN);
             hunty++;
         }
     }
 }
 
 var teamcraft = 0;
+var placeholders = 0;
 using (var doc = JsonDocument.Parse(File.ReadAllText(teamcraftFile)))
 {
     foreach (var monster in doc.RootElement.EnumerateObject())
@@ -98,7 +111,17 @@ using (var doc = JsonDocument.Parse(File.ReadAllText(teamcraftFile)))
 
         foreach (var at in positions.EnumerateArray())
         {
-            Add(name, at.GetProperty("map").GetUInt32(), at.GetProperty("x").GetSingle(), at.GetProperty("y").GetSingle());
+            // A report at level nought is a placeholder, not a sighting: one put a vinegaroon in
+            // the middle of the Dravanian Forelands, five hundred yalms underground.
+            if (at.TryGetProperty("level", out var level) && level.GetInt32() == 0)
+            {
+                placeholders++;
+                continue;
+            }
+
+            // Its height is the world height over a hundred, to one place: within five yalms.
+            var height = at.TryGetProperty("z", out var reported) ? reported.GetSingle() * 100f : float.NaN;
+            Add(name, at.GetProperty("map").GetUInt32(), at.GetProperty("x").GetSingle(), at.GetProperty("y").GetSingle(), height);
             teamcraft++;
         }
     }
@@ -106,7 +129,7 @@ using (var doc = JsonDocument.Parse(File.ReadAllText(teamcraftFile)))
 
 var file = new MonsterPositionsFile(spots.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<MonsterSpot>)pair.Value));
 File.WriteAllText(output, file.ToJson());
-Console.Error.WriteLine($"{spots.Count} of {wanted.Count} hunted monsters placed ({spots.Values.Sum(list => list.Count)} spots, from {hunty} Hunty and {teamcraft} Teamcraft reports) -> {output}");
+Console.Error.WriteLine($"{spots.Count} of {wanted.Count} hunted monsters placed ({spots.Values.Sum(list => list.Count)} spots, {spots.Values.Sum(list => list.Count(spot => !float.IsNaN(spot.Y)))} with a height, from {hunty} Hunty and {teamcraft} Teamcraft reports; {placeholders} placeholder reports left out) -> {output}");
 return 0;
 
 // Every monster in Hunty's file, wherever it nests them: under job ranks and Grand Company ranks.

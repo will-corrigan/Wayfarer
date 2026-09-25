@@ -98,12 +98,15 @@ public sealed class RouteGraph
     /// <param name="festivalOn">Whether the seasonal event with this id is running, in this phase
     /// (zero for any), for doors that are only there during one. Null treats every such door as
     /// open.</param>
+    /// <param name="airborne">Whether the player is flying or diving, and so rises and sinks as
+    /// freely as they move across: height costs them nothing.</param>
     public Route? FindRoute(
         Place from,
         IReadOnlyList<Place> targets,
         Func<uint, bool> attuned,
         Func<uint, bool>? questDone = null,
-        Func<ushort, ushort, bool>? festivalOn = null)
+        Func<ushort, ushort, bool>? festivalOn = null,
+        bool airborne = false)
     {
         ArgumentNullException.ThrowIfNull(from);
         ArgumentNullException.ThrowIfNull(targets);
@@ -114,7 +117,7 @@ public sealed class RouteGraph
             return null;
         }
 
-        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true));
+        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne);
         return search.Run();
     }
 
@@ -130,12 +133,14 @@ public sealed class RouteGraph
     /// a point, so this only ever changes which of a step's own places is chosen.
     ///
     /// <para>Height is charged apart from ground, at <see cref="ClimbCost"/> a yalm: see there.</para></summary>
-    private static float Reach(Place from, Place to) => MathF.Max(0f, Across(from, to) - to.Radius) + Climb(from, to);
+    private static float Reach(Place from, Place to, bool airborne) => MathF.Max(0f, Across(from, to) - to.Radius) + Climb(from, to, airborne);
 
     /// <summary>What the height between two places costs, or nothing when either height is not
-    /// known: a stretch of ground named on a map has no height to climb to.</summary>
-    private static float Climb(Place from, Place to) =>
-        float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
+    /// known: a stretch of ground named on a map has no height to climb to. Nothing too for a
+    /// player flying or diving, who goes up or down as directly as across. On foot it is charged
+    /// both ways, since a floor below is reached by the same stairs as a floor above.</summary>
+    private static float Climb(Place from, Place to, bool airborne) =>
+        airborne || float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
 
@@ -158,6 +163,7 @@ public sealed class RouteGraph
         private readonly Func<uint, bool> attuned;
         private readonly Func<uint, bool> questDone;
         private readonly Func<ushort, ushort, bool> festivalOn;
+        private readonly bool airborne;
         private readonly Place[] places;
         private readonly int origin;
         private readonly int firstTarget;
@@ -166,12 +172,13 @@ public sealed class RouteGraph
         private readonly Leg?[] cameBy;
         private readonly bool[] settled;
 
-        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone, Func<ushort, ushort, bool> festivalOn)
+        public Search(RouteGraph graph, Place from, IReadOnlyList<Place> targets, Func<uint, bool> attuned, Func<uint, bool> questDone, Func<ushort, ushort, bool> festivalOn, bool airborne)
         {
             this.graph = graph;
             this.attuned = attuned;
             this.questDone = questDone;
             this.festivalOn = festivalOn;
+            this.airborne = airborne;
 
             var fixedCount = graph.edges.Length;
             places = new Place[fixedCount + 1 + targets.Count];
@@ -275,7 +282,7 @@ public sealed class RouteGraph
 
                 if (SameMap(here, places[other]))
                 {
-                    yield return (other, new Leg.Walk(places[other], Reach(here, places[other])));
+                    yield return (other, new Leg.Walk(places[other], Reach(here, places[other], airborne)));
                 }
             }
 
