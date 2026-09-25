@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Wayfarer.Routing;
@@ -22,6 +23,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
     private readonly IFramework framework;
     private readonly IClientState clientState;
+    private readonly ICondition condition;
     private readonly IObjectTable objects;
     private readonly RouteGraph graph;
     private readonly HolderMemory memory;
@@ -33,11 +35,13 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     private bool broken;
     private ObjectiveEntry? routedTo;
     private Place? routedFrom;
+    private bool routedAirborne;
     private Route? route;
 
     public GuidanceService(
         IFramework framework,
         IClientState clientState,
+        ICondition condition,
         IObjectTable objects,
         RouteGraph graph,
         HolderMemory memory,
@@ -45,6 +49,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     {
         this.framework = framework;
         this.clientState = clientState;
+        this.condition = condition;
         this.objects = objects;
         this.graph = graph;
         this.memory = memory;
@@ -184,14 +189,17 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
             return route = null;
         }
 
-        if (ReferenceEquals(target, routedTo) && routedFrom is { } last && Settled(last, from))
+        // Taking off or landing changes what height costs, so the way there is worked out again.
+        var airborne = condition[ConditionFlag.InFlight] || condition[ConditionFlag.Diving];
+        if (ReferenceEquals(target, routedTo) && routedFrom is { } last && Settled(last, from) && airborne == routedAirborne)
         {
             return route;
         }
 
         routedTo = target;
         routedFrom = from;
-        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete, PlayerState.IsFestivalOn);
+        routedAirborne = airborne;
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete, PlayerState.IsFestivalOn, airborne);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>

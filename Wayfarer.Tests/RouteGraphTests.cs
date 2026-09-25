@@ -292,6 +292,23 @@ public class RouteGraphTests
         Assert.DoesNotContain(after!.Legs, leg => leg is Leg.Door);
     }
 
+    /// <summary>Flying high over a monster 150 yalms off, the route once switched to teleporting to
+    /// the zone's aetheryte and walking: every yalm of height was charged as stairs.</summary>
+    [Fact]
+    public void Height_costs_nothing_while_flying()
+    {
+        var graph = World();
+        var high = new Place(Field, 1, 300f, 150f, 0f);
+        Place[] monster = [new Place(Field, 1, 150f, 0f, 0f)];
+
+        var onFoot = graph.FindRoute(high, monster, AllAttuned);
+        var flying = graph.FindRoute(high, monster, AllAttuned, airborne: true);
+
+        Assert.IsType<Leg.Teleport>(onFoot!.Legs[0]);
+        var walk = Assert.IsType<Leg.Walk>(Assert.Single(flying!.Legs));
+        Assert.Equal(150f, walk.Yalms, 0.01f);
+    }
+
     [Fact]
     public void A_landing_is_never_teleported_to()
     {
