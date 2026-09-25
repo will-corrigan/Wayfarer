@@ -29,7 +29,7 @@ internal static class WarpDoors
         foreach (var territory in routable.Order())
         {
             var here = layouts.Of(territory);
-            foreach (var (id, person, standing) in here.Warpers)
+            foreach (var (id, person, standing, festival, phase) in here.Warpers)
             {
                 if (warps.GetRowOrDefault(id) is not { } warp)
                 {
@@ -42,16 +42,16 @@ internal static class WarpDoors
                     continue;
                 }
 
-                // A person is asked by name for what their warp is called. A door or an exit is
-                // walked through, and is called by where it leads when its warp has no name.
+                // The door is the warp and whoever offers it, by their rows. What it is called is
+                // only words, and always what to do: the warp's own name, or the question the game
+                // asks before it ("Travel to the Doman Enclave?"), or else travelling to where it
+                // leads, put the way the game puts its own questions. A warp with none of those is
+                // still a door: a skipper whose warp had no name was once left out, and with it the
+                // only boat from Yanxia to the Doman Enclave.
                 var asked = person != 0 ? Shown(names.GetRowOrDefault(person)?.Singular.ExtractText() ?? string.Empty) : null;
                 var name = warp.Name.ExtractText() is { Length: > 0 } named ? named
-                    : asked is null ? territories.GetRowOrDefault(landsIn)?.PlaceName.ValueNullable?.Name.ExtractText() ?? string.Empty
-                    : string.Empty;
-                if (name.Length == 0)
-                {
-                    continue;
-                }
+                    : warp.Question.ExtractText().TrimEnd('?') is { Length: > 0 } question ? question
+                    : $"Travel to {territories.GetRowOrDefault(landsIn)?.PlaceName.ValueNullable?.Name.ExtractText()}";
 
                 doors.Add(new DoorLink(
                     name,
@@ -59,11 +59,15 @@ internal static class WarpDoors
                     Place(layouts.Of(landsIn), landsIn, landing, maps),
                     OneWay: true,
                     Npc: asked,
-                    Quests: Quests(warp.WarpCondition.ValueNullable)));
+                    Quests: Quests(warp.WarpCondition.ValueNullable),
+                    Warp: id,
+                    Festival: festival,
+                    FestivalPhase: phase,
+                    Person: person));
             }
         }
 
-        Console.Error.WriteLine($"  {doors.Count(door => door.Npc is not null)} doors taken by asking, {doors.Count(door => door.Npc is null)} doors and exits that are warps");
+        Console.Error.WriteLine($"  {doors.Count(door => door.Person != 0)} doors taken by asking, {doors.Count(door => door.Person == 0)} doors and exits that are warps");
         return doors;
     }
 

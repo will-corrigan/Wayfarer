@@ -9,4 +9,9 @@ public enum RouteNodeKind
     /// <summary>An aethernet shard: reachable only on foot or by hopping from another node on the
     /// same network.</summary>
     Shard,
+
+    /// <summary>Where the aethernet drops you with nothing there to board: just outside a city's
+    /// gate, such as White Wolf Gate (Central Shroud). Hopped to from its network, never hopped
+    /// from, and never teleported to.</summary>
+    Landing,
 }

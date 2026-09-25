@@ -61,6 +61,24 @@ public class RouteWordsTests
     }
 
     [Fact]
+    public void A_door_that_is_a_warp_says_what_the_game_says_to_do()
+    {
+        // A warp's words are already what to do. "Through Leave the strategy room" was the result
+        // of treating them as the name of a place.
+        var route = new Route([new Leg.Door("Leave the strategy room", Warp: 131400), new Leg.Walk(End, 5f)], 5f, End);
+
+        Assert.Equal("Leave the strategy room", RouteWords.Describe(route));
+    }
+
+    [Fact]
+    public void A_warp_offered_by_someone_nameless_still_says_what_to_do()
+    {
+        var route = new Route([new Leg.Door("Travel to the Doman Enclave", string.Empty, 131293), new Leg.Walk(End, 5f)], 5f, End);
+
+        Assert.Equal("Travel to the Doman Enclave", RouteWords.Describe(route));
+    }
+
+    [Fact]
     public void No_route_to_a_known_target_says_so()
     {
         Assert.Equal(new RouteLine(RouteGlyph.None, RouteWords.NoRoute, null), RouteWords.Compose(Guide(null)));

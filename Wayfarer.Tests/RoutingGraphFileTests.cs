@@ -16,6 +16,11 @@ public class RoutingGraphFileTests
     private const uint FortempsManorMap = 222;
     private const uint NewGridania = 132;
     private const uint CentralShroud = 148;
+    private const uint OldGridania = 133;
+    private const uint Yanxia = 614;
+    private const uint DomanEnclave = 759;
+    private const uint YanxiaMap = 354;
+    private const uint DomanEnclaveMap = 463;
 
     private static readonly RoutingGraphFile Shipped = RoutingGraphFile.Parse(File.ReadAllText(RoutingGraphFile.FileName));
 
@@ -44,6 +49,54 @@ public class RoutingGraphFileTests
     public void Every_shard_is_on_a_network()
     {
         Assert.All(Shipped.Nodes.Where(n => n.Kind == RouteNodeKind.Shard), n => Assert.NotEqual(0u, n.Network));
+    }
+
+    [Fact]
+    public void Every_landing_is_on_a_network()
+    {
+        Assert.All(Shipped.Nodes.Where(n => n.Kind == RouteNodeKind.Landing), n => Assert.NotEqual(0u, n.Network));
+    }
+
+    [Fact]
+    public void The_aethernet_stops_outside_a_citys_gates_are_landings()
+    {
+        Assert.Equal(RouteNodeKind.Landing, Shipped.Nodes.Single(n => string.Equals(n.Name, "White Wolf Gate (Central Shroud)", StringComparison.Ordinal)).Kind);
+        Assert.Equal(RouteNodeKind.Shard, Shipped.Nodes.Single(n => string.Equals(n.Name, "Mih Khetto's Amphitheatre", StringComparison.Ordinal)).Kind);
+    }
+
+    /// <summary>Storm on the Horizon: Yugiri, at Yanxia's mercantile docks, sends you to the
+    /// skipper for the boat to the Doman Enclave, where Hien waits. The skipper's warp has no name
+    /// of its own, only the question it asks, and a door once needed a name to exist.</summary>
+    [Fact]
+    public void The_skipper_at_yanxias_docks_rows_you_to_the_doman_enclave()
+    {
+        const uint SkipperWarp = 131293;
+        const uint Skipper = 1024794;
+        Assert.Contains(Shipped.Doors, door => door is { Warp: SkipperWarp, Person: Skipper, From.Territory: Yanxia, To.Territory: DomanEnclave });
+
+        var byYugiri = new Place(Yanxia, YanxiaMap, -472f, float.NaN, 538f);
+        var byHien = new Place(DomanEnclave, DomanEnclaveMap, 40f, float.NaN, 6f);
+        var route = Shipped.ToGraph().FindRoute(byYugiri, [byHien], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Mercantile docks skipper" });
+    }
+
+    /// <summary>Standing at New Gridania's White Wolf Gate, heading for Old Gridania: the route once
+    /// went out through the gatekeeper into Central Shroud to hop back in from a shard that is not
+    /// there.</summary>
+    [Fact]
+    public void A_route_across_gridania_never_boards_the_aethernet_outside_its_gate()
+    {
+        var graph = Shipped.ToGraph();
+        var atTheGate = new Place(NewGridania, 2, -114f, -7.4f, 97f);
+        var byMihKhetto = new Place(OldGridania, 3, -60f, float.NaN, -130f);
+
+        var route = graph.FindRoute(atTheGate, [byMihKhetto], _ => true, _ => true);
+
+        Assert.NotNull(route);
+        Assert.DoesNotContain(route.Legs, leg => leg is Leg.ShardHop { EntryShard: "White Wolf Gate (Central Shroud)" });
+        Assert.DoesNotContain(route.Legs, leg => leg is Leg.Door { Npc: "Franchemontiaux" });
     }
 
     [Fact]

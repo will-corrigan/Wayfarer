@@ -256,6 +256,53 @@ public class RouteGraphTests
         Assert.Contains(after!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
     }
 
+    /// <summary>A city's aethernet drops you just outside its gate, in the field, but there is no
+    /// shard there to board: the aethernet goes out through it and never back in. White Wolf Gate
+    /// (Central Shroud) once routed a player through the gate to hop back into the city.</summary>
+    [Fact]
+    public void A_landing_outside_the_gate_is_hopped_to_but_never_from()
+    {
+        var landing = new RouteNode(23, "Gate (Field)", RouteNodeKind.Landing, Network, new Place(Field, 1, 500f, 0f, 0f));
+        var graph = new RouteGraph([FieldAetheryte, CityAetheryte, NearShard, FarShard, landing], []);
+
+        // Standing on the landing, the far shard is only reached by teleporting in and hopping.
+        var fromLanding = graph.FindRoute(At(Field, 1, 500f), [At(City, 3, 1020f)], AllAttuned);
+        Assert.DoesNotContain(fromLanding!.Legs, leg => leg is Leg.ShardHop { EntryShard: "Gate (Field)" });
+
+        // Beside the near shard, the landing is a hop away.
+        var toLanding = graph.FindRoute(At(City, 2, 30f), [At(Field, 1, 510f)], AllAttuned);
+        Assert.Contains(toLanding!.Legs, leg => leg is Leg.ShardHop { ExitShard: "Gate (Field)" });
+    }
+
+    /// <summary>A seasonal event's door, such as a Moonfire Faire boat, is there only while the
+    /// event runs: it is neither left out of the graph nor taken the rest of the year.</summary>
+    [Fact]
+    public void A_seasonal_door_is_taken_only_while_its_event_runs()
+    {
+        const ushort Faire = 7;
+        var boat = new DoorLink("Close Your Eyes", new Place(Field, 1, 10f, 0f, 0f), new Place(Field, 1, 4000f, 0f, 0f), OneWay: true, Npc: "Faire adventurer", Warp: 1, Person: 2, Festival: Faire);
+        var graph = new RouteGraph([], [boat]);
+        var from = At(Field, 1, 0f);
+        Place[] across = [At(Field, 1, 4010f)];
+
+        var during = graph.FindRoute(from, across, AllAttuned, festivalOn: (festival, _) => festival == Faire);
+        var after = graph.FindRoute(from, across, AllAttuned, festivalOn: (_, _) => false);
+
+        Assert.Contains(during!.Legs, leg => leg is Leg.Door { Warp: 1 });
+        Assert.DoesNotContain(after!.Legs, leg => leg is Leg.Door);
+    }
+
+    [Fact]
+    public void A_landing_is_never_teleported_to()
+    {
+        var landing = new RouteNode(23, "Gate (Field)", RouteNodeKind.Landing, 0, new Place(Field, 1, 5000f, 0f, 0f));
+        var graph = new RouteGraph([FieldAetheryte, landing], []);
+
+        var route = graph.FindRoute(At(Field, 1, 0f), [At(Field, 1, 5000f)], AllAttuned);
+
+        Assert.DoesNotContain(route!.Legs, leg => leg is Leg.Teleport);
+    }
+
     private static RouteGraph World() => new([FieldAetheryte, CityAetheryte, NearShard, FarShard], []);
 
     private static Place At(uint territory, uint map, float x) => new(territory, map, x, 0f, 0f);
