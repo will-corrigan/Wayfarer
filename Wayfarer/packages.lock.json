@@ -22,9 +22,9 @@
       },
       "KamiToolKit": {
         "type": "Direct",
-        "requested": "[2.2.49, )",
-        "resolved": "2.2.49",
-        "contentHash": "844sNr7eI4Eo+JlLyW05qF9wLOIdICS5bE8HKdpQE5agp7As+fskn/8ZSa+jn7cyVv2e/r36ARyHW86IVVloCg=="
+        "requested": "[2.2.50, )",
+        "resolved": "2.2.50",
+        "contentHash": "NeUSRl4SZOpXusUO67aIbewNBN2VuIHARHIjPAUgr9rc2KLtuQKYu4agoA7b0VFrz6yWhw/uLBx43s0S1avv/Q=="
       },
       "Meziantou.Analyzer": {
         "type": "Direct",
