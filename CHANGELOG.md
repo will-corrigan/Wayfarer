@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.3](https://github.com/will-corrigan/Wayfarer/compare/v1.7.2...v1.7.3) (2026-09-25)
+
+
+### Fixed
+
+* routes into a zone you can fly in treat its height as flown, not climbed ([#98](https://github.com/will-corrigan/Wayfarer/issues/98)) ([bdfd719](https://github.com/will-corrigan/Wayfarer/commit/bdfd7193fea8bf3d5559ce5fafc01bbc0aa2b6b8))
+
 ## [1.7.2](https://github.com/will-corrigan/Wayfarer/compare/v1.7.1...v1.7.2) (2026-09-25)
 
 
