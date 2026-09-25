@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/will-corrigan/Wayfarer/compare/v1.7.0...v1.7.1) (2026-09-25)
+
+
+### Fixed
+
+* routes take every boat and lift the game offers, and say what to do at each ([#92](https://github.com/will-corrigan/Wayfarer/issues/92)) ([f370dd7](https://github.com/will-corrigan/Wayfarer/commit/f370dd743455a254ee5ff2643bae4006b642fa68))
+
 ## [1.7.0](https://github.com/will-corrigan/Wayfarer/compare/v1.6.3...v1.7.0) (2026-09-24)
 
 
