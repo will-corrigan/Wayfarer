@@ -55,6 +55,17 @@ By default Wayfarer follows the main scenario, the same quest the guide's own pl
 in your quest journal follows any other accepted quest instead: the plate then carries that quest's
 name, and pressing it opens the journal at it.
 
+### Treasure on the map
+
+Two switches in the settings window's Treasure section, both off until you turn them on:
+
+- **Show nearby treasure.** Any treasure chest the game has loaded near you, in any zone and in
+  dungeons, is marked with a gold chest.
+- **Overlay all potential treasure on the map.** Every place the zone you are in can put treasure
+  is marked with a bronze chest: a dungeon's chests, the Occult Crescent's coffer spawn points,
+  Bozja's and Eureka's. They are read from the zone's own layout files, each on its own floor's
+  map. With nearby treasure on too, a spot with treasure on it right now turns gold.
+
 ### Settings
 
 A cog sits at the guide's top right, beside the plate. The settings window is the game's own, laid

@@ -3,6 +3,7 @@ using Lumina;
 using Lumina.Data.Files;
 using Lumina.Data.Parsing.Layer;
 using Lumina.Excel.Sheets;
+using Wayfarer.Routing;
 
 namespace Wayfarer.RoutingGen;
 
