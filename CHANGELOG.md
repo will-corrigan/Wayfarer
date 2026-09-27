@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/will-corrigan/Wayfarer/compare/v1.7.3...v1.8.0) (2026-09-27)
+
+
+### New
+
+* treasure on the map ([#100](https://github.com/will-corrigan/Wayfarer/issues/100)) ([e0940a8](https://github.com/will-corrigan/Wayfarer/commit/e0940a82718dc6a10768ff259c993837633ea914))
+
 ## [1.7.3](https://github.com/will-corrigan/Wayfarer/compare/v1.7.2...v1.7.3) (2026-09-25)
 
 
