@@ -11,8 +11,8 @@ namespace Wayfarer.Routing;
 /// through a door that cannot be opened from that side.</param>
 /// <param name="Npc">Who to talk to, when the door is passed by asking someone: a lift attendant,
 /// an airship's purser. Null for a door walked through.</param>
-/// <param name="Quests">Quests that must be complete before whoever keeps the door will let the
-/// player through, or null for none. A door the player cannot use yet is left out of their route.</param>
+/// <param name="Quests">Quests the player must have taken, accepted or complete, before whoever
+/// keeps the door will let them through, or null for none. A door the player cannot use yet is left out of their route.</param>
 /// <param name="Warp">The game's Warp row the door sends you through, or zero for a door walked
 /// through. What the door is; its name is only what it is called.</param>
 /// <param name="Person">The game's id for whoever is asked, the ENpcBase row, or zero when nobody

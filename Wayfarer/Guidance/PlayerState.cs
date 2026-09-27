@@ -16,10 +16,15 @@ internal static unsafe class PlayerState
         return state != null && state->IsAetheryteUnlocked(aetheryteId);
     }
 
-    /// <summary>Whether the player has completed a quest, which is what decides whether a door kept
-    /// until one is done may be taken. Not done is the answer while the game has no state yet.</summary>
-    public static bool IsQuestComplete(uint questId) =>
-        QuestManager.Instance() != null && QuestManager.IsQuestComplete(questId);
+    /// <summary>Whether the player has a quest accepted or complete, which is what decides whether a
+    /// door kept for it may be taken. The game opens such a door as soon as the quest is taken: the
+    /// Crystarium gatekeep lets you into the Ocular during "Travelers of Norvrandt", the very quest
+    /// its warp names. Neither is the answer while the game has no state yet.</summary>
+    public static bool IsQuestTaken(uint questId)
+    {
+        var quests = QuestManager.Instance();
+        return quests != null && (QuestManager.IsQuestComplete(questId) || quests->IsQuestAccepted(questId));
+    }
 
     /// <summary>Whether a seasonal event is running, in the given phase or in any when the phase is
     /// zero, which is what decides whether a door only there during it may be taken. The game

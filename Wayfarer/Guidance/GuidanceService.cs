@@ -202,7 +202,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         routedTo = target;
         routedFrom = from;
         routedAirborne = airborne;
-        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestComplete, PlayerState.IsFestivalOn, airborne, flight.CanFly);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestTaken, PlayerState.IsFestivalOn, airborne, flight.CanFly);
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>
