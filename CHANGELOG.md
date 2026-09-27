@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/will-corrigan/Wayfarer/compare/v1.8.0...v1.9.0) (2026-09-27)
+
+
+### New
+
+* draw loaded treasure in its own metal ([#103](https://github.com/will-corrigan/Wayfarer/issues/103)) ([90ad9ad](https://github.com/will-corrigan/Wayfarer/commit/90ad9ade67566b04db8107879c9d657cfa53b771))
+
+
+### Fixed
+
+* the quest being guided opens the warps kept for it ([#102](https://github.com/will-corrigan/Wayfarer/issues/102)) ([8010346](https://github.com/will-corrigan/Wayfarer/commit/801034687b2d833b47fd538964695feb8eb17b97))
+
 ## [1.8.0](https://github.com/will-corrigan/Wayfarer/compare/v1.7.3...v1.8.0) (2026-09-27)
 
 
