@@ -11,7 +11,8 @@ internal sealed class TreasureSpotMarker : MapMarkerNode
     private readonly LiveTreasure live;
     private readonly TreasureTiers tiers;
     private readonly bool lights;
-    private uint? icon;
+    private bool drawn;
+    private TreasureTier? shown;
 
     /// <summary>Initializes a new instance of the <see cref="TreasureSpotMarker"/> class.</summary>
     /// <param name="spot">The spot it marks.</param>
@@ -40,15 +41,17 @@ internal sealed class TreasureSpotMarker : MapMarkerNode
     /// <param name="tier">The metal of the chest standing here, or null for none.</param>
     private void Show(TreasureTier? tier)
     {
-        var now = tier is { } metal ? TreasureIcons.For(metal) : 0u;
-        if (icon == now)
+        // By the metal, not the icon: a chest not read yet and a gold one share an icon, and the
+        // tooltip still has to change when the read comes back.
+        if (drawn && shown == tier)
         {
             return;
         }
 
-        icon = now;
+        drawn = true;
+        shown = tier;
         var filled = tier is not null;
-        IconId = filled ? now : TreasureIcons.Bronze;
+        IconId = tier is { } metal ? TreasureIcons.For(metal) : TreasureIcons.Bronze;
         Alpha = filled ? 1f : 0.55f;
         MarkerScale = filled ? 1.3f : 1f;
         TextTooltip = tier switch
