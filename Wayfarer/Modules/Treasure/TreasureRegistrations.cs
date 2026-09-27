@@ -13,6 +13,7 @@ internal sealed class TreasureRegistrations : Module
         builder.RegisterType<TreasureSettings>().SingleInstance();
         builder.RegisterType<TreasureSpots>().SingleInstance();
         builder.RegisterType<LiveTreasure>().SingleInstance();
+        builder.RegisterType<TreasureTiers>().SingleInstance();
         builder.RegisterType<TreasureMap>().SingleInstance();
         builder.RegisterType<TreasureModule>().As<IModule>().SingleInstance();
     }

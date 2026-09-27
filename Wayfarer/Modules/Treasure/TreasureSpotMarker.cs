@@ -3,50 +3,64 @@ using KamiToolKit.MapOverlay;
 
 namespace Wayfarer.Modules.Treasure;
 
-/// <summary>One treasure spot on the map: the bronze chest, or, while nearby treasure is shown too and
-/// the game has treasure loaded there, the gold chest that nearby treasure is drawn with.</summary>
+/// <summary>One treasure spot on the map: the faded bronze chest, or, while nearby treasure is shown
+/// too and the game has a chest loaded there, that chest in its own metal, bright and larger.</summary>
 internal sealed class TreasureSpotMarker : MapMarkerNode
 {
-    private const uint EmptyIcon = 60356;
-    private const uint FilledIcon = 60354;
-
     private readonly TreasureSpot spot;
     private readonly LiveTreasure live;
+    private readonly TreasureTiers tiers;
     private readonly bool lights;
-    private bool? filled;
+    private bool drawn;
+    private TreasureTier? shown;
 
     /// <summary>Initializes a new instance of the <see cref="TreasureSpotMarker"/> class.</summary>
     /// <param name="spot">The spot it marks.</param>
     /// <param name="live">The treasure loaded now.</param>
-    /// <param name="lights">Whether it turns gold while treasure stands on it.</param>
-    public TreasureSpotMarker(TreasureSpot spot, LiveTreasure live, bool lights)
+    /// <param name="tiers">What each kind of chest is made of.</param>
+    /// <param name="lights">Whether it shows the chest standing on it.</param>
+    public TreasureSpotMarker(TreasureSpot spot, LiveTreasure live, TreasureTiers tiers, bool lights)
     {
         this.spot = spot;
         this.live = live;
+        this.tiers = tiers;
         this.lights = lights;
         MapId = spot.Map;
         Position = new Vector2(spot.Position.X, spot.Position.Z);
         Size = new Vector2(24f, 24f);
-        Show(false);
+        Show(null);
     }
 
     /// <inheritdoc/>
     protected override void OnUpdate()
     {
-        Show(lights && live.Territory == spot.Territory && live.Map == spot.Map && TreasureMatch.Holds(spot.Position, live.Positions));
+        var chest = lights && live.Territory == spot.Territory && live.Map == spot.Map ? TreasureMatch.On(spot.Position, live.Positions) : -1;
+        Show(chest >= 0 ? tiers.Of(live.Kinds[chest]) : null);
     }
 
-    private void Show(bool now)
+    /// <param name="tier">The metal of the chest standing here, or null for none.</param>
+    private void Show(TreasureTier? tier)
     {
-        if (filled == now)
+        // By the metal, not the icon: a chest not read yet and a gold one share an icon, and the
+        // tooltip still has to change when the read comes back.
+        if (drawn && shown == tier)
         {
             return;
         }
 
-        filled = now;
-        IconId = now ? FilledIcon : EmptyIcon;
-        Alpha = now ? 1f : 0.55f;
-        MarkerScale = now ? 1.3f : 1f;
-        TextTooltip = now ? "Treasure" : "Treasure can appear here";
+        drawn = true;
+        shown = tier;
+        var filled = tier is not null;
+        IconId = tier is { } metal ? TreasureIcons.For(metal) : TreasureIcons.Bronze;
+        Alpha = filled ? 1f : 0.55f;
+        MarkerScale = filled ? 1.3f : 1f;
+        TextTooltip = tier switch
+        {
+            TreasureTier.Bronze => "Bronze treasure",
+            TreasureTier.Silver => "Silver treasure",
+            TreasureTier.Gold => "Gold treasure",
+            TreasureTier.Unknown => "Treasure",
+            _ => "Treasure can appear here",
+        };
     }
 }
