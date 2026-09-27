@@ -6,6 +6,7 @@ using Wayfarer.App;
 using Wayfarer.App.Modules;
 using Wayfarer.Modules.Hunting;
 using Wayfarer.Modules.Quests;
+using Wayfarer.Modules.Treasure;
 
 namespace Wayfarer;
 
@@ -49,6 +50,7 @@ public sealed class Plugin(IDalamudPluginInterface pluginInterface) : IAsyncDala
         builder.RegisterModule<AppRegistrations>();
         builder.RegisterModule<QuestsRegistrations>();
         builder.RegisterModule<HuntingRegistrations>();
+        builder.RegisterModule<TreasureRegistrations>();
 
         container = builder.Build();
         cancellationToken.ThrowIfCancellationRequested();
