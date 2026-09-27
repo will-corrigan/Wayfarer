@@ -41,7 +41,8 @@ internal static class QuestObjectiveBuilder
         EventId? owner = null,
         IReadOnlyList<Place>? lairs = null,
         QuestTarget? target = null,
-        string? kind = null)
+        string? kind = null,
+        uint quest = 0)
     {
         ArgumentNullException.ThrowIfNull(questName);
         ArgumentNullException.ThrowIfNull(todos);
@@ -53,7 +54,7 @@ internal static class QuestObjectiveBuilder
             ? [.. step.Where(todo => !IsDone(todo, progress)).Select(todo => Entry(todo, progress, markers, emotes ?? NoEmotes, duties ?? [], items, marks, owner, lairs, target))]
             : DescribedByMarkers(questName, markers, duties ?? []);
 
-        return entries.Count > 0 ? new Objective(questName, entries, headlinePressable, kind) : null;
+        return entries.Count > 0 ? new Objective(questName, entries, headlinePressable, kind, quest) : null;
     }
 
     private static bool IsDone(QuestTodo todo, IReadOnlyList<QuestTodoProgress> progress) =>

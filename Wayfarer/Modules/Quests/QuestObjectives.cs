@@ -93,7 +93,8 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             QuestIds.Event(questId),
             reader.Lairs(questId),
             target,
-            followed ? FollowedHeader : null);
+            followed ? FollowedHeader : null,
+            QuestIds.RowId(questId));
     }
 
     /// <summary>The followed quest while it is still accepted; completing or abandoning it hands

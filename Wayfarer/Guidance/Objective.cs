@@ -13,7 +13,10 @@ namespace Wayfarer.Guidance;
 /// one target is one entry; a step whose parts can be done in any order is several.</param>
 /// <param name="HeadlinePressable">Whether pressing the headline does anything. What it does is
 /// the source's own business: see <see cref="IObjectiveSource.PressHeadline"/>.</param>
-public sealed record Objective(string Headline, IReadOnlyList<ObjectiveEntry> Entries, bool HeadlinePressable = false, string? Kind = null)
+/// <param name="Quest">The quest this is a step of, by its sheet row, or zero. A warp kept until this
+/// quest is done is open while it is being done: the game lets the player through for the step
+/// that needs it, as the Crystarium gatekeep does into the Ocular during "Travelers of Norvrandt".</param>
+public sealed record Objective(string Headline, IReadOnlyList<ObjectiveEntry> Entries, bool HeadlinePressable = false, string? Kind = null, uint Quest = 0)
 {
     /// <summary>What an entry in another zone is worth against one in this zone: always more, so
     /// anything underfoot is preferred whatever the numbers say. Two zones can hold the very same

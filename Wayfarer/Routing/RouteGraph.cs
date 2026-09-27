@@ -93,8 +93,9 @@ public sealed class RouteGraph
     /// <param name="from">Where the player stands.</param>
     /// <param name="targets">The places on offer. The route ends at whichever is cheapest to reach.</param>
     /// <param name="attuned">Whether the player can use the aetheryte or shard with this id.</param>
-    /// <param name="questDone">Whether the player has taken the quest with this id, accepted or
-    /// complete, for doors kept for one. Null treats every such door as open.</param>
+    /// <param name="questDone">Whether a door kept until the quest with this id is done may be taken:
+    /// once it is done, or while the step that needs it is being guided. Null treats every such door
+    /// as open.</param>
     /// <param name="festivalOn">Whether the seasonal event with this id is running, in this phase
     /// (zero for any), for doors that are only there during one. Null treats every such door as
     /// open.</param>
@@ -150,7 +151,7 @@ public sealed class RouteGraph
 
     /// <param name="To">The node it leads to.</param>
     /// <param name="Leg">How it is travelled.</param>
-    /// <param name="Needs">Quests that must be taken, accepted or complete, to use it, or null.</param>
+    /// <param name="Needs">Quests that must be complete to take it, or null.</param>
     /// <param name="Festival">The seasonal event it is only there during, or zero.</param>
     /// <param name="Phase">Which phase of that event, or zero for any.</param>
     private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null, ushort Festival = 0, ushort Phase = 0);

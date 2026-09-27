@@ -14,9 +14,8 @@ namespace Wayfarer.RoutingGen;
 /// uses to say which map the player is on: a lift in Ul'dah lands on the airship landing's own map,
 /// a floor above the street.</para>
 ///
-/// <para>Warps that cost gil are kept: paying is not a gap. Warps kept for quests carry those quests,
-/// and a route only takes them once the player has taken them: the game opens such a warp as soon
-/// as its quest is accepted. Every warp is one way;
+/// <para>Warps that cost gil are kept: paying is not a gap. Warps kept until quests are done carry
+/// those quests, and a route only takes them once the player has done them. Every warp is one way;
 /// the way back is whoever or whatever stands at the other end.</para></summary>
 internal static class WarpDoors
 {

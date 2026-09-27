@@ -155,7 +155,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
 
         var asked = Stopwatch.GetTimestamp();
         var target = objective.Guided(Standing());
-        var way = RouteTo(target);
+        var way = RouteTo(target, objective.Quest);
         Slow(started, asked, Stopwatch.GetTimestamp());
 
         return new PublishedGuidance(source, objective, target, way);
@@ -183,7 +183,7 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
     /// has moved far enough for the answer to differ. A search runs the whole graph and allocates
     /// as it goes, so running one every frame spends a tenth of the frame to be told the same
     /// thing sixty times.</summary>
-    private Route? RouteTo(ObjectiveEntry? target)
+    private Route? RouteTo(ObjectiveEntry? target, uint quest)
     {
         if (target is null || Ends(target.Where) is not { Count: > 0 } ends || Standing() is not { } from)
         {
@@ -202,7 +202,14 @@ internal sealed unsafe class GuidanceService : IGuidance, IDisposable
         routedTo = target;
         routedFrom = from;
         routedAirborne = airborne;
-        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, PlayerState.IsQuestTaken, PlayerState.IsFestivalOn, airborne, flight.CanFly);
+        return route = graph.FindRoute(from, ends, PlayerState.IsAttuned, Opens, PlayerState.IsFestivalOn, airborne, flight.CanFly);
+
+        // A door kept until a quest is done opens once it is done, and while it is the quest being
+        // guided: the game lets the player through for the step that needs it, as the Crystarium
+        // gatekeep does into the Ocular during "Travelers of Norvrandt". A door kept for a quest the
+        // player is merely carrying, such as the airships kept until Endwalker, stays shut until
+        // it is finished.
+        bool Opens(uint kept) => PlayerState.IsQuestComplete(kept) || (kept == quest && PlayerState.IsQuestAccepted(kept));
     }
 
     /// <summary>Where the player stands this frame, or null when there is no player to stand.</summary>
