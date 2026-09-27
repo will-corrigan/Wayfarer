@@ -14,7 +14,7 @@ namespace Wayfarer.Modules.Treasure;
 /// when the read comes back, if they are still in that zone and the map is still shown. Once stopped,
 /// the map shows nothing until the module is applied again, so a read or an apply landing after the
 /// plugin stopped cannot put back an overlay nothing will take down.</para></summary>
-internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, IClientState clientState, IFramework framework, IPluginLog log) : IAsyncDisposable
+internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, TreasureTiers tiers, IClientState clientState, IFramework framework, IPluginLog log) : IAsyncDisposable
 {
     /// <summary>How many loaded chests off every spot can be shown at once.</summary>
     private const int NearbyMarkers = 32;
@@ -51,7 +51,7 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, IClien
         {
             for (var place = 0; place < NearbyMarkers; place++)
             {
-                overlay.AddMarker(new NearbyTreasureMarker(place, live, OffSpots));
+                overlay.AddMarker(new NearbyTreasureMarker(place, live, tiers, OffSpots));
             }
         }
 
@@ -139,7 +139,7 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, IClien
         spotMarkers.Clear();
         foreach (var spot in found)
         {
-            var marker = new TreasureSpotMarker(spot, live, showing.Nearby);
+            var marker = new TreasureSpotMarker(spot, live, tiers, showing.Nearby);
             spotMarkers.Add(marker);
             overlay.AddMarker(marker);
         }

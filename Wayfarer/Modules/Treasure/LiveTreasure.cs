@@ -11,6 +11,7 @@ internal sealed class LiveTreasure(IObjectTable objects, IClientState clientStat
 {
     private readonly List<Vector3> positions = [];
     private readonly List<string> names = [];
+    private readonly List<uint> kinds = [];
     private DateTime readAt;
 
     /// <summary>Where each loaded chest stands.</summary>
@@ -33,6 +34,17 @@ internal sealed class LiveTreasure(IObjectTable objects, IClientState clientStat
         }
     }
 
+    /// <summary>Which kind of chest each is, its <c>Treasure</c> row, in the same order as
+    /// <see cref="Positions"/>.</summary>
+    public IReadOnlyList<uint> Kinds
+    {
+        get
+        {
+            Refresh();
+            return kinds;
+        }
+    }
+
     /// <summary>The zone the chests are in.</summary>
     public uint Territory => clientState.TerritoryType;
 
@@ -49,6 +61,7 @@ internal sealed class LiveTreasure(IObjectTable objects, IClientState clientStat
         readAt = framework.LastUpdateUTC;
         positions.Clear();
         names.Clear();
+        kinds.Clear();
 
         // The whole table, not only its event-object range: which range the game files treasure
         // under is not written down anywhere, and this only runs while the map is open.
@@ -58,6 +71,7 @@ internal sealed class LiveTreasure(IObjectTable objects, IClientState clientStat
             {
                 positions.Add(thing.Position);
                 names.Add(thing.Name.TextValue);
+                kinds.Add(thing.BaseId);
             }
         }
     }

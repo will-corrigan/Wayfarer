@@ -60,11 +60,12 @@ name, and pressing it opens the journal at it.
 Two switches in the settings window's Treasure section, both off until you turn them on:
 
 - **Show nearby treasure.** Any treasure chest the game has loaded near you, in any zone and in
-  dungeons, is marked with a gold chest.
+  dungeons, is marked in its own metal: bronze, silver or gold, read from the chest's model.
 - **Overlay all potential treasure on the map.** Every place the zone you are in can put treasure
   is marked with a bronze chest: a dungeon's chests, the Occult Crescent's coffer spawn points,
   Bozja's and Eureka's. They are read from the zone's own layout files, each on its own floor's
-  map. With nearby treasure on too, a spot with treasure on it right now turns gold.
+  map. With nearby treasure on too, a spot with a chest on it right now shows that chest in its own
+  metal, bright and larger.
 
 ### Settings
 
