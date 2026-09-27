@@ -5,62 +5,48 @@ using Wayfarer.App;
 
 namespace Wayfarer.Modules.Treasure;
 
-/// <summary>Wayfarer's treasure markers over the game's map: every coffer spot, lit while filled,
-/// and loaded treasure standing on no spot. Owns the overlay and every marker on it; nothing here
-/// outlives <see cref="Stop"/>. Game thread only, apart from <see cref="Allow"/>.
+/// <summary>Wayfarer's treasure markers over the game's map, as switched on: treasure the game has
+/// loaded nearby, and every treasure spot of the zone the player is in. With both, loaded treasure on
+/// a spot is drawn by lighting the spot. Owns the overlay and every marker on it; nothing here
+/// outlives <see cref="Stop"/>. Game thread only.
 ///
-/// <para>A switch or a login applies the module by reading layout files off the game's thread and
-/// then showing the map. If the plugin stops in between, that late <see cref="Show"/> must not put an
-/// overlay back that nothing will ever take down, so once stopped, the map shows nothing until the
-/// module is applied again.</para></summary>
-internal sealed class TreasureMap(CofferSpots spots, LiveTreasure live, IFramework framework) : IAsyncDisposable
+/// <para>A zone's spots are read off the game's thread when the player arrives, and put on the map
+/// when the read comes back, if they are still in that zone and the map is still shown. Once stopped,
+/// the map shows nothing until the module is applied again, so a read or an apply landing after the
+/// plugin stopped cannot put back an overlay nothing will take down.</para></summary>
+internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, IClientState clientState, IFramework framework, IPluginLog log) : IAsyncDisposable
 {
-    /// <summary>How many chests off every spot can be shown at once. A dungeon room holds a few.</summary>
+    /// <summary>How many loaded chests off every spot can be shown at once.</summary>
     private const int NearbyMarkers = 32;
 
+    private readonly List<TreasureSpotMarker> spotMarkers = [];
     private MapOverlayController? overlay;
+    private (bool Nearby, bool Spots) showing;
     private volatile bool stopped;
-    private (bool Spots, bool Nearby) showing;
-    private List<Vector3> spotsHere = [];
-    private uint spotsHereTerritory = uint.MaxValue;
+    private volatile bool disposed;
+    private List<TreasureSpot> spotsHere = [];
+    private uint spotsTerritory;
     private List<int> offSpots = [];
     private DateTime offSpotsAt;
 
     /// <summary>Shows what is switched on and nothing else. Safe to call again with the same
     /// switches, which leaves the map as it is.</summary>
-    public void Show(bool coffers, bool nearby)
+    public void Show(bool nearby, bool spotsToo)
     {
-        if (stopped || (!coffers && !nearby))
-        {
-            Clear();
-            return;
-        }
-
-        if (overlay is not null && showing == (coffers, nearby))
+        var wanted = (nearby, spotsToo);
+        if (overlay is not null && showing == wanted && !stopped)
         {
             return;
         }
 
-        if (overlay is null)
+        Clear();
+        if (stopped || (!nearby && !spotsToo))
         {
-            overlay = new MapOverlayController();
-            overlay.Enable();
-        }
-        else
-        {
-            overlay.RemoveAllMarkers();
+            return;
         }
 
-        showing = (coffers, nearby);
-        spotsHereTerritory = uint.MaxValue;
-        if (coffers)
-        {
-            foreach (var spot in spots.All)
-            {
-                overlay.AddMarker(new CofferSpotMarker(spot, live));
-            }
-        }
-
+        overlay = new MapOverlayController();
+        showing = wanted;
         if (nearby)
         {
             for (var place = 0; place < NearbyMarkers; place++)
@@ -68,10 +54,18 @@ internal sealed class TreasureMap(CofferSpots spots, LiveTreasure live, IFramewo
                 overlay.AddMarker(new NearbyTreasureMarker(place, live, OffSpots));
             }
         }
+
+        overlay.Enable();
+        if (spotsToo)
+        {
+            clientState.TerritoryChanged += OnTerritoryChanged;
+            Load(clientState.TerritoryType);
+        }
     }
 
-    /// <summary>Lets <see cref="Show"/> draw again: the module is being applied. Any thread.</summary>
-    public void Allow() => stopped = false;
+    /// <summary>Lets <see cref="Show"/> draw again: the module is being applied. Never after the map
+    /// has been disposed.</summary>
+    public void Allow() => stopped = disposed;
 
     /// <summary>Takes every marker off the map, and keeps them off until <see cref="Allow"/>.</summary>
     public void Stop()
@@ -85,6 +79,7 @@ internal sealed class TreasureMap(CofferSpots spots, LiveTreasure live, IFramewo
     /// down as the plugin unloads.</summary>
     public ValueTask DisposeAsync()
     {
+        disposed = true;
         stopped = true;
         if (framework.IsFrameworkUnloading)
         {
@@ -97,38 +92,76 @@ internal sealed class TreasureMap(CofferSpots spots, LiveTreasure live, IFramewo
 
     private void Clear()
     {
-        overlay?.Dispose();
+        if (overlay is null)
+        {
+            return;
+        }
+
+        clientState.TerritoryChanged -= OnTerritoryChanged;
+        overlay.Dispose();
         overlay = null;
         showing = default;
+        spotMarkers.Clear();
+        spotsHere = [];
+        spotsTerritory = 0;
     }
 
-    /// <summary>The loaded chests standing on no spot being shown, worked out once a frame.</summary>
+    private void OnTerritoryChanged(uint territory) => Load(territory);
+
+    /// <summary>Reads a zone's spots off the game's thread and puts them on the map when they come back.</summary>
+    private void Load(uint territory)
+    {
+        Place(territory, []);
+        GameThread.Let(
+            async () =>
+            {
+                var found = await Task.Run(() => spots.In(territory)).ConfigureAwait(false);
+                await framework.OnTheGameThread(() => Place(territory, found)).ConfigureAwait(false);
+            },
+            log,
+            $"mark the treasure spots of territory {territory} on the map");
+    }
+
+    /// <summary>Replaces the spot markers with these, unless the player has moved on or the spots
+    /// are no longer shown.</summary>
+    private void Place(uint territory, IReadOnlyList<TreasureSpot> found)
+    {
+        if (overlay is null || stopped || !showing.Spots || territory != clientState.TerritoryType)
+        {
+            return;
+        }
+
+        foreach (var marker in spotMarkers)
+        {
+            overlay.RemoveMarker(marker);
+        }
+
+        spotMarkers.Clear();
+        foreach (var spot in found)
+        {
+            var marker = new TreasureSpotMarker(spot, live, showing.Nearby);
+            spotMarkers.Add(marker);
+            overlay.AddMarker(marker);
+        }
+
+        spotsTerritory = territory;
+        spotsHere = [.. found];
+    }
+
+    /// <summary>The loaded chests not already drawn as a lit spot, worked out once a frame.</summary>
     private List<int> OffSpots()
     {
         if (offSpotsAt != framework.LastUpdateUTC)
         {
             offSpotsAt = framework.LastUpdateUTC;
-            offSpots = TreasureMatch.OffSpots(live.Positions, SpotsHere());
+
+            // Only the spots of the floor the player is on: a chest upstairs must not light a spot
+            // drawn on the floor below, where it would vanish from the floor it is on.
+            offSpots = TreasureMatch.OffSpots(
+                live.Positions,
+                spotsTerritory == live.Territory ? [.. spotsHere.Where(spot => spot.Map == live.Map).Select(spot => spot.Position)] : []);
         }
 
         return offSpots;
-    }
-
-    /// <summary>The spots in the zone the player stands in, while spots are shown; none otherwise,
-    /// so every chest is shown as nearby treasure.</summary>
-    private List<Vector3> SpotsHere()
-    {
-        if (!showing.Spots)
-        {
-            return [];
-        }
-
-        if (spotsHereTerritory != live.Territory)
-        {
-            spotsHereTerritory = live.Territory;
-            spotsHere = [.. spots.All.Where(spot => spot.Territory == spotsHereTerritory).Select(spot => spot.Position)];
-        }
-
-        return spotsHere;
     }
 }

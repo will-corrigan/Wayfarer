@@ -9,22 +9,8 @@ internal sealed class TreasureSettings(IConfigStore configs)
 
     private readonly TreasureConfig config = configs.Load<TreasureConfig>(ConfigName);
 
-    /// <summary>Whether every place a coffer can appear in the Occult Crescent is marked on the map.</summary>
-    public bool CofferSpots
-    {
-        get => config.ShowCofferSpots;
-        set
-        {
-            if (config.ShowCofferSpots != value)
-            {
-                config.ShowCofferSpots = value;
-                configs.Save(ConfigName, config);
-            }
-        }
-    }
-
-    /// <summary>Whether treasure the game has loaded near the player is marked on the map, in any zone.</summary>
-    public bool NearbyTreasure
+    /// <summary>Whether treasure the game has loaded near the player is marked on the map.</summary>
+    public bool Nearby
     {
         get => config.ShowNearbyTreasure;
         set
@@ -32,6 +18,20 @@ internal sealed class TreasureSettings(IConfigStore configs)
             if (config.ShowNearbyTreasure != value)
             {
                 config.ShowNearbyTreasure = value;
+                configs.Save(ConfigName, config);
+            }
+        }
+    }
+
+    /// <summary>Whether every place the zone can put treasure is marked on the map.</summary>
+    public bool Spots
+    {
+        get => config.ShowTreasureSpots;
+        set
+        {
+            if (config.ShowTreasureSpots != value)
+            {
+                config.ShowTreasureSpots = value;
                 configs.Save(ConfigName, config);
             }
         }

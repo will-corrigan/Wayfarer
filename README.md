@@ -59,11 +59,12 @@ name, and pressing it opens the journal at it.
 
 Two switches in the settings window's Treasure section, both off until you turn them on:
 
-- **Coffer spots in the Occult Crescent.** Every place a treasure coffer can appear is marked on
-  the map with a bronze chest, read from the zone's own layout files. A spot with a coffer on it
-  right now turns into the gold chest.
-- **Nearby treasure on the map.** Any treasure chest the game has loaded near you, in any zone and
-  in dungeons, is marked with the gold chest.
+- **Show nearby treasure.** Any treasure chest the game has loaded near you, in any zone and in
+  dungeons, is marked with a gold chest.
+- **Overlay all potential treasure on the map.** Every place the zone you are in can put treasure
+  is marked with a bronze chest: a dungeon's chests, the Occult Crescent's coffer spawn points,
+  Bozja's and Eureka's. They are read from the zone's own layout files, each on its own floor's
+  map. With nearby treasure on too, a spot with treasure on it right now turns gold.
 
 ### Settings
 

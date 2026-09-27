@@ -11,7 +11,7 @@ internal sealed class TreasureRegistrations : Module
     protected override void Load(ContainerBuilder builder)
     {
         builder.RegisterType<TreasureSettings>().SingleInstance();
-        builder.RegisterType<CofferSpots>().SingleInstance();
+        builder.RegisterType<TreasureSpots>().SingleInstance();
         builder.RegisterType<LiveTreasure>().SingleInstance();
         builder.RegisterType<TreasureMap>().SingleInstance();
         builder.RegisterType<TreasureModule>().As<IModule>().SingleInstance();

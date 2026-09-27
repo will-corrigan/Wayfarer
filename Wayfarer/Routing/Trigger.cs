@@ -1,7 +1,7 @@
 using System.Numerics;
 using Lumina.Data.Parsing.Layer;
 
-namespace Wayfarer.RoutingGen;
+namespace Wayfarer.Routing;
 
 /// <summary>A box, cylinder or sphere a zone's layout places to do something to whoever walks into
 /// it: say which map they are on, or move them to another zone. Its scale is half its size on each
