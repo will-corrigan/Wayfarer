@@ -21,6 +21,14 @@ internal static unsafe class PlayerState
     public static bool IsQuestComplete(uint questId) =>
         QuestManager.Instance() != null && QuestManager.IsQuestComplete(questId);
 
+    /// <summary>Whether the player has a quest accepted and not yet complete. Not accepted is the
+    /// answer while the game has no state yet.</summary>
+    public static bool IsQuestAccepted(uint questId)
+    {
+        var quests = QuestManager.Instance();
+        return quests != null && quests->IsQuestAccepted(questId);
+    }
+
     /// <summary>Whether a seasonal event is running, in the given phase or in any when the phase is
     /// zero, which is what decides whether a door only there during it may be taken. The game
     /// holds the events it is running itself. Not running is the answer while it has no state yet.</summary>

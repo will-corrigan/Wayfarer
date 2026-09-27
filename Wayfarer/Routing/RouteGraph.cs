@@ -93,8 +93,9 @@ public sealed class RouteGraph
     /// <param name="from">Where the player stands.</param>
     /// <param name="targets">The places on offer. The route ends at whichever is cheapest to reach.</param>
     /// <param name="attuned">Whether the player can use the aetheryte or shard with this id.</param>
-    /// <param name="questDone">Whether the player has completed the quest with this id, for doors
-    /// kept until one is done. Null treats every such door as open.</param>
+    /// <param name="questDone">Whether a door kept until the quest with this id is done may be taken:
+    /// once it is done, or while the step that needs it is being guided. Null treats every such door
+    /// as open.</param>
     /// <param name="festivalOn">Whether the seasonal event with this id is running, in this phase
     /// (zero for any), for doors that are only there during one. Null treats every such door as
     /// open.</param>
