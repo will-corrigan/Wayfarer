@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/will-corrigan/Wayfarer/compare/v1.9.0...v1.10.0) (2026-09-28)
+
+
+### New
+
+* treasure spots remember the metal last seen on them ([#106](https://github.com/will-corrigan/Wayfarer/issues/106)) ([c599d87](https://github.com/will-corrigan/Wayfarer/commit/c599d87741dbf0215e7ce8d365ecae803c17152d))
+
+
+### Fixed
+
+* airships kept for any one envoy quest open once that one is done ([#105](https://github.com/will-corrigan/Wayfarer/issues/105)) ([d521a57](https://github.com/will-corrigan/Wayfarer/commit/d521a574b855d008aa8716412f862f4caa23e706))
+
 ## [1.9.0](https://github.com/will-corrigan/Wayfarer/compare/v1.8.0...v1.9.0) (2026-09-27)
 
 
