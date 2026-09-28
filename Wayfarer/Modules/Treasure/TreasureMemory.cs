@@ -15,16 +15,21 @@ internal sealed class TreasureMemory(IConfigStore configs)
 
     private readonly TreasureMemoryConfig config = configs.Load<TreasureMemoryConfig>(ConfigName);
 
-    /// <summary>A spot's key: its zone and where it stands across the ground, to the yalm. A spot is
-    /// placed at the same point in every session, so this names it for as long as the layout does.</summary>
+    /// <summary>A spot's key: its zone, the floor's map, and where it stands across the ground, to the
+    /// yalm. A spot is placed at the same point in every session, so this names it for as long as the
+    /// layout does; the map keeps two spots stacked on different floors apart.</summary>
     public static string KeyOf(TreasureSpot spot)
     {
         ArgumentNullException.ThrowIfNull(spot);
-        return string.Create(CultureInfo.InvariantCulture, $"{spot.Territory}:{MathF.Round(spot.Position.X)}:{MathF.Round(spot.Position.Z)}");
+        return string.Create(CultureInfo.InvariantCulture, $"{spot.Territory}:{spot.Map}:{MathF.Round(spot.Position.X)}:{MathF.Round(spot.Position.Z)}");
     }
 
     /// <summary>The metal last seen at a spot, or null when none has been seen there.</summary>
-    public TreasureTier? At(TreasureSpot spot) => config.Spots.TryGetValue(KeyOf(spot), out var tier) ? tier : null;
+    public TreasureTier? At(TreasureSpot spot) => At(KeyOf(spot));
+
+    /// <summary>The metal last seen at the spot with this key, or null when none has been seen there.
+    /// For a caller that asks every frame and has worked out the key once.</summary>
+    public TreasureTier? At(string key) => config.Spots.TryGetValue(key, out var tier) ? tier : null;
 
     /// <summary>Notes the metal of a chest seen standing on a spot. Saves only when that is new or
     /// different; a metal not known is no sighting at all.</summary>

@@ -60,9 +60,18 @@ public class TreasureMemoryTests
     }
 
     [Fact]
-    public void A_spot_is_named_by_its_zone_and_its_ground_position_to_the_yalm()
+    public void Spots_stacked_on_different_floors_are_remembered_apart()
     {
-        Assert.Equal("1252:771:-144", TreasureMemory.KeyOf(Spot));
+        var memory = new TreasureMemory(new Store());
+        memory.Saw(Spot, TreasureTier.Silver);
+
+        Assert.Null(memory.At(Spot with { Map = 968 }));
+    }
+
+    [Fact]
+    public void A_spot_is_named_by_its_zone_its_floor_and_its_ground_position_to_the_yalm()
+    {
+        Assert.Equal("1252:967:771:-144", TreasureMemory.KeyOf(Spot));
         Assert.Equal(TreasureMemory.KeyOf(Spot), TreasureMemory.KeyOf(Spot with { Position = new Vector3(771.2f, 90f, -143.9f) }));
     }
 

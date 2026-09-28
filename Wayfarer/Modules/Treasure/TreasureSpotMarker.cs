@@ -13,6 +13,7 @@ internal sealed class TreasureSpotMarker : MapMarkerNode
     private readonly TreasureTiers tiers;
     private readonly TreasureMemory memory;
     private readonly bool lights;
+    private readonly string key;
     private (bool Filled, TreasureTier? Tier)? drawn;
 
     /// <summary>Initializes a new instance of the <see cref="TreasureSpotMarker"/> class.</summary>
@@ -28,17 +29,18 @@ internal sealed class TreasureSpotMarker : MapMarkerNode
         this.tiers = tiers;
         this.memory = memory;
         this.lights = lights;
+        key = TreasureMemory.KeyOf(spot);
         MapId = spot.Map;
         Position = new Vector2(spot.Position.X, spot.Position.Z);
         Size = new Vector2(24f, 24f);
-        Show(false, memory.At(spot));
+        Show(false, memory.At(key));
     }
 
     /// <inheritdoc/>
     protected override void OnUpdate()
     {
         var chest = lights && live.Territory == spot.Territory && live.Map == spot.Map ? TreasureMatch.On(spot.Position, live.Positions) : -1;
-        Show(chest >= 0, chest >= 0 ? tiers.Of(live.Kinds[chest]) : memory.At(spot));
+        Show(chest >= 0, chest >= 0 ? tiers.Of(live.Kinds[chest]) : memory.At(key));
     }
 
     /// <param name="filled">Whether a chest is standing here now.</param>
