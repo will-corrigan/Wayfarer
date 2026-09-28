@@ -65,7 +65,9 @@ Two switches in the settings window's Treasure section, both off until you turn 
   is marked with a bronze chest: a dungeon's chests, the Occult Crescent's coffer spawn points,
   Bozja's and Eureka's. They are read from the zone's own layout files, each on its own floor's
   map. With nearby treasure on too, a spot with a chest on it right now shows that chest in its own
-  metal, bright and larger.
+  metal, bright and larger. Each spot remembers the metal last seen on it, so the Occult
+  Crescent's silver spots stay silver once found; a spot seen with another metal later follows the
+  newest sighting.
 
 ### Settings
 
