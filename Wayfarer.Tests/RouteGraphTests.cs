@@ -256,6 +256,34 @@ public class RouteGraphTests
         Assert.Contains(after!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
     }
 
+    /// <summary>The airships between the three cities are kept for the three envoy quests, and a
+    /// player only ever does the one for the city they started in.</summary>
+    [Fact]
+    public void A_door_kept_for_any_one_of_several_quests_opens_once_one_is_done()
+    {
+        var airship = new DoorLink("Purchase Passage to Gridania", At(Field, 1, 5f), At(Field, 9, 0f), OneWay: true, Npc: "Elyenora", Quests: [66043u, 66064u, 66082u], AnyQuest: true);
+        var stairs = new DoorLink("The long way", At(Field, 1, 400f), At(Field, 9, 400f));
+        var graph = new RouteGraph([], [airship, stairs]);
+
+        var route = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: quest => quest == 66064u);
+
+        Assert.Contains(route!.Legs, leg => leg is Leg.Door { Npc: "Elyenora" });
+    }
+
+    [Fact]
+    public void A_door_kept_for_all_of_several_quests_stays_shut_until_every_one_is_done()
+    {
+        var passage = new DoorLink("Seek Passage to the Gold Saucer", At(Field, 1, 5f), At(Field, 9, 0f), OneWay: true, Npc: "Well-heeled youth", Quests: [67783u, 65970u]);
+        var stairs = new DoorLink("The long way", At(Field, 1, 400f), At(Field, 9, 400f));
+        var graph = new RouteGraph([], [passage, stairs]);
+
+        var one = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: quest => quest == 67783u);
+        var both = graph.FindRoute(At(Field, 1, 0f), [At(Field, 9, 10f)], AllAttuned, questDone: quest => quest is 67783u or 65970u);
+
+        Assert.DoesNotContain(one!.Legs, leg => leg is Leg.Door { Npc: "Well-heeled youth" });
+        Assert.Contains(both!.Legs, leg => leg is Leg.Door { Npc: "Well-heeled youth" });
+    }
+
     /// <summary>A city's aethernet drops you just outside its gate, in the field, but there is no
     /// shard there to board: the aethernet goes out through it and never back in. White Wolf Gate
     /// (Central Shroud) once routed a player through the gate to hop back into the city.</summary>

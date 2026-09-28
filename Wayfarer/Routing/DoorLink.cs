@@ -13,6 +13,9 @@ namespace Wayfarer.Routing;
 /// an airship's purser. Null for a door walked through.</param>
 /// <param name="Quests">Quests that must be complete before whoever keeps the door will let the
 /// player through, or null for none. A door the player cannot use yet is left out of their route.</param>
+/// <param name="AnyQuest">Whether any one of <paramref name="Quests"/> is enough, rather than all of
+/// them: the airships between the three cities are kept for the envoy quest of whichever city the
+/// player started in, and nobody does all three.</param>
 /// <param name="Warp">The game's Warp row the door sends you through, or zero for a door walked
 /// through. What the door is; its name is only what it is called.</param>
 /// <param name="Person">The game's id for whoever is asked, the ENpcBase row, or zero when nobody
@@ -30,4 +33,5 @@ public sealed record DoorLink(
     uint Warp = 0,
     uint Person = 0,
     ushort Festival = 0,
-    ushort FestivalPhase = 0);
+    ushort FestivalPhase = 0,
+    bool AnyQuest = false);
