@@ -4,9 +4,9 @@
     "net10.0-windows7.0": {
       "Meziantou.Analyzer": {
         "type": "Direct",
-        "requested": "[3.0.264, )",
-        "resolved": "3.0.264",
-        "contentHash": "6/w8WEGjJuzdWvmYB5pbGvCx5jV5OP3UQ4ats15cUAbBWTRUkoHx7IRoAUi82Vj0WZd8KvBqE9/3ed3J8594nQ=="
+        "requested": "[3.0.290, )",
+        "resolved": "3.0.290",
+        "contentHash": "vdSXgMEPil67EFwkcicjSCMnB7TdhUNiR1Fjw1P8MN+UeX6yP8wTb7cNT20H/ejHuUxkrxQS1Rz4QcJuMLmCkA=="
       },
       "StyleCop.Analyzers": {
         "type": "Direct",
@@ -44,8 +44,8 @@
       },
       "KamiToolKit": {
         "type": "Transitive",
-        "resolved": "2.2.49",
-        "contentHash": "844sNr7eI4Eo+JlLyW05qF9wLOIdICS5bE8HKdpQE5agp7As+fskn/8ZSa+jn7cyVv2e/r36ARyHW86IVVloCg=="
+        "resolved": "2.2.50",
+        "contentHash": "NeUSRl4SZOpXusUO67aIbewNBN2VuIHARHIjPAUgr9rc2KLtuQKYu4agoA7b0VFrz6yWhw/uLBx43s0S1avv/Q=="
       },
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
@@ -170,7 +170,7 @@
         "dependencies": {
           "Autofac": "[9.3.4, )",
           "DalamudPackager": "[15.0.0, )",
-          "KamiToolKit": "[2.2.49, )"
+          "KamiToolKit": "[2.2.50, )"
         }
       }
     }
