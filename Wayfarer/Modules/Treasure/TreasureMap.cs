@@ -14,10 +14,14 @@ namespace Wayfarer.Modules.Treasure;
 /// when the read comes back, if they are still in that zone and the map is still shown. Once stopped,
 /// the map shows nothing until the module is applied again, so a read or an apply landing after the
 /// plugin stopped cannot put back an overlay nothing will take down.</para></summary>
-internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, TreasureTiers tiers, IClientState clientState, IFramework framework, IPluginLog log) : IAsyncDisposable
+internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, TreasureTiers tiers, TreasureMemory memory, IClientState clientState, IFramework framework, IPluginLog log) : IAsyncDisposable
 {
     /// <summary>How many loaded chests off every spot can be shown at once.</summary>
     private const int NearbyMarkers = 32;
+
+    /// <summary>How often loaded treasure is matched to spots to learn their metal. A coffer stays
+    /// put until opened, so once a second misses nothing and costs nothing.</summary>
+    private static readonly TimeSpan LearnEvery = TimeSpan.FromSeconds(1);
 
     private readonly List<TreasureSpotMarker> spotMarkers = [];
     private MapOverlayController? overlay;
@@ -28,6 +32,7 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, Treasu
     private uint spotsTerritory;
     private List<int> offSpots = [];
     private DateTime offSpotsAt;
+    private DateTime learntAt;
 
     /// <summary>Shows what is switched on and nothing else. Safe to call again with the same
     /// switches, which leaves the map as it is.</summary>
@@ -59,6 +64,7 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, Treasu
         if (spotsToo)
         {
             clientState.TerritoryChanged += OnTerritoryChanged;
+            framework.Update += OnFrameworkUpdate;
             Load(clientState.TerritoryType);
         }
     }
@@ -98,6 +104,7 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, Treasu
         }
 
         clientState.TerritoryChanged -= OnTerritoryChanged;
+        framework.Update -= OnFrameworkUpdate;
         overlay.Dispose();
         overlay = null;
         showing = default;
@@ -107,6 +114,29 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, Treasu
     }
 
     private void OnTerritoryChanged(uint territory) => Load(territory);
+
+    /// <summary>Learns the metal of every loaded chest standing on one of this zone's spots, whether
+    /// or not the map is open: the map's own markers only run while it is.</summary>
+    private void OnFrameworkUpdate(IFramework ticked)
+    {
+        if (framework.LastUpdateUTC - learntAt < LearnEvery || spotsTerritory != live.Territory)
+        {
+            return;
+        }
+
+        learntAt = framework.LastUpdateUTC;
+        foreach (var spot in spotsHere)
+        {
+            if (spot.Map == live.Map && TreasureMatch.On(spot.Position, live.Positions) is var chest and >= 0)
+            {
+                var tier = tiers.Of(live.Kinds[chest]);
+                if (memory.Saw(spot, tier) is { } was)
+                {
+                    log.Debug($"treasure: spot {TreasureMemory.KeyOf(spot)} held {was} before and {tier} now, so it is remembered as {tier}.");
+                }
+            }
+        }
+    }
 
     /// <summary>Reads a zone's spots off the game's thread and puts them on the map when they come back.</summary>
     private void Load(uint territory)
@@ -139,7 +169,7 @@ internal sealed class TreasureMap(TreasureSpots spots, LiveTreasure live, Treasu
         spotMarkers.Clear();
         foreach (var spot in found)
         {
-            var marker = new TreasureSpotMarker(spot, live, tiers, showing.Nearby);
+            var marker = new TreasureSpotMarker(spot, live, tiers, memory, showing.Nearby);
             spotMarkers.Add(marker);
             overlay.AddMarker(marker);
         }
