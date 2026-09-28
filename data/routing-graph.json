@@ -3218,7 +3218,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Maelstrom Barracks",
@@ -3244,7 +3245,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Flame Barracks",
@@ -3270,7 +3272,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Hustings Strip",
@@ -3296,7 +3299,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Hustings Strip",
@@ -3322,7 +3326,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Mordion Gaol",
@@ -3348,7 +3353,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Omphalos",
@@ -3374,7 +3380,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower Sanctum",
@@ -3400,7 +3407,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower Sanctum",
@@ -3426,7 +3434,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seat of the First Bow",
@@ -3452,7 +3461,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lotus Stand",
@@ -3478,7 +3488,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Nald",
@@ -3504,7 +3515,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Upper Decks",
@@ -3530,7 +3542,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Command Room",
@@ -3556,7 +3569,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Heart of the Sworn",
@@ -3582,7 +3596,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Waking Sands",
@@ -3608,7 +3623,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Waking Sands",
@@ -3634,7 +3650,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Waking Sands",
@@ -3660,7 +3677,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Rising Stones",
@@ -3686,7 +3704,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Parrock",
@@ -3712,7 +3731,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leofard\u0027s Chambers",
@@ -3738,7 +3758,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Royal Menagerie",
@@ -3764,7 +3785,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Prima Vista Bridge",
@@ -3790,7 +3812,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Kienkan",
@@ -3816,7 +3839,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Castrum Fluminis",
@@ -3842,7 +3866,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Empty",
@@ -3868,7 +3893,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Understory",
@@ -3894,7 +3920,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Cellarage",
@@ -3920,7 +3947,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Second Floor",
@@ -3946,7 +3974,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Second Floor",
@@ -3972,7 +4001,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eorzean Alliance Headquarters",
@@ -3998,7 +4028,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eorzean Alliance Headquarters",
@@ -4024,7 +4055,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Syrcus Trench",
@@ -4050,7 +4082,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Elpis",
@@ -4076,7 +4109,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Canopy",
@@ -4102,7 +4136,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Excavation Tunnels",
@@ -4128,7 +4163,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Anogg\u0027s Lair",
@@ -4154,7 +4190,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Zone 4",
@@ -4180,7 +4217,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Zone 5",
@@ -4206,7 +4244,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Bunker",
@@ -4232,7 +4271,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Alien Ship",
@@ -4258,7 +4298,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Sharlayan",
@@ -4284,7 +4325,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Senatus",
@@ -4310,7 +4352,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Mare Lamentorum",
@@ -4336,7 +4379,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Gates of Pand\u00E6monium",
@@ -4362,7 +4406,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Main Hall",
@@ -4388,7 +4433,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Strategy Room",
@@ -4414,7 +4460,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Stygian Insenescence Cells",
@@ -4440,7 +4487,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ultima Thule",
@@ -4466,7 +4514,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Troia Keep",
@@ -4492,7 +4541,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Fell Court of Troia",
@@ -4518,7 +4568,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Hydromantic Terraces",
@@ -4544,7 +4595,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Zero\u0027s Domain",
@@ -4570,7 +4622,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Aitiascope",
@@ -4596,7 +4649,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Khadga",
@@ -4622,7 +4676,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Vicus Messorum",
@@ -4648,7 +4703,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lapis Manalis",
@@ -4674,7 +4730,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Fons Manalis",
@@ -4700,7 +4757,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Estinien\u0027s Chambers",
@@ -4726,7 +4784,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Red Moon",
@@ -4752,7 +4811,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Earthen Sky Hideout",
@@ -4778,7 +4838,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Skydeep Cenote Inner Chamber",
@@ -4804,7 +4865,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Living Memory",
@@ -4830,7 +4892,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Urqopacha",
@@ -4856,7 +4919,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Cellarage",
@@ -4882,7 +4946,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Second Floor",
@@ -4908,7 +4973,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Second Floor",
@@ -4934,7 +5000,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Urqopacha",
@@ -4960,7 +5027,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Urqopacha",
@@ -4986,7 +5054,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Urqopacha",
@@ -5012,7 +5081,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Urqopacha",
@@ -5038,7 +5108,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Maiden\u0027s Home",
@@ -5064,7 +5135,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Red Moon",
@@ -5090,7 +5162,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Sanctum of the Twelve",
@@ -5116,7 +5189,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Sanctum of the Twelve",
@@ -5142,7 +5216,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Twin Adder Barracks",
@@ -5168,7 +5243,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Flame Barracks",
@@ -5194,7 +5270,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Maelstrom Barracks",
@@ -5220,7 +5297,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Heaven-on-High",
@@ -5246,7 +5324,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Core",
@@ -5272,7 +5351,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Tritails Training",
@@ -5298,7 +5378,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Tritails Training",
@@ -5324,7 +5405,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower La Noscea",
@@ -5350,7 +5432,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5376,7 +5459,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5402,7 +5486,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5428,7 +5513,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5454,7 +5540,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5480,7 +5567,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Limsa Lominsa Lower Decks",
@@ -5506,7 +5594,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Middle La Noscea",
@@ -5532,7 +5621,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Thanalan",
@@ -5558,7 +5648,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5584,7 +5675,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5610,7 +5702,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5636,7 +5729,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Western Thanalan",
@@ -5662,7 +5756,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5688,7 +5783,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5714,7 +5810,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Thanalan",
@@ -5740,7 +5837,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5766,7 +5864,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5792,7 +5891,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5818,7 +5918,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5844,7 +5945,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ul\u0027dah - Steps of Thal",
@@ -5870,7 +5972,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Shroud",
@@ -5896,7 +5999,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Gridania",
@@ -5922,7 +6026,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Gridania",
@@ -5948,7 +6053,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Gridania",
@@ -5974,7 +6080,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Gridania",
@@ -6000,7 +6107,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Gridania",
@@ -6026,7 +6134,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Old Gridania",
@@ -6052,7 +6161,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "North Shroud",
@@ -6078,7 +6188,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Middle La Noscea",
@@ -6104,7 +6215,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower La Noscea",
@@ -6130,7 +6242,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern La Noscea",
@@ -6156,7 +6269,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Western La Noscea",
@@ -6182,7 +6296,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower La Noscea",
@@ -6208,7 +6323,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower La Noscea",
@@ -6234,7 +6350,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern La Noscea",
@@ -6260,7 +6377,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern La Noscea",
@@ -6286,7 +6404,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Mist",
@@ -6312,7 +6431,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern La Noscea",
@@ -6338,7 +6458,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern La Noscea",
@@ -6364,7 +6485,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern La Noscea",
@@ -6390,7 +6512,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Upper La Noscea",
@@ -6416,7 +6539,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Western La Noscea",
@@ -6442,7 +6566,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Upper La Noscea",
@@ -6468,7 +6593,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Upper La Noscea",
@@ -6494,7 +6620,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Upper La Noscea",
@@ -6520,7 +6647,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Outer La Noscea",
@@ -6546,7 +6674,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Outer La Noscea",
@@ -6572,7 +6701,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Western Thanalan",
@@ -6598,7 +6728,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Thanalan",
@@ -6624,7 +6755,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Goblet",
@@ -6650,7 +6782,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Thanalan",
@@ -6676,7 +6809,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Thanalan",
@@ -6702,7 +6836,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Thanalan",
@@ -6728,7 +6863,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern Thanalan",
@@ -6754,7 +6890,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Southern Thanalan",
@@ -6780,7 +6917,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Northern Thanalan",
@@ -6806,7 +6944,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern Thanalan",
@@ -6832,7 +6971,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Southern Thanalan",
@@ -6858,7 +6998,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern Thanalan",
@@ -6884,7 +7025,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Southern Thanalan",
@@ -6910,7 +7052,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Southern Thanalan",
@@ -6936,7 +7079,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Northern Thanalan",
@@ -6962,7 +7106,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Mor Dhona",
@@ -6988,7 +7133,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Central Shroud",
@@ -7014,7 +7160,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "East Shroud",
@@ -7040,7 +7187,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "South Shroud",
@@ -7066,7 +7214,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "North Shroud",
@@ -7092,7 +7241,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "East Shroud",
@@ -7118,7 +7268,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "South Shroud",
@@ -7144,7 +7295,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "South Shroud",
@@ -7170,7 +7322,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eastern Thanalan",
@@ -7196,7 +7349,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "South Shroud",
@@ -7222,7 +7376,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "North Shroud",
@@ -7248,7 +7403,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "North Shroud",
@@ -7274,7 +7430,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "North Shroud",
@@ -7300,7 +7457,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Coerthas Central Highlands",
@@ -7326,7 +7484,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Coerthas Central Highlands",
@@ -7352,7 +7511,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Coerthas Central Highlands",
@@ -7378,7 +7538,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Coerthas Central Highlands",
@@ -7404,7 +7565,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Mor Dhona",
@@ -7430,7 +7592,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Outer La Noscea",
@@ -7456,7 +7619,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Outer La Noscea",
@@ -7482,7 +7646,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower La Noscea",
@@ -7508,7 +7673,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Lower La Noscea",
@@ -7534,7 +7700,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Western Thanalan",
@@ -7560,7 +7727,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Western Thanalan",
@@ -7586,7 +7754,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Foundation",
@@ -7612,7 +7781,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Sea of Clouds",
@@ -7638,7 +7808,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Dravanian Forelands",
@@ -7664,7 +7835,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Dravanian Hinterlands",
@@ -7690,7 +7862,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Dravanian Forelands",
@@ -7716,7 +7889,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Dravanian Hinterlands",
@@ -7742,7 +7916,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Dravanian Hinterlands",
@@ -7768,7 +7943,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Dravanian Hinterlands",
@@ -7794,7 +7970,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Idyllshire",
@@ -7820,7 +7997,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Idyllshire",
@@ -7846,7 +8024,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -7872,7 +8051,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -7898,7 +8078,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Sea of Clouds",
@@ -7924,7 +8105,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Foundation",
@@ -7950,7 +8132,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -7976,7 +8159,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8002,7 +8186,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8028,7 +8213,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8054,7 +8240,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8080,7 +8267,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8106,7 +8294,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8132,7 +8321,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8158,7 +8348,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8184,7 +8375,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Pillars",
@@ -8210,7 +8402,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Idyllshire",
@@ -8236,7 +8429,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Idyllshire",
@@ -8262,7 +8456,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Fringes",
@@ -8288,7 +8483,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Peaks",
@@ -8314,7 +8510,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Ruby Sea",
@@ -8340,7 +8537,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Ruby Sea",
@@ -8366,7 +8564,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Azim Steppe",
@@ -8392,7 +8591,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Ruby Sea",
@@ -8418,7 +8618,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Azim Steppe",
@@ -8444,7 +8645,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Peaks",
@@ -8470,7 +8672,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Peaks",
@@ -8496,7 +8699,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Lochs",
@@ -8522,7 +8726,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Lochs",
@@ -8548,7 +8753,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Azim Steppe",
@@ -8574,7 +8780,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Azim Steppe",
@@ -8600,7 +8807,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Ruby Sea",
@@ -8626,7 +8834,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Fringes",
@@ -8652,7 +8861,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Peaks",
@@ -8678,7 +8888,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Crystarium",
@@ -8704,7 +8915,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Rak\u0027tika Greatwood",
@@ -8730,7 +8942,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Il Mheg",
@@ -8756,7 +8969,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Amh Araeng",
@@ -8782,7 +8996,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eulmore",
@@ -8808,7 +9023,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Amh Araeng",
@@ -8834,7 +9050,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Il Mheg",
@@ -8860,7 +9077,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Rak\u0027tika Greatwood",
@@ -8886,7 +9104,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "The Crystarium",
@@ -8912,7 +9131,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Eulmore",
@@ -8938,7 +9158,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Thavnair",
@@ -8964,7 +9185,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Thavnair",
@@ -8990,7 +9212,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Kozama\u0027uka",
@@ -9016,7 +9239,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Heritage Found",
@@ -9042,7 +9266,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Urqopacha",
@@ -9068,7 +9293,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Kozama\u0027uka",
@@ -9094,7 +9320,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Kozama\u0027uka",
@@ -9120,7 +9347,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Kozama\u0027uka",
@@ -9146,7 +9374,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Shaaloani",
@@ -9172,7 +9401,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Heritage Found",
@@ -9198,7 +9428,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Heritage Found",
@@ -9224,7 +9455,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Heritage Found",
@@ -9250,7 +9482,8 @@
       "Warp": 0,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Mizzenmast Inn",
@@ -9276,7 +9509,8 @@
       "Warp": 131079,
       "Person": 1000974,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Airship Landing",
@@ -9302,7 +9536,8 @@
       "Warp": 131092,
       "Person": 1003597,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to Bulwark Hall",
@@ -9328,7 +9563,8 @@
       "Warp": 131094,
       "Person": 1003597,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Ul\u0027dah",
@@ -9358,7 +9594,8 @@
       "Warp": 131105,
       "Person": 1002695,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Gridania",
@@ -9388,7 +9625,8 @@
       "Warp": 131106,
       "Person": 1002695,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Ishgard",
@@ -9416,7 +9654,8 @@
       "Warp": 131231,
       "Person": 1002695,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Gold Saucer",
@@ -9444,7 +9683,8 @@
       "Warp": 131179,
       "Person": 1002695,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Radz-at-Han",
@@ -9472,7 +9712,8 @@
       "Warp": 131434,
       "Person": 1002695,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the landing area",
@@ -9498,7 +9739,8 @@
       "Warp": 131130,
       "Person": 1002703,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Drowning Wench",
@@ -9524,7 +9766,8 @@
       "Warp": 131093,
       "Person": 1003583,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to Bulwark Hall",
@@ -9550,7 +9793,8 @@
       "Warp": 131094,
       "Person": 1003583,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Old Sharlayan for 300 gil",
@@ -9576,7 +9820,8 @@
       "Warp": 131406,
       "Person": 1037069,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Kugane",
@@ -9602,7 +9847,8 @@
       "Warp": 131253,
       "Person": 1021536,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Vesper Bay for 80 gil",
@@ -9632,7 +9878,8 @@
       "Warp": 131108,
       "Person": 1003540,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Aleport",
@@ -9658,7 +9905,8 @@
       "Warp": 131109,
       "Person": 1000868,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Costa del Sol",
@@ -9684,7 +9932,8 @@
       "Warp": 131111,
       "Person": 1000868,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to Mist",
@@ -9712,7 +9961,8 @@
       "Warp": 131160,
       "Person": 1000868,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Middle La Noscea",
@@ -9738,7 +9988,8 @@
       "Warp": 131124,
       "Person": 1001027,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Airship Landing",
@@ -9764,7 +10015,8 @@
       "Warp": 131092,
       "Person": 1003611,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Drowning Wench",
@@ -9790,7 +10042,8 @@
       "Warp": 131093,
       "Person": 1003611,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Rogues\u0027 Guild",
@@ -9818,7 +10071,8 @@
       "Warp": 131172,
       "Person": 1009944,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the guild",
@@ -9844,7 +10098,8 @@
       "Warp": 131171,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to The Hourglass",
@@ -9870,7 +10125,8 @@
       "Warp": 131081,
       "Person": 1001976,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Gridania",
@@ -9900,7 +10156,8 @@
       "Warp": 131101,
       "Person": 1004433,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -9930,7 +10187,8 @@
       "Warp": 131102,
       "Person": 1004433,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Ishgard",
@@ -9958,7 +10216,8 @@
       "Warp": 131229,
       "Person": 1004433,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Gold Saucer",
@@ -9986,7 +10245,8 @@
       "Warp": 131180,
       "Person": 1004433,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Radz-at-Han",
@@ -10014,7 +10274,8 @@
       "Warp": 131430,
       "Person": 1004433,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the landing area",
@@ -10040,7 +10301,8 @@
       "Warp": 131128,
       "Person": 1004434,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Hustings Strip",
@@ -10066,7 +10328,8 @@
       "Warp": 131096,
       "Person": 1004339,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Ruby Road Exchange",
@@ -10092,7 +10355,8 @@
       "Warp": 131097,
       "Person": 1004339,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Central Thanalan",
@@ -10118,7 +10382,8 @@
       "Warp": 131125,
       "Person": 1001978,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Airship Landing",
@@ -10144,7 +10409,8 @@
       "Warp": 131095,
       "Person": 1001834,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Hustings Strip",
@@ -10170,7 +10436,8 @@
       "Warp": 131096,
       "Person": 1001834,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Lemures Headquarters",
@@ -10198,7 +10465,8 @@
       "Warp": 131392,
       "Person": 1036632,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to The Goblet",
@@ -10226,7 +10494,8 @@
       "Warp": 131162,
       "Person": 1007999,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Airship Landing",
@@ -10252,7 +10521,8 @@
       "Warp": 131095,
       "Person": 1001854,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride Lift to the Ruby Road Exchange",
@@ -10278,7 +10548,8 @@
       "Warp": 131097,
       "Person": 1001854,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Inquire Within",
@@ -10306,7 +10577,8 @@
       "Warp": 131240,
       "Person": 1017813,
       "Festival": 43,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to The Roost",
@@ -10332,7 +10604,8 @@
       "Warp": 131080,
       "Person": 1000102,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Central Shroud",
@@ -10358,7 +10631,8 @@
       "Warp": 131073,
       "Person": 1000136,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel Beyond the White Wolf Gate",
@@ -10386,7 +10660,8 @@
       "Warp": 131117,
       "Person": 1000171,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the landing area",
@@ -10412,7 +10687,8 @@
       "Warp": 131129,
       "Person": 1000109,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Ul\u0027dah",
@@ -10442,7 +10718,8 @@
       "Warp": 131103,
       "Person": 1000106,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -10472,7 +10749,8 @@
       "Warp": 131104,
       "Person": 1000106,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Purchase Passage to Ishgard",
@@ -10500,7 +10778,8 @@
       "Warp": 131230,
       "Person": 1000106,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Gold Saucer",
@@ -10528,7 +10807,8 @@
       "Warp": 131181,
       "Person": 1000106,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Radz-at-Han",
@@ -10556,7 +10836,8 @@
       "Warp": 131432,
       "Person": 1000106,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Dreamer\u0027s Run",
@@ -10582,7 +10863,8 @@
       "Warp": 131389,
       "Person": 1036564,
       "Festival": 114,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Dreamer\u0027s Run",
@@ -10608,7 +10890,8 @@
       "Warp": 131390,
       "Person": 1036565,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Haunted Manor",
@@ -10634,7 +10917,8 @@
       "Warp": 131303,
       "Person": 1026654,
       "Festival": 76,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Haunted Manor",
@@ -10660,7 +10944,8 @@
       "Warp": 131303,
       "Person": 1031558,
       "Festival": 91,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Passage to the Haunted Manor",
@@ -10686,7 +10971,8 @@
       "Warp": 131503,
       "Person": 1043975,
       "Festival": 132,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Haunted Manor",
@@ -10714,7 +11000,8 @@
       "Warp": 131531,
       "Person": 1045599,
       "Festival": 142,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Haunted Manor",
@@ -10742,7 +11029,8 @@
       "Warp": 131531,
       "Person": 1051087,
       "Festival": 152,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Haunted Manor",
@@ -10770,7 +11058,8 @@
       "Warp": 131608,
       "Person": 1054481,
       "Festival": 164,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Haunted Manor",
@@ -10798,7 +11087,8 @@
       "Warp": 131645,
       "Person": 1058743,
       "Festival": 176,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to Sweetbloom Pier",
@@ -10824,7 +11114,8 @@
       "Warp": 131077,
       "Person": 1001263,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Lavender Beds",
@@ -10852,7 +11143,8 @@
       "Warp": 131158,
       "Person": 1001263,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Wolves\u0027 Den",
@@ -10878,7 +11170,8 @@
       "Warp": 131131,
       "Person": 1002484,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Aleport",
@@ -10904,7 +11197,8 @@
       "Warp": 131115,
       "Person": 1002269,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Raincatcher Gully",
@@ -10930,7 +11224,8 @@
       "Warp": 131119,
       "Person": 1003588,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Hidden Falls",
@@ -10956,7 +11251,8 @@
       "Warp": 131120,
       "Person": 1003589,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -10982,7 +11278,8 @@
       "Warp": 131112,
       "Person": 1005420,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Board the Rhotano Privateer",
@@ -11008,7 +11305,8 @@
       "Warp": 131169,
       "Person": 1005420,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Costa del Sol",
@@ -11034,7 +11332,8 @@
       "Warp": 131170,
       "Person": 1005414,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the dock storehouse",
@@ -11062,7 +11361,8 @@
       "Warp": 131174,
       "Person": 1010601,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the dock storehouse",
@@ -11088,7 +11388,8 @@
       "Warp": 131173,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Close Your Eyes",
@@ -11116,7 +11417,8 @@
       "Warp": 131470,
       "Person": 1042715,
       "Festival": 126,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Close Your Eyes",
@@ -11144,7 +11446,8 @@
       "Warp": 131471,
       "Person": 1042716,
       "Festival": 126,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Close Your Eyes",
@@ -11170,7 +11473,8 @@
       "Warp": 131518,
       "Person": 1045047,
       "Festival": 140,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Close Your Eyes",
@@ -11196,7 +11500,8 @@
       "Warp": 131519,
       "Person": 1045048,
       "Festival": 140,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Close Your Eyes",
@@ -11222,7 +11527,8 @@
       "Warp": 131579,
       "Person": 1051589,
       "Festival": 150,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Close Your Eyes",
@@ -11248,7 +11554,8 @@
       "Warp": 131580,
       "Person": 1051590,
       "Festival": 150,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -11274,7 +11581,8 @@
       "Warp": 131110,
       "Person": 1003584,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Candlekeep Quay",
@@ -11300,7 +11608,8 @@
       "Warp": 131116,
       "Person": 1003584,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to the Isles of Umbra",
@@ -11328,7 +11637,8 @@
       "Warp": 131134,
       "Person": 1003584,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to Aleport",
@@ -11354,7 +11664,8 @@
       "Warp": 131133,
       "Person": 1005239,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Novv\u0027s Nursery",
@@ -11380,7 +11691,8 @@
       "Warp": 131153,
       "Person": 1008802,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Novv\u0027s Nursery",
@@ -11406,7 +11718,8 @@
       "Warp": 131154,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Novv\u0027s Nursery",
@@ -11432,7 +11745,8 @@
       "Warp": 131155,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Novv\u0027s Nursery",
@@ -11458,7 +11772,8 @@
       "Warp": 131156,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Novv\u0027s Nursery",
@@ -11484,7 +11799,8 @@
       "Warp": 131157,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Jijiroon\u0027s Trading Post",
@@ -11510,7 +11826,8 @@
       "Warp": 131113,
       "Person": 1003586,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Memeroon\u0027s Trading Post",
@@ -11536,7 +11853,8 @@
       "Warp": 131114,
       "Person": 1003587,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Take the ferry to the Silver Bazaar for 40 gil",
@@ -11562,7 +11880,8 @@
       "Warp": 131087,
       "Person": 1004019,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Limsa Lominsa for 80 gil",
@@ -11592,7 +11911,8 @@
       "Warp": 131107,
       "Person": 1004037,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": true
     },
     {
       "Name": "Take the ferry to Crescent Cove for 40 gil",
@@ -11618,7 +11938,8 @@
       "Warp": 131086,
       "Person": 1002039,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to Ul\u0027dah",
@@ -11644,7 +11965,8 @@
       "Warp": 131183,
       "Person": 1011022,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Gridania",
@@ -11670,7 +11992,8 @@
       "Warp": 131184,
       "Person": 1011022,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -11696,7 +12019,8 @@
       "Warp": 131182,
       "Person": 1011022,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Ishgard",
@@ -11724,7 +12048,8 @@
       "Warp": 131237,
       "Person": 1011022,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ride lift to Chocobo Square",
@@ -11750,7 +12075,8 @@
       "Warp": 131177,
       "Person": 1011044,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -11778,7 +12104,8 @@
       "Warp": 131633,
       "Person": 1058754,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -11806,7 +12133,8 @@
       "Warp": 131635,
       "Person": 1058759,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -11834,7 +12162,8 @@
       "Warp": 131635,
       "Person": 1058760,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -11862,7 +12191,8 @@
       "Warp": 131635,
       "Person": 1058761,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -11890,7 +12220,8 @@
       "Warp": 131635,
       "Person": 1058762,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -11918,7 +12249,8 @@
       "Warp": 131635,
       "Person": 1058763,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Nald\u0027s Reflection",
@@ -11944,7 +12276,8 @@
       "Warp": 131127,
       "Person": 1004597,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Minotaur Malm",
@@ -11970,7 +12303,8 @@
       "Warp": 131126,
       "Person": 1004596,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the immediate area",
@@ -11996,7 +12330,8 @@
       "Warp": 131100,
       "Person": 1004609,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to The Lavender Beds",
@@ -12022,7 +12357,8 @@
       "Warp": 131150,
       "Person": 1005656,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Gridania",
@@ -12050,7 +12386,8 @@
       "Warp": 131118,
       "Person": 1002826,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Castrum Oriens",
@@ -12076,7 +12413,8 @@
       "Warp": 131251,
       "Person": 1021535,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Board the ferry to Old Gridania",
@@ -12102,7 +12440,8 @@
       "Warp": 131078,
       "Person": 1000541,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the intercessory",
@@ -12128,7 +12467,8 @@
       "Warp": 131166,
       "Person": 1009973,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Cross the Steps of Faith to the Arc of the Worthy",
@@ -12154,7 +12494,8 @@
       "Warp": 131185,
       "Person": 1012149,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Eight Sentinels",
@@ -12180,7 +12521,8 @@
       "Warp": 131147,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Cid\u0027s workshop",
@@ -12206,7 +12548,8 @@
       "Warp": 131137,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Castrum Centri",
@@ -12232,7 +12575,8 @@
       "Warp": 131520,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Eight Sentinels",
@@ -12258,7 +12602,8 @@
       "Warp": 131508,
       "Person": 1044509,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Syrcus Trench",
@@ -12284,7 +12629,8 @@
       "Warp": 131322,
       "Person": 1029828,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit room",
@@ -12310,7 +12656,8 @@
       "Warp": 131082,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit room",
@@ -12336,7 +12683,8 @@
       "Warp": 131084,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit room",
@@ -12362,7 +12710,8 @@
       "Warp": 131083,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the 13th Order workshop",
@@ -12388,7 +12737,8 @@
       "Warp": 131152,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the command room",
@@ -12414,7 +12764,8 @@
       "Warp": 131123,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Seat of the First Bow",
@@ -12440,7 +12791,8 @@
       "Warp": 131075,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Lotus Stand",
@@ -12466,7 +12818,8 @@
       "Warp": 131076,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Heart of the Sworn",
@@ -12492,7 +12845,8 @@
       "Warp": 131085,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Waking Sands",
@@ -12518,7 +12872,8 @@
       "Warp": 131089,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the solar",
@@ -12544,7 +12899,8 @@
       "Warp": 131091,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Moraby Drydocks",
@@ -12570,7 +12926,8 @@
       "Warp": 131132,
       "Person": 1005238,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Limsa Lominsa Lower Decks",
@@ -12598,7 +12955,8 @@
       "Warp": 131161,
       "Person": 1007994,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Limsa Lominsa Lower Decks",
@@ -12626,7 +12984,8 @@
       "Warp": 131161,
       "Person": 1007994,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Central Shroud",
@@ -12652,7 +13011,8 @@
       "Warp": 131151,
       "Person": 1005655,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Old Gridania",
@@ -12680,7 +13040,8 @@
       "Warp": 131159,
       "Person": 1007995,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Central Shroud",
@@ -12706,7 +13067,8 @@
       "Warp": 131151,
       "Person": 1005655,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Old Gridania",
@@ -12734,7 +13096,8 @@
       "Warp": 131159,
       "Person": 1007995,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Ul\u0027dah - Steps of Thal",
@@ -12762,7 +13125,8 @@
       "Warp": 131163,
       "Person": 1008000,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Ul\u0027dah - Steps of Thal",
@@ -12790,7 +13154,8 @@
       "Warp": 131163,
       "Person": 1008000,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the solar",
@@ -12816,7 +13181,8 @@
       "Warp": 131142,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the solar",
@@ -12842,7 +13208,8 @@
       "Warp": 131143,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Rising Stones",
@@ -12868,7 +13235,8 @@
       "Warp": 131145,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Dawn\u0027s Respite",
@@ -12894,7 +13262,8 @@
       "Warp": 131366,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Entrance Square",
@@ -12920,7 +13289,8 @@
       "Warp": 131178,
       "Person": 1010489,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -12948,7 +13318,8 @@
       "Warp": 131635,
       "Person": 1058764,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Keybound Square",
@@ -12976,7 +13347,8 @@
       "Warp": 131635,
       "Person": 1058765,
       "Festival": 257,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Ivory Chapel",
@@ -13002,7 +13374,8 @@
       "Warp": 131168,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Ivory Chapel",
@@ -13028,7 +13401,8 @@
       "Warp": 131168,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the intercessory",
@@ -13054,7 +13428,8 @@
       "Warp": 131167,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Climb Sohm Al to the Churning Mists",
@@ -13080,7 +13455,8 @@
       "Warp": 131199,
       "Person": 1011946,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the goodly adventurer",
@@ -13108,7 +13484,8 @@
       "Warp": 131220,
       "Person": 1017052,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the goodly adventurer",
@@ -13136,7 +13513,8 @@
       "Warp": 131220,
       "Person": 1017052,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the goodly adventurer",
@@ -13164,7 +13542,8 @@
       "Warp": 131220,
       "Person": 1017052,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the goodly adventurer",
@@ -13192,7 +13571,8 @@
       "Warp": 131220,
       "Person": 1017052,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the goodly adventurer",
@@ -13220,7 +13600,8 @@
       "Warp": 131220,
       "Person": 1017052,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Descend Sohm Al to the Dravanian forelands",
@@ -13246,7 +13627,8 @@
       "Warp": 131200,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Ishgard",
@@ -13272,7 +13654,8 @@
       "Warp": 131197,
       "Person": 1011949,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Ishgard",
@@ -13298,7 +13681,8 @@
       "Warp": 131203,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Move to the Alpha Quadrant",
@@ -13324,7 +13708,8 @@
       "Warp": 131207,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Move to the Beta Quadrant",
@@ -13350,7 +13735,8 @@
       "Warp": 131209,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Move to the Gamma Quadrant",
@@ -13376,7 +13762,8 @@
       "Warp": 131211,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Gates of Judgement",
@@ -13402,7 +13789,8 @@
       "Warp": 131186,
       "Person": 1011224,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Proving Grounds",
@@ -13428,7 +13816,8 @@
       "Warp": 131187,
       "Person": 1011214,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Firmament",
@@ -13456,7 +13845,8 @@
       "Warp": 131342,
       "Person": 1031682,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Saint Endalim\u0027s Scholasticate",
@@ -13482,7 +13872,8 @@
       "Warp": 131191,
       "Person": 1011215,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Fortemps Manor",
@@ -13508,7 +13899,8 @@
       "Warp": 131192,
       "Person": 1011217,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Ul\u0027dah",
@@ -13536,7 +13928,8 @@
       "Warp": 131232,
       "Person": 1011211,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Gridania",
@@ -13564,7 +13957,8 @@
       "Warp": 131233,
       "Person": 1011211,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -13592,7 +13986,8 @@
       "Warp": 131234,
       "Person": 1011211,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to the Gold Saucer",
@@ -13621,7 +14016,8 @@
       "Warp": 131238,
       "Person": 1011211,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to Cloudtop",
@@ -13647,7 +14043,8 @@
       "Warp": 131188,
       "Person": 1011211,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Radz-at-Han",
@@ -13675,7 +14072,8 @@
       "Warp": 131436,
       "Person": 1011211,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Blue Window",
@@ -13701,7 +14099,8 @@
       "Warp": 131189,
       "Person": 1011212,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Seek Passage to Azys Lla",
@@ -13727,7 +14126,8 @@
       "Warp": 131190,
       "Person": 1012153,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Saint Endalim\u0027s Scholasticate",
@@ -13753,7 +14153,8 @@
       "Warp": 131193,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Fortemps Manor",
@@ -13779,7 +14180,8 @@
       "Warp": 131195,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the proving grounds",
@@ -13805,7 +14207,8 @@
       "Warp": 131196,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Twin Adder Barracks",
@@ -13831,7 +14234,8 @@
       "Warp": 131219,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Flame Barracks",
@@ -13857,7 +14261,8 @@
       "Warp": 131244,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Maelstrom Barracks",
@@ -13883,7 +14288,8 @@
       "Warp": 131243,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Coldwind",
@@ -13909,7 +14315,8 @@
       "Warp": 131224,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the airship landing",
@@ -13935,7 +14342,8 @@
       "Warp": 131227,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the airship landing",
@@ -13961,7 +14369,8 @@
       "Warp": 131228,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Leofard\u0027s chambers",
@@ -13987,7 +14396,8 @@
       "Warp": 131226,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Ishgard",
@@ -14013,7 +14423,8 @@
       "Warp": 131235,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the children\u0027s ward",
@@ -14039,7 +14450,8 @@
       "Warp": 131362,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the children\u0027s ward",
@@ -14065,7 +14477,8 @@
       "Warp": 131384,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the children\u0027s ward",
@@ -14091,7 +14504,8 @@
       "Warp": 131241,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Amarissaix\u0027s Spire",
@@ -14117,7 +14531,8 @@
       "Warp": 131250,
       "Person": 1019516,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Approach Virdjala",
@@ -14143,7 +14558,8 @@
       "Warp": 131254,
       "Person": 1019530,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Approach Pike Falls",
@@ -14169,7 +14585,8 @@
       "Warp": 131255,
       "Person": 1019531,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the battle-scarred veteran",
@@ -14197,7 +14614,8 @@
       "Warp": 131275,
       "Person": 1022850,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the battle-scarred veteran",
@@ -14225,7 +14643,8 @@
       "Warp": 131275,
       "Person": 1023644,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the battle-scarred veteran",
@@ -14253,7 +14672,8 @@
       "Warp": 131275,
       "Person": 1023645,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the battle-scarred veteran",
@@ -14281,7 +14701,8 @@
       "Warp": 131275,
       "Person": 1023646,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Approach Virdjala",
@@ -14307,7 +14728,8 @@
       "Warp": 131299,
       "Person": 1025250,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Onokoro for 30 gil",
@@ -14333,7 +14755,8 @@
       "Warp": 131291,
       "Person": 1024623,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Sakazuki for 30 gil",
@@ -14359,7 +14782,8 @@
       "Warp": 131290,
       "Person": 1024622,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the House of the Fierce",
@@ -14385,7 +14809,8 @@
       "Warp": 131265,
       "Person": 1019292,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the House of the Fierce",
@@ -14411,7 +14836,8 @@
       "Warp": 131266,
       "Person": 1019294,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Doman Enclave",
@@ -14437,7 +14863,8 @@
       "Warp": 131292,
       "Person": 1024625,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Doman Enclave",
@@ -14463,7 +14890,8 @@
       "Warp": 131293,
       "Person": 1024794,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Specula Imperatoris",
@@ -14489,7 +14917,8 @@
       "Warp": 131271,
       "Person": 1021557,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Specula Imperatoris",
@@ -14515,7 +14944,8 @@
       "Warp": 131272,
       "Person": 1021558,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Ala Mhigan Quarter",
@@ -14541,7 +14971,8 @@
       "Warp": 131256,
       "Person": 1023045,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the tunnel",
@@ -14567,7 +14998,8 @@
       "Warp": 131257,
       "Person": 1023046,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Ala Mhigan Quarter",
@@ -14593,7 +15025,8 @@
       "Warp": 131258,
       "Person": 1023047,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Ala Mhigan Quarter",
@@ -14619,7 +15052,8 @@
       "Warp": 131259,
       "Person": 1023048,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Garlemald",
@@ -14645,7 +15079,8 @@
       "Warp": 131420,
       "Person": 1039554,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ascend to the Dawn Throne",
@@ -14673,7 +15108,8 @@
       "Warp": 131270,
       "Person": 1019423,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Descend from the Dawn Throne",
@@ -14699,7 +15135,8 @@
       "Warp": 131269,
       "Person": 1019424,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ascend to Dhoro Iloh",
@@ -14725,7 +15162,8 @@
       "Warp": 131302,
       "Person": 1025607,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Descend from Dhoro Iloh",
@@ -14751,7 +15189,8 @@
       "Warp": 131301,
       "Person": 1025925,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -14777,7 +15216,8 @@
       "Warp": 131252,
       "Person": 1019004,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Shirogane",
@@ -14803,7 +15243,8 @@
       "Warp": 131248,
       "Person": 1019006,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the airship landing",
@@ -14829,7 +15270,8 @@
       "Warp": 131262,
       "Person": 1019043,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the airship landing",
@@ -14855,7 +15297,8 @@
       "Warp": 131263,
       "Person": 1019044,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Radz-at-Han",
@@ -14883,7 +15326,8 @@
       "Warp": 131400,
       "Person": 1041608,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Ruby Bazaar Offices",
@@ -14909,7 +15353,8 @@
       "Warp": 131261,
       "Person": 1019070,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the tiring room",
@@ -14935,7 +15380,8 @@
       "Warp": 131281,
       "Person": 1024156,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the Ruby Bazaar offices",
@@ -14961,7 +15407,8 @@
       "Warp": 131260,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Kugane",
@@ -14989,7 +15436,8 @@
       "Warp": 131249,
       "Person": 1019108,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Kugane",
@@ -15017,7 +15465,8 @@
       "Warp": 131249,
       "Person": 1019108,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Royal Menagerie",
@@ -15043,7 +15492,8 @@
       "Warp": 131276,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Royal Menagerie",
@@ -15069,7 +15519,8 @@
       "Warp": 131288,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Escape the Mordion Gaol",
@@ -15095,7 +15546,8 @@
       "Warp": 131280,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Kugane",
@@ -15121,7 +15573,8 @@
       "Warp": 131282,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the tiring room",
@@ -15147,7 +15600,8 @@
       "Warp": 131308,
       "Person": 1027059,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Glittering Basin",
@@ -15173,7 +15627,8 @@
       "Warp": 131268,
       "Person": 1024362,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Kienkan",
@@ -15199,7 +15654,8 @@
       "Warp": 131294,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Glittering Basin",
@@ -15225,7 +15681,8 @@
       "Warp": 131268,
       "Person": 1024792,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Gangos",
@@ -15251,7 +15708,8 @@
       "Warp": 131359,
       "Person": 1032884,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15277,7 +15735,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15303,7 +15762,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15329,7 +15789,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15355,7 +15816,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15381,7 +15843,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15407,7 +15870,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15433,7 +15897,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15459,7 +15924,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit Heaven-on-High",
@@ -15485,7 +15951,8 @@
       "Warp": 131298,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit to Yanxia",
@@ -15511,7 +15978,8 @@
       "Warp": 131296,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Haunted Manor",
@@ -15537,7 +16005,8 @@
       "Warp": 131304,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Haunted Manor",
@@ -15563,7 +16032,8 @@
       "Warp": 131603,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Crystarium",
@@ -15589,7 +16059,8 @@
       "Warp": 131332,
       "Person": 1027449,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Tempest",
@@ -15615,7 +16086,8 @@
       "Warp": 131333,
       "Person": 1027448,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Top Rung",
@@ -15641,7 +16113,8 @@
       "Warp": 131330,
       "Person": 1028319,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Bottom Rung",
@@ -15667,7 +16140,8 @@
       "Warp": 131331,
       "Person": 1028320,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Crystarium",
@@ -15693,7 +16167,8 @@
       "Warp": 131337,
       "Person": 1029807,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the soft-faced bloke",
@@ -15721,7 +16196,8 @@
       "Warp": 131321,
       "Person": 1030410,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the soft-faced bloke",
@@ -15749,7 +16225,8 @@
       "Warp": 131321,
       "Person": 1030410,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the soft-faced bloke",
@@ -15777,7 +16254,8 @@
       "Warp": 131321,
       "Person": 1030410,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the soft-faced bloke",
@@ -15805,7 +16283,8 @@
       "Warp": 131321,
       "Person": 1030410,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the soft-faced bloke",
@@ -15833,7 +16312,8 @@
       "Warp": 131321,
       "Person": 1030410,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Crystarium",
@@ -15859,7 +16339,8 @@
       "Warp": 131336,
       "Person": 1027863,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Southern Hills of Amber",
@@ -15885,7 +16366,8 @@
       "Warp": 131338,
       "Person": 1031660,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Journey into the Empty",
@@ -15911,7 +16393,8 @@
       "Warp": 131388,
       "Person": 1034525,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Kholusia",
@@ -15937,7 +16420,8 @@
       "Warp": 131334,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ascend to the top floor of Achora Heights",
@@ -15963,7 +16447,8 @@
       "Warp": 131341,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Ocular",
@@ -15991,7 +16476,8 @@
       "Warp": 131315,
       "Person": 1027230,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Kholusia",
@@ -16017,7 +16503,8 @@
       "Warp": 131329,
       "Person": 1027225,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Eulmore",
@@ -16045,7 +16532,8 @@
       "Warp": 131356,
       "Person": 1027225,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Amh Araeng",
@@ -16071,7 +16559,8 @@
       "Warp": 131335,
       "Person": 1027264,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Ocular",
@@ -16099,7 +16588,8 @@
       "Warp": 131370,
       "Person": 1033863,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Canopy",
@@ -16125,7 +16615,8 @@
       "Warp": 131313,
       "Person": 1027527,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Buttress",
@@ -16151,7 +16642,8 @@
       "Warp": 131314,
       "Person": 1027549,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Crystarium",
@@ -16179,7 +16671,8 @@
       "Warp": 131355,
       "Person": 1031118,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Lochs",
@@ -16205,7 +16698,8 @@
       "Warp": 131306,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Lochs",
@@ -16231,7 +16725,8 @@
       "Warp": 131305,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to north Silvertear",
@@ -16257,7 +16752,8 @@
       "Warp": 131323,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the First",
@@ -16283,7 +16779,8 @@
       "Warp": 131324,
       "Person": 1029804,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the Ocular",
@@ -16309,7 +16806,8 @@
       "Warp": 131311,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the camp",
@@ -16335,7 +16833,8 @@
       "Warp": 131320,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Amh Araeng",
@@ -16361,7 +16860,8 @@
       "Warp": 131318,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Brume",
@@ -16387,7 +16887,8 @@
       "Warp": 131343,
       "Person": 1031683,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Saint Roelle\u0027s Dais",
@@ -16413,7 +16914,8 @@
       "Warp": 131386,
       "Person": 1033150,
       "Festival": 93,
-      "FestivalPhase": 8
+      "FestivalPhase": 8,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the excavation tunnels",
@@ -16439,7 +16941,8 @@
       "Warp": 131372,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the excavation tunnels",
@@ -16465,7 +16968,8 @@
       "Warp": 131348,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit the Copied Factory",
@@ -16491,7 +16995,8 @@
       "Warp": 131351,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 1",
@@ -16517,7 +17022,8 @@
       "Warp": 131352,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 1",
@@ -16543,7 +17049,8 @@
       "Warp": 131352,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 1",
@@ -16569,7 +17076,8 @@
       "Warp": 131352,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 2",
@@ -16595,7 +17103,8 @@
       "Warp": 131354,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 1",
@@ -16621,7 +17130,8 @@
       "Warp": 131352,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 5",
@@ -16647,7 +17157,8 @@
       "Warp": 131357,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 4",
@@ -16673,7 +17184,8 @@
       "Warp": 131358,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to zone 1",
@@ -16699,7 +17211,8 @@
       "Warp": 131352,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Doman Enclave",
@@ -16725,7 +17238,8 @@
       "Warp": 131360,
       "Person": 1032885,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit to Kholusia",
@@ -16751,7 +17265,8 @@
       "Warp": 131374,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Bunker",
@@ -16777,7 +17292,8 @@
       "Warp": 131380,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the alien ship",
@@ -16803,7 +17319,8 @@
       "Warp": 131381,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Duergar Mountains",
@@ -16829,7 +17346,8 @@
       "Warp": 131376,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Duergar Mountains",
@@ -16855,7 +17373,8 @@
       "Warp": 131376,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Duergar Mountains",
@@ -16881,7 +17400,8 @@
       "Warp": 131376,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Duergar Mountains",
@@ -16907,7 +17427,8 @@
       "Warp": 131376,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Duergar Mountains",
@@ -16933,7 +17454,8 @@
       "Warp": 131376,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Old Sharlayan",
@@ -16959,7 +17481,8 @@
       "Warp": 131408,
       "Person": 1039544,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Outer Circuit",
@@ -16985,7 +17508,8 @@
       "Warp": 131412,
       "Person": 1039546,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Medial Circuit",
@@ -17013,7 +17537,8 @@
       "Warp": 131411,
       "Person": 1040964,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Central Circuit",
@@ -17039,7 +17564,8 @@
       "Warp": 131413,
       "Person": 1039548,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Medial Circuit",
@@ -17065,7 +17591,8 @@
       "Warp": 131414,
       "Person": 1039549,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Descend to the lower levels",
@@ -17091,7 +17618,8 @@
       "Warp": 131415,
       "Person": 1039550,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Ascend to the main level",
@@ -17117,7 +17645,8 @@
       "Warp": 131416,
       "Person": 1039551,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Journey to Ultima Thule",
@@ -17143,7 +17672,8 @@
       "Warp": 131417,
       "Person": 1039552,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Journey to Ultima Thule",
@@ -17169,7 +17699,8 @@
       "Warp": 131466,
       "Person": 1037799,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Radz-at-Han",
@@ -17195,7 +17726,8 @@
       "Warp": 131409,
       "Person": 1037650,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17223,7 +17755,8 @@
       "Warp": 131423,
       "Person": 1037640,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17251,7 +17784,8 @@
       "Warp": 131423,
       "Person": 1037640,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17279,7 +17813,8 @@
       "Warp": 131423,
       "Person": 1037640,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17307,7 +17842,8 @@
       "Warp": 131423,
       "Person": 1037640,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Weaver\u0027s Warding",
@@ -17333,7 +17869,8 @@
       "Warp": 131505,
       "Person": 1044157,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Nethergate",
@@ -17359,7 +17896,8 @@
       "Warp": 131450,
       "Person": 1042017,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Station",
@@ -17385,7 +17923,8 @@
       "Warp": 131465,
       "Person": 1042017,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the station",
@@ -17411,7 +17950,8 @@
       "Warp": 131463,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Ala Mhigan Quarter",
@@ -17437,7 +17977,8 @@
       "Warp": 131419,
       "Person": 1039553,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Nethergate",
@@ -17463,7 +18004,8 @@
       "Warp": 131451,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Labyrinthos",
@@ -17489,7 +18031,8 @@
       "Warp": 131418,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to A-4 Research",
@@ -17515,7 +18058,8 @@
       "Warp": 131486,
       "Person": 1043864,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Last Dregs",
@@ -17541,7 +18085,8 @@
       "Warp": 131485,
       "Person": 1043865,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Ocular",
@@ -17567,7 +18112,8 @@
       "Warp": 131452,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Philomythes Notos",
@@ -17593,7 +18139,8 @@
       "Warp": 131454,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Kallimelios Zephyros",
@@ -17619,7 +18166,8 @@
       "Warp": 131456,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Ethoseletikos Boreas",
@@ -17645,7 +18193,8 @@
       "Warp": 131458,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17673,7 +18222,8 @@
       "Warp": 131423,
       "Person": 1037642,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17701,7 +18251,8 @@
       "Warp": 131423,
       "Person": 1037643,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the sharp-eyed Radiant",
@@ -17729,7 +18280,8 @@
       "Warp": 131423,
       "Person": 1037641,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the entrance",
@@ -17755,7 +18307,8 @@
       "Warp": 131425,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed downward",
@@ -17781,7 +18334,8 @@
       "Warp": 131427,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Limsa Lominsa for 300 gil",
@@ -17807,7 +18361,8 @@
       "Warp": 131405,
       "Person": 1037220,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Thavnair",
@@ -17833,7 +18388,8 @@
       "Warp": 131448,
       "Person": 1037288,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Labyrinthos",
@@ -17859,7 +18415,8 @@
       "Warp": 131407,
       "Person": 1037118,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Tuliyollal",
@@ -17885,7 +18442,8 @@
       "Warp": 131543,
       "Person": 1046492,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit to Thavnair",
@@ -17911,7 +18469,8 @@
       "Warp": 131410,
       "Person": 1039547,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Ul\u0027dah",
@@ -17939,7 +18498,8 @@
       "Warp": 131429,
       "Person": 1037322,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Gridania",
@@ -17967,7 +18527,8 @@
       "Warp": 131431,
       "Person": 1037322,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Limsa Lominsa",
@@ -17995,7 +18556,8 @@
       "Warp": 131433,
       "Person": 1037322,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Ishgard",
@@ -18023,7 +18585,8 @@
       "Warp": 131435,
       "Person": 1037322,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Purchase Passage to Kugane",
@@ -18051,7 +18614,8 @@
       "Warp": 131399,
       "Person": 1037322,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Amh Araeng",
@@ -18077,7 +18641,8 @@
       "Warp": 131318,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Lemures headquarters",
@@ -18103,7 +18668,8 @@
       "Warp": 131393,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the main hall",
@@ -18129,7 +18695,8 @@
       "Warp": 131404,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the strategy room",
@@ -18155,7 +18722,8 @@
       "Warp": 131394,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Enceladeum",
@@ -18181,7 +18749,8 @@
       "Warp": 131449,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Exit to Elpis",
@@ -18207,7 +18776,8 @@
       "Warp": 131422,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Labyrinthos",
@@ -18233,7 +18803,8 @@
       "Warp": 131418,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to A-4 Research",
@@ -18259,7 +18830,8 @@
       "Warp": 131486,
       "Person": 1043864,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Last Dregs",
@@ -18285,7 +18857,8 @@
       "Warp": 131485,
       "Person": 1043865,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Ocular",
@@ -18311,7 +18884,8 @@
       "Warp": 131467,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Akyaali",
@@ -18337,7 +18911,8 @@
       "Warp": 131474,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Mor Dhona",
@@ -18363,7 +18938,8 @@
       "Warp": 131473,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Thaumazein",
@@ -18389,7 +18965,8 @@
       "Warp": 131477,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter Troia Keep",
@@ -18415,7 +18992,8 @@
       "Warp": 131493,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the hydromantic terraces",
@@ -18441,7 +19019,8 @@
       "Warp": 131492,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to carcere IV",
@@ -18467,7 +19046,8 @@
       "Warp": 131491,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Troia Keep",
@@ -18493,7 +19073,8 @@
       "Warp": 131490,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Weaver\u0027s Warding",
@@ -18519,7 +19100,8 @@
       "Warp": 131489,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Move to the hydromantic terraces",
@@ -18545,7 +19127,8 @@
       "Warp": 131498,
       "Person": 1044018,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Move to carcere IV",
@@ -18571,7 +19154,8 @@
       "Warp": 131499,
       "Person": 1044019,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Gates of Pand\u00E6monium",
@@ -18597,7 +19181,8 @@
       "Warp": 131479,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the vicus messorum",
@@ -18623,7 +19208,8 @@
       "Warp": 131512,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Garlemald",
@@ -18649,7 +19235,8 @@
       "Warp": 131511,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Mons Albus",
@@ -18675,7 +19262,8 @@
       "Warp": 131513,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Fons Manalis",
@@ -18701,7 +19289,8 @@
       "Warp": 131514,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the vicus messorum",
@@ -18727,7 +19316,8 @@
       "Warp": 131515,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Giantsgall Grounds",
@@ -18753,7 +19343,8 @@
       "Warp": 131516,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Garlemald",
@@ -18779,7 +19370,8 @@
       "Warp": 131526,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Radz-at-Han",
@@ -18805,7 +19397,8 @@
       "Warp": 131524,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Mare Lamentorum",
@@ -18831,7 +19424,8 @@
       "Warp": 131527,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Mare Lamentorum",
@@ -18857,7 +19451,8 @@
       "Warp": 131637,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Earthen Sky hideout",
@@ -18883,7 +19478,8 @@
       "Warp": 131557,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Old Sharlayan",
@@ -18909,7 +19505,8 @@
       "Warp": 131545,
       "Person": 1047477,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Urqopacha",
@@ -18935,7 +19532,8 @@
       "Warp": 131546,
       "Person": 1047751,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Kozama\u0027uka",
@@ -18961,7 +19559,8 @@
       "Warp": 131547,
       "Person": 1047478,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Yak T\u0027el",
@@ -18987,7 +19586,8 @@
       "Warp": 131549,
       "Person": 1048231,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Shaaloani",
@@ -19013,7 +19613,8 @@
       "Warp": 131548,
       "Person": 1046791,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Backroom",
@@ -19039,7 +19640,8 @@
       "Warp": 131558,
       "Person": 1048083,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Enter the Arcadion",
@@ -19065,7 +19667,8 @@
       "Warp": 131567,
       "Person": 1049793,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Zirgorteh the Open-armed",
@@ -19091,7 +19694,8 @@
       "Warp": 131605,
       "Person": 1054640,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Tuliyollal",
@@ -19117,7 +19721,8 @@
       "Warp": 131551,
       "Person": 1047479,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Tuliyollal",
@@ -19143,7 +19748,8 @@
       "Warp": 131552,
       "Person": 1048925,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the entrance of Jeuno",
@@ -19169,7 +19775,8 @@
       "Warp": 131601,
       "Person": 1054349,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the eccentric researcher",
@@ -19197,7 +19804,8 @@
       "Warp": 131577,
       "Person": 1049515,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the eccentric researcher",
@@ -19225,7 +19833,8 @@
       "Warp": 131577,
       "Person": 1049515,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the eccentric researcher",
@@ -19253,7 +19862,8 @@
       "Warp": 131577,
       "Person": 1049515,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the eccentric researcher",
@@ -19281,7 +19891,8 @@
       "Warp": 131577,
       "Person": 1049515,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the eccentric researcher",
@@ -19309,7 +19920,8 @@
       "Warp": 131577,
       "Person": 1049515,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to the Skydeep Cenote inner chamber",
@@ -19335,7 +19947,8 @@
       "Warp": 131560,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Canal Town",
@@ -19361,7 +19974,8 @@
       "Warp": 131568,
       "Person": 1048242,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Yesterland",
@@ -19387,7 +20001,8 @@
       "Warp": 131570,
       "Person": 1048243,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Asyle Volcane",
@@ -19413,7 +20028,8 @@
       "Warp": 131572,
       "Person": 1048244,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Windspath Gardens",
@@ -19439,7 +20055,8 @@
       "Warp": 131574,
       "Person": 1048245,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Gate of Remembrance",
@@ -19465,7 +20082,8 @@
       "Warp": 131569,
       "Person": 1048247,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Gate of Remembrance",
@@ -19491,7 +20109,8 @@
       "Warp": 131571,
       "Person": 1048248,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Gate of Remembrance",
@@ -19517,7 +20136,8 @@
       "Warp": 131573,
       "Person": 1048249,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to the Gate of Remembrance",
@@ -19543,7 +20163,8 @@
       "Warp": 131575,
       "Person": 1048250,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to the Alexandria crater",
@@ -19569,7 +20190,8 @@
       "Warp": 131614,
       "Person": 1056205,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Proceed to Solution Nine",
@@ -19595,7 +20217,8 @@
       "Warp": 131559,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Skydeep Cenote inner chamber",
@@ -19621,7 +20244,8 @@
       "Warp": 131554,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Tritails Training",
@@ -19647,7 +20271,8 @@
       "Warp": 131565,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Solution Nine",
@@ -19673,7 +20298,8 @@
       "Warp": 131564,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Travel to Tuliyollal",
@@ -19699,7 +20325,8 @@
       "Warp": 131593,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Wait for the expedition to arrive",
@@ -19725,7 +20352,8 @@
       "Warp": 131600,
       "Person": 1054159,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Haunted Manor",
@@ -19751,7 +20379,8 @@
       "Warp": 131304,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave the Haunted Manor",
@@ -19777,7 +20406,8 @@
       "Warp": 131603,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Living Memory",
@@ -19803,7 +20433,8 @@
       "Warp": 131615,
       "Person": 1056207,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Old Sharlayan",
@@ -19829,7 +20460,8 @@
       "Warp": 131619,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Leave Tritails Training",
@@ -19855,7 +20487,8 @@
       "Warp": 131621,
       "Person": 0,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     },
     {
       "Name": "Return to Wonder Square",
@@ -19881,7 +20514,8 @@
       "Warp": 131634,
       "Person": 1058755,
       "Festival": 0,
-      "FestivalPhase": 0
+      "FestivalPhase": 0,
+      "AnyQuest": false
     }
   ]
 }

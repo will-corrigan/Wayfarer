@@ -63,7 +63,8 @@ internal static class WarpDoors
                     Warp: id,
                     Festival: festival,
                     FestivalPhase: phase,
-                    Person: person));
+                    Person: person,
+                    AnyQuest: AnyQuest(warp.WarpCondition.ValueNullable)));
             }
         }
 
@@ -84,6 +85,11 @@ internal static class WarpDoors
             .Where(quest => quest != 0)];
         return quests.Count == 0 ? null : quests;
     }
+
+    /// <summary>Whether any one of a warp's quests is enough. The condition's <c>CompleteParam</c> is
+    /// 2 only on the rows that list alternatives, such as the three envoy quests of which a player
+    /// does the one for the city they started in, and 1 everywhere else.</summary>
+    private static bool AnyQuest(WarpCondition? condition) => condition is { CompleteParam: 2 };
 
     /// <summary>A name as the game shows it: begun with a capital. The sheet writes a title like
     /// "arrivals attendant" in lower case and leaves the capital to the window.</summary>

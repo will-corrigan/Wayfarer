@@ -61,10 +61,10 @@ public sealed class RouteGraph
             var b = a + 1;
             doorEnds[i * 2] = new DoorEnd(door.Name, door.From);
             doorEnds[(i * 2) + 1] = new DoorEnd(door.Name, door.To);
-            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name, door.Npc, door.Warp), door.Quests, door.Festival, door.FestivalPhase));
+            edges[a].Add(new StaticEdge(b, new Leg.Door(door.Name, door.Npc, door.Warp), door.Quests, door.Festival, door.FestivalPhase, door.AnyQuest));
             if (!door.OneWay)
             {
-                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name, door.Npc, door.Warp), door.Quests, door.Festival, door.FestivalPhase));
+                edges[b].Add(new StaticEdge(a, new Leg.Door(door.Name, door.Npc, door.Warp), door.Quests, door.Festival, door.FestivalPhase, door.AnyQuest));
             }
         }
 
@@ -154,7 +154,8 @@ public sealed class RouteGraph
     /// <param name="Needs">Quests that must be complete to take it, or null.</param>
     /// <param name="Festival">The seasonal event it is only there during, or zero.</param>
     /// <param name="Phase">Which phase of that event, or zero for any.</param>
-    private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null, ushort Festival = 0, ushort Phase = 0);
+    /// <param name="AnyNeeded">Whether any one of <paramref name="Needs"/> is enough, rather than all.</param>
+    private readonly record struct StaticEdge(int To, Leg Leg, IReadOnlyList<uint>? Needs = null, ushort Festival = 0, ushort Phase = 0, bool AnyNeeded = false);
 
     private readonly record struct DoorEnd(string Name, Place At);
 
@@ -265,7 +266,7 @@ public sealed class RouteGraph
                         continue;
                     }
 
-                    if (edge.Needs is { } needs && !needs.All(questDone))
+                    if (edge.Needs is { } needs && !(edge.AnyNeeded ? needs.Any(questDone) : needs.All(questDone)))
                     {
                         continue;
                     }
