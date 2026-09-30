@@ -100,13 +100,73 @@ public class StepPlacesTests
         Assert.Empty(StepPlaces.Choose(Quest(Step("Wait for nightfall.")))[0]);
     }
 
+    /// <summary>"Logistics of War": the amaro's keeper stands beside the player, the sentry's ground is
+    /// far away. On the amaro the keeper is only in the way.</summary>
+    [Fact]
+    public void On_the_ride_a_line_goes_to_its_ground_not_the_one_who_hands_the_ride_out()
+    {
+        var step = Step("Ride the amaro to the sentry at Radisca's Round.", Area(Ground), Person(1, ByTheDoor, "Szem Djenmai"));
+
+        Assert.Equal([Ground], Riding(step));
+    }
+
+    [Fact]
+    public void On_the_ride_a_person_the_line_names_is_still_where_it_goes()
+    {
+        var step = Step("Pilot the magitek armor back to Wedge.", Area(Ground), Person(1, Elsewhere, "Wedge"));
+
+        Assert.Null(Riding(step));
+    }
+
+    [Fact]
+    public void Riding_changes_nothing_on_a_line_with_no_ground()
+    {
+        var step = Step("Speak with Lyna.", Person(1, Elsewhere, "Lyna"), Person(2, ByTheDoor, "Szem Djenmai"));
+
+        Assert.Null(Riding(step));
+    }
+
+    [Fact]
+    public void On_the_ride_a_thing_to_act_on_stays()
+    {
+        var step = Step("Ride the kongamato and use its Fumigate ability on the wyvern.", Area(Ground), Door("wyvern nest"), Person(1, Elsewhere, "Vath kintamer"));
+
+        Assert.Equal([Ground, ByTheDoor], Riding(step));
+    }
+
+    [Fact]
+    public void On_the_ride_a_monster_to_fight_stays()
+    {
+        var step = Step("Ride the kongamato and use its Fumigate ability on the wyvern.", Area(Ground), Monster(Elsewhere), Person(1, ByTheDoor, "Vath kintamer"));
+
+        Assert.Equal([Ground, Elsewhere], Riding(step));
+    }
+
+    [Fact]
+    public void Furniture_left_out_on_foot_stays_out_on_the_ride()
+    {
+        // A door the quest pins on most of its steps, and a keeper beside it.
+        var steps = Quest(
+            Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer"), Door()),
+            Step("Ride the kongamato to the gysahl green patch.", Area(Ground), Person(1, ByTheDoor, "Vath kintamer"), Door()),
+            Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer"), Door()));
+        var chosen = StepPlaces.Choose(steps);
+
+        Assert.Equal([Ground], StepPlaces.WhileRiding(steps[1], chosen[1]));
+    }
+
     private static StepShape[] Quest(params StepShape[] steps) => steps;
 
     private static StepShape Step(string words, params StepPlace[] places) => new(0, 1, words, places);
 
     private static StepPlace Area(Place at) => new(Row(at), 0, false, string.Empty, at);
 
-    private static StepPlace Person(uint id, Place at) => new(2000 + id, 1_000_000 + id, false, string.Empty, at);
+    private static StepPlace Person(uint id, Place at, string name = "") => new(2000 + id, 1_000_000 + id, false, name, at, IsPerson: true);
+
+    private static StepPlace Monster(Place at) => new(3000, 4_000_001, false, string.Empty, at);
+
+    /// <summary>Where a line of a one-line quest sends a player on the ride.</summary>
+    private static IReadOnlyList<Place>? Riding(StepShape step) => StepPlaces.WhileRiding(step, StepPlaces.Choose([step])[0]);
 
     private static StepPlace Door(string name = "cermet bulkhead") => new(99, 2_008_944, true, name, ByTheDoor);
 

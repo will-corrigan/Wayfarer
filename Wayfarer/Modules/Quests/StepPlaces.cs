@@ -36,6 +36,38 @@ internal static class StepPlaces
         return [.. steps.Select(step => Chosen(step, furniture))];
     }
 
+    /// <summary>Where a line sends a player already on the quest's ride, or null when riding changes
+    /// nothing.
+    ///
+    /// <para>A line that has the player ride or pilot something, or act while transformed, names
+    /// the ground the errand is on and also whoever hands out the ride, so a player who gets off can
+    /// find their way back on: "Ride the amaro to the sentry at Radisca's Round" names the circle
+    /// round the sentry and the amaro's keeper beside the player. Once on the ride the keeper is
+    /// only in the way, and being nearest they would win the route. So the people the line does not
+    /// name are left out; one it does name, as in "Pilot the magitek armor back to Wedge", is where
+    /// the ride is going and stays.</para></summary>
+    /// <param name="step">The line, with every place it names.</param>
+    /// <param name="chosen">Where the line sends a player on foot, from <see cref="Choose"/>: riding only
+    /// ever takes places away from that, so whatever it already left out stays out.</param>
+    public static IReadOnlyList<Place>? WhileRiding(StepShape step, IReadOnlyList<Place> chosen)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        ArgumentNullException.ThrowIfNull(chosen);
+
+        if (!step.Places.Any(place => place.ObjectId == 0))
+        {
+            return null;
+        }
+
+        // Only the quest's own people who hand a ride out, never a thing to act on or a monster to fight.
+        var keepers = step.Places
+            .Where(place => place.IsPerson && !NamedIn(place.ObjectName, step.Words))
+            .Select(place => place.At)
+            .ToHashSet();
+        var riding = chosen.Where(place => !keepers.Contains(place)).ToList();
+        return riding.Count == chosen.Count || riding.Count == 0 ? null : riding;
+    }
+
     /// <summary>Whether a line's own words name what stands at a place.
     ///
     /// <para>Both halves come from the game in the player's own language, so the two are always

@@ -16,9 +16,12 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="Words">The line as authored, macros and all.</param>
 /// <param name="Needed">How many of the thing the sheet says this line wants.</param>
 /// <param name="Positions">Where the quest data puts it: one per Level row, possibly none.</param>
+/// <param name="WhileRiding">Where it sends a player already on the quest's ride, or null when
+/// that is the same: see <see cref="StepPlaces.WhileRiding"/>.</param>
 internal sealed record QuestTodoTemplate(
     int Index,
     byte Sequence,
     ReadOnlySeString Words,
     int Needed,
-    IReadOnlyList<Place> Positions);
+    IReadOnlyList<Place> Positions,
+    IReadOnlyList<Place>? WhileRiding = null);
