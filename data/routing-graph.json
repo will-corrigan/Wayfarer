@@ -21935,16 +21935,6 @@
     },
     {
       "Territory": 809,
-      "Map": 504,
-      "SameAs": 317
-    },
-    {
-      "Territory": 809,
-      "Map": 506,
-      "SameAs": 319
-    },
-    {
-      "Territory": 809,
       "Map": 1088,
       "SameAs": 317
     },
@@ -21960,33 +21950,8 @@
     },
     {
       "Territory": 896,
-      "Map": 578,
-      "SameAs": 569
-    },
-    {
-      "Territory": 896,
       "Map": 579,
       "SameAs": 570
-    },
-    {
-      "Territory": 896,
-      "Map": 580,
-      "SameAs": 571
-    },
-    {
-      "Territory": 896,
-      "Map": 581,
-      "SameAs": 572
-    },
-    {
-      "Territory": 928,
-      "Map": 624,
-      "SameAs": 609
-    },
-    {
-      "Territory": 928,
-      "Map": 623,
-      "SameAs": 608
     },
     {
       "Territory": 1056,
@@ -22007,21 +21972,6 @@
       "Territory": 1119,
       "Map": 826,
       "SameAs": 815
-    },
-    {
-      "Territory": 1119,
-      "Map": 827,
-      "SameAs": 816
-    },
-    {
-      "Territory": 1119,
-      "Map": 828,
-      "SameAs": 817
-    },
-    {
-      "Territory": 1119,
-      "Map": 829,
-      "SameAs": 824
     },
     {
       "Territory": 1297,
@@ -22051,21 +22001,6 @@
     {
       "Territory": 1305,
       "Map": 506,
-      "SameAs": 319
-    },
-    {
-      "Territory": 1305,
-      "Map": 1088,
-      "SameAs": 317
-    },
-    {
-      "Territory": 1305,
-      "Map": 1089,
-      "SameAs": 505
-    },
-    {
-      "Territory": 1305,
-      "Map": 1090,
       "SameAs": 319
     }
   ]

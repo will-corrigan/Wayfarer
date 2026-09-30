@@ -133,8 +133,14 @@ public sealed class RouteGraph
 
         // A quest may name a room by any of the maps that are that room at some point of the story;
         // the graph knows it by one.
-        var search = new Search(this, OnGraphMap(from), [.. targets.Select(OnGraphMap)], attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne, flyable ?? (_ => false));
-        return search.Run();
+        var onGraph = targets.Select(OnGraphMap).ToList();
+        var search = new Search(this, OnGraphMap(from), onGraph, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne, flyable ?? (_ => false));
+
+        // The route ends at the place the caller offered, as they gave it, so they can tell which it was.
+        var route = search.Run();
+        return route is not null && onGraph.IndexOf(route.End) is var offered and >= 0
+            ? route with { End = targets[offered] }
+            : route;
     }
 
     private static float Across(Place a, Place b) =>

@@ -97,6 +97,20 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Nanahomi" });
     }
 
+    /// <summary>A map is only ever routed as another when nothing in the graph stands on it: floors
+    /// whose boxes happen to match, as a manor's cellar and upper floor do, keep their own doors,
+    /// and treating them as one map once cut those doors off.</summary>
+    [Fact]
+    public void No_map_the_graph_stands_on_is_routed_as_another()
+    {
+        var used = Shipped.Doors.SelectMany(door => new[] { (door.From.Territory, door.From.Map), (door.To.Territory, door.To.Map) })
+            .Concat(Shipped.Nodes.Select(node => (node.At.Territory, node.At.Map)))
+            .ToHashSet();
+
+        Assert.NotEmpty(Shipped.MapAliases!);
+        Assert.All(Shipped.MapAliases!, alias => Assert.DoesNotContain((alias.Territory, alias.Map), used));
+    }
+
     /// <summary>The only warp in the excavation tunnels leads out of Anogg's Lair, so the drawn door is
     /// the only way in. Dropping drawn doors that a warp joins once took that way in with them.</summary>
     [Fact]

@@ -52,9 +52,15 @@ doors.AddRange(warped);
 doors.AddRange(transpoints);
 Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones, {layouts.Mirrored} files from the mirror");
 
-// A room a quest names by one of several maps that are all that room is routed as one.
+// A room a quest names by one of several maps that are all that room is routed as one. Only a map
+// nothing in the graph stands on: floors whose boxes happen to match, as in a manor with a cellar,
+// have doors of their own and stay floors.
+var used = doors.SelectMany(door => new[] { (door.From.Territory, door.From.Map), (door.To.Territory, door.To.Map) })
+    .Concat(nodes.Select(node => (node.At.Territory, node.At.Map)))
+    .ToHashSet();
 var aliases = routable.Order()
     .SelectMany(territory => layouts.Of(territory).SameMaps().Select(same => new MapAlias(territory, same.Map, same.SameAs)))
+    .Where(alias => !used.Contains((alias.Territory, alias.Map)))
     .DistinctBy(alias => (alias.Territory, alias.Map))
     .ToList();
 Console.Error.WriteLine($"  {aliases.Count} maps that are another map of the same zone");
