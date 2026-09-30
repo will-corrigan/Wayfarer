@@ -36,6 +36,32 @@ internal static class StepPlaces
         return [.. steps.Select(step => Chosen(step, furniture))];
     }
 
+    /// <summary>Where a line sends a player already on the quest's ride, or null when riding changes
+    /// nothing.
+    ///
+    /// <para>A line that has the player ride or pilot something, or act while transformed, names
+    /// the ground the errand is on and also whoever hands out the ride, so a player who gets off can
+    /// find their way back on: "Ride the amaro to the sentry at Radisca's Round" names the circle
+    /// round the sentry and the amaro's keeper beside the player. Once on the ride the keeper is
+    /// only in the way, and being nearest they would win the route. So the people the line does not
+    /// name are left out; one it does name, as in "Pilot the magitek armor back to Wedge", is where
+    /// the ride is going and stays.</para></summary>
+    /// <param name="step">The line, with every place it names.</param>
+    public static IReadOnlyList<Place>? WhileRiding(StepShape step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+
+        if (!step.Places.Any(place => place.ObjectId == 0))
+        {
+            return null;
+        }
+
+        var kept = step.Places
+            .Where(place => place.ObjectId == 0 || place.IsObject || NamedIn(place.ObjectName, step.Words))
+            .ToList();
+        return kept.Count == step.Places.Count ? null : [.. kept.Select(place => place.At)];
+    }
+
     /// <summary>Whether a line's own words name what stands at a place.
     ///
     /// <para>Both halves come from the game in the player's own language, so the two are always

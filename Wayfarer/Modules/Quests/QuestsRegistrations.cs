@@ -19,6 +19,7 @@ internal sealed class QuestsRegistrations : Module
         builder.RegisterType<QuestDuties>().SingleInstance();
         builder.RegisterType<DutyMarking>().SingleInstance();
         builder.RegisterType<QuestTarget>().SingleInstance();
+        builder.RegisterType<QuestRide>().SingleInstance();
         builder.RegisterType<QuestObjectives>().As<IObjectiveSource>().AsSelf().SingleInstance();
         builder.RegisterType<QuestsModule>().As<IModule>().SingleInstance();
     }

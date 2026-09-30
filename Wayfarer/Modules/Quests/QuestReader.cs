@@ -230,7 +230,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>The step's lines with their words finished, built from the progress just read.
     /// Finishing the words means resolving macros and allocating strings, so this is asked only
     /// when something about the step has actually moved rather than every frame.</summary>
-    public List<QuestTodo> Todos(ushort questId, byte sequence, IReadOnlyList<QuestTodoProgress> progress)
+    /// <param name="questId">The quest.</param>
+    /// <param name="sequence">The step.</param>
+    /// <param name="progress">What the game says about the step's lines.</param>
+    /// <param name="riding">Whether the player is on the quest's ride, which sends a riding line to
+    /// its ground rather than to whoever hands the ride out.</param>
+    public List<QuestTodo> Todos(ushort questId, byte sequence, IReadOnlyList<QuestTodoProgress> progress, bool riding = false)
     {
         ArgumentNullException.ThrowIfNull(progress);
 
@@ -245,7 +250,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
                 template.Sequence,
                 words,
                 template.Needed,
-                template.Positions,
+                riding && template.WhileRiding is { } ground ? ground : template.Positions,
                 Roulette(words)));
         }
 
@@ -294,6 +299,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             var thing = level.Object.Is<EObj>();
             var name = thing
                 ? dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(level.Object.RowId)?.Singular.ExtractText() ?? string.Empty
+                : level.Object.RowId != 0 ? dataManager.GetExcelSheet<ENpcResident>().GetRowOrDefault(level.Object.RowId)?.Singular.ExtractText() ?? string.Empty
                 : string.Empty;
 
             places.Add(new StepPlace(level.RowId, level.Object.RowId, thing, name, At(level)));
@@ -604,7 +610,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         for (var i = 0; i < shapes.Count; i++)
         {
             var (qty, shape) = shapes[i];
-            todos.Add(new QuestTodoTemplate(shape.Index, shape.Sequence, rows.GetValueOrDefault(shape.Index), qty, chosen[i]));
+            todos.Add(new QuestTodoTemplate(shape.Index, shape.Sequence, rows.GetValueOrDefault(shape.Index), qty, chosen[i], StepPlaces.WhileRiding(shape)));
         }
 
         return todos;

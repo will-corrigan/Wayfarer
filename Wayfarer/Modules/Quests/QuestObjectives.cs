@@ -9,7 +9,7 @@ namespace Wayfarer.Modules.Quests;
 /// the objective when something it depends on changed: the quest, the step, the ToDos' progress
 /// or the markers. Focus is claimed and released by
 /// <see cref="QuestsModule"/> as the module goes up and down.</summary>
-internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal, QuestTarget target) : IObjectiveSource
+internal sealed class QuestObjectives(QuestReader reader, QuestFollowing following, QuestJournal journal, QuestTarget target, QuestRide ride) : IObjectiveSource
 {
     /// <summary>What the guide's own heading says while the plate carries a followed quest rather
     /// than the main scenario the guide is about.</summary>
@@ -57,7 +57,8 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
         var sequence = QuestReader.Sequence(questId);
         var progress = reader.Progress(questId, sequence);
         var markers = QuestReader.Markers(questId);
-        var signature = new Signature(questId, sequence, Fingerprint.Of(progress), Fingerprint.Of(markers), target.Aim());
+        var riding = ride.Now();
+        var signature = new Signature(questId, sequence, Fingerprint.Of(progress), Fingerprint.Of(markers), target.Aim(), riding);
         if (signature == last)
         {
             return cached;
@@ -72,7 +73,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
 
         last = signature;
 
-        var todos = reader.Todos(questId, sequence, progress);
+        var todos = reader.Todos(questId, sequence, progress, riding);
 
         // The plate leads to the journal page of whichever quest it names, followed or not. Only a
         // quest the player chose to follow retitles the heading above it: the guide already says
@@ -117,5 +118,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
     /// <param name="Aiming">Which thing of the quest's is standing in the step's ground right
     /// now. A step that says search names nothing in particular, so this changes while the words
     /// do not, and the objective has to be made again when it does.</param>
-    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers, ulong Aiming);
+    /// <param name="Riding">Whether the player is on the quest's ride, which moves a riding line
+    /// from whoever hands the ride out to the ground it is headed for.</param>
+    private sealed record Signature(ushort QuestId, byte Sequence, int Progress, int Markers, ulong Aiming, bool Riding);
 }
