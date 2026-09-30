@@ -8,7 +8,9 @@ namespace Wayfarer.Routing;
 /// graph's own records, so there is nothing to translate on either side.</summary>
 /// <param name="Nodes">Every aetheryte and shard.</param>
 /// <param name="Doors">Every door between two maps.</param>
-public sealed record RoutingGraphFile(IReadOnlyList<RouteNode> Nodes, IReadOnlyList<DoorLink> Doors)
+/// <param name="MapAliases">Maps that are another map of the same zone under a different number, or
+/// null in a file from before there were any.</param>
+public sealed record RoutingGraphFile(IReadOnlyList<RouteNode> Nodes, IReadOnlyList<DoorLink> Doors, IReadOnlyList<MapAlias>? MapAliases = null)
 {
     /// <summary>The file's name wherever it is shipped or generated.</summary>
     public const string FileName = "routing-graph.json";
@@ -24,7 +26,7 @@ public sealed record RoutingGraphFile(IReadOnlyList<RouteNode> Nodes, IReadOnlyL
     };
 
     /// <summary>The file's contents as a graph.</summary>
-    public RouteGraph ToGraph() => new(Nodes, Doors);
+    public RouteGraph ToGraph() => new(Nodes, Doors, MapAliases);
 
     /// <summary>Parses <paramref name="json"/>. Throws when it is not a routing graph file.</summary>
     public static RoutingGraphFile Parse(string json)

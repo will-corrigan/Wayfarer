@@ -114,6 +114,25 @@ internal sealed class ZoneLayout
         return layout;
     }
 
+    /// <summary>Maps of this zone whose range is the same box as another map's, each with the map the
+    /// graph places that ground on: the same room at another point of the story, as the Waking
+    /// Sands' three maps are. Boxes a couple of yalms apart are the same box; a floor above or
+    /// below never is.</summary>
+    public IEnumerable<(uint Map, uint SameAs)> SameMaps()
+    {
+        const float Slack = 2f;
+        foreach (var range in ranges)
+        {
+            var same = MapAt(range.Box.Centre);
+            if (same is { } graphMap && graphMap != range.Map && ranges.Exists(other => other.Map == graphMap
+                && Vector3.Distance(other.Box.Centre, range.Box.Centre) <= Slack
+                && Vector3.Distance(other.Box.Half, range.Box.Half) <= Slack))
+            {
+                yield return (range.Map, graphMap);
+            }
+        }
+    }
+
     /// <summary>The floor height of a map at a spot on the ground: the height of whatever stands
     /// nearest that spot inside the map's own range, or null when nothing stands within reach.
     /// A range says only between which heights a map lies; what stands in it says where its floor

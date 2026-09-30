@@ -97,6 +97,21 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Nanahomi" });
     }
 
+    /// <summary>Judgment Bolts and Lightning: "Report to Urianger at the Waking Sands." The quest puts
+    /// him on map 107, one of the Waking Sands' three maps that are all the same hall at different
+    /// points of the story, and the graph knows the hall as map 80, so there was once no route to
+    /// him even from the door.</summary>
+    [Fact]
+    public void Urianger_is_reached_whichever_of_the_waking_sands_maps_the_quest_names()
+    {
+        var atTheDoor = new Place(140, 20, -478f, 17f, -382f);
+        var urianger = new Place(212, 107, -2.8f, -3f, -56.2f);
+        var route = Shipped.ToGraph().FindRoute(atTheDoor, [urianger], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Name: "The Waking Sands" });
+    }
+
     /// <summary>The Firmament's aethernet is no aethernet in the sheets: its eight shards come from
     /// the transpoint's talk script, so they were once missing, and every trip across the Firmament
     /// was walked. From the Mendicant's Court to Hoarfrost Hall, the shard beside you is the way.</summary>

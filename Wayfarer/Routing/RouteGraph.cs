@@ -31,13 +31,23 @@ public sealed class RouteGraph
     private readonly RouteNode[] nodes;
     private readonly List<StaticEdge>[] edges;
     private readonly DoorEnd[] doorEnds;
+    private readonly Dictionary<(uint Territory, uint Map), uint> sameMaps = [];
 
     /// <summary>Initializes a new instance of the <see cref="RouteGraph"/> class from the game's fixed
     /// points and doors.</summary>
-    public RouteGraph(IReadOnlyList<RouteNode> fixedNodes, IReadOnlyList<DoorLink> doors)
+    /// <param name="fixedNodes">Every aetheryte, shard and landing.</param>
+    /// <param name="doors">Every door between two maps.</param>
+    /// <param name="mapAliases">Maps that are another map of the same zone under a different number,
+    /// or null for none.</param>
+    public RouteGraph(IReadOnlyList<RouteNode> fixedNodes, IReadOnlyList<DoorLink> doors, IReadOnlyList<MapAlias>? mapAliases = null)
     {
         ArgumentNullException.ThrowIfNull(fixedNodes);
         ArgumentNullException.ThrowIfNull(doors);
+
+        foreach (var alias in mapAliases ?? [])
+        {
+            sameMaps.TryAdd((alias.Territory, alias.Map), alias.SameAs);
+        }
 
         // Each door contributes two nodes, one per side, so a walk can end at a door and the
         // door's own edge carries you to the other side.
@@ -121,7 +131,9 @@ public sealed class RouteGraph
             return null;
         }
 
-        var search = new Search(this, from, targets, attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne, flyable ?? (_ => false));
+        // A quest may name a room by any of the maps that are that room at some point of the story;
+        // the graph knows it by one.
+        var search = new Search(this, OnGraphMap(from), [.. targets.Select(OnGraphMap)], attuned, questDone ?? (_ => true), festivalOn ?? ((_, _) => true), airborne, flyable ?? (_ => false));
         return search.Run();
     }
 
@@ -148,6 +160,11 @@ public sealed class RouteGraph
         flown || float.IsNaN(from.Y) || float.IsNaN(to.Y) ? 0f : ClimbCost * MathF.Abs(to.Y - from.Y);
 
     private static bool SameMap(Place a, Place b) => a.Territory == b.Territory && a.Map == b.Map;
+
+    /// <summary>A place on the map the graph uses for its ground, when it was given on another number
+    /// for the same map.</summary>
+    private Place OnGraphMap(Place place) =>
+        sameMaps.TryGetValue((place.Territory, place.Map), out var same) ? place with { Map = same } : place;
 
     /// <param name="To">The node it leads to.</param>
     /// <param name="Leg">How it is travelled.</param>

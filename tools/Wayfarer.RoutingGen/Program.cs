@@ -52,6 +52,13 @@ doors.AddRange(warped);
 doors.AddRange(transpoints);
 Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones, {layouts.Mirrored} files from the mirror");
 
-File.WriteAllText(output, new RoutingGraphFile(nodes, doors).ToJson());
+// A room a quest names by one of several maps that are all that room is routed as one.
+var aliases = routable.Order()
+    .SelectMany(territory => layouts.Of(territory).SameMaps().Select(same => new MapAlias(territory, same.Map, same.SameAs)))
+    .DistinctBy(alias => (alias.Territory, alias.Map))
+    .ToList();
+Console.Error.WriteLine($"  {aliases.Count} maps that are another map of the same zone");
+
+File.WriteAllText(output, new RoutingGraphFile(nodes, doors, aliases).ToJson());
 Console.Error.WriteLine($"{nodes.Count} nodes ({nodes.Count(n => n.Kind == RouteNodeKind.Aetheryte)} aetherytes), {doors.Count} doors -> {output}");
 return 0;
