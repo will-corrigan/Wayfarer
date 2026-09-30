@@ -103,9 +103,11 @@ internal static class ExitDoors
         var kept = new List<DoorLink>(drawn.Count);
         var replaced = 0;
 
-        // Which way round a warp goes from one map of a zone to another. Every warp is one way.
+        // Which way round a warp goes from one map of a zone to another. Every warp is one way. Only
+        // warps always open count: a drawn door is never given up for one kept until a quest is done
+        // or there only during an event.
         var warpedMaps = walked
-            .Where(door => door.From.Territory == door.To.Territory && door.From.Map != door.To.Map)
+            .Where(door => door.From.Territory == door.To.Territory && door.From.Map != door.To.Map && door.Quests is null && door.Festival == 0)
             .Select(door => (door.From.Territory, door.From.Map, door.To.Map))
             .ToHashSet();
         var warpIcons = 0;
