@@ -97,6 +97,14 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Nanahomi" });
     }
 
+    /// <summary>The only warp in the excavation tunnels leads out of Anogg's Lair, so the drawn door is
+    /// the only way in. Dropping drawn doors that a warp joins once took that way in with them.</summary>
+    [Fact]
+    public void The_drawn_door_into_anoggs_lair_stays_where_a_warp_only_leads_out()
+    {
+        Assert.Contains(Shipped.Doors, door => door is { Name: "Anogg's Lair", From.Territory: 895, From.Map: 575, To.Map: 614, OneWay: true });
+    }
+
     /// <summary>Judgment Bolts and Lightning: "Report to Urianger at the Waking Sands." The quest puts
     /// him on map 107, one of the Waking Sands' three maps that are all the same hall at different
     /// points of the story, and the graph knows the hall as map 80, so there was once no route to

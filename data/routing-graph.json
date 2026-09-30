@@ -4113,6 +4113,33 @@
       "AnyQuest": false
     },
     {
+      "Name": "Anogg\u0027s Lair",
+      "From": {
+        "Territory": 895,
+        "Map": 575,
+        "X": -20.5,
+        "Y": 0,
+        "Z": -58.25,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 895,
+        "Map": 614,
+        "X": -49.5,
+        "Y": 1.209601,
+        "Z": -109,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": null,
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
       "Name": "Zone 4",
       "From": {
         "Territory": 896,
