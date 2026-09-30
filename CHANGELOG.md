@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/will-corrigan/Wayfarer/compare/v1.10.0...v1.10.1) (2026-09-30)
+
+
+### Fixed
+
+* on a quest's ride, guide to where the ride is going ([#109](https://github.com/will-corrigan/Wayfarer/issues/109)) ([b8b4000](https://github.com/will-corrigan/Wayfarer/commit/b8b4000f6491cedd50d9192e7b9e049b92c02e18))
+
 ## [1.10.0](https://github.com/will-corrigan/Wayfarer/compare/v1.9.0...v1.10.0) (2026-09-28)
 
 
