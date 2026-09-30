@@ -82,6 +82,76 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Mercantile docks skipper" });
     }
 
+    /// <summary>Dealings in the Desert: off the airship at Ul'dah, the Ruby Road Exchange is at the
+    /// foot of the tower. The map draws the landing straight above the Steps of Nald, and that
+    /// drawing was once walked down a tower's height; the only way down is Nanahomi's lift.</summary>
+    [Fact]
+    public void Off_the_airship_at_uldah_the_lift_takes_you_down()
+    {
+        const uint Uldah = 130;
+        var offTheAirship = new Place(Uldah, 70, -17.5f, 83f, 3.7f);
+        var rubyRoadExchange = new Place(Uldah, 13, -20.8f, 10f, -43.9f);
+        var route = Shipped.ToGraph().FindRoute(offTheAirship, [rubyRoadExchange], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Nanahomi" });
+    }
+
+    /// <summary>A map is only ever routed as another when nothing in the graph stands on it: floors
+    /// whose boxes happen to match, as a manor's cellar and upper floor do, keep their own doors,
+    /// and treating them as one map once cut those doors off.</summary>
+    [Fact]
+    public void No_map_the_graph_stands_on_is_routed_as_another()
+    {
+        var used = Shipped.Doors.SelectMany(door => new[] { (door.From.Territory, door.From.Map), (door.To.Territory, door.To.Map) })
+            .Concat(Shipped.Nodes.Select(node => (node.At.Territory, node.At.Map)))
+            .ToHashSet();
+
+        Assert.NotEmpty(Shipped.MapAliases!);
+        Assert.All(Shipped.MapAliases!, alias => Assert.DoesNotContain((alias.Territory, alias.Map), used));
+    }
+
+    /// <summary>The only warp in the excavation tunnels leads out of Anogg's Lair, so the drawn door is
+    /// the only way in. Dropping drawn doors that a warp joins once took that way in with them.</summary>
+    [Fact]
+    public void The_drawn_door_into_anoggs_lair_stays_where_a_warp_only_leads_out()
+    {
+        Assert.Contains(Shipped.Doors, door => door is { Name: "Anogg's Lair", From.Territory: 895, From.Map: 575, To.Map: 614, OneWay: true });
+    }
+
+    /// <summary>Judgment Bolts and Lightning: "Report to Urianger at the Waking Sands." The quest puts
+    /// him on map 107, one of the Waking Sands' three maps that are all the same hall at different
+    /// points of the story, and the graph knows the hall as map 80, so there was once no route to
+    /// him even from the door.</summary>
+    [Fact]
+    public void Urianger_is_reached_whichever_of_the_waking_sands_maps_the_quest_names()
+    {
+        var atTheDoor = new Place(140, 20, -478f, 17f, -382f);
+        var urianger = new Place(212, 107, -2.8f, -3f, -56.2f);
+        var route = Shipped.ToGraph().FindRoute(atTheDoor, [urianger], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Name: "The Waking Sands" });
+    }
+
+    /// <summary>The Firmament's aethernet is no aethernet in the sheets: its eight shards come from
+    /// the transpoint's talk script, so they were once missing, and every trip across the Firmament
+    /// was walked. From the Mendicant's Court to Hoarfrost Hall, the shard beside you is the way.</summary>
+    [Fact]
+    public void The_firmaments_shards_carry_you_across_it()
+    {
+        const uint Firmament = 886;
+        const uint FirmamentMap = 574;
+        Assert.Equal(56, Shipped.Doors.Count(door => door is { Npc: "Aethernet shard", From.Territory: Firmament, To.Territory: Firmament }));
+
+        var byTheCourt = new Place(Firmament, FirmamentMap, 18f, -16f, 166f);
+        var byTheHall = new Place(Firmament, FirmamentMap, -136f, 10f, -10f);
+        var route = Shipped.ToGraph().FindRoute(byTheCourt, [byTheHall], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Name: "Travel to Hoarfrost Hall", Npc: "Aethernet shard" });
+    }
+
     /// <summary>Frost grenades for a mark bill, from Ishgard, by a player who can fly in the Sea of
     /// Clouds and the Western Highlands: teleport to Ok' Zundu and fly. The route once walked out
     /// through the Pillars and across the Sea of Clouds, because the drop from the sky island was

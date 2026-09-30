@@ -41,6 +41,7 @@ using var layouts = new ZoneLayouts(game);
 // goes.
 var exits = ExitDoors.Read(game, maps, layouts, routable, doors);
 var warped = WarpDoors.Read(game, maps, layouts, routable);
+var transpoints = TranspointDoors.Read(game, maps, layouts, routable);
 doors = ExitDoors.Unwalked(game, doors, [.. exits, .. warped]);
 nodes = Heights.Nodes(game, layouts, nodes);
 nodes = Landings.Mark(layouts, nodes);
@@ -48,8 +49,22 @@ doors = Heights.Mirrored(game, layouts, maps, doors);
 doors = Heights.Doors(layouts, doors);
 doors.AddRange(exits);
 doors.AddRange(warped);
+doors.AddRange(transpoints);
 Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones, {layouts.Mirrored} files from the mirror");
 
-File.WriteAllText(output, new RoutingGraphFile(nodes, doors).ToJson());
+// A room a quest names by one of several maps that are all that room is routed as one. Only a map
+// nothing in the graph stands on: floors whose boxes happen to match, as in a manor with a cellar,
+// have doors of their own and stay floors.
+var used = doors.SelectMany(door => new[] { (door.From.Territory, door.From.Map), (door.To.Territory, door.To.Map) })
+    .Concat(nodes.Select(node => (node.At.Territory, node.At.Map)))
+    .ToHashSet();
+var aliases = routable.Order()
+    .SelectMany(territory => layouts.Of(territory).SameMaps().Select(same => new MapAlias(territory, same.Map, same.SameAs)))
+    .Where(alias => !used.Contains((alias.Territory, alias.Map)))
+    .DistinctBy(alias => (alias.Territory, alias.Map))
+    .ToList();
+Console.Error.WriteLine($"  {aliases.Count} maps that are another map of the same zone");
+
+File.WriteAllText(output, new RoutingGraphFile(nodes, doors, aliases).ToJson());
 Console.Error.WriteLine($"{nodes.Count} nodes ({nodes.Count(n => n.Kind == RouteNodeKind.Aetheryte)} aetherytes), {doors.Count} doors -> {output}");
 return 0;

@@ -41,6 +41,10 @@ internal sealed class ZoneLayout
     /// The aethernet also drops you at spots outside a city's gate with nothing there to board.</summary>
     public HashSet<uint> Aetherytes { get; } = [];
 
+    /// <summary>Where each event object the layout places stands, by its EObj row: the first of each,
+    /// which is all a thing placed once, such as an aethernet shard, needs.</summary>
+    public Dictionary<uint, Vector3> Objects { get; } = [];
+
     /// <summary>Where things stand on the zone's floors: people, objects and landing spots. Each
     /// says how high the floor is where it stands, which nothing on a map does.</summary>
     public List<Vector3> Standing { get; } = [];
@@ -110,6 +114,25 @@ internal sealed class ZoneLayout
         return layout;
     }
 
+    /// <summary>Maps of this zone whose range is the same box as another map's, each with the map the
+    /// graph places that ground on: the same room at another point of the story, as the Waking
+    /// Sands' three maps are. Boxes a couple of yalms apart are the same box; a floor above or
+    /// below never is.</summary>
+    public IEnumerable<(uint Map, uint SameAs)> SameMaps()
+    {
+        const float Slack = 2f;
+        foreach (var range in ranges)
+        {
+            var same = MapAt(range.Box.Centre);
+            if (same is { } graphMap && graphMap != range.Map && ranges.Exists(other => other.Map == graphMap
+                && Vector3.Distance(other.Box.Centre, range.Box.Centre) <= Slack
+                && Vector3.Distance(other.Box.Half, range.Box.Half) <= Slack))
+            {
+                yield return (range.Map, graphMap);
+            }
+        }
+    }
+
     /// <summary>The floor height of a map at a spot on the ground: the height of whatever stands
     /// nearest that spot inside the map's own range, or null when nothing stands within reach.
     /// A range says only between which heights a map lies; what stands in it says where its floor
@@ -172,6 +195,11 @@ internal sealed class ZoneLayout
         if (festival == 0 && thing.Object is LayerCommon.PopRangeInstanceObject or LayerCommon.ENPCInstanceObject or LayerCommon.EventInstanceObject)
         {
             Standing.Add(at);
+        }
+
+        if (festival == 0 && thing.Object is LayerCommon.EventInstanceObject placed && placed.ParentData.BaseId != 0)
+        {
+            Objects.TryAdd(placed.ParentData.BaseId, at);
         }
 
         switch (thing.Object)

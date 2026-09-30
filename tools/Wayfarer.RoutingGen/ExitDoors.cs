@@ -86,7 +86,11 @@ internal static class ExitDoors
     /// from where going through it lands to where it was gone through from. That is how an interior
     /// entered by a door with a warp behind it is left, and both ends are placed. The drawn door's
     /// own ends are never kept for it, because its far side is often only a copy of its near side.
-    /// Doors between the maps of one zone are not exits at all and are all kept.</para></summary>
+    /// Doors between the maps of one zone are not exits at all and are kept, unless warps already
+    /// join the same two maps both ways: then the drawn door is only their icon. Where a warp goes one
+    /// way only, the drawn door is kept for the other. Ul'dah draws its
+    /// airship landing straight above the Steps of Nald, and that link was once walked down a
+    /// tower's height instead of taking Nanahomi's lift.</para></summary>
     public static List<DoorLink> Unwalked(GameData game, IReadOnlyList<DoorLink> drawn, IReadOnlyList<DoorLink> walked)
     {
         var through = new Dictionary<(uint From, uint To), DoorLink>();
@@ -98,10 +102,39 @@ internal static class ExitDoors
         var territories = game.Excel.GetSheet<TerritoryType>();
         var kept = new List<DoorLink>(drawn.Count);
         var replaced = 0;
+
+        // Which way round a warp goes from one map of a zone to another. Every warp is one way. Only
+        // warps always open count: a drawn door is never given up for one kept until a quest is done
+        // or there only during an event.
+        var warpedMaps = walked
+            .Where(door => door.From.Territory == door.To.Territory && door.From.Map != door.To.Map && door.Quests is null && door.Festival == 0)
+            .Select(door => (door.From.Territory, door.From.Map, door.To.Map))
+            .ToHashSet();
+        var warpIcons = 0;
         var walkedBack = 0;
         foreach (var door in drawn)
         {
             var (a, b) = (door.From.Territory, door.To.Territory);
+            if (door.Npc is null && a == b && door.From.Map != door.To.Map)
+            {
+                var warpedThere = warpedMaps.Contains((a, door.From.Map, door.To.Map));
+                var warpedBack = warpedMaps.Contains((a, door.To.Map, door.From.Map));
+                if (warpedThere && warpedBack)
+                {
+                    // Warps go both ways, so the drawn door is only their icon.
+                    warpIcons++;
+                    continue;
+                }
+
+                if (warpedThere || warpedBack)
+                {
+                    // A warp goes one way only, as out of Anogg's Lair: the drawn door stays for the
+                    // other, which is the only way in.
+                    kept.Add(warpedThere ? door with { From = door.To, To = door.From, OneWay = true } : door with { OneWay = true });
+                    continue;
+                }
+            }
+
             if (door.Npc is not null || a == b)
             {
                 kept.Add(door);
@@ -129,6 +162,7 @@ internal static class ExitDoors
             }
         }
 
+        Console.Error.WriteLine($"  {warpIcons} drawn doors between the maps of one zone dropped, warps joining the same maps both ways");
         Console.Error.WriteLine($"  {replaced} drawn doors replaced by exits and warps, {walkedBack} walked back the way an exit or warp came, {kept.Count(door => door.From.Territory != door.To.Territory) - walkedBack} between zones kept as drawn");
         return kept;
     }
