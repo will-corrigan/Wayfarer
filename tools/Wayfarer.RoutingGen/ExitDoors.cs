@@ -86,7 +86,10 @@ internal static class ExitDoors
     /// from where going through it lands to where it was gone through from. That is how an interior
     /// entered by a door with a warp behind it is left, and both ends are placed. The drawn door's
     /// own ends are never kept for it, because its far side is often only a copy of its near side.
-    /// Doors between the maps of one zone are not exits at all and are all kept.</para></summary>
+    /// Doors between the maps of one zone are not exits at all and are kept, unless a warp already
+    /// joins the same two maps: then the drawn door is only the warp's own icon. Ul'dah draws its
+    /// airship landing straight above the Steps of Nald, and that link was once walked down a
+    /// tower's height instead of taking Nanahomi's lift.</para></summary>
     public static List<DoorLink> Unwalked(GameData game, IReadOnlyList<DoorLink> drawn, IReadOnlyList<DoorLink> walked)
     {
         var through = new Dictionary<(uint From, uint To), DoorLink>();
@@ -98,10 +101,23 @@ internal static class ExitDoors
         var territories = game.Excel.GetSheet<TerritoryType>();
         var kept = new List<DoorLink>(drawn.Count);
         var replaced = 0;
+
+        // The maps of one zone a warp joins, either way round.
+        var warpedMaps = walked
+            .Where(door => door.From.Territory == door.To.Territory && door.From.Map != door.To.Map)
+            .Select(door => (door.From.Territory, Math.Min(door.From.Map, door.To.Map), Math.Max(door.From.Map, door.To.Map)))
+            .ToHashSet();
+        var warpIcons = 0;
         var walkedBack = 0;
         foreach (var door in drawn)
         {
             var (a, b) = (door.From.Territory, door.To.Territory);
+            if (door.Npc is null && a == b && warpedMaps.Contains((a, Math.Min(door.From.Map, door.To.Map), Math.Max(door.From.Map, door.To.Map))))
+            {
+                warpIcons++;
+                continue;
+            }
+
             if (door.Npc is not null || a == b)
             {
                 kept.Add(door);
@@ -129,7 +145,8 @@ internal static class ExitDoors
             }
         }
 
-        Console.Error.WriteLine($"  {replaced} drawn doors replaced by exits and warps, {walkedBack} walked back the way an exit or warp came, {kept.Count(door => door.From.Territory != door.To.Territory) - walkedBack} between zones kept as drawn");
+        Console.Error.WriteLine($"  {warpIcons} drawn doors between the maps of one zone dropped, a warp joining the same maps");
+        Console.Error.WriteLine($"  {replaced} drawn doors replaced by exits and warps,{walkedBack} walked back the way an exit or warp came, {kept.Count(door => door.From.Territory != door.To.Territory) - walkedBack} between zones kept as drawn");
         return kept;
     }
 

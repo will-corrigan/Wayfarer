@@ -3492,60 +3492,6 @@
       "AnyQuest": false
     },
     {
-      "Name": "Ul\u0027dah - Steps of Nald",
-      "From": {
-        "Territory": 130,
-        "Map": 70,
-        "X": 10.5,
-        "Y": 82.99997,
-        "Z": -17.5,
-        "Radius": 0
-      },
-      "To": {
-        "Territory": 130,
-        "Map": 13,
-        "X": 10.5,
-        "Y": 9.994568,
-        "Z": -17.5,
-        "Radius": 0
-      },
-      "OneWay": false,
-      "Npc": null,
-      "Quests": null,
-      "Warp": 0,
-      "Person": 0,
-      "Festival": 0,
-      "FestivalPhase": 0,
-      "AnyQuest": false
-    },
-    {
-      "Name": "Limsa Lominsa Upper Decks",
-      "From": {
-        "Territory": 128,
-        "Map": 74,
-        "X": 37.5,
-        "Y": "NaN",
-        "Z": -13.5,
-        "Radius": 0
-      },
-      "To": {
-        "Territory": 128,
-        "Map": 11,
-        "X": 37.5,
-        "Y": 40.19993,
-        "Z": -13.5,
-        "Radius": 0
-      },
-      "OneWay": false,
-      "Npc": null,
-      "Quests": null,
-      "Warp": 0,
-      "Person": 0,
-      "Festival": 0,
-      "FestivalPhase": 0,
-      "AnyQuest": false
-    },
-    {
       "Name": "Command Room",
       "From": {
         "Territory": 129,
@@ -4167,33 +4113,6 @@
       "AnyQuest": false
     },
     {
-      "Name": "Anogg\u0027s Lair",
-      "From": {
-        "Territory": 895,
-        "Map": 575,
-        "X": -20.5,
-        "Y": 0,
-        "Z": -58.25,
-        "Radius": 0
-      },
-      "To": {
-        "Territory": 895,
-        "Map": 614,
-        "X": -49.5,
-        "Y": 1.209601,
-        "Z": -109,
-        "Radius": 0
-      },
-      "OneWay": false,
-      "Npc": null,
-      "Quests": null,
-      "Warp": 0,
-      "Person": 0,
-      "Festival": 0,
-      "FestivalPhase": 0,
-      "AnyQuest": false
-    },
-    {
       "Name": "Zone 4",
       "From": {
         "Territory": 896,
@@ -4518,33 +4437,6 @@
       "AnyQuest": false
     },
     {
-      "Name": "Troia Keep",
-      "From": {
-        "Territory": 1089,
-        "Map": 782,
-        "X": 268,
-        "Y": -706.408,
-        "Z": 90.5,
-        "Radius": 0
-      },
-      "To": {
-        "Territory": 1089,
-        "Map": 783,
-        "X": -282,
-        "Y": -716.7357,
-        "Z": 133,
-        "Radius": 0
-      },
-      "OneWay": false,
-      "Npc": null,
-      "Quests": null,
-      "Warp": 0,
-      "Person": 0,
-      "Festival": 0,
-      "FestivalPhase": 0,
-      "AnyQuest": false
-    },
-    {
       "Name": "The Fell Court of Troia",
       "From": {
         "Territory": 1056,
@@ -4563,33 +4455,6 @@
         "Radius": 0
       },
       "OneWay": true,
-      "Npc": null,
-      "Quests": null,
-      "Warp": 0,
-      "Person": 0,
-      "Festival": 0,
-      "FestivalPhase": 0,
-      "AnyQuest": false
-    },
-    {
-      "Name": "Hydromantic Terraces",
-      "From": {
-        "Territory": 1089,
-        "Map": 783,
-        "X": -0.5,
-        "Y": -692.6403,
-        "Z": -234.5,
-        "Radius": 0
-      },
-      "To": {
-        "Territory": 1089,
-        "Map": 784,
-        "X": 12,
-        "Y": 351.3047,
-        "Z": 15.5,
-        "Radius": 0
-      },
-      "OneWay": false,
       "Npc": null,
       "Quests": null,
       "Warp": 0,
