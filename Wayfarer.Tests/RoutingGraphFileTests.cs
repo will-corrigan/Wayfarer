@@ -82,6 +82,21 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Mercantile docks skipper" });
     }
 
+    /// <summary>Dealings in the Desert: off the airship at Ul'dah, the Ruby Road Exchange is at the
+    /// foot of the tower. The map draws the landing straight above the Steps of Nald, and that
+    /// drawing was once walked down a tower's height; the only way down is Nanahomi's lift.</summary>
+    [Fact]
+    public void Off_the_airship_at_uldah_the_lift_takes_you_down()
+    {
+        const uint Uldah = 130;
+        var offTheAirship = new Place(Uldah, 70, -17.5f, 83f, 3.7f);
+        var rubyRoadExchange = new Place(Uldah, 13, -20.8f, 10f, -43.9f);
+        var route = Shipped.ToGraph().FindRoute(offTheAirship, [rubyRoadExchange], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Nanahomi" });
+    }
+
     /// <summary>The Firmament's aethernet is no aethernet in the sheets: its eight shards come from
     /// the transpoint's talk script, so they were once missing, and every trip across the Firmament
     /// was walked. From the Mendicant's Court to Hoarfrost Hall, the shard beside you is the way.</summary>
