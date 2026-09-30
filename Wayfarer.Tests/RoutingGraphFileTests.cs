@@ -82,6 +82,24 @@ public class RoutingGraphFileTests
         Assert.Contains(route.Legs, leg => leg is Leg.Door { Npc: "Mercantile docks skipper" });
     }
 
+    /// <summary>The Firmament's aethernet is no aethernet in the sheets: its eight shards come from
+    /// the transpoint's talk script, so they were once missing, and every trip across the Firmament
+    /// was walked. From the Mendicant's Court to Hoarfrost Hall, the shard beside you is the way.</summary>
+    [Fact]
+    public void The_firmaments_shards_carry_you_across_it()
+    {
+        const uint Firmament = 886;
+        const uint FirmamentMap = 574;
+        Assert.Equal(56, Shipped.Doors.Count(door => door is { Npc: "Aethernet shard", From.Territory: Firmament, To.Territory: Firmament }));
+
+        var byTheCourt = new Place(Firmament, FirmamentMap, 18f, -16f, 166f);
+        var byTheHall = new Place(Firmament, FirmamentMap, -136f, 10f, -10f);
+        var route = Shipped.ToGraph().FindRoute(byTheCourt, [byTheHall], _ => false, _ => true);
+
+        Assert.NotNull(route);
+        Assert.Contains(route.Legs, leg => leg is Leg.Door { Name: "Travel to Hoarfrost Hall", Npc: "Aethernet shard" });
+    }
+
     /// <summary>Frost grenades for a mark bill, from Ishgard, by a player who can fly in the Sea of
     /// Clouds and the Western Highlands: teleport to Ok' Zundu and fly. The route once walked out
     /// through the Pillars and across the Sea of Clouds, because the drop from the sky island was

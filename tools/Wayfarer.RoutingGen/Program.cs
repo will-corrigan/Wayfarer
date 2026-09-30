@@ -41,6 +41,7 @@ using var layouts = new ZoneLayouts(game);
 // goes.
 var exits = ExitDoors.Read(game, maps, layouts, routable, doors);
 var warped = WarpDoors.Read(game, maps, layouts, routable);
+var transpoints = TranspointDoors.Read(game, maps, layouts, routable);
 doors = ExitDoors.Unwalked(game, doors, [.. exits, .. warped]);
 nodes = Heights.Nodes(game, layouts, nodes);
 nodes = Landings.Mark(layouts, nodes);
@@ -48,6 +49,7 @@ doors = Heights.Mirrored(game, layouts, maps, doors);
 doors = Heights.Doors(layouts, doors);
 doors.AddRange(exits);
 doors.AddRange(warped);
+doors.AddRange(transpoints);
 Console.Error.WriteLine($"  read the layouts of {layouts.Count} zones, {layouts.Mirrored} files from the mirror");
 
 File.WriteAllText(output, new RoutingGraphFile(nodes, doors).ToJson());

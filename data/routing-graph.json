@@ -20516,6 +20516,1518 @@
       "Festival": 0,
       "FestivalPhase": 0,
       "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 23.94846,
+        "Y": -16,
+        "Z": 169.3878,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.04269,
+        "Y": -18.49838,
+        "Z": 10.30335,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 149.5148,
+        "Y": -50,
+        "Z": 98.57861,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 207.7534,
+        "Y": -40,
+        "Z": -25.5852,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -78.75626,
+        "Y": -0.01531959,
+        "Z": 76.00101,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -132.5247,
+        "Y": 9.994568,
+        "Z": -14.6587,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Eastern Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70139,
+        "Y": -0.01533496,
+        "Z": -115.1741,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 111.9302,
+        "Y": -20,
+        "Z": -107.4839,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mendicant\u0027s Court",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 20.77207,
+        "Y": -16,
+        "Z": 168.1149,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The Mattock",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 76.17414,
+        "Y": -18.49879,
+        "Z": 7.214315,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to The New Nest",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 146.4502,
+        "Y": -49.9,
+        "Z": 96.86317,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Saint Roelle\u0027s Dais",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 204.9332,
+        "Y": -40,
+        "Z": -25.98294,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Featherfall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -79.27204,
+        "Y": 0.1,
+        "Z": 78.56492,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Hoarfrost Hall",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -134.8136,
+        "Y": 10,
+        "Z": -12.69104,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
+    },
+    {
+      "Name": "Travel to Western Risensong Quarter",
+      "From": {
+        "Territory": 886,
+        "Map": 574,
+        "X": 114.3204,
+        "Y": -20,
+        "Z": -107.4167,
+        "Radius": 0
+      },
+      "To": {
+        "Territory": 886,
+        "Map": 574,
+        "X": -91.70752,
+        "Y": -2.0504E-05,
+        "Z": -117.6918,
+        "Radius": 0
+      },
+      "OneWay": true,
+      "Npc": "Aethernet shard",
+      "Quests": null,
+      "Warp": 0,
+      "Person": 0,
+      "Festival": 0,
+      "FestivalPhase": 0,
+      "AnyQuest": false
     }
   ]
 }

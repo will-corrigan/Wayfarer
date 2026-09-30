@@ -41,6 +41,10 @@ internal sealed class ZoneLayout
     /// The aethernet also drops you at spots outside a city's gate with nothing there to board.</summary>
     public HashSet<uint> Aetherytes { get; } = [];
 
+    /// <summary>Where each event object the layout places stands, by its EObj row: the first of each,
+    /// which is all a thing placed once, such as an aethernet shard, needs.</summary>
+    public Dictionary<uint, Vector3> Objects { get; } = [];
+
     /// <summary>Where things stand on the zone's floors: people, objects and landing spots. Each
     /// says how high the floor is where it stands, which nothing on a map does.</summary>
     public List<Vector3> Standing { get; } = [];
@@ -172,6 +176,11 @@ internal sealed class ZoneLayout
         if (festival == 0 && thing.Object is LayerCommon.PopRangeInstanceObject or LayerCommon.ENPCInstanceObject or LayerCommon.EventInstanceObject)
         {
             Standing.Add(at);
+        }
+
+        if (festival == 0 && thing.Object is LayerCommon.EventInstanceObject placed && placed.ParentData.BaseId != 0)
+        {
+            Objects.TryAdd(placed.ParentData.BaseId, at);
         }
 
         switch (thing.Object)
