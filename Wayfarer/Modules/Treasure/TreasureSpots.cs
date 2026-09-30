@@ -22,8 +22,14 @@ internal sealed class TreasureSpots(IDataManager data, IPluginLog log)
     /// Middle La Noscea among others, and those are set dressing nobody can open.</summary>
     private const string TreasureFile = "planmap";
 
-    /// <summary>The layout files map ranges are read from: the same ones the routing generator reads.</summary>
-    private static readonly string[] LayoutFiles = ["planmap", "planevent", "planlive", "planner", "bg"];
+    /// <summary>The layout files map ranges are read from: the small ones only. Never <c>planner</c>
+    /// or <c>bg</c> inside the game. Lumina misreads a dozen A Realm Reborn planner files, taking a
+    /// garbage layer count and asking for an impossible amount of memory before it gives up, and a
+    /// city's bg file is enormous. Reading Ul'dah's planner in the background once held the game's
+    /// file lock for 27 seconds, froze the quest guidance waiting behind it on the game's thread,
+    /// and was followed by the game crashing. The routing generator reads them offline, where that
+    /// costs nothing.</summary>
+    private static readonly string[] LayoutFiles = ["planmap", "planevent", "planlive"];
 
     private readonly ConcurrentDictionary<uint, Lazy<IReadOnlyList<TreasureSpot>>> read = new();
 
