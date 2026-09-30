@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/will-corrigan/Wayfarer/compare/v1.10.1...v1.10.2) (2026-09-30)
+
+
+### Fixed
+
+* never read planner or bg layouts in the game ([#111](https://github.com/will-corrigan/Wayfarer/issues/111)) ([f53b251](https://github.com/will-corrigan/Wayfarer/commit/f53b251507768a779858274dbf1c5a5b5a97d96e))
+
 ## [1.10.1](https://github.com/will-corrigan/Wayfarer/compare/v1.10.0...v1.10.1) (2026-09-30)
 
 
