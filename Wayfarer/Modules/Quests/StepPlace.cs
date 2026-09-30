@@ -12,4 +12,6 @@ namespace Wayfarer.Modules.Quests;
 /// <param name="ObjectName">What the thing or person is called in the player's own language, empty
 /// when nothing stands there or it has no name.</param>
 /// <param name="At">Where it is, with its radius when it is ground to search.</param>
-internal sealed record StepPlace(uint Row, uint ObjectId, bool IsObject, string ObjectName, Place At);
+/// <param name="IsPerson">Whether what stands there is one of the quest's people, rather than a thing
+/// or a monster.</param>
+internal sealed record StepPlace(uint Row, uint ObjectId, bool IsObject, string ObjectName, Place At, bool IsPerson = false);

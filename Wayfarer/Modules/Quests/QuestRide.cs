@@ -12,6 +12,12 @@ internal sealed class QuestRide(IObjectTable objects, IUnlockState unlocks, ICon
     /// own, transformed, or piloting a machine.</summary>
     public bool Now()
     {
+        // A passenger on someone else's mount is on a mount they do not own, but not on a quest's ride.
+        if (condition[ConditionFlag.RidingPillion])
+        {
+            return false;
+        }
+
         if (condition[ConditionFlag.Transformed] || condition[ConditionFlag.PilotingMech])
         {
             return true;

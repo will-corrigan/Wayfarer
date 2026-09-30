@@ -297,12 +297,13 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             }
 
             var thing = level.Object.Is<EObj>();
+            var person = level.Object.Is<ENpcBase>();
             var name = thing
                 ? dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(level.Object.RowId)?.Singular.ExtractText() ?? string.Empty
-                : level.Object.RowId != 0 ? dataManager.GetExcelSheet<ENpcResident>().GetRowOrDefault(level.Object.RowId)?.Singular.ExtractText() ?? string.Empty
+                : person ? dataManager.GetExcelSheet<ENpcResident>().GetRowOrDefault(level.Object.RowId)?.Singular.ExtractText() ?? string.Empty
                 : string.Empty;
 
-            places.Add(new StepPlace(level.RowId, level.Object.RowId, thing, name, At(level)));
+            places.Add(new StepPlace(level.RowId, level.Object.RowId, thing, name, At(level), person));
         }
 
         return new StepShape(index, param.ToDoCompleteSeq, words, places);
@@ -610,7 +611,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         for (var i = 0; i < shapes.Count; i++)
         {
             var (qty, shape) = shapes[i];
-            todos.Add(new QuestTodoTemplate(shape.Index, shape.Sequence, rows.GetValueOrDefault(shape.Index), qty, chosen[i], StepPlaces.WhileRiding(shape)));
+            todos.Add(new QuestTodoTemplate(shape.Index, shape.Sequence, rows.GetValueOrDefault(shape.Index), qty, chosen[i], StepPlaces.WhileRiding(shape, chosen[i])));
         }
 
         return todos;

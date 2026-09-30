@@ -47,19 +47,25 @@ internal static class StepPlaces
     /// name are left out; one it does name, as in "Pilot the magitek armor back to Wedge", is where
     /// the ride is going and stays.</para></summary>
     /// <param name="step">The line, with every place it names.</param>
-    public static IReadOnlyList<Place>? WhileRiding(StepShape step)
+    /// <param name="chosen">Where the line sends a player on foot, from <see cref="Choose"/>: riding only
+    /// ever takes places away from that, so whatever it already left out stays out.</param>
+    public static IReadOnlyList<Place>? WhileRiding(StepShape step, IReadOnlyList<Place> chosen)
     {
         ArgumentNullException.ThrowIfNull(step);
+        ArgumentNullException.ThrowIfNull(chosen);
 
         if (!step.Places.Any(place => place.ObjectId == 0))
         {
             return null;
         }
 
-        var kept = step.Places
-            .Where(place => place.ObjectId == 0 || place.IsObject || NamedIn(place.ObjectName, step.Words))
-            .ToList();
-        return kept.Count == step.Places.Count ? null : [.. kept.Select(place => place.At)];
+        // Only the quest's own people who hand a ride out, never a thing to act on or a monster to fight.
+        var keepers = step.Places
+            .Where(place => place.IsPerson && !NamedIn(place.ObjectName, step.Words))
+            .Select(place => place.At)
+            .ToHashSet();
+        var riding = chosen.Where(place => !keepers.Contains(place)).ToList();
+        return riding.Count == chosen.Count || riding.Count == 0 ? null : riding;
     }
 
     /// <summary>Whether a line's own words name what stands at a place.
