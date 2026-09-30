@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.3](https://github.com/will-corrigan/Wayfarer/compare/v1.10.2...v1.10.3) (2026-09-30)
+
+
+### Fixed
+
+* Firmament aethernet, the Ul'dah airship lift, and rooms named by story maps ([#113](https://github.com/will-corrigan/Wayfarer/issues/113)) ([5e21b9f](https://github.com/will-corrigan/Wayfarer/commit/5e21b9fac641a4b69f81d1ae87e993b9c9a54dec))
+
 ## [1.10.2](https://github.com/will-corrigan/Wayfarer/compare/v1.10.1...v1.10.2) (2026-09-30)
 
 
