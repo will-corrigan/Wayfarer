@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.4](https://github.com/will-corrigan/Wayfarer/compare/v1.10.3...v1.10.4) (2026-10-01)
+
+
+### Fixed
+
+* say lines wanting any phrase containing the words, and open the chat box first ([#115](https://github.com/will-corrigan/Wayfarer/issues/115)) ([45390cc](https://github.com/will-corrigan/Wayfarer/commit/45390ccb45da531c4792a0d7c953360102e41fc5))
+
 ## [1.10.3](https://github.com/will-corrigan/Wayfarer/compare/v1.10.2...v1.10.3) (2026-09-30)
 
 
