@@ -119,6 +119,15 @@ internal sealed unsafe class Actions(IClientState clientState, IGameGui gameGui,
             return;
         }
 
+        // Open the chat box first, as pressing Enter does. With direct chat off the box is not
+        // taking input until then, and words written into it were lost: it worked for a player with
+        // direct chat on and did nothing for one without.
+        var agent = AgentChatLog.Instance();
+        if (agent != null)
+        {
+            agent->FocusAddon();
+        }
+
         chat->TextInput->SetText(text);
     }
 

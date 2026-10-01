@@ -28,6 +28,32 @@ public class QuestTodoActionsTests
         Assert.Equal(new EntryAction.Say("Well met!"), action);
     }
 
+    /// <summary>The Forbidden Lran, in Il Mheg: a whole family of say ToDos asks for any phrase that
+    /// contains the words, and once carried no phrase at all.</summary>
+    [Fact]
+    public void A_say_todo_wanting_any_phrase_containing_the_words_carries_them()
+    {
+        var action = QuestTodoActions.From("With the chat mode in Say, enter any phrase containing “Kenn Gyuf” to call out to the pixie.", null, Emotes);
+
+        Assert.Equal(new EntryAction.Say("Kenn Gyuf"), action);
+    }
+
+    [Fact]
+    public void A_say_todo_wanting_a_phrase_containing_the_words_carries_them()
+    {
+        var action = QuestTodoActions.From("With the chat mode in Say, enter a phrase containing “Wake up!” to rouse Gunu Vanu.", null, Emotes);
+
+        Assert.Equal(new EntryAction.Say("Wake up!"), action);
+    }
+
+    [Fact]
+    public void A_say_todo_wanting_an_auto_translate_entry_carries_nothing_to_write()
+    {
+        var action = QuestTodoActions.From("With the chat mode in Say, enter the auto-translate option Hello!.", null, Emotes);
+
+        Assert.IsNotType<EntryAction.Say>(action);
+    }
+
     [Fact]
     public void An_emote_todo_names_its_command()
     {

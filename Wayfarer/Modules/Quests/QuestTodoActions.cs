@@ -5,8 +5,9 @@ namespace Wayfarer.Modules.Quests;
 
 /// <summary>What a ToDo has the player do, read from the only places the game says it: the key
 /// item the quest's handler reports, the key item its words name, or the ToDo's own words. An
-/// emote ToDo names its command in the text, "Greet Aunillie with a /bow."; a say ToDo always
-/// reads "With the chat mode in Say, enter “Well met!” to ...".</summary>
+/// emote ToDo names its command in the text, "Greet Aunillie with a /bow."; a say ToDo reads "With
+/// the chat mode in Say, enter “Well met!” to ...", or "enter any phrase containing “Kenn Gyuf”",
+/// or "a phrase containing". A ToDo wanting an auto-translate entry names no words to write.</summary>
 internal static partial class QuestTodoActions
 {
     private const int MatchTimeoutMilliseconds = 100;
@@ -62,7 +63,7 @@ internal static partial class QuestTodoActions
             .Select(found => found.Item)
             .FirstOrDefault();
 
-    [GeneratedRegex("enter “(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
+    [GeneratedRegex("enter (?:(?:any|a) phrase containing (?:a )?)?“(?<phrase>[^”]+)”", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
     private static partial Regex SayPhrase();
 
     [GeneratedRegex("/[a-z]+", RegexOptions.ExplicitCapture, MatchTimeoutMilliseconds)]
