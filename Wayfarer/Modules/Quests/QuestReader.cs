@@ -71,6 +71,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<QuestTodoTemplate>> templatesByQuest = [];
     private readonly Dictionary<ushort, string> namesByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
+    private readonly Dictionary<(ushort Quest, byte Sequence), IReadOnlyList<Mark>> stepMarks = [];
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestDuty>> dutiesByQuest = [];
@@ -140,8 +141,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return questId != 0 && IsAccepted(questId) ? questId : null;
     }
 
-    /// <summary>The objects of the world this quest is about, by the id the game gives them. Read
-    /// once per quest; which of them is spawned is asked of the world, not of the sheet.</summary>
+    /// <summary>The objects of the world one step of this quest is about, by the id the game gives
+    /// them. Read once per step; which of them is spawned is asked of the world, not of the sheet.</summary>
+    public IReadOnlyList<Mark> Marks(ushort questId, byte sequence) =>
+        stepMarks.TryGetValue((questId, sequence), out var marks) ? marks : stepMarks[(questId, sequence)] = StepMarks.For(Marks(questId), Listeners(questId), sequence);
+
+    /// <summary>The objects of the world this quest is about, every step at once.</summary>
     public IReadOnlyList<Mark> Marks(ushort questId) =>
         marksByQuest.TryGetValue(questId, out var marks) ? marks : marksByQuest[questId] = ReadMarks(questId);
 
@@ -582,6 +587,12 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private IReadOnlyList<QuestTodoTemplate> Templates(ushort questId) =>
         templatesByQuest.TryGetValue(questId, out var todos) ? todos : templatesByQuest[questId] = ReadTemplates(questId);
 
+    /// <summary>The quest's listeners: who or what each is, and the steps it is listed from and until.</summary>
+    private List<(uint Listener, byte Spawn, byte Despawn)> Listeners(ushort questId) =>
+        QuestRow(questId) is { } quest
+            ? [.. quest.QuestListenerParams.Where(listener => listener.Listener != 0).Select(listener => (listener.Listener, listener.ActorSpawnSeq, listener.ActorDespawnSeq))]
+            : [];
+
     private Quest? QuestRow(ushort questId) => dataManager.GetExcelSheet<Quest>().GetRowOrDefault(QuestIds.RowId(questId));
 
     private string ReadName(ushort questId) => QuestRow(questId)?.Name.ExtractText() ?? $"Quest {questId}";
@@ -606,7 +617,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             }
         }
 
-        var chosen = StepPlaces.Choose([.. shapes.Select(entry => entry.Shape)]);
+        var chosen = StepPlaces.Choose([.. shapes.Select(entry => entry.Shape)], QuestRides.Givers(quest));
         var todos = new List<QuestTodoTemplate>();
         for (var i = 0; i < shapes.Count; i++)
         {

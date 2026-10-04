@@ -90,7 +90,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             true,
             duties,
             reader.Items(questId),
-            reader.Marks(questId),
+            reader.Marks(questId, sequence),
             QuestIds.Event(questId),
             reader.Lairs(questId),
             target,

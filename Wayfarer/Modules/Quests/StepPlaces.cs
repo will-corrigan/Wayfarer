@@ -28,12 +28,16 @@ internal static class StepPlaces
 
     /// <summary>Where each of a quest's lines sends the player, in the order the lines come.</summary>
     /// <param name="steps">Every located line of one quest. Lines naming nowhere may be left out.</param>
-    public static IReadOnlyList<IReadOnlyList<Place>> Choose(IReadOnlyList<StepShape> steps)
+    /// <param name="givers">The people who put the player on the quest's ride or transform them, by
+    /// who they are and the step, from <see cref="QuestReader"/>; a player who gets off has to go
+    /// back to them, so they are never taken for company. Null for none.</param>
+    public static IReadOnlyList<IReadOnlyList<Place>> Choose(IReadOnlyList<StepShape> steps, IReadOnlySet<(uint Person, byte Sequence)>? givers = null)
     {
         ArgumentNullException.ThrowIfNull(steps);
 
         var furniture = Furniture(steps);
-        return [.. steps.Select(step => Chosen(step, furniture))];
+        var company = Company(steps);
+        return [.. steps.Select(step => Chosen(step, furniture, company, givers ?? new HashSet<(uint, byte)>()))];
     }
 
     /// <summary>Where a line sends a player already on the quest's ride, or null when riding changes
@@ -106,15 +110,39 @@ internal static class StepPlaces
         return [.. stepsPerRow.Where(pair => pair.Value >= LeastStepsToBeFurniture && pair.Value > most).Select(pair => pair.Key)];
     }
 
+    /// <summary>The people a quest lists on most of its own lines: whoever sent the player, kept on
+    /// every line so they can go back and ask again. "Put to the Proof" lists Y'shtola on every line
+    /// while the player searches three ruins for statues, and being beside the player she won each
+    /// search. Unlike furniture they are only left out of lines with ground to search that do not
+    /// name them; "Deliver the seal to Y'shtola" still goes to her.</summary>
+    private static HashSet<uint> Company(IReadOnlyList<StepShape> steps)
+    {
+        var located = steps.Where(step => step.Places.Count > 0).ToList();
+        var stepsPerRow = new Dictionary<uint, int>();
+        foreach (var step in located)
+        {
+            foreach (var row in step.Places.Where(place => place.IsPerson).Select(place => place.Row).Distinct())
+            {
+                stepsPerRow[row] = stepsPerRow.GetValueOrDefault(row) + 1;
+            }
+        }
+
+        var most = located.Count / 2d;
+        return [.. stepsPerRow.Where(pair => pair.Value >= LeastStepsToBeFurniture && pair.Value > most).Select(pair => pair.Key)];
+    }
+
     /// <summary>Where one line sends the player: its own places, less the quest's furniture and
     /// less whoever is only standing in the ground it says to search.</summary>
-    private static IReadOnlyList<Place> Chosen(StepShape step, HashSet<uint> furniture)
+    private static IReadOnlyList<Place> Chosen(StepShape step, HashSet<uint> furniture, HashSet<uint> company, IReadOnlySet<(uint Person, byte Sequence)> givers)
     {
         // A line that names the thing wants the thing, whatever the rest of the quest does with
         // it: "pass through the portal" is about the portal even on a quest that pins that portal
-        // from beginning to end.
+        // from beginning to end. The quest's company is left out only of a line that has ground of
+        // its own to search and does not name them.
+        var ground = step.Places.Any(place => place.ObjectId == 0);
         var wanted = step.Places
             .Where(place => !furniture.Contains(place.Row) || NamedIn(place.ObjectName, step.Words))
+            .Where(place => !(ground && company.Contains(place.Row) && !NamedIn(place.ObjectName, step.Words) && !givers.Contains((place.ObjectId, step.Sequence))))
             .ToList();
 
         // Taking the furniture out must never leave a line with nowhere at all.

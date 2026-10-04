@@ -56,9 +56,9 @@ public class StepPlacesTests
     public void A_person_a_quest_sends_you_back_to_is_never_treated_as_scenery()
     {
         var steps = Quest(
-            Step("Speak with Jacke.", Person(9, ByTheDoor), Area(Ground)),
-            Step("Report to Jacke.", Person(9, ByTheDoor), Area(MoreGround)),
-            Step("Speak with Jacke again.", Person(9, ByTheDoor), Area(ThirdGround)));
+            Step("Speak with Jacke.", Person(9, ByTheDoor, "Jacke"), Area(Ground)),
+            Step("Report to Jacke.", Person(9, ByTheDoor, "Jacke"), Area(MoreGround)),
+            Step("Speak with Jacke again.", Person(9, ByTheDoor, "Jacke"), Area(ThirdGround)));
 
         var chosen = StepPlaces.Choose(steps);
 
@@ -145,14 +145,50 @@ public class StepPlacesTests
     [Fact]
     public void Furniture_left_out_on_foot_stays_out_on_the_ride()
     {
-        // A door the quest pins on most of its steps, and a keeper beside it.
+        // A door the quest pins on most of its steps, and a keeper on the riding line only.
         var steps = Quest(
             Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer"), Door()),
-            Step("Ride the kongamato to the gysahl green patch.", Area(Ground), Person(1, ByTheDoor, "Vath kintamer"), Door()),
+            Step("Ride the kongamato to the gysahl green patch.", Area(Ground), Person(2, Elsewhere, "Vath kintamer"), Door()),
             Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer"), Door()));
         var chosen = StepPlaces.Choose(steps);
 
+        Assert.Equal([Ground, Elsewhere], chosen[1]);
         Assert.Equal([Ground], StepPlaces.WhileRiding(steps[1], chosen[1]));
+    }
+
+    /// <summary>"Put to the Proof": Y'shtola is listed on every line, so the player can go back and
+    /// ask her, while they search three ruins for statues. Each search goes to its ruins; handing her
+    /// the seal still goes to her.</summary>
+    [Fact]
+    public void Someone_listed_on_every_line_is_left_out_of_a_search_that_does_not_name_them()
+    {
+        var steps = Quest(
+            Step("Speak with Y'shtola.", Person(1, ByTheDoor, "Y'shtola")),
+            Step("Find the first statue in the ruins of Ronka.", Area(Ground), Person(1, ByTheDoor, "Y'shtola")),
+            Step("Find the second statue in the ruins of Ronka.", Area(MoreGround), Person(1, ByTheDoor, "Y'shtola")),
+            Step("Deliver the seal to Y'shtola.", Person(1, ByTheDoor, "Y'shtola")));
+
+        var chosen = StepPlaces.Choose(steps);
+
+        Assert.Equal([Ground], chosen[1]);
+        Assert.Equal([MoreGround], chosen[2]);
+        Assert.Equal([ByTheDoor], chosen[3]);
+    }
+
+    /// <summary>A ride's keeper listed on every line is not company: a player who gets off goes back
+    /// to them. The sheets mark them a giver, and they stay on the riding line.</summary>
+    [Fact]
+    public void A_ride_giver_listed_on_every_line_stays_on_a_riding_line()
+    {
+        var steps = Quest(
+            Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer")),
+            Step("Use the kongamato's Fumigate ability on the wyvern.", Area(Ground), Person(1, ByTheDoor, "Vath kintamer")),
+            Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer")));
+        var givers = new HashSet<(uint, byte)> { (1_000_001, 1) };
+
+        var chosen = StepPlaces.Choose(steps, givers);
+
+        Assert.Contains(ByTheDoor, chosen[1]);
     }
 
     private static StepShape[] Quest(params StepShape[] steps) => steps;
