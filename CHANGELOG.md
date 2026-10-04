@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.6](https://github.com/will-corrigan/Wayfarer/compare/v1.10.5...v1.10.6) (2026-10-04)
+
+
+### Fixed
+
+* a search goes to where the quest places the thing it is for ([#121](https://github.com/will-corrigan/Wayfarer/issues/121)) ([3404663](https://github.com/will-corrigan/Wayfarer/commit/3404663b492e85e321b4eda721926d9342a2b424))
+
 ## [1.10.5](https://github.com/will-corrigan/Wayfarer/compare/v1.10.4...v1.10.5) (2026-10-04)
 
 
