@@ -73,7 +73,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     private readonly Dictionary<ushort, IReadOnlyList<Mark>> marksByQuest = [];
     private readonly Dictionary<(ushort Quest, byte Sequence), IReadOnlyList<Mark>> stepMarks = [];
     private readonly Dictionary<ushort, IReadOnlyList<Place>> lairsByQuest = [];
-    private readonly Dictionary<(ushort Quest, byte Sequence), IReadOnlyList<Place>> spotsByStep = [];
+    private readonly Dictionary<(ushort Quest, byte Sequence), IReadOnlyList<(uint Id, Place At)>> spotsByStep = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestItem>> itemsByQuest = [];
     private readonly Dictionary<ushort, IReadOnlyList<QuestDuty>> dutiesByQuest = [];
     private Dictionary<string, EmoteCommand>? emotesByCommand;
@@ -167,7 +167,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// them. "Mi Casa, Toupasa" sends the player into a wide circle to search for an owl statuette
     /// and only names where it stands on the next line, which has the player carry it away; the
     /// statuette's spot beats the middle of the circle whether or not the world shows it yet.</summary>
-    public IReadOnlyList<Place> Spots(ushort questId, byte sequence) =>
+    public IReadOnlyList<(uint Id, Place At)> Spots(ushort questId, byte sequence) =>
         spotsByStep.TryGetValue((questId, sequence), out var spots) ? spots : spotsByStep[(questId, sequence)] = ReadSpots(questId, sequence);
 
     /// <summary>Reads the whole-game tables this makes of the sheets, so the first frame that
@@ -489,7 +489,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
 
     /// <summary>Every place a line of the quest gives one of the step's own things, from the step
     /// ties in <see cref="StepMarks"/>.</summary>
-    private List<Place> ReadSpots(ushort questId, byte sequence)
+    private List<(uint Id, Place At)> ReadSpots(ushort questId, byte sequence)
     {
         if (QuestRow(questId) is not { } quest)
         {
@@ -507,7 +507,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             .Where(reference => reference.RowId != 0 && reference.ValueNullable is { } level && level.Object.Is<EObj>() && own.Contains(level.Object.RowId))
             .Select(reference => reference.Value)
             .DistinctBy(level => level.RowId)
-            .Select(level => new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z))];
+            .Select(level => (level.Object.RowId, new Place(level.Territory.RowId, level.Map.RowId, level.X, level.Y, level.Z)))];
     }
 
     private List<QuestDuty> ReadDutiesOf(ushort questId)
