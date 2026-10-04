@@ -23,15 +23,10 @@ public class StepMarksTests
         (Wolf, 4, 3), (Colibri, 4, For),
     ];
 
-    private static readonly Dictionary<uint, string> Names = new()
-    {
-        [Serpent] = "serpent statue", [OpoOpo] = "opo-opo statue", [Coeurl] = "coeurl statue", [Wolf] = "wolf statue", [Colibri] = "colibri statue",
-    };
-
     [Fact]
     public void The_third_statue_is_the_wolf_not_the_decoy_beside_it_nor_an_earlier_statue()
     {
-        var marks = StepMarks.For(Statues, Listeners, 4, Name);
+        var marks = StepMarks.For(Statues, Listeners, 4);
 
         Assert.Contains(Thing(Wolf), marks);
         Assert.DoesNotContain(Thing(Colibri), marks);
@@ -42,26 +37,25 @@ public class StepMarksTests
     [Fact]
     public void People_and_creatures_are_left_as_they_were()
     {
-        Assert.Contains(new Mark(1029223, MarkKind.Person), StepMarks.For(Statues, Listeners, 4, Name));
+        Assert.Contains(new Mark(1029223, MarkKind.Person), StepMarks.For(Statues, Listeners, 4));
     }
 
     [Fact]
-    public void A_lasting_thing_like_the_steps_own_stays()
+    public void Of_three_patches_of_soil_the_one_the_step_ties_to_itself_is_pointed_at()
     {
-        // Axe in the Stone: four solid rocks, one of them listed as lasting.
-        Mark[] rocks = [Thing(1), Thing(2), Thing(3), Thing(4)];
-        (uint, byte, byte)[] listened = [(1, 3, 2), (2, 3, 2), (3, 3, 2), (4, 3, For)];
+        // The Honest Truth: "Search Bittermill for evidence." Three patches of barren soil, and only
+        // one is listed for the step alone; the other two are listed as lasting.
+        Mark[] soil = [Thing(2008760), Thing(2008761), Thing(2008762)];
+        (uint, byte, byte)[] listened = [(2008760, 5, For), (2008761, 5, 4), (2008762, 5, For)];
 
-        Assert.Equal(rocks, StepMarks.For(rocks, listened, 3, _ => "solid rock"));
+        Assert.Equal([Thing(2008761)], StepMarks.For(soil, listened, 5));
     }
 
     [Fact]
     public void A_step_that_lists_nothing_of_its_own_is_taken_as_it_was()
     {
-        Assert.Equal(Statues, StepMarks.For(Statues, Listeners, 9, Name));
+        Assert.Equal(Statues, StepMarks.For(Statues, Listeners, 9));
     }
 
     private static Mark Thing(uint id) => new(id, MarkKind.Thing);
-
-    private static string Name(uint id) => Names.GetValueOrDefault(id, string.Empty);
 }

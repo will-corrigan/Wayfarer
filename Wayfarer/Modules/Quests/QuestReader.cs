@@ -144,7 +144,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>The objects of the world this quest is about, by the id the game gives them. Read
     /// once per quest; which of them is spawned is asked of the world, not of the sheet.</summary>
     public IReadOnlyList<Mark> Marks(ushort questId, byte sequence) =>
-        stepMarks.TryGetValue((questId, sequence), out var marks) ? marks : stepMarks[(questId, sequence)] = StepMarks.For(Marks(questId), Listeners(questId), sequence, ObjectName);
+        stepMarks.TryGetValue((questId, sequence), out var marks) ? marks : stepMarks[(questId, sequence)] = StepMarks.For(Marks(questId), Listeners(questId), sequence);
 
     /// <summary>The objects of the world this quest is about, every step at once.</summary>
     public IReadOnlyList<Mark> Marks(ushort questId) =>
@@ -586,10 +586,6 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
     /// <summary>The quest's whole to-do table as authored, read once per quest.</summary>
     private IReadOnlyList<QuestTodoTemplate> Templates(ushort questId) =>
         templatesByQuest.TryGetValue(questId, out var todos) ? todos : templatesByQuest[questId] = ReadTemplates(questId);
-
-    /// <summary>What an event object is called, empty when it has no name.</summary>
-    private string ObjectName(uint id) =>
-        dataManager.GetExcelSheet<EObjName>().GetRowOrDefault(id)?.Singular.ExtractText() ?? string.Empty;
 
     /// <summary>The quest's listeners: who or what each is, and the steps it is listed from and until.</summary>
     private List<(uint Listener, byte Spawn, byte Despawn)> Listeners(ushort questId) =>
