@@ -92,7 +92,7 @@ internal sealed class QuestObjectives(QuestReader reader, QuestFollowing followi
             reader.Items(questId),
             reader.Marks(questId, sequence),
             QuestIds.Event(questId),
-            reader.Lairs(questId),
+            [.. reader.Lairs(questId), .. reader.Spots(questId, sequence)],
             target,
             followed ? FollowedHeader : null,
             QuestIds.RowId(questId));

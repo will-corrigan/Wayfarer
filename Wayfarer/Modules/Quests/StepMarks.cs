@@ -25,14 +25,21 @@ internal static class StepMarks
     /// <param name="sequence">The step the player is on.</param>
     public static IReadOnlyList<Mark> For(IReadOnlyList<Mark> marks, IEnumerable<(uint Listener, byte Spawn, byte Despawn)> listeners, byte sequence)
     {
+        var own = Own(marks, listeners, sequence);
+        return own.Count == 0 ? marks : [.. marks.Where(mark => mark.Kind != MarkKind.Thing || own.Contains(mark.Id))];
+    }
+
+    /// <summary>The things the quest names that the step lists for itself alone; empty when it
+    /// lists none.</summary>
+    public static IReadOnlySet<uint> Own(IReadOnlyList<Mark> marks, IEnumerable<(uint Listener, byte Spawn, byte Despawn)> listeners, byte sequence)
+    {
         ArgumentNullException.ThrowIfNull(marks);
         ArgumentNullException.ThrowIfNull(listeners);
 
         var things = marks.Where(mark => mark.Kind == MarkKind.Thing).Select(mark => mark.Id).ToHashSet();
-        var own = listeners
+        return listeners
             .Where(listener => listener.Spawn == sequence && listener.Despawn != Lasting && things.Contains(listener.Listener))
             .Select(listener => listener.Listener)
             .ToHashSet();
-        return own.Count == 0 ? marks : [.. marks.Where(mark => mark.Kind != MarkKind.Thing || own.Contains(mark.Id))];
     }
 }
