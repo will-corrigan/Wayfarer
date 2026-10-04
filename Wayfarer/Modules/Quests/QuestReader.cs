@@ -606,7 +606,7 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
             }
         }
 
-        var chosen = StepPlaces.Choose([.. shapes.Select(entry => entry.Shape)]);
+        var chosen = StepPlaces.Choose([.. shapes.Select(entry => entry.Shape)], QuestRides.Givers(quest));
         var todos = new List<QuestTodoTemplate>();
         for (var i = 0; i < shapes.Count; i++)
         {

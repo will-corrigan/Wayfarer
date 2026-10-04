@@ -28,13 +28,16 @@ internal static class StepPlaces
 
     /// <summary>Where each of a quest's lines sends the player, in the order the lines come.</summary>
     /// <param name="steps">Every located line of one quest. Lines naming nowhere may be left out.</param>
-    public static IReadOnlyList<IReadOnlyList<Place>> Choose(IReadOnlyList<StepShape> steps)
+    /// <param name="givers">The people who put the player on the quest's ride or transform them, by
+    /// who they are and the step, from <see cref="QuestReader"/>; a player who gets off has to go
+    /// back to them, so they are never taken for company. Null for none.</param>
+    public static IReadOnlyList<IReadOnlyList<Place>> Choose(IReadOnlyList<StepShape> steps, IReadOnlySet<(uint Person, byte Sequence)>? givers = null)
     {
         ArgumentNullException.ThrowIfNull(steps);
 
         var furniture = Furniture(steps);
         var company = Company(steps);
-        return [.. steps.Select(step => Chosen(step, furniture, company))];
+        return [.. steps.Select(step => Chosen(step, furniture, company, givers ?? new HashSet<(uint, byte)>()))];
     }
 
     /// <summary>Where a line sends a player already on the quest's ride, or null when riding changes
@@ -130,7 +133,7 @@ internal static class StepPlaces
 
     /// <summary>Where one line sends the player: its own places, less the quest's furniture and
     /// less whoever is only standing in the ground it says to search.</summary>
-    private static IReadOnlyList<Place> Chosen(StepShape step, HashSet<uint> furniture, HashSet<uint> company)
+    private static IReadOnlyList<Place> Chosen(StepShape step, HashSet<uint> furniture, HashSet<uint> company, IReadOnlySet<(uint Person, byte Sequence)> givers)
     {
         // A line that names the thing wants the thing, whatever the rest of the quest does with
         // it: "pass through the portal" is about the portal even on a quest that pins that portal
@@ -139,7 +142,7 @@ internal static class StepPlaces
         var ground = step.Places.Any(place => place.ObjectId == 0);
         var wanted = step.Places
             .Where(place => !furniture.Contains(place.Row) || NamedIn(place.ObjectName, step.Words))
-            .Where(place => !(ground && company.Contains(place.Row) && !NamedIn(place.ObjectName, step.Words)))
+            .Where(place => !(ground && company.Contains(place.Row) && !NamedIn(place.ObjectName, step.Words) && !givers.Contains((place.ObjectId, step.Sequence))))
             .ToList();
 
         // Taking the furniture out must never leave a line with nowhere at all.

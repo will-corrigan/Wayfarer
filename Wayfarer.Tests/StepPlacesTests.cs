@@ -175,6 +175,22 @@ public class StepPlacesTests
         Assert.Equal([ByTheDoor], chosen[3]);
     }
 
+    /// <summary>A ride's keeper listed on every line is not company: a player who gets off goes back
+    /// to them. The sheets mark them a giver, and they stay on the riding line.</summary>
+    [Fact]
+    public void A_ride_giver_listed_on_every_line_stays_on_a_riding_line()
+    {
+        var steps = Quest(
+            Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer")),
+            Step("Use the kongamato's Fumigate ability on the wyvern.", Area(Ground), Person(1, ByTheDoor, "Vath kintamer")),
+            Step("Speak with Vath kintamer.", Person(1, ByTheDoor, "Vath kintamer")));
+        var givers = new HashSet<(uint, byte)> { (1_000_001, 1) };
+
+        var chosen = StepPlaces.Choose(steps, givers);
+
+        Assert.Contains(ByTheDoor, chosen[1]);
+    }
+
     private static StepShape[] Quest(params StepShape[] steps) => steps;
 
     private static StepShape Step(string words, params StepPlace[] places) => new(0, 1, words, places);
