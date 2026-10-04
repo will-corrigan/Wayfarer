@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.5](https://github.com/will-corrigan/Wayfarer/compare/v1.10.4...v1.10.5) (2026-10-04)
+
+
+### Fixed
+
+* quest searches go to their ground and the step's own object ([#119](https://github.com/will-corrigan/Wayfarer/issues/119)) ([48a8f69](https://github.com/will-corrigan/Wayfarer/commit/48a8f69a636c8cb0bead8937e6c10808c0e544cb))
+
 ## [1.10.4](https://github.com/will-corrigan/Wayfarer/compare/v1.10.3...v1.10.4) (2026-10-01)
 
 
