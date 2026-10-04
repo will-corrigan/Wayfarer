@@ -141,8 +141,8 @@ internal sealed unsafe class QuestReader(IDataManager dataManager, ISeStringEval
         return questId != 0 && IsAccepted(questId) ? questId : null;
     }
 
-    /// <summary>The objects of the world this quest is about, by the id the game gives them. Read
-    /// once per quest; which of them is spawned is asked of the world, not of the sheet.</summary>
+    /// <summary>The objects of the world one step of this quest is about, by the id the game gives
+    /// them. Read once per step; which of them is spawned is asked of the world, not of the sheet.</summary>
     public IReadOnlyList<Mark> Marks(ushort questId, byte sequence) =>
         stepMarks.TryGetValue((questId, sequence), out var marks) ? marks : stepMarks[(questId, sequence)] = StepMarks.For(Marks(questId), Listeners(questId), sequence);
 
