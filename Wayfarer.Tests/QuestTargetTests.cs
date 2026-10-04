@@ -49,6 +49,17 @@ public class QuestTargetTests
     }
 
     [Fact]
+    public void The_spot_of_a_thing_already_used_is_not_walked_back_to()
+    {
+        var memory = new Memory();
+        var target = new QuestTarget(new Finder(), memory);
+
+        memory.Dug(101);
+
+        Assert.Equal([SecondSoil], target.Untried([(101u, FirstSoil), (102u, SecondSoil)]));
+    }
+
+    [Fact]
     public void What_was_already_tried_is_passed_over_even_when_the_game_spawned_it()
     {
         // The finder also answers with what the game stamped as the quest's own, which the names

@@ -59,6 +59,16 @@ internal sealed class QuestTarget(IObjectFinder finder, IInteractions dealtWith)
     /// standing in them.</summary>
     public ulong Aim() => Look(last, lastMarks, lastOwner)?.Id ?? 0uL;
 
+    /// <summary>The spots of things the player has not yet acted on for this step. A thing used up
+    /// and gone leaves its spot behind in the sheet, and being the nearest it would draw the player
+    /// straight back.</summary>
+    public IReadOnlyList<Place> Untried(IReadOnlyList<(uint Id, Place At)> spots)
+    {
+        ArgumentNullException.ThrowIfNull(spots);
+
+        return [.. spots.Where(spot => !dealtWith.Tried(spot.Id)).Select(spot => spot.At)];
+    }
+
     /// <summary>Where the quest's creatures are known to stand, kept to the ground the step
     /// named. Empty when the data says nowhere, or nowhere inside it.</summary>
     private static IReadOnlyList<Place> Awaited(IReadOnlyList<Place> places, IReadOnlyList<Place>? lairs)

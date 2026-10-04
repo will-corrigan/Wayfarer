@@ -57,5 +57,16 @@ public class StepMarksTests
         Assert.Equal(Statues, StepMarks.For(Statues, Listeners, 9));
     }
 
+    /// <summary>"Mi Casa, Toupasa": searching a wide circle for the owl statuette, which the step
+    /// ties to itself; the altar belongs to the next step, the unnamed marker lasts all quest.</summary>
+    [Fact]
+    public void A_search_owns_the_statuette_it_is_for_and_nothing_else()
+    {
+        Mark[] named = [Thing(2010219), Thing(2010218), Thing(2010217)];
+        (uint, byte, byte)[] listened = [(2010219, 2, For), (2010218, 2, 1), (2010217, 3, 2), (2010218, 3, 2)];
+
+        Assert.Equal([2010218u], StepMarks.Own(named, listened, 2));
+    }
+
     private static Mark Thing(uint id) => new(id, MarkKind.Thing);
 }
