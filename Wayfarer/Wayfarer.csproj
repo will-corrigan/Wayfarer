@@ -35,7 +35,7 @@
        need explicit versions here (kept in sync with Directory.Packages.props). -->
   <ItemGroup>
     <PackageReference Include="Autofac" Version="9.3.4"/>
-    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.556"/>
+    <PackageReference Update="StyleCop.Analyzers" Version="1.3.180"/>
     <PackageReference Update="Meziantou.Analyzer" Version="3.0.290"/>
   </ItemGroup>
 
